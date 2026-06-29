@@ -183,7 +183,10 @@ void search_gpu(
         thrust::sequence(t_indices, t_indices + N);
         pack_kernel<<<(N+255)/256, 256>>>(d_dists, d_indices, d_packed, N);
         CUDA_CHECK(cudaGetLastError());
-        thrust::partial_sort(t_packed, t_packed + ck, t_packed + N);
+        // nth_element O(N): puts ck smallest into [0,ck) in any order
+        // sort O(ck log ck): order those ck entries
+        thrust::nth_element(t_packed, t_packed + ck, t_packed + N);
+        thrust::sort(t_packed, t_packed + ck);
         unpack_kernel<<<(ck+255)/256, 256>>>(d_packed, d_dists, d_indices, ck);
         CUDA_CHECK(cudaGetLastError());
 
