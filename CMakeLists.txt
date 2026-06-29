@@ -3,7 +3,12 @@ project(JHQ_GPU LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 17)
-set(CMAKE_CUDA_ARCHITECTURES native)
+# Avoid CMake/NVCC combinations that translate "native" into unsupported
+# "compute_native". Override with -DCMAKE_CUDA_ARCHITECTURES=<capability>
+# for the exact server GPU, e.g. 75, 80, 86, 89.
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES 70 CACHE STRING "CUDA architectures")
+endif()
 
 find_package(CUDAToolkit REQUIRED)
 find_package(BLAS REQUIRED)
