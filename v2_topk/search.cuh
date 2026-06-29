@@ -5,7 +5,7 @@
 
 namespace jhq_gpu {
 
-// v2: top-ck via partial_sort on packed uint64_t (dist_bits<<32 | index).
+// v2: top-ck via packed uint64_t (dist_bits<<32 | index).
 // Non-negative floats sort correctly as uint32_t bit patterns, so uint64_t
 // comparison gives dist-major ordering without zip_iterator.
 

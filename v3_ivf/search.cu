@@ -275,10 +275,10 @@ void search_gpu(
         int ck = std::min(std::max(k, (int)std::ceil(alpha * (float)k)), total);
         pack_kernel<<<(total + 255) / 256, 256>>>(d_dists, d_indices, d_packed, total);
         CUDA_CHECK(cudaGetLastError());
-        if (ck < total) {
-            thrust::nth_element(t_packed, t_packed + ck, t_packed + total);
-        }
-        thrust::sort(t_packed, t_packed + ck);
+        // Some server CUDA/Thrust versions do not provide thrust::nth_element.
+        // IVF keeps total far below N, so full sort is an acceptable portable
+        // fallback for this first implementation.
+        thrust::sort(t_packed, t_packed + total);
         unpack_kernel<<<(ck + 255) / 256, 256>>>(d_packed, d_dists, d_indices, ck);
         CUDA_CHECK(cudaGetLastError());
 
