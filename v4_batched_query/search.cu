@@ -18,13 +18,13 @@ namespace jhq_gpu {
 //   negative floats: invert all    (~bits)
 // Self-inverse is NOT the case; use from_sortable() to recover the float.
 
-__device__ __host__ __forceinline__
+__device__ __forceinline__
 uint32_t to_sortable(float f) {
     uint32_t b = __float_as_uint(f);
     return (b & 0x80000000u) ? ~b : (b | 0x80000000u);
 }
 
-__device__ __host__ __forceinline__
+__device__ __forceinline__
 float from_sortable(uint32_t s) {
     uint32_t b = (s & 0x80000000u) ? (s & 0x7FFFFFFFu) : ~s;
     return __uint_as_float(b);
