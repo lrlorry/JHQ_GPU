@@ -40,6 +40,12 @@ METHODS = {
     "JHQ-GPU-v1":        dict(color="#17BECF", marker="*",  ls="-",  lw=2.4, zorder=7,
                               label="JHQ-GPU v1 (This Work, 96 B/vec)",
                               mfc="#17BECF", mew=1.8, ms=10),
+    "JHQ-GPU-v2":        dict(color="#111111", marker="P",  ls="-",  lw=2.2, zorder=8,
+                              label="JHQ-GPU v2 top-k (This Work, 480 B/vec)",
+                              mfc="#111111", mew=1.6, ms=8),
+    "JHQ-GPU-v3-IVF":    dict(color="#E377C2", marker="*",  ls="-",  lw=2.4, zorder=9,
+                              label="JHQ-GPU v3 IVF (This Work, 480 B/vec)",
+                              mfc="#E377C2", mew=1.8, ms=10),
     # ---- Official source results -------------------------------------------
     "Official-JHQ":      dict(color="#D62728", marker="o",  ls="--", lw=2.2, zorder=6,
                               label="JHQ Official (480 B/vec)",
@@ -104,14 +110,17 @@ def plot_speed_accuracy(ax, data):
             label=style["label"],
         )
         if mname == "JHQ-GPU-v1":
-            ax.semilogy(recalls, d["qps"], **kw)
-            # annotate alpha at a few points
-            alphas = d["nprobe"]
-            for r, q, a in zip(recalls, d["qps"], alphas):
-                if a in (1.0, 4.0, 16.0):
-                    ax.annotate(f"α={a:.0f}", xy=(r, q),
-                                xytext=(4, 3), textcoords="offset points",
-                                fontsize=7, color=style["color"], alpha=0.9)
+            # Plot all points as individual scatter markers, no connecting line.
+            kw_scatter = dict(kw)
+            kw_scatter["linestyle"] = "none"
+            ax.semilogy(recalls, d["qps"], **kw_scatter)
+            # Annotate only the two non-100%-recall points
+            for r, q, a in zip(recalls, d["qps"], d["nprobe"]):
+                if a in (1.0, 1.5):
+                    ax.annotate(f"α={a:.1f}\n{r:.1f}%", xy=(r, q),
+                                xytext=(-38, 4), textcoords="offset points",
+                                fontsize=7, color=style["color"],
+                                fontweight="bold")
         else:
             ax.semilogy(recalls, d["qps"], **kw)
 
@@ -136,6 +145,8 @@ def plot_speed_accuracy(ax, data):
 def plot_build_time(ax, data):
     bar_order = [
         ("JHQ-GPU-v1",        "JHQ-GPU\nv1 (Ours)"),
+        ("JHQ-GPU-v2",        "JHQ-GPU\nv2"),
+        ("JHQ-GPU-v3-IVF",    "JHQ-GPU\nv3 IVF"),
         ("Official-JHQ",      "Official\nJHQ"),
         ("Official-JQ",       "Official\nJQ"),
         ("JHQ+IVF",           "JHQ\nRepro"),
@@ -191,7 +202,7 @@ def main():
     plot_build_time(ax1, data)
 
     fig.suptitle(
-        "JHQ-GPU v1 vs CPU Methods  —  Vogue-768  (d=768, N=932K, k=10)",
+        "JHQ-GPU vs CPU Methods  —  Vogue-768  (d=768, N=932K, k=10)",
         fontsize=11, fontweight="bold", y=1.03
     )
 
