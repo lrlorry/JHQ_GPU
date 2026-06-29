@@ -4,9 +4,6 @@
 #include <thrust/device_ptr.h>
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
-#include <thrust/copy.h>
-#include <thrust/zip_iterator.h>
-#include <thrust/tuple.h>
 
 #include <math_constants.h>
 #include <cmath>
@@ -14,17 +11,7 @@
 
 namespace jhq_gpu {
 
-// ── Comparator for (dist, index) pairs ───────────────────────────────────────
-struct DistIdxCmp {
-    __device__ __host__ bool operator()(
-        const thrust::tuple<float, int>& a,
-        const thrust::tuple<float, int>& b) const
-    {
-        return thrust::get<0>(a) < thrust::get<0>(b);
-    }
-};
-
-// ── Kernel 1: build primary LUT ───────────────────────────────────────────────
+// ── Kernel 1: primary LUT ─────────────────────────────────────────────────────
 __global__ void build_primary_lut_kernel(
     const float* __restrict__ d_q_rot,
     const float* __restrict__ d_c1d,
@@ -33,17 +20,12 @@ __global__ void build_primary_lut_kernel(
 {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid >= M * Ds * K1D) return;
-
-    int j  = tid % K1D;
-    int mk = tid / K1D;
-    int k  = mk  % Ds;
-    int m  = mk  / Ds;
-
+    int j = tid % K1D, mk = tid / K1D, k = mk % Ds, m = mk / Ds;
     float diff = d_q_rot[m * Ds + k] - d_c1d[j];
     d_lut[tid] = diff * diff;
 }
 
-// ── Kernel 2: ADC full scan ───────────────────────────────────────────────────
+// ── Kernel 2: ADC scan ────────────────────────────────────────────────────────
 __global__ void adc_scan_kernel(
     const float*   __restrict__ d_lut,
     const uint8_t* __restrict__ d_codes,
@@ -52,7 +34,6 @@ __global__ void adc_scan_kernel(
 {
     extern __shared__ float s_lut[];
     int lut_size = M * Ds * K1D;
-
     for (int i = threadIdx.x; i < lut_size; i += blockDim.x)
         s_lut[i] = d_lut[i];
     __syncthreads();
@@ -63,19 +44,43 @@ __global__ void adc_scan_kernel(
     const uint8_t* code  = d_codes + (long long)vid * M;
     const int      kmask = K1D - 1;
     float dist = 0.f;
-
     for (int m = 0; m < M; m++) {
         uint8_t cm      = code[m];
         const float* lm = s_lut + m * Ds * K1D;
-        for (int k = 0; k < Ds; k++) {
-            int j  = (cm >> (k * bits_per_dim)) & kmask;
-            dist  += lm[k * K1D + j];
-        }
+        for (int k = 0; k < Ds; k++)
+            dist += lm[k * K1D + ((cm >> (k * bits_per_dim)) & kmask)];
     }
     d_dists[vid] = dist;
 }
 
-// ── Kernel 3: build residual LUT ─────────────────────────────────────────────
+// ── Kernel 3: pack (dist, idx) → uint64_t ────────────────────────────────────
+// Non-negative float bits sort identically to uint32; high 32 bits = dist.
+__global__ void pack_kernel(
+    const float* __restrict__ d_dists,
+    const int*   __restrict__ d_indices,
+    uint64_t*                 d_packed,
+    int N)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= N) return;
+    d_packed[i] = ((uint64_t)__float_as_uint(d_dists[i]) << 32)
+                | (uint32_t)d_indices[i];
+}
+
+// ── Kernel 4: unpack top-ck packed entries back to (dist, idx) ───────────────
+__global__ void unpack_kernel(
+    const uint64_t* __restrict__ d_packed,
+    float*                       d_dists,
+    int*                         d_indices,
+    int ck)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= ck) return;
+    d_dists[i]   = __uint_as_float((uint32_t)(d_packed[i] >> 32));
+    d_indices[i] = (int)(d_packed[i] & 0xFFFFFFFFULL);
+}
+
+// ── Kernel 5: residual LUT ────────────────────────────────────────────────────
 __global__ void build_residual_lut_kernel(
     const float* __restrict__ d_q_rot,
     const float* __restrict__ d_res_c1d,
@@ -84,14 +89,12 @@ __global__ void build_residual_lut_kernel(
 {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid >= d * Kr) return;
-
-    int j   = tid % Kr;
-    int dim = tid / Kr;
+    int j = tid % Kr, dim = tid / Kr;
     float diff = d_q_rot[dim] - d_res_c1d[j];
     d_lut_r[tid] = diff * diff;
 }
 
-// ── Kernel 4: residual refine ─────────────────────────────────────────────────
+// ── Kernel 6: residual refine ─────────────────────────────────────────────────
 __global__ void residual_refine_kernel(
     const int*     __restrict__ d_cand_ids,
     const float*   __restrict__ d_cand_dists,
@@ -109,16 +112,12 @@ __global__ void residual_refine_kernel(
 
     const uint8_t* rc = d_res_codes + (long long)idx * bpv;
     float d_res = 0.f;
-
     for (int j = 0; j < d; j++) {
-        int ri;
-        if (Br == 4)
-            ri = (j % 2 == 0) ? (rc[j / 2] & 0x0F) : (rc[j / 2] >> 4);
-        else
-            ri = rc[j];
+        int ri = (Br == 4)
+            ? ((j % 2 == 0) ? (rc[j/2] & 0x0F) : (rc[j/2] >> 4))
+            : rc[j];
         d_res += d_lut_r[(long long)j * Kr + ri];
     }
-
     d_comp_dists[tid] = d_cand_dists[tid] + d_res + d_corrections[idx];
 }
 
@@ -139,21 +138,21 @@ void search_gpu(
     float* h_out_dists,
     int*   h_out_ids)
 {
-    int ck = (int)std::ceil(alpha * (float)k);
-    ck = std::min(ck, N);
+    int ck = std::min((int)std::ceil(alpha * (float)k), N);
 
-    float* d_q_rot      = ws.d_q_rot;
-    float* d_lut        = ws.d_lut;
-    float* d_dists      = ws.d_dists;
-    int*   d_indices    = ws.d_indices;
-    float* d_lut_r      = ws.d_lut_r;
-    float* d_comp_dists = ws.d_comp_dists;
+    float*    d_q_rot      = ws.d_q_rot;
+    float*    d_lut        = ws.d_lut;
+    float*    d_dists      = ws.d_dists;
+    int*      d_indices    = ws.d_indices;
+    float*    d_lut_r      = ws.d_lut_r;
+    float*    d_comp_dists = ws.d_comp_dists;
+    uint64_t* d_packed     = ws.d_packed;
 
     const float one = 1.f, zero = 0.f;
 
-    thrust::device_ptr<float> t_dists  (d_dists);
-    thrust::device_ptr<int>   t_indices(d_indices);
-    thrust::device_ptr<float> t_comp   (d_comp_dists);
+    thrust::device_ptr<float>    t_comp   (d_comp_dists);
+    thrust::device_ptr<int>      t_indices(d_indices);
+    thrust::device_ptr<uint64_t> t_packed (d_packed);
 
     for (int qi = 0; qi < nq; qi++) {
         const float* d_q = d_queries + (long long)qi * d;
@@ -166,45 +165,42 @@ void search_gpu(
         // Step 2: primary LUT
         {
             int total = M * Ds * K1D;
-            build_primary_lut_kernel<<<(total + 255) / 256, 256>>>(
+            build_primary_lut_kernel<<<(total+255)/256, 256>>>(
                 d_q_rot, d_c1d, d_lut, M, Ds, K1D);
             CUDA_CHECK(cudaGetLastError());
         }
 
-        // Step 3: ADC scan over all N vectors
+        // Step 3: ADC scan
         {
             const int BLOCK = 256;
             int shm = M * Ds * K1D * (int)sizeof(float);
-            adc_scan_kernel<<<(N + BLOCK - 1) / BLOCK, BLOCK, shm>>>(
+            adc_scan_kernel<<<(N+BLOCK-1)/BLOCK, BLOCK, shm>>>(
                 d_lut, d_primary_codes, d_dists, N, M, Ds, K1D, bits_per_dim);
             CUDA_CHECK(cudaGetLastError());
         }
 
-        // Step 4: top-ck selection — O(N log ck) partial sort
-        // v1 used sort_by_key O(N log N); here we zip (dists, indices) and
-        // partial_sort so only the first ck elements are correctly ordered.
+        // Step 4: top-ck via partial_sort on packed uint64_t — O(N log ck)
         thrust::sequence(t_indices, t_indices + N);
-        {
-            auto zip_b = thrust::make_zip_iterator(
-                             thrust::make_tuple(t_dists, t_indices));
-            thrust::partial_sort(zip_b, zip_b + ck, zip_b + N, DistIdxCmp{});
-        }
+        pack_kernel<<<(N+255)/256, 256>>>(d_dists, d_indices, d_packed, N);
+        CUDA_CHECK(cudaGetLastError());
+        thrust::partial_sort(t_packed, t_packed + ck, t_packed + N);
+        unpack_kernel<<<(ck+255)/256, 256>>>(d_packed, d_dists, d_indices, ck);
+        CUDA_CHECK(cudaGetLastError());
 
         // Step 5: residual LUT
         {
             int total = d * Kr;
-            build_residual_lut_kernel<<<(total + 255) / 256, 256>>>(
+            build_residual_lut_kernel<<<(total+255)/256, 256>>>(
                 d_q_rot, d_res_c1d, d_lut_r, d, Kr);
             CUDA_CHECK(cudaGetLastError());
         }
 
-        // Step 6: residual refinement for top-ck candidates
+        // Step 6: residual refinement on top-ck candidates
         {
-            residual_refine_kernel<<<(ck + 255) / 256, 256>>>(
+            residual_refine_kernel<<<(ck+255)/256, 256>>>(
                 d_indices, d_dists,
                 d_lut_r, d_res_codes, d_corrections,
-                d_comp_dists,
-                ck, d, Kr, Br, bpv);
+                d_comp_dists, ck, d, Kr, Br, bpv);
             CUDA_CHECK(cudaGetLastError());
         }
 

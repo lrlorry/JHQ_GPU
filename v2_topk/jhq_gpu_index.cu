@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <stdexcept>
 
@@ -47,6 +48,7 @@ JHQGpuIndex::~JHQGpuIndex() {
     cudaFree(ws_.d_indices);
     cudaFree(ws_.d_lut_r);
     cudaFree(ws_.d_comp_dists);
+    cudaFree(ws_.d_packed);
 }
 
 void JHQGpuIndex::alloc_workspace(long long N) {
@@ -56,6 +58,7 @@ void JHQGpuIndex::alloc_workspace(long long N) {
     cudaFree(ws_.d_indices);    ws_.d_indices     = nullptr;
     cudaFree(ws_.d_lut_r);      ws_.d_lut_r       = nullptr;
     cudaFree(ws_.d_comp_dists); ws_.d_comp_dists  = nullptr;
+    cudaFree(ws_.d_packed);     ws_.d_packed      = nullptr;
 
     CUDA_CHECK(cudaMalloc(&ws_.d_q_rot,      (long long)d_ * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&ws_.d_lut,        (long long)M_ * Ds_ * K1D_ * sizeof(float)));
@@ -63,6 +66,7 @@ void JHQGpuIndex::alloc_workspace(long long N) {
     CUDA_CHECK(cudaMalloc(&ws_.d_indices,    N * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_lut_r,      (long long)d_ * Kr_ * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&ws_.d_comp_dists, N * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_packed,     N * sizeof(uint64_t)));
 }
 
 float* JHQGpuIndex::rotate_on_gpu(const float* h_x, int n) const {
