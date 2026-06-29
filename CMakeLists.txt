@@ -54,4 +54,4 @@ endmacro()
 add_jhq_version(v1_plain)
 add_jhq_version(v2_topk)
 add_jhq_version(v3_ivf)
-# add_jhq_version(v4_batched_query)   ← next
+add_jhq_version(v4_batched_query)

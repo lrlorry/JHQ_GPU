@@ -29,6 +29,7 @@ METHOD_NAME = {
     "v1_plain": "JHQ-GPU-v1",
     "v2_topk": "JHQ-GPU-v2",
     "v3_ivf": "JHQ-GPU-v3-IVF",
+    "v4_batched_query": "JHQ-GPU-v4-Batched",
 }
 
 
@@ -58,7 +59,7 @@ def run_one(cmd):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--version", choices=["v1_plain", "v2_topk", "v3_ivf"], default="v3_ivf")
+    ap.add_argument("--version", choices=["v1_plain", "v2_topk", "v3_ivf", "v4_batched_query"], default="v3_ivf")
     ap.add_argument("--output", default=None)
     ap.add_argument("--demo", default=None)
     ap.add_argument("--base", default=DEFAULT_BASE)
@@ -73,6 +74,7 @@ def main():
     ap.add_argument("--nlist", type=int, default=1024)
     ap.add_argument("--nprobes", default=",".join(str(x) for x in DEFAULT_NPROBES))
     ap.add_argument("--ivf-iters", type=int, default=8)
+    ap.add_argument("--batch-size", type=int, default=256)
     args = ap.parse_args()
 
     repo = os.path.expanduser("~/JHQ_GPU")
@@ -88,13 +90,15 @@ def main():
     rows = []
     build_time = None
     for val in sweep_values:
-        if args.version == "v3_ivf":
+        if args.version in ("v3_ivf", "v4_batched_query"):
             nprobe = int(val)
             cmd = [
                 demo, args.base, args.query, args.gt,
                 str(args.M), str(args.B), str(args.Br), str(args.alpha), str(args.k),
                 str(args.nlist), str(nprobe), str(args.ivf_iters),
             ]
+            if args.version == "v4_batched_query":
+                cmd.append(str(args.batch_size))
             x_value = nprobe
             print(f"\nversion={args.version} nlist={args.nlist} nprobe={nprobe} alpha={args.alpha}", flush=True)
         else:
