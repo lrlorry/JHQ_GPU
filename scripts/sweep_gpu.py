@@ -7,6 +7,7 @@ Defaults match the existing vogue768_gpu_comparison figure:
   JHQ/JQ parameters = M=96, B=8, Br=4
 
 Examples:
+  python3 scripts/sweep_gpu.py --version v5_progressive --output results/jhq_gpu_v5.csv
   python3 scripts/sweep_gpu.py --version v3_ivf --output results/jhq_gpu_v3_ivf.csv
   python3 scripts/sweep_gpu.py --version v2_topk --output results/jhq_gpu_v2_topk.csv
 """
@@ -30,6 +31,7 @@ METHOD_NAME = {
     "v2_topk": "JHQ-GPU-v2",
     "v3_ivf": "JHQ-GPU-v3-IVF",
     "v4_batched_query": "JHQ-GPU-v4-Batched",
+    "v5_progressive": "JHQ-GPU-v5-Progressive",
 }
 
 
@@ -59,7 +61,11 @@ def run_one(cmd):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--version", choices=["v1_plain", "v2_topk", "v3_ivf", "v4_batched_query"], default="v3_ivf")
+    ap.add_argument(
+        "--version",
+        choices=["v1_plain", "v2_topk", "v3_ivf", "v4_batched_query", "v5_progressive"],
+        default="v3_ivf",
+    )
     ap.add_argument("--output", default=None)
     ap.add_argument("--demo", default=None)
     ap.add_argument("--base", default=DEFAULT_BASE)
@@ -75,6 +81,10 @@ def main():
     ap.add_argument("--nprobes", default=",".join(str(x) for x in DEFAULT_NPROBES))
     ap.add_argument("--ivf-iters", type=int, default=8)
     ap.add_argument("--batch-size", type=int, default=256)
+    ap.add_argument("--short-M", type=int, default=None)
+    ap.add_argument("--mid-M", type=int, default=None)
+    ap.add_argument("--stage1", type=int, default=512)
+    ap.add_argument("--stage2", type=int, default=128)
     args = ap.parse_args()
 
     repo = os.path.expanduser("~/JHQ_GPU")
@@ -82,7 +92,7 @@ def main():
     output = args.output or f"jhq_gpu_{args.version}_vogue768.csv"
     method = METHOD_NAME[args.version]
 
-    if args.version == "v3_ivf":
+    if args.version in ("v3_ivf", "v4_batched_query", "v5_progressive"):
         sweep_values = parse_list(args.nprobes, int)
     else:
         sweep_values = parse_list(args.alphas, float)
@@ -90,15 +100,19 @@ def main():
     rows = []
     build_time = None
     for val in sweep_values:
-        if args.version in ("v3_ivf", "v4_batched_query"):
+        if args.version in ("v3_ivf", "v4_batched_query", "v5_progressive"):
             nprobe = int(val)
             cmd = [
                 demo, args.base, args.query, args.gt,
                 str(args.M), str(args.B), str(args.Br), str(args.alpha), str(args.k),
                 str(args.nlist), str(nprobe), str(args.ivf_iters),
             ]
-            if args.version == "v4_batched_query":
+            if args.version in ("v4_batched_query", "v5_progressive"):
                 cmd.append(str(args.batch_size))
+            if args.version == "v5_progressive":
+                short_m = args.short_M if args.short_M is not None else max(1, args.M // 4)
+                mid_m = args.mid_M if args.mid_M is not None else min(args.M - 1, max(short_m + 1, (2 * args.M) // 3))
+                cmd.extend([str(short_m), str(mid_m), str(args.stage1), str(args.stage2)])
             x_value = nprobe
             print(f"\nversion={args.version} nlist={args.nlist} nprobe={nprobe} alpha={args.alpha}", flush=True)
         else:
