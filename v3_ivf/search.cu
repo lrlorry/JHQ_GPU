@@ -12,6 +12,20 @@
 
 namespace jhq_gpu {
 
+namespace {
+
+constexpr int   MAX_FAST_NPROBE = 256;
+constexpr int   MAX_FAST_CK = 512;
+constexpr int   MAX_FAST_K = 128;
+constexpr float HUGE_DIST = 3.4028234663852886e+38F;
+
+__device__ __forceinline__
+bool better_pair(float da, int ia, float db, int ib) {
+    return da < db || (da == db && ia < ib);
+}
+
+} // namespace
+
 __global__ void centroid_distance_kernel(
     const float* __restrict__ q_rot,
     const float* __restrict__ centroids,
@@ -27,6 +41,47 @@ __global__ void centroid_distance_kernel(
     float dot = 0.0f;
     for (int j = 0; j < d; ++j) dot += q_rot[j] * cent[j];
     dists[c] = cent_norms[c] - 2.0f * dot; // query norm is constant
+}
+
+__global__ void select_probe_offsets_kernel(
+    const float* __restrict__ cent_dists,
+    const int*   __restrict__ list_offsets,
+    int*                    probe_ids,
+    int*                    probe_offsets,
+    int nlist,
+    int nprobe)
+{
+    if (threadIdx.x != 0 || blockIdx.x != 0) return;
+
+    float best_d[MAX_FAST_NPROBE];
+    int   best_i[MAX_FAST_NPROBE];
+    for (int p = 0; p < nprobe; ++p) {
+        best_d[p] = HUGE_DIST;
+        best_i[p] = -1;
+    }
+
+    for (int c = 0; c < nlist; ++c) {
+        float dist = cent_dists[c];
+        if (!better_pair(dist, c, best_d[nprobe - 1], best_i[nprobe - 1])) continue;
+
+        int pos = nprobe - 1;
+        while (pos > 0 && better_pair(dist, c, best_d[pos - 1], best_i[pos - 1])) {
+            best_d[pos] = best_d[pos - 1];
+            best_i[pos] = best_i[pos - 1];
+            --pos;
+        }
+        best_d[pos] = dist;
+        best_i[pos] = c;
+    }
+
+    int acc = 0;
+    probe_offsets[0] = 0;
+    for (int p = 0; p < nprobe; ++p) {
+        int list_id = best_i[p];
+        probe_ids[p] = list_id;
+        acc += list_offsets[list_id + 1] - list_offsets[list_id];
+        probe_offsets[p + 1] = acc;
+    }
 }
 
 __global__ void build_primary_lut_kernel(
@@ -131,6 +186,44 @@ __global__ void unpack_kernel(
     d_pos[i] = (int)(d_packed[i] & 0xFFFFFFFFULL);
 }
 
+__global__ void select_topk_pairs_kernel(
+    const float* __restrict__ in_dists,
+    const int*   __restrict__ in_pos,
+    float*                    out_dists,
+    int*                      out_pos,
+    int n,
+    int topk)
+{
+    if (threadIdx.x != 0 || blockIdx.x != 0) return;
+
+    float best_d[MAX_FAST_CK];
+    int   best_i[MAX_FAST_CK];
+    for (int i = 0; i < topk; ++i) {
+        best_d[i] = HUGE_DIST;
+        best_i[i] = -1;
+    }
+
+    for (int i = 0; i < n; ++i) {
+        float dist = in_dists[i];
+        int pos_id = in_pos[i];
+        if (!better_pair(dist, pos_id, best_d[topk - 1], best_i[topk - 1])) continue;
+
+        int pos = topk - 1;
+        while (pos > 0 && better_pair(dist, pos_id, best_d[pos - 1], best_i[pos - 1])) {
+            best_d[pos] = best_d[pos - 1];
+            best_i[pos] = best_i[pos - 1];
+            --pos;
+        }
+        best_d[pos] = dist;
+        best_i[pos] = pos_id;
+    }
+
+    for (int i = 0; i < topk; ++i) {
+        out_dists[i] = best_d[i];
+        out_pos[i] = best_i[i];
+    }
+}
+
 __global__ void build_residual_lut_kernel(
     const float* __restrict__ d_q_rot,
     const float* __restrict__ d_res_c1d,
@@ -144,6 +237,45 @@ __global__ void build_residual_lut_kernel(
     int dim = tid / Kr;
     float diff = d_q_rot[dim] - d_res_c1d[j];
     d_lut_r[tid] = diff * diff;
+}
+
+__global__ void select_final_topk_kernel(
+    const float* __restrict__ comp_dists,
+    const int*   __restrict__ cand_pos,
+    const int*   __restrict__ list_ids,
+    float*                    out_dists,
+    int*                      out_ids,
+    int ck,
+    int k)
+{
+    if (threadIdx.x != 0 || blockIdx.x != 0) return;
+
+    float best_d[MAX_FAST_K];
+    int   best_id[MAX_FAST_K];
+    for (int i = 0; i < k; ++i) {
+        best_d[i] = HUGE_DIST;
+        best_id[i] = -1;
+    }
+
+    for (int i = 0; i < ck; ++i) {
+        float dist = comp_dists[i];
+        int id = list_ids[cand_pos[i]];
+        if (!better_pair(dist, id, best_d[k - 1], best_id[k - 1])) continue;
+
+        int pos = k - 1;
+        while (pos > 0 && better_pair(dist, id, best_d[pos - 1], best_id[pos - 1])) {
+            best_d[pos] = best_d[pos - 1];
+            best_id[pos] = best_id[pos - 1];
+            --pos;
+        }
+        best_d[pos] = dist;
+        best_id[pos] = id;
+    }
+
+    for (int i = 0; i < k; ++i) {
+        out_dists[i] = best_d[i];
+        out_ids[i] = best_id[i];
+    }
 }
 
 __global__ void residual_refine_kernel(
@@ -238,15 +370,22 @@ void search_gpu(
         centroid_distance_kernel<<<(nlist + 255) / 256, 256>>>(
             d_q_rot, d_centroids, d_cent_norms, d_cent_dists, nlist, d);
         CUDA_CHECK(cudaGetLastError());
-        thrust::sequence(t_cent_ids, t_cent_ids + nlist);
-        thrust::sort_by_key(t_cent_dists, t_cent_dists + nlist, t_cent_ids);
-        CUDA_CHECK(cudaMemcpy(d_probe_ids, d_cent_ids,
-                              (long long)nprobe * sizeof(int),
-                              cudaMemcpyDeviceToDevice));
+        if (nprobe <= MAX_FAST_NPROBE) {
+            select_probe_offsets_kernel<<<1, 1>>>(
+                d_cent_dists, d_list_offsets, d_probe_ids, d_probe_offsets,
+                nlist, nprobe);
+            CUDA_CHECK(cudaGetLastError());
+        } else {
+            thrust::sequence(t_cent_ids, t_cent_ids + nlist);
+            thrust::sort_by_key(t_cent_dists, t_cent_dists + nlist, t_cent_ids);
+            CUDA_CHECK(cudaMemcpy(d_probe_ids, d_cent_ids,
+                                  (long long)nprobe * sizeof(int),
+                                  cudaMemcpyDeviceToDevice));
 
-        build_probe_offsets_kernel<<<1, 1>>>(
-            d_probe_ids, d_list_offsets, d_probe_offsets, nprobe);
-        CUDA_CHECK(cudaGetLastError());
+            build_probe_offsets_kernel<<<1, 1>>>(
+                d_probe_ids, d_list_offsets, d_probe_offsets, nprobe);
+            CUDA_CHECK(cudaGetLastError());
+        }
 
         int total = 0;
         CUDA_CHECK(cudaMemcpy(&total, d_probe_offsets + nprobe, sizeof(int),
@@ -273,14 +412,17 @@ void search_gpu(
         CUDA_CHECK(cudaGetLastError());
 
         int ck = std::min(std::max(k, (int)std::ceil(alpha * (float)k)), total);
-        pack_kernel<<<(total + 255) / 256, 256>>>(d_dists, d_indices, d_packed, total);
-        CUDA_CHECK(cudaGetLastError());
-        // Some server CUDA/Thrust versions do not provide thrust::nth_element.
-        // IVF keeps total far below N, so full sort is an acceptable portable
-        // fallback for this first implementation.
-        thrust::sort(t_packed, t_packed + total);
-        unpack_kernel<<<(ck + 255) / 256, 256>>>(d_packed, d_dists, d_indices, ck);
-        CUDA_CHECK(cudaGetLastError());
+        if (ck <= MAX_FAST_CK) {
+            select_topk_pairs_kernel<<<1, 1>>>(
+                d_dists, d_indices, d_dists, d_indices, total, ck);
+            CUDA_CHECK(cudaGetLastError());
+        } else {
+            pack_kernel<<<(total + 255) / 256, 256>>>(d_dists, d_indices, d_packed, total);
+            CUDA_CHECK(cudaGetLastError());
+            thrust::sort(t_packed, t_packed + total);
+            unpack_kernel<<<(ck + 255) / 256, 256>>>(d_packed, d_dists, d_indices, ck);
+            CUDA_CHECK(cudaGetLastError());
+        }
 
         int res_total = d * Kr;
         build_residual_lut_kernel<<<(res_total + 255) / 256, 256>>>(
@@ -292,19 +434,30 @@ void search_gpu(
             d_comp_dists, ck, d, Kr, Br, bpv);
         CUDA_CHECK(cudaGetLastError());
 
-        thrust::sort_by_key(t_comp, t_comp + ck, t_indices);
-
         int out_k = std::min(k, ck);
-        gather_final_ids_kernel<<<(out_k + 255) / 256, 256>>>(
-            d_indices, d_list_ids, d_final_ids, out_k);
-        CUDA_CHECK(cudaGetLastError());
-
-        CUDA_CHECK(cudaMemcpy(h_out_dists + (long long)qi * k,
-                              d_comp_dists, (long long)out_k * sizeof(float),
-                              cudaMemcpyDeviceToHost));
-        CUDA_CHECK(cudaMemcpy(h_out_ids + (long long)qi * k,
-                              d_final_ids, (long long)out_k * sizeof(int),
-                              cudaMemcpyDeviceToHost));
+        if (out_k <= MAX_FAST_K) {
+            select_final_topk_kernel<<<1, 1>>>(
+                d_comp_dists, d_indices, d_list_ids,
+                d_dists, d_final_ids, ck, out_k);
+            CUDA_CHECK(cudaGetLastError());
+            CUDA_CHECK(cudaMemcpy(h_out_dists + (long long)qi * k,
+                                  d_dists, (long long)out_k * sizeof(float),
+                                  cudaMemcpyDeviceToHost));
+            CUDA_CHECK(cudaMemcpy(h_out_ids + (long long)qi * k,
+                                  d_final_ids, (long long)out_k * sizeof(int),
+                                  cudaMemcpyDeviceToHost));
+        } else {
+            thrust::sort_by_key(t_comp, t_comp + ck, t_indices);
+            gather_final_ids_kernel<<<(out_k + 255) / 256, 256>>>(
+                d_indices, d_list_ids, d_final_ids, out_k);
+            CUDA_CHECK(cudaGetLastError());
+            CUDA_CHECK(cudaMemcpy(h_out_dists + (long long)qi * k,
+                                  d_comp_dists, (long long)out_k * sizeof(float),
+                                  cudaMemcpyDeviceToHost));
+            CUDA_CHECK(cudaMemcpy(h_out_ids + (long long)qi * k,
+                                  d_final_ids, (long long)out_k * sizeof(int),
+                                  cudaMemcpyDeviceToHost));
+        }
         for (int i = out_k; i < k; ++i) {
             h_out_dists[(long long)qi * k + i] = inf;
             h_out_ids[(long long)qi * k + i] = -1;
