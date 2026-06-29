@@ -47,5 +47,5 @@ endmacro()
 
 # ── Register versions here ────────────────────────────────────────────────────
 add_jhq_version(v1_plain)
-# add_jhq_version(v2_batched_query)   ← uncomment when ready
-# add_jhq_version(v3_cub_topk)
+add_jhq_version(v2_topk)
+# add_jhq_version(v3_batched_query)   ← next
