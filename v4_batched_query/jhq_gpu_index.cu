@@ -110,9 +110,6 @@ JHQGpuIndex::~JHQGpuIndex() {
     cudaFree(ws_.d_probe_offsets);
     cudaFree(ws_.d_query_total);
     cudaFree(ws_.d_lut);
-    cudaFree(ws_.d_cand_dist);
-    cudaFree(ws_.d_cand_pos);
-    cudaFree(ws_.d_keys);
     cudaFree(ws_.d_topck_pos);
     cudaFree(ws_.d_topck_primary);
     cudaFree(ws_.d_lut_r);
@@ -122,54 +119,33 @@ JHQGpuIndex::~JHQGpuIndex() {
     cudaFree(ws_.d_final_dists);
 }
 
-void JHQGpuIndex::alloc_workspace(int batch_size, long long cap_per_query) {
-    // Free all previously allocated workspace buffers.
-    cudaFree(ws_.d_q_rot);          ws_.d_q_rot = nullptr;
-    cudaFree(ws_.d_dots);           ws_.d_dots = nullptr;
-    cudaFree(ws_.d_probe_ids);      ws_.d_probe_ids = nullptr;
-    cudaFree(ws_.d_probe_offsets);  ws_.d_probe_offsets = nullptr;
-    cudaFree(ws_.d_query_total);    ws_.d_query_total = nullptr;
-    cudaFree(ws_.d_lut);            ws_.d_lut = nullptr;
-    cudaFree(ws_.d_cand_dist);      ws_.d_cand_dist = nullptr;
-    cudaFree(ws_.d_cand_pos);       ws_.d_cand_pos = nullptr;
-    cudaFree(ws_.d_keys);           ws_.d_keys = nullptr;
-    cudaFree(ws_.d_topck_pos);      ws_.d_topck_pos = nullptr;
-    cudaFree(ws_.d_topck_primary);  ws_.d_topck_primary = nullptr;
-    cudaFree(ws_.d_lut_r);          ws_.d_lut_r = nullptr;
-    cudaFree(ws_.d_comp_dists);     ws_.d_comp_dists = nullptr;
-    cudaFree(ws_.d_keys2);          ws_.d_keys2 = nullptr;
-    cudaFree(ws_.d_final_ids);      ws_.d_final_ids = nullptr;
-    cudaFree(ws_.d_final_dists);    ws_.d_final_dists = nullptr;
+void JHQGpuIndex::alloc_workspace(int batch_size) {
+    cudaFree(ws_.d_q_rot);          ws_.d_q_rot         = nullptr;
+    cudaFree(ws_.d_dots);           ws_.d_dots           = nullptr;
+    cudaFree(ws_.d_probe_ids);      ws_.d_probe_ids      = nullptr;
+    cudaFree(ws_.d_probe_offsets);  ws_.d_probe_offsets  = nullptr;
+    cudaFree(ws_.d_query_total);    ws_.d_query_total    = nullptr;
+    cudaFree(ws_.d_lut);            ws_.d_lut            = nullptr;
+    cudaFree(ws_.d_topck_pos);      ws_.d_topck_pos      = nullptr;
+    cudaFree(ws_.d_topck_primary);  ws_.d_topck_primary  = nullptr;
+    cudaFree(ws_.d_lut_r);          ws_.d_lut_r          = nullptr;
+    cudaFree(ws_.d_comp_dists);     ws_.d_comp_dists     = nullptr;
+    cudaFree(ws_.d_keys2);          ws_.d_keys2          = nullptr;
+    cudaFree(ws_.d_final_ids);      ws_.d_final_ids      = nullptr;
+    cudaFree(ws_.d_final_dists);    ws_.d_final_dists    = nullptr;
     ws_.ck_cap = 0;
     ws_.k_cap  = 0;
 
-    long long B   = batch_size;
-    long long cap = cap_per_query;
-
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_rot,
-                          B * d_ * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_dots,
-                          B * nlist_ * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_probe_ids,
-                          B * nprobe_ * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_probe_offsets,
-                          B * (nprobe_ + 1) * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_query_total,
-                          B * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_lut,
-                          B * M_ * Ds_ * K1D_ * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_cand_dist,
-                          B * cap * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_cand_pos,
-                          B * cap * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_keys,
-                          B * cap * sizeof(uint64_t)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_lut_r,
-                          B * d_ * Kr_ * sizeof(float)));
-
-    ws_.batch_cap     = batch_size;
-    ws_.cap_per_query = cap_per_query;
-    // ck/k buffers are lazily allocated inside search_gpu on first call.
+    long long B = batch_size;
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_rot,         B * d_                 * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_dots,          B * nlist_             * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_probe_ids,     B * nprobe_            * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_probe_offsets, B * (nprobe_ + 1)      * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_query_total,   B                      * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_lut,           B * M_ * Ds_ * K1D_   * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_lut_r,         B * d_ * Kr_           * sizeof(float)));
+    ws_.batch_cap = batch_size;
+    // ck/k buffers lazily allocated in search_gpu on first call.
 }
 
 float* JHQGpuIndex::rotate_on_gpu(const float* h_x, int n) const {
@@ -394,9 +370,6 @@ void JHQGpuIndex::add(const float* h_x, int n) {
         counts[a]++;
     }
 
-    max_list_size_ = *std::max_element(counts.begin(), counts.end());
-    cap_per_query_ = (long long)nprobe_ * (long long)max_list_size_;
-
     std::vector<int> offsets(nlist_ + 1, 0);
     for (int c = 0; c < nlist_; ++c) offsets[c + 1] = offsets[c] + counts[c];
 
@@ -425,7 +398,7 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     cudaFree(d_co);
 
     ntotal_ = n;
-    alloc_workspace(batch_size_, cap_per_query_);
+    alloc_workspace(batch_size_);
 }
 
 void JHQGpuIndex::search(const float* h_q, int nq, int k,

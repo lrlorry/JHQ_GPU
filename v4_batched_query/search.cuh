@@ -5,60 +5,61 @@
 
 namespace jhq_gpu {
 
-// v4: batched query search.
+// v4: batched query search -- redesigned for correctness and QPS.
 //
-// Key design changes vs v3_ivf:
-//   * Every kernel covers a full batch of B queries simultaneously
-//     (one CUDA block per query for selection / scan steps), so GPU
-//     utilisation is high even when per-query work is small.
-//   * The per-query IVF candidate count (d_query_total) is kept on
-//     device and consumed directly by later kernels -- no blocking
-//     cudaMemcpy(D2H) round trip inside the per-query loop.
-//   * Two global composite-key thrust::sort_by_key calls replace all
-//     per-query sorts: one for the primary top-ck selection across
-//     the whole batch, one for the final top-k selection.
+// Pipeline per batch of B queries:
+//   1. GEMM: rotate all B queries at once.
+//   2. GEMM: compute B × nlist centroid dot products at once.
+//   3. select_probes_kernel: one block per query, thread-0 sequential argmin
+//      selects top-nprobe centroids and builds per-query prefix-sum offsets.
+//      All on GPU, no host round-trip.
+//   4. build_primary_lut_batched_kernel: B × lut_size LUT entries.
+//   5. scan_ivf_batched_topk_kernel: one block per query.
+//        - Each thread scans its stride of the scanned IVF lists while
+//          keeping a local register top-K_LOCAL buffer (insertion sort).
+//        - After the scan, per-thread candidates are gathered into shared
+//          memory, and the block selects top-ck via iterative argmin.
+//        - Directly writes top-ck (primary dist + abs_pos) into compact
+//          B×ck output buffers -- no huge intermediate sort needed.
+//   6. build_residual_lut_batched_kernel.
+//   7. residual_refine_batched_kernel.
+//   8. pack_keys2_kernel + thrust::sort_by_key (only B×ck elements).
+//   9. gather_final_kernel.
+//  10. Single cudaMemcpy(D→H) per batch.
 //
-// Buffer layout (every "batch-sized" buffer uses stride cap_per_query
-// or ck so query bqi occupies [bqi*stride, (bqi+1)*stride)):
-//   d_q_rot       [batch_cap, d]
-//   d_dots        [batch_cap, nlist]  centroid dot products (col-major [nlist,batch])
-//   d_probe_ids   [batch_cap, nprobe]
-//   d_probe_offsets [batch_cap, nprobe+1]
-//   d_query_total [batch_cap]
-//   d_lut         [batch_cap, M*Ds*K1D]
-//   d_cand_dist   [batch_cap, cap_per_query]
-//   d_cand_pos    [batch_cap, cap_per_query]
-//   d_keys        [batch_cap, cap_per_query]  uint64 composite sort key
-//   d_topck_pos   [batch_cap, ck_cap]
-//   d_topck_primary [batch_cap, ck_cap]
-//   d_lut_r       [batch_cap, d*Kr]
-//   d_comp_dists  [batch_cap, ck_cap]
-//   d_keys2       [batch_cap, ck_cap]
-//   d_final_ids   [batch_cap, k_cap]
-//   d_final_dists [batch_cap, k_cap]
+// Workspace buffers (all modest in size):
+//   d_q_rot          [batch_cap × d]
+//   d_dots           [batch_cap × nlist]
+//   d_probe_ids      [batch_cap × nprobe]
+//   d_probe_offsets  [batch_cap × (nprobe+1)]
+//   d_query_total    [batch_cap]
+//   d_lut            [batch_cap × M×Ds×K1D]
+//   d_topck_pos      [batch_cap × ck_cap]
+//   d_topck_primary  [batch_cap × ck_cap]
+//   d_lut_r          [batch_cap × d×Kr]
+//   d_comp_dists     [batch_cap × ck_cap]
+//   d_keys2          [batch_cap × ck_cap]   uint64 composite key for final sort
+//   d_final_ids      [batch_cap × k_cap]
+//   d_final_dists    [batch_cap × k_cap]
 
 struct SearchWorkspace {
-    int       batch_cap     = 0;
-    long long cap_per_query = 0;
-    int       ck_cap        = 0;
-    int       k_cap         = 0;
+    int batch_cap = 0;
+    int ck_cap    = 0;
+    int k_cap     = 0;
 
-    float*    d_q_rot           = nullptr;
-    float*    d_dots            = nullptr;
-    int*      d_probe_ids       = nullptr;
-    int*      d_probe_offsets   = nullptr;
-    int*      d_query_total     = nullptr;
-    float*    d_lut             = nullptr;
-    float*    d_cand_dist       = nullptr;
-    int*      d_cand_pos        = nullptr;
-    uint64_t* d_keys            = nullptr;
-    int*      d_topck_pos       = nullptr;
-    float*    d_topck_primary   = nullptr;
-    float*    d_lut_r           = nullptr;
-    float*    d_comp_dists      = nullptr;
-    uint64_t* d_keys2           = nullptr;
-    int*      d_final_ids       = nullptr;
-    float*    d_final_dists     = nullptr;
+    float*    d_q_rot          = nullptr;
+    float*    d_dots           = nullptr;
+    int*      d_probe_ids      = nullptr;
+    int*      d_probe_offsets  = nullptr;
+    int*      d_query_total    = nullptr;
+    float*    d_lut            = nullptr;
+    int*      d_topck_pos      = nullptr;
+    float*    d_topck_primary  = nullptr;
+    float*    d_lut_r          = nullptr;
+    float*    d_comp_dists     = nullptr;
+    uint64_t* d_keys2          = nullptr;
+    int*      d_final_ids      = nullptr;
+    float*    d_final_dists    = nullptr;
 };
 
 void search_gpu(

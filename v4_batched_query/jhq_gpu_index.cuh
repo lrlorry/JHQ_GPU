@@ -21,7 +21,7 @@ public:
         int   nlist      = 1024;
         int   nprobe     = 8;
         int   ivf_iters  = 8;
-        int   batch_size = 256;  // queries processed per kernel-launch batch
+        int   batch_size = 256;
         int   seed       = 42;
     };
 
@@ -41,14 +41,12 @@ private:
     int   nlist_, nprobe_, ivf_iters_, batch_size_;
     float alpha_;
     int   Kr_;
-    int   ntotal_      = 0;
-    int   max_list_size_ = 0;
-    long long cap_per_query_ = 0;  // = nprobe_ * max_list_size_
+    int   ntotal_ = 0;
 
     JLTransform jl_;
     std::unique_ptr<LloydMaxCodebook> cb_;
     std::vector<float> res_c1d_;
-    std::vector<float> centroids_;     // [nlist * d], row-major
+    std::vector<float> centroids_;
 
     float*   d_Pi_            = nullptr;
     float*   d_c1d_           = nullptr;
@@ -71,7 +69,7 @@ private:
     void   train_ivf_centroids(const float* h_y_train,
                                const float* d_y_train, int n_train);
     int*   assign_on_gpu(const float* d_y, int n) const;
-    void   alloc_workspace(int batch_size, long long cap_per_query);
+    void   alloc_workspace(int batch_size);
 };
 
 } // namespace jhq_gpu
