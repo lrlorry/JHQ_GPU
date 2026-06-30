@@ -441,9 +441,24 @@ static void realloc_ck_buffers(SearchWorkspace& ws, int batch_cap, int ck, int k
     }
 }
 
-// MAX_CANDS for the outer-m kernel: must fit in registers.
-// With BLOCK=256 and typical list sizes, this covers nprobe ≤ 8.
-static constexpr int MAX_CANDS = 32;
+// MAX_CANDS per chunk: controls the register footprint and L1 pressure.
+//
+// With BLOCK=256 and nprobe=8 (total≈7280): ~29 candidates per thread,
+// so ceil(29/MAX_CANDS) chunks are processed.
+//
+// Trade-off:
+//   Large MAX_CANDS → fewer chunks (less cooperative-load overhead) but
+//     more concurrent cache-line footprint in L1 per block, causing
+//     list_primary L1 thrash and lower SM occupancy.
+//   Small MAX_CANDS → more chunks but each chunk's L1 footprint is tiny,
+//     registers drop to ~36/thread → 7 blocks/SM (same as v10).
+//
+// With MAX_CANDS=8:
+//   - chunks=4 for nprobe=8  (≤29 cands/thread)
+//   - registers ≈ 36/thread  → 7 blocks/SM, 112 KB L1 pressure < 128 KB ✓
+//   - lut HBM traffic ≈ 5× less than v10 (96 KB per query loaded once into L2,
+//     reused across all m-iterations within a chunk)
+static constexpr int MAX_CANDS = 8;
 
 // ── capture_graph ─────────────────────────────────────────────────────────────
 static void capture_graph(
