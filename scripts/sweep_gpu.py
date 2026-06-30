@@ -36,7 +36,8 @@ METHOD_NAME = {
     "v7_spin_sync":  "JHQ-GPU-v7-SpinSync",
     "v8_timing":     "JHQ-GPU-v8-Timing",
     "v10_bytelut":   "JHQ-GPU-v10-ByteLUT",
-    "v11_outerlut":  "JHQ-GPU-v11-OuterLUT",
+    "v11_outerlut":   "JHQ-GPU-v11-OuterLUT",
+    "v12_transposed": "JHQ-GPU-v12-Transposed",
 }
 
 
@@ -68,7 +69,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument(
         "--version",
-        choices=["v1_plain", "v2_topk", "v3_ivf", "v4_batched_query", "v5_cuda_graph", "v6_async_h2d", "v7_spin_sync", "v8_timing", "v10_bytelut", "v11_outerlut"],
+        choices=["v1_plain", "v2_topk", "v3_ivf", "v4_batched_query", "v5_cuda_graph", "v6_async_h2d", "v7_spin_sync", "v8_timing", "v10_bytelut", "v11_outerlut", "v12_transposed"],
         default="v3_ivf",
     )
     ap.add_argument("--output", default=None)
@@ -93,7 +94,7 @@ def main():
     output = args.output or f"jhq_gpu_{args.version}_vogue768.csv"
     method = METHOD_NAME[args.version]
 
-    if args.version in ("v3_ivf", "v4_batched_query", "v5_cuda_graph", "v6_async_h2d", "v7_spin_sync", "v8_timing", "v10_bytelut", "v11_outerlut"):
+    if args.version in ("v3_ivf", "v4_batched_query", "v5_cuda_graph", "v6_async_h2d", "v7_spin_sync", "v8_timing", "v10_bytelut", "v11_outerlut", "v12_transposed"):
         sweep_values = parse_list(args.nprobes, int)
     else:
         sweep_values = parse_list(args.alphas, float)
@@ -101,14 +102,14 @@ def main():
     rows = []
     build_time = None
     for val in sweep_values:
-        if args.version in ("v3_ivf", "v4_batched_query", "v5_cuda_graph", "v6_async_h2d", "v7_spin_sync", "v8_timing", "v10_bytelut", "v11_outerlut"):
+        if args.version in ("v3_ivf", "v4_batched_query", "v5_cuda_graph", "v6_async_h2d", "v7_spin_sync", "v8_timing", "v10_bytelut", "v11_outerlut", "v12_transposed"):
             nprobe = int(val)
             cmd = [
                 demo, args.base, args.query, args.gt,
                 str(args.M), str(args.B), str(args.Br), str(args.alpha), str(args.k),
                 str(args.nlist), str(nprobe), str(args.ivf_iters),
             ]
-            if args.version in ("v4_batched_query", "v5_cuda_graph", "v6_async_h2d", "v7_spin_sync", "v8_timing", "v10_bytelut", "v11_outerlut"):
+            if args.version in ("v4_batched_query", "v5_cuda_graph", "v6_async_h2d", "v7_spin_sync", "v8_timing", "v10_bytelut", "v11_outerlut", "v12_transposed"):
                 cmd.append(str(args.batch_size))
             x_value = nprobe
             print(f"\nversion={args.version} nlist={args.nlist} nprobe={nprobe} alpha={args.alpha}", flush=True)
