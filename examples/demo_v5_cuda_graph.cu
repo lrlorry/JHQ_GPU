@@ -1,4 +1,4 @@
-#include "v5_progressive/jhq_gpu_index.cuh"
+#include "v5_cuda_graph/jhq_gpu_index.cuh"
 #include "common/fvecs_io.cuh"
 
 #include <cstdio>
@@ -30,8 +30,7 @@ int main(int argc, char** argv) {
         fprintf(stderr,
             "Usage: %s <base.fvecs> <query.fvecs> <gt.ivecs> "
             "<M> <B> <Br> <alpha> [k=10] [nlist=1024] [nprobe=8] "
-            "[ivf_iters=8] [batch_size=256] [short_M=24] [mid_M=64] "
-            "[stage1=512] [stage2=128]\n", argv[0]);
+            "[ivf_iters=8] [batch_size=256]\n", argv[0]);
         return 1;
     }
 
@@ -47,12 +46,6 @@ int main(int argc, char** argv) {
     int   nprobe     = (argc > 10) ? atoi(argv[10]) : 8;
     int   ivf_iters  = (argc > 11) ? atoi(argv[11]) : 8;
     int   batch_size = (argc > 12) ? atoi(argv[12]) : 256;
-    int   default_short_M = std::max(1, M / 4);
-    int   default_mid_M = std::min(M - 1, std::max(default_short_M + 1, (2 * M) / 3));
-    int   short_M    = (argc > 13) ? atoi(argv[13]) : default_short_M;
-    int   mid_M      = (argc > 14) ? atoi(argv[14]) : default_mid_M;
-    int   stage1     = (argc > 15) ? atoi(argv[15]) : 512;
-    int   stage2     = (argc > 16) ? atoi(argv[16]) : 128;
 
     std::vector<float> base, query;
     std::vector<int>   gt;
@@ -65,20 +58,14 @@ int main(int argc, char** argv) {
     int d = d_base;
     printf("base=%d×%d  query=%d×%d  gt=%d×%d\n", nb, d, nq, d_query, ng, d_gt);
     printf("M=%d  B=%d  Br=%d  alpha=%.1f  k=%d  nlist=%d  nprobe=%d  "
-           "ivf_iters=%d  batch_size=%d  short_M=%d  mid_M=%d  "
-           "stage1=%d  stage2=%d\n",
-           M, B, Br, alpha, k, nlist, nprobe, ivf_iters, batch_size,
-           short_M, mid_M, stage1, stage2);
+           "ivf_iters=%d  batch_size=%d\n",
+           M, B, Br, alpha, k, nlist, nprobe, ivf_iters, batch_size);
 
     jhq_gpu::JHQGpuIndex::Params p;
     p.M = M; p.B = B; p.Br = Br; p.alpha = alpha;
     p.nlist = nlist; p.nprobe = nprobe;
     p.ivf_iters = ivf_iters;
     p.batch_size = batch_size;
-    p.short_M = short_M;
-    p.mid_M = mid_M;
-    p.stage1 = stage1;
-    p.stage2 = stage2;
 
     jhq_gpu::JHQGpuIndex idx(d, p);
 
@@ -96,7 +83,7 @@ int main(int argc, char** argv) {
     std::vector<float> out_dists((long long)nq * k);
     std::vector<int>   out_ids  ((long long)nq * k);
 
-    // Warm-up
+    // Warm-up (also captures the CUDA graph on first call)
     idx.search(query.data(), nq, k, out_dists.data(), out_ids.data());
 
     const int REPS = 5;

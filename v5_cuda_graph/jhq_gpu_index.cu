@@ -1,6 +1,6 @@
-#include "v5_progressive/jhq_gpu_index.cuh"
-#include "v5_progressive/encode.cuh"
-#include "v5_progressive/search.cuh"
+#include "v5_cuda_graph/jhq_gpu_index.cuh"
+#include "v5_cuda_graph/encode.cuh"
+#include "v5_cuda_graph/search.cuh"
 #include "common/cuda_utils.cuh"
 
 #include <thrust/device_ptr.h>
@@ -37,50 +37,27 @@ __global__ void assign_from_dots_kernel(
     assigns[i] = best_id;
 }
 
-__global__ void make_layout_keys_kernel(
-    const int*     __restrict__ assigns,
-    const uint8_t* __restrict__ primary,
-    uint64_t*                   keys,
-    int n,
-    int M)
-{
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= n) return;
-
-    uint32_t prefix = 0;
-    int take = M < 4 ? M : 4;
-    for (int m = 0; m < take; ++m)
-        prefix = (prefix << 8) | (uint32_t)primary[(long long)i * M + m];
-    keys[i] = ((uint64_t)(uint32_t)assigns[i] << 32) | (uint64_t)prefix;
-}
-
-__global__ void gather_layer_major_storage_kernel(
+__global__ void gather_list_storage_kernel(
     const int*     __restrict__ sorted_ids,
     const uint8_t* __restrict__ primary,
     const uint8_t* __restrict__ residual,
     const float*   __restrict__ corrections,
     int*                        list_ids,
-    uint8_t*                    list_primary_lm,
-    uint8_t*                    list_res_lm,
+    uint8_t*                    list_primary,
+    uint8_t*                    list_res,
     float*                      list_corr,
-    int n,
-    int M,
-    int bpv)
+    int n, int M, int bpv)
 {
     int pos = blockIdx.x * blockDim.x + threadIdx.x;
     if (pos >= n) return;
-
     int id = sorted_ids[pos];
     list_ids[pos] = id;
-
     const uint8_t* pc = primary + (long long)id * M;
-    for (int m = 0; m < M; ++m)
-        list_primary_lm[(long long)m * n + pos] = pc[m];
-
+    uint8_t* out_pc = list_primary + (long long)pos * M;
+    for (int m = 0; m < M; ++m) out_pc[m] = pc[m];
     const uint8_t* rc = residual + (long long)id * bpv;
-    for (int b = 0; b < bpv; ++b)
-        list_res_lm[(long long)b * n + pos] = rc[b];
-
+    uint8_t* out_rc = list_res + (long long)pos * bpv;
+    for (int b = 0; b < bpv; ++b) out_rc[b] = rc[b];
     list_corr[pos] = corrections[id];
 }
 
@@ -90,7 +67,6 @@ JHQGpuIndex::JHQGpuIndex(int d, Params p)
     : d_(d), M_(p.M), B_(p.B), Br_(p.Br),
       nlist_(p.nlist), nprobe_(p.nprobe), ivf_iters_(p.ivf_iters),
       batch_size_(p.batch_size),
-      short_M_(p.short_M), mid_M_(p.mid_M), stage1_(p.stage1), stage2_(p.stage2),
       alpha_(p.alpha),
       jl_(d, p.seed)
 {
@@ -104,12 +80,6 @@ JHQGpuIndex::JHQGpuIndex(int d, Params p)
     if (p.nprobe <= 0)   throw std::invalid_argument("nprobe must be positive");
     if (p.ivf_iters <= 0) throw std::invalid_argument("ivf_iters must be positive");
     if (p.batch_size <= 0) throw std::invalid_argument("batch_size must be positive");
-    if (p.short_M <= 0 || p.short_M >= p.M)
-        throw std::invalid_argument("short_M must be in [1, M)");
-    if (p.mid_M <= p.short_M || p.mid_M >= p.M)
-        throw std::invalid_argument("mid_M must be in (short_M, M)");
-    if (p.stage1 <= 0 || p.stage2 <= 0)
-        throw std::invalid_argument("stage1/stage2 must be positive");
     if (p.alpha <= 0.0f) throw std::invalid_argument("alpha must be positive");
 
     Ds_           = d_ / M_;
@@ -123,6 +93,10 @@ JHQGpuIndex::JHQGpuIndex(int d, Params p)
 }
 
 JHQGpuIndex::~JHQGpuIndex() {
+    if (ws_.graph_exec) cudaGraphExecDestroy(ws_.graph_exec);
+    if (ws_.graph)      cudaGraphDestroy(ws_.graph);
+    if (ws_.stream)     cudaStreamDestroy(ws_.stream);
+
     cublasDestroy(cublas_);
     cudaFree(d_Pi_);
     cudaFree(d_c1d_);
@@ -134,72 +108,61 @@ JHQGpuIndex::~JHQGpuIndex() {
     cudaFree(d_list_primary_);
     cudaFree(d_list_res_);
     cudaFree(d_list_corr_);
+    cudaFree(ws_.d_q_batch);
     cudaFree(ws_.d_q_rot);
     cudaFree(ws_.d_dots);
     cudaFree(ws_.d_probe_ids);
     cudaFree(ws_.d_probe_offsets);
     cudaFree(ws_.d_query_total);
     cudaFree(ws_.d_lut);
-    cudaFree(ws_.d_cand_dist);
-    cudaFree(ws_.d_cand_pos);
-    cudaFree(ws_.d_keys);
     cudaFree(ws_.d_topck_pos);
     cudaFree(ws_.d_topck_primary);
     cudaFree(ws_.d_lut_r);
     cudaFree(ws_.d_comp_dists);
-    cudaFree(ws_.d_keys2);
     cudaFree(ws_.d_final_ids);
     cudaFree(ws_.d_final_dists);
 }
 
-void JHQGpuIndex::alloc_workspace(int batch_size, long long cap_per_query) {
-    // Free all previously allocated workspace buffers.
-    cudaFree(ws_.d_q_rot);          ws_.d_q_rot = nullptr;
-    cudaFree(ws_.d_dots);           ws_.d_dots = nullptr;
-    cudaFree(ws_.d_probe_ids);      ws_.d_probe_ids = nullptr;
-    cudaFree(ws_.d_probe_offsets);  ws_.d_probe_offsets = nullptr;
-    cudaFree(ws_.d_query_total);    ws_.d_query_total = nullptr;
-    cudaFree(ws_.d_lut);            ws_.d_lut = nullptr;
-    cudaFree(ws_.d_cand_dist);      ws_.d_cand_dist = nullptr;
-    cudaFree(ws_.d_cand_pos);       ws_.d_cand_pos = nullptr;
-    cudaFree(ws_.d_keys);           ws_.d_keys = nullptr;
-    cudaFree(ws_.d_topck_pos);      ws_.d_topck_pos = nullptr;
-    cudaFree(ws_.d_topck_primary);  ws_.d_topck_primary = nullptr;
-    cudaFree(ws_.d_lut_r);          ws_.d_lut_r = nullptr;
-    cudaFree(ws_.d_comp_dists);     ws_.d_comp_dists = nullptr;
-    cudaFree(ws_.d_keys2);          ws_.d_keys2 = nullptr;
-    cudaFree(ws_.d_final_ids);      ws_.d_final_ids = nullptr;
-    cudaFree(ws_.d_final_dists);    ws_.d_final_dists = nullptr;
+void JHQGpuIndex::alloc_workspace(int batch_size) {
+    // Destroy any existing graph before reallocating (pointers will change).
+    if (ws_.graph_exec) { cudaGraphExecDestroy(ws_.graph_exec); ws_.graph_exec = nullptr; }
+    if (ws_.graph)      { cudaGraphDestroy(ws_.graph);          ws_.graph      = nullptr; }
+    ws_.graph_ck     = 0;
+    ws_.graph_nprobe = 0;
+
+    cudaFree(ws_.d_q_batch);       ws_.d_q_batch        = nullptr;
+    cudaFree(ws_.d_q_rot);         ws_.d_q_rot          = nullptr;
+    cudaFree(ws_.d_dots);          ws_.d_dots           = nullptr;
+    cudaFree(ws_.d_probe_ids);     ws_.d_probe_ids      = nullptr;
+    cudaFree(ws_.d_probe_offsets); ws_.d_probe_offsets  = nullptr;
+    cudaFree(ws_.d_query_total);   ws_.d_query_total    = nullptr;
+    cudaFree(ws_.d_lut);           ws_.d_lut            = nullptr;
+    cudaFree(ws_.d_topck_pos);     ws_.d_topck_pos      = nullptr;
+    cudaFree(ws_.d_topck_primary); ws_.d_topck_primary  = nullptr;
+    cudaFree(ws_.d_lut_r);         ws_.d_lut_r          = nullptr;
+    cudaFree(ws_.d_comp_dists);    ws_.d_comp_dists     = nullptr;
+    cudaFree(ws_.d_final_ids);     ws_.d_final_ids      = nullptr;
+    cudaFree(ws_.d_final_dists);   ws_.d_final_dists    = nullptr;
     ws_.ck_cap = 0;
     ws_.k_cap  = 0;
 
-    long long B   = batch_size;
-    long long cap = cap_per_query;
+    long long B = batch_size;
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_batch,        B * d_               * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_rot,          B * d_               * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_dots,           B * nlist_           * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_probe_ids,      B * nprobe_          * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_probe_offsets,  B * (nprobe_ + 1)   * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_query_total,    B                    * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_lut,            B * M_ * Ds_ * K1D_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_lut_r,          B * d_ * Kr_        * sizeof(float)));
+    ws_.batch_cap = batch_size;
 
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_rot,
-                          B * d_ * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_dots,
-                          B * nlist_ * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_probe_ids,
-                          B * nprobe_ * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_probe_offsets,
-                          B * (nprobe_ + 1) * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_query_total,
-                          B * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_lut,
-                          B * M_ * Ds_ * K1D_ * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_cand_dist,
-                          B * cap * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_cand_pos,
-                          B * cap * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_keys,
-                          B * cap * sizeof(uint64_t)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_lut_r,
-                          B * d_ * Kr_ * sizeof(float)));
-
-    ws_.batch_cap     = batch_size;
-    ws_.cap_per_query = cap_per_query;
-    // ck/k buffers are lazily allocated inside search_gpu on first call.
+    // Create a dedicated CUDA stream for search and bind cuBLAS to it.
+    // This stream is used for both graph capture and graph launches.
+    if (!ws_.stream) {
+        CUDA_CHECK(cudaStreamCreate(&ws_.stream));
+    }
+    CUBLAS_CHECK(cublasSetStream(cublas_, ws_.stream));
 }
 
 float* JHQGpuIndex::rotate_on_gpu(const float* h_x, int n) const {
@@ -224,7 +187,7 @@ void JHQGpuIndex::train_ivf_centroids(
     const float* h_y_train, const float* d_y_train, int n_train)
 {
     if (n_train < nlist_)
-        throw std::invalid_argument("n_train must be >= nlist for v5_progressive");
+        throw std::invalid_argument("n_train must be >= nlist for v5_cuda_graph");
 
     centroids_.assign((long long)nlist_ * d_, 0.0f);
     for (int c = 0; c < nlist_; ++c) {
@@ -387,7 +350,7 @@ int* JHQGpuIndex::assign_on_gpu(const float* d_y, int n) const {
 void JHQGpuIndex::add(const float* h_x, int n) {
     if (!cb_) throw std::runtime_error("call train() before add()");
     if (ntotal_ != 0)
-        throw std::runtime_error("v5_progressive currently supports one add() call");
+        throw std::runtime_error("v5_cuda_graph currently supports one add() call");
 
     float* d_y = rotate_on_gpu(h_x, n);
 
@@ -408,17 +371,11 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     int* d_assign = assign_on_gpu(d_y, n);
 
     int* d_order = nullptr;
-    uint64_t* d_layout_keys = nullptr;
     CUDA_CHECK(cudaMalloc(&d_order, (long long)n * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&d_layout_keys, (long long)n * sizeof(uint64_t)));
-    make_layout_keys_kernel<<<(n + 255) / 256, 256>>>(
-        d_assign, d_pc, d_layout_keys, n, M_);
-    CUDA_CHECK(cudaGetLastError());
-
-    thrust::device_ptr<uint64_t> t_layout(d_layout_keys);
+    thrust::device_ptr<int> t_assign(d_assign);
     thrust::device_ptr<int> t_order(d_order);
     thrust::sequence(t_order, t_order + n);
-    thrust::sort_by_key(t_layout, t_layout + n, t_order);
+    thrust::sort_by_key(t_assign, t_assign + n, t_order);
 
     std::vector<int> h_assign(n);
     CUDA_CHECK(cudaMemcpy(h_assign.data(), d_assign, (long long)n * sizeof(int),
@@ -430,23 +387,20 @@ void JHQGpuIndex::add(const float* h_x, int n) {
         counts[a]++;
     }
 
-    max_list_size_ = *std::max_element(counts.begin(), counts.end());
-    cap_per_query_ = (long long)nprobe_ * (long long)max_list_size_;
-
     std::vector<int> offsets(nlist_ + 1, 0);
     for (int c = 0; c < nlist_; ++c) offsets[c + 1] = offsets[c] + counts[c];
 
     CUDA_CHECK(cudaMalloc(&d_list_offsets_, (long long)(nlist_ + 1) * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&d_list_ids_,     (long long)n * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&d_list_primary_, (long long)M_ * n * sizeof(uint8_t)));
-    CUDA_CHECK(cudaMalloc(&d_list_res_,     (long long)bpv_ * n * sizeof(uint8_t)));
+    CUDA_CHECK(cudaMalloc(&d_list_primary_, (long long)n * M_ * sizeof(uint8_t)));
+    CUDA_CHECK(cudaMalloc(&d_list_res_,     (long long)n * bpv_ * sizeof(uint8_t)));
     CUDA_CHECK(cudaMalloc(&d_list_corr_,    (long long)n * sizeof(float)));
 
     CUDA_CHECK(cudaMemcpy(d_list_offsets_, offsets.data(),
                           (long long)(nlist_ + 1) * sizeof(int),
                           cudaMemcpyHostToDevice));
 
-    gather_layer_major_storage_kernel<<<(n + 255) / 256, 256>>>(
+    gather_list_storage_kernel<<<(n + 255) / 256, 256>>>(
         d_order, d_pc, d_rc, d_co,
         d_list_ids_, d_list_primary_, d_list_res_, d_list_corr_,
         n, M_, bpv_);
@@ -455,14 +409,13 @@ void JHQGpuIndex::add(const float* h_x, int n) {
 
     cudaFree(d_assign);
     cudaFree(d_order);
-    cudaFree(d_layout_keys);
     cudaFree(d_y);
     cudaFree(d_pc);
     cudaFree(d_rc);
     cudaFree(d_co);
 
     ntotal_ = n;
-    alloc_workspace(batch_size_, cap_per_query_);
+    alloc_workspace(batch_size_);
 }
 
 void JHQGpuIndex::search(const float* h_q, int nq, int k,
@@ -480,11 +433,10 @@ void JHQGpuIndex::search(const float* h_q, int nq, int k,
                d_list_offsets_, d_list_ids_,
                d_list_primary_, d_list_res_, d_list_corr_,
                d_q,
-               nq, ntotal_, d_, M_, Ds_, K1D_, Kr_, nlist_, nprobe_,
+               nq, d_, M_, Ds_, K1D_, Kr_, nlist_, nprobe_,
                Br_, bpv_, bits_per_dim_,
                alpha_, k,
                batch_size_,
-               short_M_, mid_M_, stage1_, stage2_,
                ws_,
                h_dists, h_labels);
 

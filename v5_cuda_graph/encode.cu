@@ -1,4 +1,4 @@
-#include "v5_progressive/encode.cuh"
+#include "v5_cuda_graph/encode.cuh"
 #include "common/cuda_utils.cuh"
 
 namespace jhq_gpu {
