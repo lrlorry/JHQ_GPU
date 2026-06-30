@@ -61,7 +61,6 @@ void search_gpu(
     int Br, int bpv, int bits_per_dim,
     float alpha, int k,
     int batch_size,
-    int ntotal,
     SearchWorkspace& ws,
     float* h_out_dists,
     int*   h_out_ids);

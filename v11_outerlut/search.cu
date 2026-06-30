@@ -92,17 +92,19 @@ __global__ void build_byte_lut_kernel(
 
 // ── scan_ivf_outerlut_kernel (NEW) ────────────────────────────────────────────
 //
-// Outer loop: m = 0..M-1 (codewords)
-//   1. 256 threads cooperatively load byte_lut[bqi][m][0..255] into s_sub[256]
-//      (8 cache lines, zero bank conflict on shared read)
-//   2. Each thread scans its MAX_CANDS candidates, accumulating partial distances
-//      from shared memory (1-cycle latency vs ~30-cycle L2 in v10)
+// Outer loop: m = 0..M-1 (codewords), chunked over candidates.
 //
-// Register state: abs_pos[MAX_CANDS] + partial[MAX_CANDS] (compile-time size →
-// compiler places them in registers rather than local memory).
+// For each chunk of up to MAX_CANDS candidates per thread:
+//   1. Pre-compute abs_pos[MAX_CANDS] in registers.
+//   2. Outer-m loop: 256 threads cooperatively load 256-entry sub-table (1 KB)
+//      into shared memory, then all candidates in this chunk look up from shared
+//      (1-cycle latency vs ~30-cycle L2 in v10, zero bank conflict).
+//   3. Update global top-K_LOCAL from the chunk's partial distances.
 //
-// Constraint: only correct when n_cands_per_thread ≤ MAX_CANDS.
-// The caller (capture_graph) selects this kernel only when that holds.
+// Chunking handles arbitrary nprobe/list sizes correctly: even if a query
+// probes a very large list (total > MAX_CANDS × BLOCK), the outer chunk loop
+// repeats until all candidates are covered.  For nprobe=8 with typical IVF
+// balance, one chunk is enough, so the overhead is zero.
 //
 template <int MAX_CANDS>
 __global__ void scan_ivf_outerlut_kernel(
@@ -125,11 +127,10 @@ __global__ void scan_ivf_outerlut_kernel(
     // Shared memory layout (10 KB, same as v10):
     //   Scan phase:   s_sub[256]  — 1 KB (first 256 floats)
     //   Reduce phase: s_cdist[K_LOCAL*BLOCK], s_cpos[...], s_red_val[BLOCK], s_red_idx[BLOCK]
-    // The scan phase uses only s_sub (1 KB), then __syncthreads before the
-    // reduce phase overwrites the same memory as s_cdist/s_cpos.
+    // The scan phase uses only s_sub (1 KB), reused as s_cdist/s_cpos after.
     extern __shared__ char shm[];
-    float* s_sub     = (float*)shm;                          // [256]    — scan
-    float* s_cdist   = (float*)shm;                          // [K_LOCAL*BLOCK] — reduce
+    float* s_sub     = (float*)shm;
+    float* s_cdist   = (float*)shm;                          // alias s_sub
     int*   s_cpos    = (int*)(s_cdist + K_LOCAL * BLOCK);
     float* s_red_val = (float*)(s_cpos + K_LOCAL * BLOCK);
     int*   s_red_idx = (int*)(s_red_val + BLOCK);
@@ -139,57 +140,61 @@ __global__ void scan_ivf_outerlut_kernel(
     const int* my_ids  = probe_ids     + bqi * nprobe;
     const int* my_offs = probe_offsets + bqi * (nprobe + 1);
 
-    // ── Phase 1: pre-compute abs_pos[] and init partial[] in registers ─────
-    int   my_abs_pos[MAX_CANDS];
-    float partial[MAX_CANDS];
-    int   n_my = 0;
-
-    for (int local_t = tid; local_t < total; local_t += BLOCK) {
-        if (n_my >= MAX_CANDS) break;  // safety: should not happen at correct nprobe
-        int p = 0;
-        while (p + 1 < nprobe && local_t >= my_offs[p + 1]) ++p;
-        my_abs_pos[n_my] = list_offsets[my_ids[p]] + (local_t - my_offs[p]);
-        partial[n_my]    = 0.0f;
-        ++n_my;
-    }
-
-    // ── Phase 2: outer-m loop — shared sub-table + inner candidate scan ────
-    for (int m = 0; m < M; ++m) {
-        // Cooperative load: tid-th entry of the 256-entry sub-table for codeword m.
-        // 256 threads × 1 float = 1 KB, covering all possible byte values.
-        s_sub[tid] = my_lut[(long long)m * 256 + tid];
-        __syncthreads();
-
-        // Inner loop: all my candidates look up their m-th code byte in shared.
-        // No bank conflict: 32 threads in a warp each read a different entry
-        // from the 256-entry table → each entry is in a different bank.
-        for (int j = 0; j < n_my; ++j) {
-            uint8_t cm = list_primary[(long long)my_abs_pos[j] * M + m];
-            partial[j] += s_sub[cm];
-        }
-        __syncthreads();  // protect s_sub before next iteration overwrites it
-    }
-
-    // ── Phase 3: per-thread top-K_LOCAL selection from partial[] ──────────
+    // Global top-K_LOCAL state — persists across all chunks.
     float ld[K_LOCAL]; int lp[K_LOCAL];
     #pragma unroll
     for (int i = 0; i < K_LOCAL; i++) { ld[i] = INF; lp[i] = -1; }
 
-    for (int j = 0; j < n_my; ++j) {
-        if (partial[j] < ld[K_LOCAL - 1]) {
-            ld[K_LOCAL - 1] = partial[j];
-            lp[K_LOCAL - 1] = my_abs_pos[j];
-            #pragma unroll
-            for (int i = K_LOCAL - 1; i > 0 && ld[i] < ld[i-1]; --i) {
-                float td = ld[i-1]; ld[i-1] = ld[i]; ld[i] = td;
-                int   tp = lp[i-1]; lp[i-1] = lp[i]; lp[i] = tp;
+    // ── Chunked scan: process MAX_CANDS candidates per thread per chunk ────
+    //
+    // Chunk c covers local_t in [c*MAX_CANDS*BLOCK, (c+1)*MAX_CANDS*BLOCK).
+    // Thread tid handles local_t = chunk_base + j*BLOCK + tid, j=0..MAX_CANDS-1.
+    //
+    for (int chunk_base = 0; chunk_base < total; chunk_base += MAX_CANDS * BLOCK) {
+
+        // Phase A: pre-compute abs_pos + init partial for this chunk
+        int   my_abs_pos[MAX_CANDS];
+        float partial[MAX_CANDS];
+        int   n_my = 0;
+
+        for (int j = 0; j < MAX_CANDS; ++j) {
+            int local_t = chunk_base + j * BLOCK + tid;
+            if (local_t >= total) break;
+            int p = 0;
+            while (p + 1 < nprobe && local_t >= my_offs[p + 1]) ++p;
+            my_abs_pos[n_my] = list_offsets[my_ids[p]] + (local_t - my_offs[p]);
+            partial[n_my]    = 0.0f;
+            ++n_my;
+        }
+
+        // Phase B: outer-m loop with cooperative shared sub-table load
+        for (int m = 0; m < M; ++m) {
+            s_sub[tid] = my_lut[(long long)m * 256 + tid];
+            __syncthreads();
+
+            for (int j = 0; j < n_my; ++j) {
+                uint8_t cm = list_primary[(long long)my_abs_pos[j] * M + m];
+                partial[j] += s_sub[cm];
+            }
+            __syncthreads();
+        }
+
+        // Phase C: update global top-K_LOCAL from this chunk's partial distances
+        for (int j = 0; j < n_my; ++j) {
+            if (partial[j] < ld[K_LOCAL - 1]) {
+                ld[K_LOCAL - 1] = partial[j];
+                lp[K_LOCAL - 1] = my_abs_pos[j];
+                #pragma unroll
+                for (int i = K_LOCAL - 1; i > 0 && ld[i] < ld[i-1]; --i) {
+                    float td = ld[i-1]; ld[i-1] = ld[i]; ld[i] = td;
+                    int   tp = lp[i-1]; lp[i-1] = lp[i]; lp[i] = tp;
+                }
             }
         }
     }
 
-    // ── Phase 4: write per-thread top-K_LOCAL to shared, global top-ck ───
-    // The last __syncthreads() in the m-loop guarantees s_sub writes are done.
-    // Now we reuse the same shared memory as s_cdist / s_cpos.
+    // ── Write per-thread top-K_LOCAL to shared; global top-ck selection ───
+    // Last __syncthreads() in the m-loop ensures s_sub is safe to reuse.
     #pragma unroll
     for (int i = 0; i < K_LOCAL; i++) {
         s_cdist[tid * K_LOCAL + i] = ld[i];
@@ -451,8 +456,7 @@ static void capture_graph(
     const float*   d_list_corr,
     int B, int d, int M, int Ds, int K1D, int Kr,
     int nlist, int nprobe, int Br, int bpv, int bits_per_dim,
-    int ck, int k,
-    int ntotal)
+    int ck, int k)
 {
     if (ws.graph_exec) { cudaGraphExecDestroy(ws.graph_exec); ws.graph_exec = nullptr; }
     if (ws.graph)      { cudaGraphDestroy(ws.graph);          ws.graph      = nullptr; }
@@ -462,13 +466,6 @@ static void capture_graph(
     // Shared for scan: max(s_sub=1KB, reduction=10KB) = 10KB (same as v10)
     const int   scan_smem = (2 * 4 * BLOCK + 2 * BLOCK) * (int)sizeof(float); // 10240
     const int   topk_smem = (2 * ck + 2 * BLOCK) * (int)sizeof(float);
-
-    // Estimate worst-case candidates per thread.  Use ceiling average list size
-    // × nprobe.  If it fits in MAX_CANDS registers, use the outer-m kernel.
-    int avg_list = (ntotal + nlist - 1) / nlist;
-    int est_total = nprobe * avg_list;
-    int est_per_thread = (est_total + BLOCK - 1) / BLOCK;
-    bool use_outer_m = (est_per_thread <= MAX_CANDS);
 
     CUDA_CHECK(cudaStreamBeginCapture(ws.stream, cudaStreamCaptureModeGlobal));
 
@@ -489,20 +486,12 @@ static void capture_graph(
         build_byte_lut_kernel<<<grid, BLOCK, 0, ws.stream>>>(
             ws.d_q_rot, d_c1d, ws.d_byte_lut, B, d, M, Ds, K1D, bits_per_dim);
     }
-    // 5. Scan IVF
-    if (use_outer_m) {
-        scan_ivf_outerlut_kernel<MAX_CANDS><<<B, BLOCK, scan_smem, ws.stream>>>(
-            ws.d_byte_lut, ws.d_probe_ids, ws.d_probe_offsets, d_list_offsets,
-            d_list_primary, ws.d_query_total,
-            ws.d_topck_primary, ws.d_topck_pos,
-            nprobe, M, ck);
-    } else {
-        scan_ivf_bytelut_kernel<<<B, BLOCK, scan_smem, ws.stream>>>(
-            ws.d_byte_lut, ws.d_probe_ids, ws.d_probe_offsets, d_list_offsets,
-            d_list_primary, ws.d_query_total,
-            ws.d_topck_primary, ws.d_topck_pos,
-            nprobe, M, ck);
-    }
+    // 5. Scan IVF — chunked outer-m, correct for any nprobe / list size
+    scan_ivf_outerlut_kernel<MAX_CANDS><<<B, BLOCK, scan_smem, ws.stream>>>(
+        ws.d_byte_lut, ws.d_probe_ids, ws.d_probe_offsets, d_list_offsets,
+        d_list_primary, ws.d_query_total,
+        ws.d_topck_primary, ws.d_topck_pos,
+        nprobe, M, ck);
     // 6. Residual LUT
     {
         long long tot  = (long long)B * d * Kr;
@@ -543,7 +532,6 @@ void search_gpu(
     int nq, int d, int M, int Ds, int K1D, int Kr,
     int nlist, int nprobe, int Br, int bpv, int bits_per_dim,
     float alpha, int k, int batch_size,
-    int ntotal,
     SearchWorkspace& ws,
     float* h_out_dists, int* h_out_ids)
 {
@@ -560,8 +548,7 @@ void search_gpu(
         capture_graph(ws, cublas,
                       d_Pi, d_c1d, d_res_c1d, d_centroids, d_cent_norms,
                       d_list_offsets, d_list_ids, d_list_primary, d_list_res, d_list_corr,
-                      B_full, d, M, Ds, K1D, Kr, nlist, nprobe, Br, bpv, bits_per_dim, ck, k,
-                      ntotal);
+                      B_full, d, M, Ds, K1D, Kr, nlist, nprobe, Br, bpv, bits_per_dim, ck, k);
     }
 
     for (int qoff = 0; qoff < nq; qoff += batch_size) {

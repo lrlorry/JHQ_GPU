@@ -433,7 +433,6 @@ void JHQGpuIndex::search(const float* h_q, int nq, int k,
                Br_, bpv_, bits_per_dim_,
                alpha_, k,
                batch_size_,
-               ntotal_,
                ws_,
                h_dists, h_labels);
 }
