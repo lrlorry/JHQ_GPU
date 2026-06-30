@@ -21,44 +21,69 @@ __device__ __forceinline__ float from_sortable(uint32_t s) {
     return __uint_as_float(b);
 }
 
-// One block per query. All threads cooperatively load centroid distances into
-// shared mem; then ONLY thread 0 does sequential argmin (simple, correct).
+// One block per query. nprobe rounds of block-wide parallel argmin over s[].
+// Each round: all threads find local min → tree reduction → thread 0 records
+// winner and marks it +inf. Shared mem: [nlist] + [BLOCK] + [BLOCK] floats/ints.
 __global__ void select_probes_kernel(
-    const float* __restrict__ dots,         // [B, nlist] col-major: dots[bqi*nlist + c]
-    const float* __restrict__ cent_norms,   // [nlist]
-    const int*   __restrict__ list_offsets, // [nlist+1]
-    int*                      probe_ids,    // [B, nprobe]
-    int*                      probe_offsets,// [B, nprobe+1]
-    int*                      query_total,  // [B]
+    const float* __restrict__ dots,
+    const float* __restrict__ cent_norms,
+    const int*   __restrict__ list_offsets,
+    int*                      probe_ids,
+    int*                      probe_offsets,
+    int*                      query_total,
     int nlist, int nprobe)
 {
-    extern __shared__ float s[];  // [nlist]
-    int bqi  = blockIdx.x;
-    int tid  = threadIdx.x;
+    // Shared mem layout: [s: nlist f][red_val: BLOCK f][red_idx: BLOCK i]
+    extern __shared__ float s[];
     const int BLOCK = blockDim.x;
+    float* red_val = s + nlist;
+    int*   red_idx = (int*)(red_val + BLOCK);
 
+    int bqi = blockIdx.x;
+    int tid = threadIdx.x;
+
+    // Load centroid distances cooperatively.
     const float* row = dots + (long long)bqi * nlist;
     for (int c = tid; c < nlist; c += BLOCK)
         s[c] = cent_norms[c] - 2.0f * row[c];
     __syncthreads();
 
-    if (tid == 0) {
-        int*  my_ids  = probe_ids     + bqi * nprobe;
-        int*  my_offs = probe_offsets + bqi * (nprobe + 1);
-        int   acc     = 0;
-        my_offs[0] = 0;
-        for (int p = 0; p < nprobe; ++p) {
-            float best = __int_as_float(0x7F800000);
-            int   bidx = 0;
-            for (int c = 0; c < nlist; ++c)
-                if (s[c] < best) { best = s[c]; bidx = c; }
-            s[bidx] = __int_as_float(0x7F800000);
-            my_ids[p]  = bidx;
-            acc       += list_offsets[bidx + 1] - list_offsets[bidx];
+    int* my_ids  = probe_ids     + bqi * nprobe;
+    int* my_offs = probe_offsets + bqi * (nprobe + 1);
+    int  acc     = 0;
+    if (tid == 0) my_offs[0] = 0;
+
+    for (int p = 0; p < nprobe; ++p) {
+        // Each thread finds its local argmin.
+        float bv = __int_as_float(0x7F800000);
+        int   bi = -1;
+        for (int c = tid; c < nlist; c += BLOCK)
+            if (s[c] < bv) { bv = s[c]; bi = c; }
+        red_val[tid] = bv;
+        red_idx[tid] = bi;
+        __syncthreads();
+
+        // Tree reduction.
+        for (int stride = BLOCK >> 1; stride > 0; stride >>= 1) {
+            if (tid < stride && red_val[tid + stride] < red_val[tid]) {
+                red_val[tid] = red_val[tid + stride];
+                red_idx[tid] = red_idx[tid + stride];
+            }
+            __syncthreads();
+        }
+
+        // Thread 0 records winner and excludes it for next round.
+        if (tid == 0) {
+            int w = red_idx[0];
+            s[w] = __int_as_float(0x7F800000);
+            my_ids[p] = w;
+            acc += list_offsets[w + 1] - list_offsets[w];
             my_offs[p + 1] = acc;
         }
-        query_total[bqi] = acc;
+        __syncthreads();
     }
+
+    if (tid == 0) query_total[bqi] = acc;
 }
 
 __global__ void build_primary_lut_batched_kernel(
@@ -360,8 +385,9 @@ void search_gpu(
                                        ws.d_q_rot, d,
                                  &zero, ws.d_dots, nlist));
 
-        // 3. Select nprobe probes per query (thread-0-sequential, definitely correct)
-        select_probes_kernel<<<B, BLOCK, nlist * (int)sizeof(float)>>>(
+        // 3. Select nprobe probes per query (parallel argmin, nprobe rounds)
+        // smem = [nlist + 2*BLOCK] * 4 bytes
+        select_probes_kernel<<<B, BLOCK, (nlist + 2*BLOCK) * (int)sizeof(float)>>>(
             ws.d_dots, d_cent_norms, d_list_offsets,
             ws.d_probe_ids, ws.d_probe_offsets, ws.d_query_total,
             nlist, nprobe);
