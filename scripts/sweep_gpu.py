@@ -40,6 +40,7 @@ METHOD_NAME = {
     "jhq_v11_outerlut":    "JHQ-GPU-v11-OuterLUT",
     "jhq_v12_transposed":  "JHQ-GPU-v12-Transposed",
     "hblock_v1":           "HBlock-v1",
+    "hblock_v2":           "HBlock-v2",
 }
 
 JHQ_IVF_VERSIONS = {
@@ -52,7 +53,7 @@ JHQ_BATCHED_VERSIONS = {
     "jhq_v7_spin_sync", "jhq_v8_timing",
     "jhq_v10_bytelut", "jhq_v11_outerlut", "jhq_v12_transposed",
 }
-HBLOCK_VERSIONS = {"hblock_v1"}
+HBLOCK_VERSIONS = {"hblock_v1", "hblock_v2"}
 ALL_IVF_VERSIONS = JHQ_IVF_VERSIONS | HBLOCK_VERSIONS
 
 
