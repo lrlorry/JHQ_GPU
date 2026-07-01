@@ -273,9 +273,15 @@ void HBlockIndex::add(const float* h_x, int n) {
                 int orig_id    = order[vi];
 
                 h_leaf_ids  [(long long)blk_idx * leaf_size_ + pos_in_blk] = orig_id;
-                std::memcpy(h_leaf_codes.data() + ((long long)blk_idx * leaf_size_ + pos_in_blk) * bpv_,
-                            h_fc.data()         + (long long)orig_id * bpv_,
-                            bpv_);
+                {
+                    // Transposed layout [n_leaf_blocks, bpv, leaf_size]: byte b of vector v
+                    // at dst_base[b * leaf_size + v] → warp reads rc_base[b*leaf_size+v]
+                    // with stride 1 (coalesced) instead of stride bpv (uncoalesced).
+                    const uint8_t* src = h_fc.data() + (long long)orig_id * bpv_;
+                    uint8_t* dst_base  = h_leaf_codes.data() + (long long)blk_idx * bpv_ * leaf_size_;
+                    for (int b = 0; b < bpv_; ++b)
+                        dst_base[(long long)b * leaf_size_ + pos_in_blk] = src[b];
+                }
                 h_leaf_sizes[blk_idx] = std::max(h_leaf_sizes[blk_idx], pos_in_blk + 1);
             }
             i = j;

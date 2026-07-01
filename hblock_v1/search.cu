@@ -178,14 +178,19 @@ __global__ void leaf_fine_compute_kernel(
         if (v >= n_vecs) {
             my_dists[v] = INF; my_ids[v] = -1;
         } else {
-            const uint8_t* rc = leaf_codes + ((long long)leaf_idx * leaf_size + v) * bpv;
+            // Transposed layout [n_leaf_blocks, bpv, leaf_size]:
+            // rc_base[(j>>1) * leaf_size + v] — warp stride = 1 byte (coalesced).
+            const uint8_t* rc_base = leaf_codes + (long long)leaf_idx * bpv * leaf_size;
             float fd = 0.f;
             for (int j = 0; j < d; ++j) {
-                int ri = (Br == 4)
-                    ? ((j & 1) ? (rc[j >> 1] >> 4) : (rc[j >> 1] & 0x0F))
-                    : rc[j];
+                int ri;
+                if (Br == 4) {
+                    uint8_t bv = rc_base[(j >> 1) * leaf_size + v];
+                    ri = (j & 1) ? (bv >> 4) : (bv & 0x0F);
+                } else {
+                    ri = (int)rc_base[j * leaf_size + v];
+                }
                 fd += s_lut[j * Kr + ri];
-            }
             my_dists[v] = fd;
             my_ids[v]   = leaf_ids[(long long)leaf_idx * leaf_size + v];
         }
