@@ -38,19 +38,19 @@ plt.rcParams.update({
 METHODS = {
     # ---- GPU (this work) ---------------------------------------------------
     "JHQ-GPU-v1":        dict(color="#17BECF", marker="*",  ls="-",  lw=2.4, zorder=7,
-                              label="JHQ-GPU v1 (This Work, 96 B/vec)",
+                              label="JHQ-GPU v1 (96 B/vec)",
                               mfc="#17BECF", mew=1.8, ms=10),
     "JHQ-GPU-v2":        dict(color="#111111", marker="P",  ls="-",  lw=2.2, zorder=8,
-                              label="JHQ-GPU v2 top-k (This Work, 480 B/vec)",
+                              label="JHQ-GPU v2 top-k (480 B/vec)",
                               mfc="#111111", mew=1.6, ms=8),
     "JHQ-GPU-v3-IVF":    dict(color="#E377C2", marker="*",  ls="-",  lw=2.4, zorder=9,
-                              label="JHQ-GPU v3 IVF (This Work, 480 B/vec)",
+                              label="JHQ-GPU v3 IVF (480 B/vec)",
                               mfc="#E377C2", mew=1.8, ms=10),
     "JHQ-GPU-v4-Batched": dict(color="#8C564B", marker="X",  ls="-",  lw=2.3, zorder=10,
-                               label="JHQ-GPU v4 batched (This Work, 480 B/vec)",
+                               label="JHQ-GPU v4 batched (480 B/vec)",
                                mfc="#8C564B", mew=1.6, ms=8),
-    "JHQ-GPU-v5-Progressive": dict(color="#BCBD22", marker="D", ls="-", lw=2.3, zorder=11,
-                                   label="JHQ-GPU v5 progressive (This Work, 480 B/vec)",
+    "JHQ-GPU-v5-CUDAGraph":  dict(color="#BCBD22", marker="D", ls="-", lw=2.3, zorder=11,
+                                   label="JHQ-GPU v5 CUDA Graph (480 B/vec)",
                                    mfc="#BCBD22", mew=1.6, ms=7),
     # ---- Official source results -------------------------------------------
     "Official-JHQ":      dict(color="#D62728", marker="o",  ls="--", lw=2.2, zorder=6,
@@ -154,7 +154,7 @@ def plot_build_time(ax, data):
         ("JHQ-GPU-v2",        "JHQ-GPU\nv2"),
         ("JHQ-GPU-v3-IVF",    "JHQ-GPU\nv3 IVF"),
         ("JHQ-GPU-v4-Batched", "JHQ-GPU\nv4"),
-        ("JHQ-GPU-v5-Progressive", "JHQ-GPU\nv5"),
+        ("JHQ-GPU-v5-CUDAGraph",  "JHQ-GPU\nv5"),
         ("Official-JHQ",      "Official\nJHQ"),
         ("Official-JQ",       "Official\nJQ"),
         ("JHQ+IVF",           "JHQ\nRepro"),
@@ -196,7 +196,7 @@ def main():
 
     cpu_csv = args[0]
     gpu_csv = args[1]
-    prefix  = args[2] if len(args) > 2 else "gpu_comparison"
+    prefix  = args[2] if len(args) > 2 else "results/vogue768_gpu_comparison"
 
     data = load_csv(cpu_csv)
     data.update(load_csv(gpu_csv))

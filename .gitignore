@@ -1,0 +1,71 @@
+# Build artifacts
+build/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+Makefile
+*.make
+install_manifest.txt
+CTestTestfile.cmake
+
+# Compiled objects
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.out
+
+# ANN benchmark datasets (large binary files)
+*.fvecs
+*.ivecs
+*.bvecs
+*.fbin
+*.ibin
+*.u8bin
+*.hdf5
+*.h5
+data/
+datasets/
+
+# Index / codebook files produced at runtime
+*.index
+*.idx
+*.bin
+*.npy
+*.npz
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+.eggs/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Results / logs
+logs/
+*.log
+*.json.bak
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
