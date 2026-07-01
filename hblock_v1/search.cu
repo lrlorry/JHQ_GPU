@@ -286,10 +286,16 @@ void search_hblock(
         leaf_fine_compute_kernel,
         cudaFuncAttributeMaxDynamicSharedMemorySize, leaf_smem));
 
+    // Per-step timing events: 12 markers for 11 steps
+    static const int NE = 12;
+    cudaEvent_t e[NE];
+    for (int i = 0; i < NE; i++) CUDA_CHECK(cudaEventCreate(&e[i]));
+    float step_ms[NE - 1] = {};
+
     for (int qoff = 0; qoff < nq; qoff += batch_size) {
         int Bq = std::min(batch_size, nq - qoff);
 
-        // Copy query batch (pad to B with zeros)
+        // CPU-side pinned copy (outside stream)
         std::memcpy(ws.h_q_pinned,
                     h_queries + (long long)qoff * d,
                     (long long)Bq * d * sizeof(float));
@@ -297,28 +303,32 @@ void search_hblock(
             std::memset(ws.h_q_pinned + (long long)Bq * d, 0,
                         (long long)(B - Bq) * d * sizeof(float));
 
+        cudaEventRecord(e[0], ws.stream);
+
+        // H2D
         CUDA_CHECK(cudaMemcpyAsync(ws.d_q_batch, ws.h_q_pinned,
                                    (long long)B * d * sizeof(float),
                                    cudaMemcpyHostToDevice, ws.stream));
+        cudaEventRecord(e[1], ws.stream);
 
-        // 1. Rotate
+        // Rotate
         CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_N, CUBLAS_OP_N,
                                  d, B, d, &one,
                                  d_Pi, d, ws.d_q_batch, d,
                                  &zero, ws.d_q_rot, d));
+        cudaEventRecord(e[2], ws.stream);
 
-        // 2. L1 centroid dots: [B, K1] = q_rot @ C1^T
+        // L1 GEMM + topk
         CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_T, CUBLAS_OP_N,
                                  K1, B, d, &one,
                                  d_route1_cents, d, ws.d_q_rot, d,
                                  &zero, ws.d_dots1, K1));
-
-        // 3. Select top-ck1 L1 centroids
         select_route_topk_kernel<<<B, BLOCK, route1_smem, ws.stream>>>(
             ws.d_dots1, d_route1_norms, ws.d_top1_ids, K1, ck1);
         CUDA_CHECK(cudaGetLastError());
+        cudaEventRecord(e[3], ws.stream);
 
-        // 4. Compute L1 residual: q_r1 = q_rot - C1[top1_ids[b, 0]]
+        // L1 residual
         {
             long long tot = (long long)B * d;
             int grid = (int)std::min((tot + BLOCK - 1) / BLOCK, (long long)65535);
@@ -326,19 +336,19 @@ void search_hblock(
                 ws.d_q_rot, ws.d_top1_ids, d_route1_cents, ws.d_q_r1, d, B, ck1);
             CUDA_CHECK(cudaGetLastError());
         }
+        cudaEventRecord(e[4], ws.stream);
 
-        // 5. L2 centroid dots: [B, K2] = q_r1 @ C2^T
+        // L2 GEMM + topk
         CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_T, CUBLAS_OP_N,
                                  K2, B, d, &one,
                                  d_route2_cents, d, ws.d_q_r1, d,
                                  &zero, ws.d_dots2, K2));
-
-        // 6. Select top-ck2 L2 centroids
         select_route_topk_kernel<<<B, BLOCK, route2_smem, ws.stream>>>(
             ws.d_dots2, d_route2_norms, ws.d_top2_ids, K2, ck2);
         CUDA_CHECK(cudaGetLastError());
+        cudaEventRecord(e[5], ws.stream);
 
-        // 7. Compute L2 residual: q_r2 = q_r1 - C2[top2_ids[b, 0]]
+        // L2 residual
         {
             long long tot = (long long)B * d;
             int grid = (int)std::min((tot + BLOCK - 1) / BLOCK, (long long)65535);
@@ -346,16 +356,18 @@ void search_hblock(
                 ws.d_q_r1, ws.d_top2_ids, d_route2_cents, ws.d_q_r2, d, B, ck2);
             CUDA_CHECK(cudaGetLastError());
         }
+        cudaEventRecord(e[6], ws.stream);
 
-        // 8. Gather leaf blocks for each query
+        // Gather leaf blocks
         gather_leaf_blocks_kernel<<<(B + 63) / 64, 64, 0, ws.stream>>>(
             ws.d_top1_ids, ws.d_top2_ids,
             d_pair_blk_start, d_pair_blk_count,
             ws.d_leaf_sel, ws.d_leaf_cnt,
             B, ck1, ck2, ck3, K2, leaf_cap_per_pair);
         CUDA_CHECK(cudaGetLastError());
+        cudaEventRecord(e[7], ws.stream);
 
-        // 9. Build fine residual LUT
+        // Fine LUT
         {
             long long tot = (long long)B * d * Kr;
             int grid = (int)std::min((tot + BLOCK - 1) / BLOCK, (long long)65535);
@@ -363,24 +375,25 @@ void search_hblock(
                 ws.d_q_r2, d_fine_c1d, ws.d_lut_fine, B, d, Kr);
             CUDA_CHECK(cudaGetLastError());
         }
+        cudaEventRecord(e[8], ws.stream);
 
-        // 10. Fine distance computation — LUT loaded once per query into shared memory.
-        {
-            leaf_fine_compute_kernel<<<B, leaf_size, leaf_smem, ws.stream>>>(
-                ws.d_leaf_sel, ws.d_leaf_cnt,
-                d_leaf_sizes, d_leaf_codes, d_leaf_ids,
-                ws.d_lut_fine,
-                ws.d_fine_dists, ws.d_fine_ids,
-                ck3, leaf_size, bpv, d, Kr, Br);
-            CUDA_CHECK(cudaGetLastError());
-        }
+        // Leaf fine compute
+        leaf_fine_compute_kernel<<<B, leaf_size, leaf_smem, ws.stream>>>(
+            ws.d_leaf_sel, ws.d_leaf_cnt,
+            d_leaf_sizes, d_leaf_codes, d_leaf_ids,
+            ws.d_lut_fine,
+            ws.d_fine_dists, ws.d_fine_ids,
+            ck3, leaf_size, bpv, d, Kr, Br);
+        CUDA_CHECK(cudaGetLastError());
+        cudaEventRecord(e[9], ws.stream);
 
-        // 11. Final top-k
+        // Final top-k
         final_topk_kernel<<<B, BLOCK, topk_smem, ws.stream>>>(
             ws.d_fine_dists, ws.d_fine_ids,
             ws.d_final_dists, ws.d_final_ids,
             n_cands, k, B);
         CUDA_CHECK(cudaGetLastError());
+        cudaEventRecord(e[10], ws.stream);
 
         // D2H
         CUDA_CHECK(cudaMemcpyAsync(h_out_ids    + (long long)qoff * k,
@@ -391,12 +404,30 @@ void search_hblock(
                                    ws.d_final_dists,
                                    (long long)Bq * k * sizeof(float),
                                    cudaMemcpyDeviceToHost, ws.stream));
+        cudaEventRecord(e[11], ws.stream);
     }
 
     // Spin-wait
     cudaError_t err;
     do { err = cudaStreamQuery(ws.stream); } while (err == cudaErrorNotReady);
     CUDA_CHECK(err);
+
+    // Print per-step timings
+    static const char* snames[] = {
+        "H2D", "Rotate", "L1 GEMM+topk", "L1 residual",
+        "L2 GEMM+topk", "L2 residual", "GatherLeaf",
+        "FineLUT", "LeafFine", "FinalTopk", "D2H"
+    };
+    float total = 0.f;
+    for (int i = 0; i < NE - 1; i++) {
+        float ms; cudaEventElapsedTime(&ms, e[i], e[i + 1]);
+        step_ms[i] += ms;
+        printf("  %-18s %.3f ms\n", snames[i], step_ms[i]);
+        total += step_ms[i];
+    }
+    printf("  %-18s %.3f ms\n", "--- TOTAL ---", total);
+
+    for (int i = 0; i < NE; i++) cudaEventDestroy(e[i]);
 }
 
 } // namespace hblock
