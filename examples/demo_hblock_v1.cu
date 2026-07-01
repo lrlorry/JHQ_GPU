@@ -2,7 +2,6 @@
 #include "common/fvecs_io.cuh"
 
 #include <cstdio>
-#include <cmath>
 #include <cstdlib>
 #include <vector>
 #include <chrono>
@@ -12,7 +11,8 @@ using Clock = std::chrono::high_resolution_clock;
 using Ms    = std::chrono::duration<double, std::milli>;
 
 static double recall_at_k(const int* labels, const int* gt,
-                           int nq, int k, int gt_k) {
+                           int nq, int k, int gt_k)
+{
     int hits = 0;
     for (int i = 0; i < nq; i++)
         for (int j = 0; j < k; j++) {
@@ -23,28 +23,27 @@ static double recall_at_k(const int* labels, const int* gt,
     return (double)hits / (double)(nq * k);
 }
 
-int main(int argc, char** argv) {
-    if (argc < 8) {
+int main(int argc, char** argv)
+{
+    if (argc < 4) {
         fprintf(stderr,
-            "Usage: %s <base.fvecs> <query.fvecs> <gt.ivecs> "
-            "<M> <B> <Br> <alpha1> [alpha2=2.0] [k=10] [nlist=1024] [nprobe=8] "
-            "[ivf_iters=8] [batch_size=256]\n", argv[0]);
+            "Usage: %s <base.fvecs> <query.fvecs> <gt.ivecs>\n"
+            "         [K1=64] [K2=128] [ck1=4] [ck2=16] [ck3=64]\n"
+            "         [k=10] [batch_size=256]\n",
+            argv[0]);
         return 1;
     }
 
     const char* base_path  = argv[1];
     const char* query_path = argv[2];
     const char* gt_path    = argv[3];
-    int   M          = atoi(argv[4]);
-    int   B          = atoi(argv[5]);
-    int   Br         = atoi(argv[6]);
-    float alpha1     = (float)atof(argv[7]);
-    float alpha2     = (argc > 8)  ? (float)atof(argv[8])  : 2.0f;
-    int   k          = (argc > 9)  ? atoi(argv[9])          : 10;
-    int   nlist      = (argc > 10) ? atoi(argv[10])         : 1024;
-    int   nprobe     = (argc > 11) ? atoi(argv[11])         : 8;
-    int   ivf_iters  = (argc > 12) ? atoi(argv[12])         : 8;
-    int   batch_size = (argc > 13) ? atoi(argv[13])         : 256;
+    int K1         = (argc > 4)  ? atoi(argv[4])  : 64;
+    int K2         = (argc > 5)  ? atoi(argv[5])  : 128;
+    int ck1        = (argc > 6)  ? atoi(argv[6])  : 8;
+    int ck2        = (argc > 7)  ? atoi(argv[7])  : 32;
+    int ck3        = (argc > 8)  ? atoi(argv[8])  : 256;
+    int k          = (argc > 9)  ? atoi(argv[9])  : 10;
+    int batch_size = (argc > 10) ? atoi(argv[10]) : 1024;
 
     std::vector<float> base, query;
     std::vector<int>   gt;
@@ -56,18 +55,18 @@ int main(int argc, char** argv) {
 
     int d = d_base;
     printf("base=%d×%d  query=%d×%d  gt=%d×%d\n", nb, d, nq, d_query, ng, d_gt);
-    printf("M=%d  B=%d  Br=%d  alpha1=%.1f  alpha2=%.1f  k=%d  "
-           "nlist=%d  nprobe=%d  ivf_iters=%d  batch_size=%d\n",
-           M, B, Br, alpha1, alpha2, k, nlist, nprobe, ivf_iters, batch_size);
+    printf("K1=%d  K2=%d  ck1=%d  ck2=%d  ck3=%d  k=%d  batch_size=%d\n",
+           K1, K2, ck1, ck2, ck3, k, batch_size);
 
-    jhq_gpu::JHQHBlockIndex::Params p;
-    p.M = M; p.B = B; p.Br = Br;
-    p.alpha1 = alpha1; p.alpha2 = alpha2;
-    p.nlist = nlist; p.nprobe = nprobe;
-    p.ivf_iters = ivf_iters;
+    hblock::HBlockIndex::Params p;
+    p.K1         = K1;
+    p.K2         = K2;
+    p.ck1        = ck1;
+    p.ck2        = ck2;
+    p.ck3        = ck3;
     p.batch_size = batch_size;
 
-    jhq_gpu::JHQHBlockIndex idx(d, p);
+    hblock::HBlockIndex idx(d, p);
 
     int n_train = std::min(nb, 100000);
     printf("Training on %d vectors...\n", n_train);
@@ -85,7 +84,7 @@ int main(int argc, char** argv) {
     std::vector<float> out_dists((long long)nq * k);
     std::vector<int>   out_ids  ((long long)nq * k);
 
-    // Warm-up (also captures the CUDA graph)
+    // Warm-up
     idx.search(query.data(), nq, k, out_dists.data(), out_ids.data());
 
     const int REPS = 5;

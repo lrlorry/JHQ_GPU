@@ -1,518 +1,376 @@
 #include "hblock_v1/jhq_gpu_index.cuh"
 #include "hblock_v1/encode.cuh"
 #include "hblock_v1/search.cuh"
+#include "cpu/erfinv.h"
 #include "common/cuda_utils.cuh"
-
-#include <thrust/device_ptr.h>
-#include <thrust/sequence.h>
-#include <thrust/sort.h>
 
 #include <algorithm>
 #include <cmath>
-#include <cstdint>
 #include <cstring>
 #include <numeric>
 #include <stdexcept>
 #include <vector>
 
-namespace jhq_gpu {
+namespace hblock {
 
-namespace {
+// ── Analytical codebook builders (JL → i.i.d. N(0,σ²) per dim) ──────────────
 
-// ── assign_from_dots_kernel ───────────────────────────────────────────────────
-__global__ void assign_from_dots_kernel(
-    const float* __restrict__ dots,
-    const float* __restrict__ cent_norms,
-    int*                      assigns,
-    int nlist, int nb)
+// Product-code routing centroids: K = 2^M_r, routes on dims [dim_offset, dim_offset+M_r).
+// Centroid c, dim j: ±σ·√(2/π) if j is a routing dim, else 0.
+// Optimal 2-centroid 1D Lloyd-Max centroids for N(0,σ²) are exactly ±σ√(2/π).
+static std::vector<float>
+analytical_route_cents(int K, int d, int dim_offset, float sigma)
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= nb) return;
-    const float* col = dots + (long long)i * nlist;
-    float best = cent_norms[0] - 2.0f * col[0];
-    int   best_id = 0;
-    for (int c = 1; c < nlist; ++c) {
-        float dist = cent_norms[c] - 2.0f * col[c];
-        if (dist < best) { best = dist; best_id = c; }
+    int M_r = 0;
+    while ((1 << M_r) < K) ++M_r;
+    const float cv = sigma * std::sqrt(2.0f / float(M_PI));
+    std::vector<float> cents((long long)K * d, 0.f);
+    for (int c = 0; c < K; ++c) {
+        float* row = cents.data() + (long long)c * d;
+        for (int m = 0; m < M_r; ++m)
+            row[dim_offset + m] = ((c >> m) & 1) ? +cv : -cv;
     }
-    assigns[i] = best_id;
+    return cents;
 }
 
-// ── gather_hblock_storage_kernel ──────────────────────────────────────────────
-// Reorders all per-vector data into IVF (sorted) order in one pass.
-__global__ void gather_hblock_storage_kernel(
-    const int*     __restrict__ sorted_ids,
-    const uint8_t* __restrict__ primary,     // [N, M]
-    const uint8_t* __restrict__ coarse,      // [N, M]
-    const uint8_t* __restrict__ residual,    // [N, bpv]
-    const float*   __restrict__ corrections, // [N]
-    int*                        list_ids,    // [N]
-    uint8_t*                    list_primary,// [N, M]
-    uint8_t*                    list_coarse, // [N, M]
-    uint8_t*                    list_res,    // [N, bpv]
-    float*                      list_corr,   // [N]
-    int n, int M, int bpv)
+// Analytical Lloyd-Max scalar centroids for N(0,σ²) with Kr quantisation levels.
+// c_i = σ·√2·erfinv((2i+1)/Kr − 1), i=0,…,Kr-1  (sorted ascending).
+static std::vector<float>
+analytical_fine_c1d(int Kr, float sigma)
 {
-    int pos = blockIdx.x * blockDim.x + threadIdx.x;
-    if (pos >= n) return;
-    int id = sorted_ids[pos];
-    list_ids[pos] = id;
-
-    const uint8_t* pc    = primary  + (long long)id  * M;
-    uint8_t*       out_pc = list_primary + (long long)pos * M;
-    for (int m = 0; m < M; ++m) out_pc[m] = pc[m];
-
-    const uint8_t* cc    = coarse   + (long long)id  * M;
-    uint8_t*       out_cc = list_coarse  + (long long)pos * M;
-    for (int m = 0; m < M; ++m) out_cc[m] = cc[m];
-
-    const uint8_t* rc    = residual  + (long long)id  * bpv;
-    uint8_t*       out_rc = list_res + (long long)pos * bpv;
-    for (int b = 0; b < bpv; ++b) out_rc[b] = rc[b];
-
-    list_corr[pos] = corrections[id];
+    std::vector<float> c(Kr);
+    for (int i = 0; i < Kr; ++i) {
+        float q = (i + 0.5f) / float(Kr);
+        c[i] = sigma * float(M_SQRT2) * erfinv_f(2.f * q - 1.f);
+    }
+    return c;
 }
 
-// ── transpose_uint8_kernel ────────────────────────────────────────────────────
-// Transposes [N, M] → [M, N] using 32×32 tiled shared memory.
-// +1 padding on inner dim avoids bank conflicts on write.
-template <int TILE>
-__global__ void transpose_uint8_kernel(
-    const uint8_t* __restrict__ src,   // [N, M]
-    uint8_t*                    dst,   // [M, N]
-    long long N, int M)
-{
-    __shared__ uint8_t tile[TILE][TILE + 1];
-
-    long long col_src = (long long)blockIdx.x * TILE + threadIdx.x;  // m-axis
-    long long row_src = (long long)blockIdx.y * TILE + threadIdx.y;  // n-axis
-    if (col_src < M && row_src < N)
-        tile[threadIdx.y][threadIdx.x] = src[row_src * M + col_src];
-    __syncthreads();
-
-    long long col_dst = (long long)blockIdx.y * TILE + threadIdx.x;  // n-axis
-    long long row_dst = (long long)blockIdx.x * TILE + threadIdx.y;  // m-axis
-    if (col_dst < N && row_dst < M)
-        dst[row_dst * N + col_dst] = tile[threadIdx.x][threadIdx.y];
-}
-
-} // anonymous namespace
-
-// ── Constructor ───────────────────────────────────────────────────────────────
-JHQHBlockIndex::JHQHBlockIndex(int d, Params p)
-    : d_(d), M_(p.M), B_(p.B), Br_(p.Br),
-      nlist_(p.nlist), nprobe_(p.nprobe), ivf_iters_(p.ivf_iters),
+// ── Constructor / Destructor ──────────────────────────────────────────────────
+HBlockIndex::HBlockIndex(int d, Params p)
+    : d_(d), Kr_(p.Kr), Br_(p.Br),
+      bpv_((d * p.Br + 7) / 8),
+      leaf_size_(p.leaf_size),
+      K1_(p.K1), K2_(p.K2),
+      ck1_(p.ck1), ck2_(p.ck2), ck3_(p.ck3),
       batch_size_(p.batch_size),
-      alpha1_(p.alpha1), alpha2_(p.alpha2),
       jl_(d, p.seed)
 {
-    if (d <= 0)          throw std::invalid_argument("d must be positive");
-    if (p.M <= 0)        throw std::invalid_argument("M must be positive");
-    if (d % p.M != 0)   throw std::invalid_argument("d must be divisible by M");
-    if (p.B % (d/p.M) != 0) throw std::invalid_argument("B must be divisible by Ds = d/M");
-    if (p.B > 8)         throw std::invalid_argument("B must be <= 8");
+    if (d <= 0)           throw std::invalid_argument("d must be positive");
+    if (p.K1 <= 0 || (p.K1 & (p.K1-1)) != 0)
+        throw std::invalid_argument("K1 must be a positive power of 2");
+    if (p.K2 <= 0 || (p.K2 & (p.K2-1)) != 0)
+        throw std::invalid_argument("K2 must be a positive power of 2");
+    if (p.leaf_size <= 0) throw std::invalid_argument("leaf_size must be positive");
     if (p.Br != 4 && p.Br != 8) throw std::invalid_argument("Br must be 4 or 8");
-    if (p.nlist <= 0)    throw std::invalid_argument("nlist must be positive");
-    if (p.nprobe <= 0)   throw std::invalid_argument("nprobe must be positive");
-    if (p.ivf_iters <= 0) throw std::invalid_argument("ivf_iters must be positive");
-    if (p.batch_size <= 0) throw std::invalid_argument("batch_size must be positive");
-    if (p.alpha1 <= 0.0f) throw std::invalid_argument("alpha1 must be positive");
-    if (p.alpha2 <= 0.0f) throw std::invalid_argument("alpha2 must be positive");
-
-    Ds_           = d_ / M_;
-    bits_per_dim_ = B_ / Ds_;
-    K1D_          = 1 << bits_per_dim_;
-    Kr_           = 1 << Br_;
-    bpv_          = (d_ * Br_ + 7) / 8;
-    nprobe_       = std::min(nprobe_, nlist_);
-
     CUBLAS_CHECK(cublasCreate(&cublas_));
 }
 
-// ── Destructor ────────────────────────────────────────────────────────────────
-JHQHBlockIndex::~JHQHBlockIndex() {
-    if (ws_.graph_exec) cudaGraphExecDestroy(ws_.graph_exec);
-    if (ws_.graph)      cudaGraphDestroy(ws_.graph);
-    if (ws_.stream)     cudaStreamDestroy(ws_.stream);
-
+HBlockIndex::~HBlockIndex() {
+    if (ws_.stream) cudaStreamDestroy(ws_.stream);
     cublasDestroy(cublas_);
     cudaFree(d_Pi_);
-    cudaFree(d_c1d_);
-    cudaFree(d_c1d_coarse_);
-    cudaFree(d_res_c1d_);
-    cudaFree(d_centroids_);
-    cudaFree(d_cent_norms_);
-    cudaFree(d_list_offsets_);
-    cudaFree(d_list_ids_);
-    cudaFree(d_primary_t_);
-    cudaFree(d_coarse_t_);
-    cudaFree(d_list_res_);
-    cudaFree(d_list_corr_);
-
-    if (ws_.h_q_pinned)    cudaFreeHost(ws_.h_q_pinned);
-    cudaFree(ws_.d_q_batch);       cudaFree(ws_.d_q_rot);
-    cudaFree(ws_.d_dots);          cudaFree(ws_.d_byte_lut);
-    cudaFree(ws_.d_probe_ids);     cudaFree(ws_.d_probe_offsets);
-    cudaFree(ws_.d_query_total);
-    cudaFree(ws_.d_topck1_pos);    cudaFree(ws_.d_topck1_primary);
-    cudaFree(ws_.d_topck2_pos);    cudaFree(ws_.d_topck2_primary);
-    cudaFree(ws_.d_lut_r);         cudaFree(ws_.d_comp_dists);
-    cudaFree(ws_.d_final_ids);     cudaFree(ws_.d_final_dists);
+    cudaFree(d_route1_cents_); cudaFree(d_route1_norms_);
+    cudaFree(d_route2_cents_); cudaFree(d_route2_norms_);
+    cudaFree(d_fine_c1d_);
+    cudaFree(d_pair_blk_start_); cudaFree(d_pair_blk_count_);
+    cudaFree(d_leaf_codes_);
+    cudaFree(d_leaf_ids_);
+    cudaFree(d_leaf_sizes_);
+    if (ws_.h_q_pinned) cudaFreeHost(ws_.h_q_pinned);
+    cudaFree(ws_.d_q_batch);  cudaFree(ws_.d_q_rot);
+    cudaFree(ws_.d_q_r1);     cudaFree(ws_.d_q_r2);
+    cudaFree(ws_.d_dots1);    cudaFree(ws_.d_dots2);
+    cudaFree(ws_.d_top1_ids); cudaFree(ws_.d_top2_ids);
+    cudaFree(ws_.d_leaf_sel); cudaFree(ws_.d_leaf_cnt);
+    cudaFree(ws_.d_lut_fine);
+    cudaFree(ws_.d_fine_dists); cudaFree(ws_.d_fine_ids);
+    cudaFree(ws_.d_final_dists); cudaFree(ws_.d_final_ids);
 }
 
-// ── alloc_workspace ───────────────────────────────────────────────────────────
-void JHQHBlockIndex::alloc_workspace(int batch_size) {
-    if (ws_.graph_exec) { cudaGraphExecDestroy(ws_.graph_exec); ws_.graph_exec = nullptr; }
-    if (ws_.graph)      { cudaGraphDestroy(ws_.graph);          ws_.graph      = nullptr; }
-    ws_.graph_ck1 = ws_.graph_ck2 = ws_.graph_nprobe = 0;
 
-    cudaFree(ws_.d_q_batch);        ws_.d_q_batch       = nullptr;
-    cudaFree(ws_.d_q_rot);          ws_.d_q_rot         = nullptr;
-    cudaFree(ws_.d_dots);           ws_.d_dots          = nullptr;
-    cudaFree(ws_.d_probe_ids);      ws_.d_probe_ids     = nullptr;
-    cudaFree(ws_.d_probe_offsets);  ws_.d_probe_offsets = nullptr;
-    cudaFree(ws_.d_query_total);    ws_.d_query_total   = nullptr;
-    cudaFree(ws_.d_byte_lut);       ws_.d_byte_lut      = nullptr;
-    cudaFree(ws_.d_topck1_pos);     ws_.d_topck1_pos    = nullptr;
-    cudaFree(ws_.d_topck1_primary); ws_.d_topck1_primary = nullptr;
-    cudaFree(ws_.d_topck2_pos);     ws_.d_topck2_pos    = nullptr;
-    cudaFree(ws_.d_topck2_primary); ws_.d_topck2_primary = nullptr;
-    cudaFree(ws_.d_lut_r);          ws_.d_lut_r         = nullptr;
-    cudaFree(ws_.d_comp_dists);     ws_.d_comp_dists    = nullptr;
-    cudaFree(ws_.d_final_ids);      ws_.d_final_ids     = nullptr;
-    cudaFree(ws_.d_final_dists);    ws_.d_final_dists   = nullptr;
-    ws_.ck1_cap = ws_.ck2_cap = ws_.k_cap = 0;
-
-    long long B = batch_size;
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_batch,       B * d_             * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_rot,         B * d_             * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_dots,          B * nlist_         * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_probe_ids,     B * nprobe_        * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_probe_offsets, B * (nprobe_ + 1)  * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_query_total,   B                  * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_byte_lut,      B * M_ * 256       * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_lut_r,         B * d_ * Kr_       * sizeof(float)));
-    ws_.batch_cap = batch_size;
-
-    if (ws_.h_q_pinned) { cudaFreeHost(ws_.h_q_pinned); ws_.h_q_pinned = nullptr; }
-    CUDA_CHECK(cudaMallocHost(&ws_.h_q_pinned, B * d_ * sizeof(float)));
-
-    if (!ws_.stream) CUDA_CHECK(cudaStreamCreate(&ws_.stream));
-    CUBLAS_CHECK(cublasSetStream(cublas_, ws_.stream));
-}
-
-// ── rotate_on_gpu ─────────────────────────────────────────────────────────────
-float* JHQHBlockIndex::rotate_on_gpu(const float* h_x, int n) const {
-    float *d_x = nullptr, *d_y = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_x, (long long)n * d_ * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_y, (long long)n * d_ * sizeof(float)));
-    CUDA_CHECK(cudaMemcpy(d_x, h_x, (long long)n * d_ * sizeof(float),
-                          cudaMemcpyHostToDevice));
-    const float one = 1.f, zero = 0.f;
-    CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_N, CUBLAS_OP_N,
-                             d_, n, d_, &one, d_Pi_, d_, d_x, d_, &zero, d_y, d_));
-    cudaFree(d_x);
-    return d_y;
-}
-
-// ── assign_on_gpu ─────────────────────────────────────────────────────────────
-int* JHQHBlockIndex::assign_on_gpu(const float* d_y, int n) const {
-    int* d_assign = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_assign, (long long)n * sizeof(int)));
-    const int batch = 8192;
-    float* d_dots = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_dots, (long long)nlist_ * batch * sizeof(float)));
-    const float one = 1.f, zero = 0.f;
-    for (int start = 0; start < n; start += batch) {
-        int nb = std::min(batch, n - start);
-        CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
-                                 nlist_, nb, d_, &one,
-                                 d_centroids_, d_,
-                                 d_y + (long long)start * d_, d_,
-                                 &zero, d_dots, nlist_));
-        assign_from_dots_kernel<<<(nb + 255) / 256, 256>>>(
-            d_dots, d_cent_norms_, d_assign + start, nlist_, nb);
-        CUDA_CHECK(cudaGetLastError());
-    }
-    CUDA_CHECK(cudaDeviceSynchronize());
-    cudaFree(d_dots);
-    return d_assign;
-}
-
-// ── train_ivf_centroids ───────────────────────────────────────────────────────
-void JHQHBlockIndex::train_ivf_centroids(
-    const float* h_y_train, const float* d_y_train, int n_train)
+void HBlockIndex::upload_centroids(std::vector<float>& cents,
+                                    float*& d_cents, float*& d_norms, int K)
 {
-    if (n_train < nlist_)
-        throw std::invalid_argument("n_train must be >= nlist");
-
-    centroids_.assign((long long)nlist_ * d_, 0.0f);
-    for (int c = 0; c < nlist_; ++c) {
-        int src = (int)((long long)c * n_train / nlist_);
-        std::memcpy(centroids_.data() + (long long)c * d_,
-                    h_y_train + (long long)src * d_,
-                    (size_t)d_ * sizeof(float));
+    std::vector<float> norms(K, 0.f);
+    for (int k = 0; k < K; ++k) {
+        double s = 0.0;
+        const float* ck = cents.data() + (long long)k * d_;
+        for (int j = 0; j < d_; ++j) s += (double)ck[j] * ck[j];
+        norms[k] = (float)s;
     }
-
-    auto upload_centroids = [&]() {
-        std::vector<float> cent_norms(nlist_, 0.0f);
-        for (int c = 0; c < nlist_; ++c) {
-            double s = 0.0;
-            const float* cc = centroids_.data() + (long long)c * d_;
-            for (int j = 0; j < d_; ++j) s += (double)cc[j] * cc[j];
-            cent_norms[c] = (float)s;
-        }
-        cudaFree(d_centroids_);   d_centroids_  = nullptr;
-        cudaFree(d_cent_norms_);  d_cent_norms_ = nullptr;
-        CUDA_CHECK(cudaMalloc(&d_centroids_,  (long long)nlist_ * d_ * sizeof(float)));
-        CUDA_CHECK(cudaMemcpy(d_centroids_, centroids_.data(),
-                              (long long)nlist_ * d_ * sizeof(float),
-                              cudaMemcpyHostToDevice));
-        CUDA_CHECK(cudaMalloc(&d_cent_norms_, (long long)nlist_ * sizeof(float)));
-        CUDA_CHECK(cudaMemcpy(d_cent_norms_, cent_norms.data(),
-                              (long long)nlist_ * sizeof(float),
-                              cudaMemcpyHostToDevice));
-    };
-
-    std::vector<int>    h_assign(n_train);
-    std::vector<double> sums((long long)nlist_ * d_);
-    std::vector<int>    counts(nlist_);
-
-    for (int iter = 0; iter < ivf_iters_; ++iter) {
-        upload_centroids();
-        int* d_assign = assign_on_gpu(d_y_train, n_train);
-        CUDA_CHECK(cudaMemcpy(h_assign.data(), d_assign,
-                              (long long)n_train * sizeof(int), cudaMemcpyDeviceToHost));
-        cudaFree(d_assign);
-
-        std::fill(sums.begin(), sums.end(), 0.0);
-        std::fill(counts.begin(), counts.end(), 0);
-        for (int i = 0; i < n_train; ++i) {
-            int c = h_assign[i]; counts[c]++;
-            const float* yi = h_y_train + (long long)i * d_;
-            double* sc = sums.data() + (long long)c * d_;
-            for (int j = 0; j < d_; ++j) sc[j] += yi[j];
-        }
-        for (int c = 0; c < nlist_; ++c) {
-            float* cc = centroids_.data() + (long long)c * d_;
-            if (counts[c] == 0) {
-                int src = (int)(((long long)c * 1103515245 + iter * 12345) % n_train);
-                std::memcpy(cc, h_y_train + (long long)src * d_,
-                            (size_t)d_ * sizeof(float));
-                continue;
-            }
-            const double inv = 1.0 / (double)counts[c];
-            const double* sc = sums.data() + (long long)c * d_;
-            for (int j = 0; j < d_; ++j) cc[j] = (float)(sc[j] * inv);
-        }
-    }
-    upload_centroids();
+    cudaFree(d_cents); cudaFree(d_norms);
+    CUDA_CHECK(cudaMalloc(&d_cents, (long long)K * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_norms, (long long)K * sizeof(float)));
+    CUDA_CHECK(cudaMemcpy(d_cents, cents.data(),
+                          (long long)K * d_ * sizeof(float), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_norms, norms.data(),
+                          (long long)K * sizeof(float), cudaMemcpyHostToDevice));
 }
 
-// ── train_codebooks ───────────────────────────────────────────────────────────
-// Trains coarse codebook (c1d_coarse_, K1D values) and fine codebook (res_c1d_,
-// Kr values) on the same primary residuals r_y = y_rot - primary_hat.
-void JHQHBlockIndex::train_codebooks(
-    const float* d_y_train, const uint8_t* d_codes_train, int n_train)
-{
-    std::vector<float>   h_y    ((long long)n_train * d_);
-    std::vector<uint8_t> h_codes((long long)n_train * M_);
+// ── Train ─────────────────────────────────────────────────────────────────────
+// After JL rotation every dimension is i.i.d. N(0,σ²), so all codebooks have
+// analytical closed-form solutions — no k-means needed.
+//
+// Routing: product code on M_r = log2(K) routing dimensions.
+//   Optimal 2-centroid 1D Lloyd-Max on N(0,σ²): ±σ√(2/π).
+//   L1 routes on dims [0, M_r1), L2 routes on dims [M_r1, M_r1+M_r2).
+//
+// Fine code: scalar 1D Lloyd-Max on N(0,σ²) with Kr levels.
+//   c_i = σ·√2·erfinv((2i+1)/Kr − 1).
+void HBlockIndex::train(const float* h_x, int n_train) {
+    int M_r1 = 0; while ((1 << M_r1) < K1_) ++M_r1;  // log2(K1)
+    int M_r2 = 0; while ((1 << M_r2) < K2_) ++M_r2;  // log2(K2)
+    if (M_r1 + M_r2 >= d_)
+        throw std::invalid_argument("log2(K1)+log2(K2) must be < d");
 
-    CUDA_CHECK(cudaMemcpy(h_y.data(), d_y_train,
-                          (long long)n_train * d_ * sizeof(float),
-                          cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaMemcpy(h_codes.data(), d_codes_train,
-                          (long long)n_train * M_ * sizeof(uint8_t),
-                          cudaMemcpyDeviceToHost));
+    // σ² = E[||x||²]/d  — no rotation needed (Lemma 2 in JL paper)
+    jl_.estimate_sigma(h_x, n_train);
+    float sigma = jl_.sigma();
+    printf("  sigma=%.4f  L1: K1=%d → M_r1=%d dims  L2: K2=%d → M_r2=%d dims\n",
+           sigma, K1_, M_r1, K2_, M_r2);
 
-    // Compute primary residuals on CPU
-    std::vector<float> residuals;
-    residuals.reserve((long long)n_train * d_);
-    std::vector<float> yhat(d_);
-    for (int i = 0; i < n_train; i++) {
-        cb_->reconstruct(h_codes.data() + (long long)i * M_, yhat.data());
-        const float* yi = h_y.data() + (long long)i * d_;
-        for (int j = 0; j < d_; j++) residuals.push_back(yi[j] - yhat[j]);
-    }
+    // Upload JL rotation matrix
+    CUDA_CHECK(cudaMalloc(&d_Pi_, (long long)d_ * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMemcpy(d_Pi_, jl_.pi_data(),
+                          (long long)d_ * d_ * sizeof(float), cudaMemcpyHostToDevice));
 
-    // Coarse: K1D values (same granularity as primary, for quick cascade filter)
-    c1d_coarse_ = train_1d_kmeans(residuals.data(), (int)residuals.size(), K1D_);
-    CUDA_CHECK(cudaMalloc(&d_c1d_coarse_, K1D_ * sizeof(float)));
-    CUDA_CHECK(cudaMemcpy(d_c1d_coarse_, c1d_coarse_.data(),
-                          K1D_ * sizeof(float), cudaMemcpyHostToDevice));
+    // Analytical routing centroids — no k-means, no training data on GPU
+    h_route1_ = analytical_route_cents(K1_, d_, 0,    sigma);
+    h_route2_ = analytical_route_cents(K2_, d_, M_r1, sigma);
+    upload_centroids(h_route1_, d_route1_cents_, d_route1_norms_, K1_);
+    upload_centroids(h_route2_, d_route2_cents_, d_route2_norms_, K2_);
 
-    // Fine: Kr values (high precision for final refine)
-    res_c1d_ = train_1d_kmeans(residuals.data(), (int)residuals.size(), Kr_);
-    CUDA_CHECK(cudaMalloc(&d_res_c1d_, Kr_ * sizeof(float)));
-    CUDA_CHECK(cudaMemcpy(d_res_c1d_, res_c1d_.data(),
+    // Analytical fine codebook — Lloyd-Max on N(0,σ²)
+    fine_c1d_ = analytical_fine_c1d(Kr_, sigma);
+    CUDA_CHECK(cudaMalloc(&d_fine_c1d_, Kr_ * sizeof(float)));
+    CUDA_CHECK(cudaMemcpy(d_fine_c1d_, fine_c1d_.data(),
                           Kr_ * sizeof(float), cudaMemcpyHostToDevice));
 }
 
-// ── train ─────────────────────────────────────────────────────────────────────
-void JHQHBlockIndex::train(const float* h_x, int n_train) {
-    jl_.estimate_sigma(h_x, n_train);
-    cb_ = std::make_unique<LloydMaxCodebook>(d_, M_, B_, jl_.sigma());
+// ── Add ───────────────────────────────────────────────────────────────────────
+// Batched pipeline: each batch of ADD_BATCH vectors goes through
+//   H2D → rotate → L1 assign → L1 residual → L2 assign → L2 residual → fine encode → D2H
+// Peak GPU temp memory: 4 × ADD_BATCH × d × 4 bytes ≈ 96 MB for ADD_BATCH=8192, d=768.
+void HBlockIndex::add(const float* h_x, int n) {
+    if (!d_Pi_) throw std::runtime_error("call train() before add()");
+    if (ntotal_ != 0) throw std::runtime_error("HBlock currently supports one add() call");
 
-    CUDA_CHECK(cudaMalloc(&d_Pi_, (long long)d_ * d_ * sizeof(float)));
-    CUDA_CHECK(cudaMemcpy(d_Pi_, jl_.pi_data(),
-                          (long long)d_ * d_ * sizeof(float),
-                          cudaMemcpyHostToDevice));
+    const int BATCH = 8192;
+    const float one = 1.f, zero = 0.f;
 
-    const std::vector<float>& c1d = cb_->c1d();
-    CUDA_CHECK(cudaMalloc(&d_c1d_, K1D_ * sizeof(float)));
-    CUDA_CHECK(cudaMemcpy(d_c1d_, c1d.data(), K1D_ * sizeof(float),
-                          cudaMemcpyHostToDevice));
+    // Temp GPU buffers for one batch
+    float   *d_x, *d_y, *d_r1, *d_r2;
+    int     *d_c1, *d_c2;
+    uint8_t *d_fc;
+    float   *d_dots;
+    CUDA_CHECK(cudaMalloc(&d_x,    (long long)BATCH * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_y,    (long long)BATCH * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_r1,   (long long)BATCH * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_r2,   (long long)BATCH * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_c1,   (long long)BATCH * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_c2,   (long long)BATCH * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_fc,   (long long)BATCH * bpv_));
+    CUDA_CHECK(cudaMalloc(&d_dots, (long long)std::max(K1_, K2_) * BATCH * sizeof(float)));
 
-    float*   d_y_train     = rotate_on_gpu(h_x, n_train);
-    uint8_t* d_codes_train = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_codes_train, (long long)n_train * M_));
+    std::vector<int>     h_code1(n), h_code2(n);
+    std::vector<uint8_t> h_fc_all((long long)n * bpv_);
 
-    launch_primary_encode(d_y_train, d_codes_train, d_c1d_,
-                          n_train, d_, M_, Ds_, K1D_, bits_per_dim_);
-    CUDA_CHECK(cudaDeviceSynchronize());
+    for (int s = 0; s < n; s += BATCH) {
+        int nb = std::min(BATCH, n - s);
 
-    std::vector<float> h_y_train((long long)n_train * d_);
-    CUDA_CHECK(cudaMemcpy(h_y_train.data(), d_y_train,
-                          (long long)n_train * d_ * sizeof(float),
-                          cudaMemcpyDeviceToHost));
+        // H2D
+        CUDA_CHECK(cudaMemcpy(d_x, h_x + (long long)s * d_,
+                              (long long)nb * d_ * sizeof(float), cudaMemcpyHostToDevice));
+        // rotate: d_y = Pi @ d_x
+        CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_N, CUBLAS_OP_N,
+                                 d_, nb, d_, &one, d_Pi_, d_, d_x, d_, &zero, d_y, d_));
+        // L1 assign
+        CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
+                                 K1_, nb, d_, &one,
+                                 d_route1_cents_, d_, d_y, d_, &zero, d_dots, K1_));
+        launch_assign_from_dots(d_dots, d_route1_norms_, d_c1, K1_, nb, nullptr);
+        // L1 residual
+        launch_subtract_centroid(d_y, d_c1, d_route1_cents_, d_r1, nb, d_, nullptr);
+        // L2 assign
+        CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
+                                 K2_, nb, d_, &one,
+                                 d_route2_cents_, d_, d_r1, d_, &zero, d_dots, K2_));
+        launch_assign_from_dots(d_dots, d_route2_norms_, d_c2, K2_, nb, nullptr);
+        // L2 residual
+        launch_subtract_centroid(d_r1, d_c2, d_route2_cents_, d_r2, nb, d_, nullptr);
+        // fine encode
+        launch_fine_encode(d_r2, d_fine_c1d_, d_fc, nb, d_, Kr_, Br_, bpv_, nullptr);
 
-    train_ivf_centroids(h_y_train.data(), d_y_train, n_train);
-    train_codebooks(d_y_train, d_codes_train, n_train);
+        CUDA_CHECK(cudaDeviceSynchronize());
 
-    cudaFree(d_y_train);
-    cudaFree(d_codes_train);
-}
-
-// ── add ───────────────────────────────────────────────────────────────────────
-void JHQHBlockIndex::add(const float* h_x, int n) {
-    if (!cb_) throw std::runtime_error("call train() before add()");
-    if (ntotal_ != 0)
-        throw std::runtime_error("hblock currently supports one add() call");
-
-    float* d_y = rotate_on_gpu(h_x, n);
-
-    // Encode primary codes [N, M]
-    uint8_t* d_pc = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_pc, (long long)n * M_ * sizeof(uint8_t)));
-    launch_primary_encode(d_y, d_pc, d_c1d_,
-                          n, d_, M_, Ds_, K1D_, bits_per_dim_);
-    CUDA_CHECK(cudaDeviceSynchronize());
-
-    // Compute primary residuals [N, d]
-    float* d_resid = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_resid, (long long)n * d_ * sizeof(float)));
-    launch_compute_primary_residual(d_y, d_pc, d_resid, d_c1d_,
-                                    n, d_, M_, Ds_, K1D_, bits_per_dim_);
-    CUDA_CHECK(cudaDeviceSynchronize());
-
-    // Encode coarse residual codes [N, M]
-    uint8_t* d_cc = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_cc, (long long)n * M_ * sizeof(uint8_t)));
-    launch_coarse_residual_encode(d_resid, d_cc, d_c1d_coarse_,
-                                  n, d_, M_, Ds_, K1D_, bits_per_dim_);
-
-    // Encode fine residual codes [N, bpv] + corrections [N]
-    uint8_t* d_rc = nullptr;
-    float*   d_co = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_rc, (long long)n * bpv_ * sizeof(uint8_t)));
-    CUDA_CHECK(cudaMalloc(&d_co, (long long)n * sizeof(float)));
-    launch_fine_residual_encode(d_y, d_pc, d_rc, d_co,
-                                d_c1d_, d_res_c1d_,
-                                n, d_, M_, Ds_, K1D_, Kr_, Br_, bpv_, bits_per_dim_);
-    CUDA_CHECK(cudaDeviceSynchronize());
-
-    cudaFree(d_resid);  // not needed beyond this point
-
-    // IVF assignment and sort
-    int* d_assign = assign_on_gpu(d_y, n);
-    int* d_order  = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_order, (long long)n * sizeof(int)));
-    thrust::device_ptr<int> t_assign(d_assign);
-    thrust::device_ptr<int> t_order(d_order);
-    thrust::sequence(t_order, t_order + n);
-    thrust::sort_by_key(t_assign, t_assign + n, t_order);
-
-    std::vector<int> h_assign(n);
-    CUDA_CHECK(cudaMemcpy(h_assign.data(), d_assign,
-                          (long long)n * sizeof(int), cudaMemcpyDeviceToHost));
-
-    std::vector<int> counts(nlist_, 0);
-    for (int a : h_assign) {
-        if (a < 0 || a >= nlist_) throw std::runtime_error("invalid IVF assignment");
-        counts[a]++;
+        CUDA_CHECK(cudaMemcpy(h_code1.data() + s, d_c1, nb * sizeof(int), cudaMemcpyDeviceToHost));
+        CUDA_CHECK(cudaMemcpy(h_code2.data() + s, d_c2, nb * sizeof(int), cudaMemcpyDeviceToHost));
+        CUDA_CHECK(cudaMemcpy(h_fc_all.data() + (long long)s * bpv_,
+                              d_fc, (long long)nb * bpv_, cudaMemcpyDeviceToHost));
     }
-    std::vector<int> offsets(nlist_ + 1, 0);
-    for (int c = 0; c < nlist_; ++c) offsets[c + 1] = offsets[c] + counts[c];
 
-    CUDA_CHECK(cudaMalloc(&d_list_offsets_, (long long)(nlist_ + 1) * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&d_list_ids_,     (long long)n * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&d_list_res_,     (long long)n * bpv_ * sizeof(uint8_t)));
-    CUDA_CHECK(cudaMalloc(&d_list_corr_,    (long long)n * sizeof(float)));
-    CUDA_CHECK(cudaMemcpy(d_list_offsets_, offsets.data(),
-                          (long long)(nlist_ + 1) * sizeof(int), cudaMemcpyHostToDevice));
+    cudaFree(d_x); cudaFree(d_y); cudaFree(d_r1); cudaFree(d_r2);
+    cudaFree(d_c1); cudaFree(d_c2); cudaFree(d_fc); cudaFree(d_dots);
 
-    // Temporary [N, M] buffers for primary and coarse (IVF order, before transpose)
-    uint8_t* d_list_primary_nm = nullptr;
-    uint8_t* d_list_coarse_nm  = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_list_primary_nm, (long long)n * M_ * sizeof(uint8_t)));
-    CUDA_CHECK(cudaMalloc(&d_list_coarse_nm,  (long long)n * M_ * sizeof(uint8_t)));
+    std::vector<uint8_t>& h_fc = h_fc_all;  // alias for the leaf-building code below
 
-    gather_hblock_storage_kernel<<<(n + 255) / 256, 256>>>(
-        d_order, d_pc, d_cc, d_rc, d_co,
-        d_list_ids_, d_list_primary_nm, d_list_coarse_nm, d_list_res_, d_list_corr_,
-        n, M_, bpv_);
-    CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // 7. Sort vectors by (K1_code, K2_code), then group into leaf blocks
+    // Sort key: code1 * K2 + code2
+    std::vector<int> order(n);
+    std::iota(order.begin(), order.end(), 0);
+    std::stable_sort(order.begin(), order.end(), [&](int a, int b) {
+        long long ka = (long long)h_code1[a] * K2_ + h_code2[a];
+        long long kb = (long long)h_code1[b] * K2_ + h_code2[b];
+        return ka < kb;
+    });
 
-    // Transpose both [N, M] → [M, N]
-    constexpr int TILE = 32;
-    dim3 grid((M_ + TILE - 1) / TILE, ((long long)n + TILE - 1) / TILE);
-    dim3 block(TILE, TILE);
+    // 8. Build leaf blocks and routing table
+    // Vectors are sorted by (code1, code2). Group consecutive vectors into leaf_size blocks.
+    // Each block belongs to one (code1, code2) pair.
 
-    CUDA_CHECK(cudaMalloc(&d_primary_t_, (long long)M_ * n * sizeof(uint8_t)));
-    transpose_uint8_kernel<TILE><<<grid, block>>>(
-        d_list_primary_nm, d_primary_t_, (long long)n, M_);
-    CUDA_CHECK(cudaGetLastError());
+    // First pass: count blocks per pair and compute pair offsets
+    std::vector<int> pair_cnt(K1_ * K2_, 0);
+    {
+        int i = 0;
+        while (i < n) {
+            int c1 = h_code1[order[i]];
+            int c2 = h_code2[order[i]];
+            int j = i;
+            while (j < n && h_code1[order[j]] == c1 && h_code2[order[j]] == c2) ++j;
+            int pair_vecs = j - i;
+            pair_cnt[c1 * K2_ + c2] = (pair_vecs + leaf_size_ - 1) / leaf_size_;
+            i = j;
+        }
+    }
 
-    CUDA_CHECK(cudaMalloc(&d_coarse_t_,  (long long)M_ * n * sizeof(uint8_t)));
-    transpose_uint8_kernel<TILE><<<grid, block>>>(
-        d_list_coarse_nm, d_coarse_t_, (long long)n, M_);
-    CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    std::vector<int> pair_start(K1_ * K2_, 0);
+    int total_blocks = 0;
+    for (int p = 0; p < K1_ * K2_; ++p) {
+        pair_start[p] = total_blocks;
+        total_blocks  += pair_cnt[p];
+    }
+    n_leaf_blocks_ = total_blocks;
 
-    cudaFree(d_list_primary_nm);
-    cudaFree(d_list_coarse_nm);
-    cudaFree(d_assign);
-    cudaFree(d_order);
-    cudaFree(d_y);
-    cudaFree(d_pc);
-    cudaFree(d_cc);
-    cudaFree(d_rc);
-    cudaFree(d_co);
+    // Second pass: fill leaf block arrays
+    std::vector<uint8_t> h_leaf_codes((long long)total_blocks * leaf_size_ * bpv_, 0);
+    std::vector<int>     h_leaf_ids  ((long long)total_blocks * leaf_size_, -1);
+    std::vector<int>     h_leaf_sizes(total_blocks, 0);
+
+    {
+        int i = 0;
+        while (i < n) {
+            int c1 = h_code1[order[i]];
+            int c2 = h_code2[order[i]];
+            int j = i;
+            while (j < n && h_code1[order[j]] == c1 && h_code2[order[j]] == c2) ++j;
+
+            int base_blk = pair_start[c1 * K2_ + c2];
+            for (int vi = i; vi < j; ++vi) {
+                int in_blk     = vi - i;
+                int blk_idx    = base_blk + in_blk / leaf_size_;
+                int pos_in_blk = in_blk % leaf_size_;
+                int orig_id    = order[vi];
+
+                h_leaf_ids  [(long long)blk_idx * leaf_size_ + pos_in_blk] = orig_id;
+                std::memcpy(h_leaf_codes.data() + ((long long)blk_idx * leaf_size_ + pos_in_blk) * bpv_,
+                            h_fc.data()         + (long long)orig_id * bpv_,
+                            bpv_);
+                h_leaf_sizes[blk_idx] = std::max(h_leaf_sizes[blk_idx], pos_in_blk + 1);
+            }
+            i = j;
+        }
+    }
+
+    // 9. Upload to GPU
+    CUDA_CHECK(cudaMalloc(&d_pair_blk_start_, (long long)K1_ * K2_ * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_pair_blk_count_, (long long)K1_ * K2_ * sizeof(int)));
+    CUDA_CHECK(cudaMemcpy(d_pair_blk_start_, pair_start.data(),
+                          (long long)K1_ * K2_ * sizeof(int), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_pair_blk_count_, pair_cnt.data(),
+                          (long long)K1_ * K2_ * sizeof(int), cudaMemcpyHostToDevice));
+
+    CUDA_CHECK(cudaMalloc(&d_leaf_codes_,
+                          (long long)total_blocks * leaf_size_ * bpv_));
+    CUDA_CHECK(cudaMalloc(&d_leaf_ids_,
+                          (long long)total_blocks * leaf_size_ * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_leaf_sizes_, (long long)total_blocks * sizeof(int)));
+
+    CUDA_CHECK(cudaMemcpy(d_leaf_codes_, h_leaf_codes.data(),
+                          (long long)total_blocks * leaf_size_ * bpv_,
+                          cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_leaf_ids_, h_leaf_ids.data(),
+                          (long long)total_blocks * leaf_size_ * sizeof(int),
+                          cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_leaf_sizes_, h_leaf_sizes.data(),
+                          (long long)total_blocks * sizeof(int),
+                          cudaMemcpyHostToDevice));
 
     ntotal_ = n;
-    alloc_workspace(batch_size_);
+    printf("  Built %d leaf blocks (leaf_size=%d, K1=%d, K2=%d)\n",
+           total_blocks, leaf_size_, K1_, K2_);
+
+    alloc_workspace();
 }
 
-// ── search ────────────────────────────────────────────────────────────────────
-void JHQHBlockIndex::search(const float* h_q, int nq, int k,
-                             float* h_dists, int* h_labels) const {
-    if (ntotal_ == 0) throw std::runtime_error("index is empty");
+// ── Workspace allocation ──────────────────────────────────────────────────────
+void HBlockIndex::alloc_workspace() {
+    const int B  = batch_size_;
+    const int nc = ck3_ * leaf_size_;
+
+    if (ws_.h_q_pinned) cudaFreeHost(ws_.h_q_pinned);
+    cudaFree(ws_.d_q_batch);  cudaFree(ws_.d_q_rot);
+    cudaFree(ws_.d_q_r1);     cudaFree(ws_.d_q_r2);
+    cudaFree(ws_.d_dots1);    cudaFree(ws_.d_dots2);
+    cudaFree(ws_.d_top1_ids); cudaFree(ws_.d_top2_ids);
+    cudaFree(ws_.d_leaf_sel); cudaFree(ws_.d_leaf_cnt);
+    cudaFree(ws_.d_lut_fine);
+    cudaFree(ws_.d_fine_dists); cudaFree(ws_.d_fine_ids);
+    cudaFree(ws_.d_final_dists); cudaFree(ws_.d_final_ids);
+
+    CUDA_CHECK(cudaMallocHost(&ws_.h_q_pinned,    (long long)B * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_batch,          (long long)B * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_rot,            (long long)B * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_r1,             (long long)B * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_r2,             (long long)B * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_dots1,            (long long)B * K1_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_dots2,            (long long)B * K2_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_top1_ids,         (long long)B * ck1_ * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_top2_ids,         (long long)B * ck2_ * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_leaf_sel,         (long long)B * ck3_ * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_leaf_cnt,         (long long)B * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_lut_fine,         (long long)B * d_ * Kr_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_fine_dists,       (long long)B * nc * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_fine_ids,         (long long)B * nc * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_final_dists,      (long long)B * 1024 * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_final_ids,        (long long)B * 1024 * sizeof(int)));
+
+    ws_.batch_cap = B;
+    if (!ws_.stream) {
+        CUDA_CHECK(cudaStreamCreate(&ws_.stream));
+    }
+    CUBLAS_CHECK(cublasSetStream(cublas_, ws_.stream));
+}
+
+// ── Search ────────────────────────────────────────────────────────────────────
+void HBlockIndex::search(const float* h_q, int nq, int k,
+                          float* h_dists, int* h_ids) const
+{
+    if (ntotal_ == 0) throw std::runtime_error("HBlock index is empty");
 
     search_hblock(cublas_,
-                  d_Pi_, d_c1d_, d_c1d_coarse_, d_res_c1d_,
-                  d_centroids_, d_cent_norms_,
-                  d_list_offsets_, d_list_ids_,
-                  d_primary_t_, d_coarse_t_,
-                  d_list_res_, d_list_corr_,
+                  d_Pi_,
+                  d_route1_cents_, d_route1_norms_,
+                  d_route2_cents_, d_route2_norms_,
+                  d_fine_c1d_,
+                  d_pair_blk_start_, d_pair_blk_count_,
+                  d_leaf_codes_, d_leaf_ids_, d_leaf_sizes_,
                   h_q,
-                  nq, d_, M_, Ds_, K1D_, Kr_,
-                  nlist_, nprobe_,
-                  Br_, bpv_, bits_per_dim_,
-                  alpha1_, alpha2_, k,
-                  batch_size_, ntotal_,
+                  nq, d_, K1_, K2_, Kr_, Br_, bpv_,
+                  leaf_size_, ck1_, ck2_, ck3_, k,
+                  batch_size_,
                   ws_,
-                  h_dists, h_labels);
+                  h_dists, h_ids);
 }
 
-} // namespace jhq_gpu
+} // namespace hblock

@@ -40,7 +40,6 @@ METHOD_NAME = {
     "jhq_v11_outerlut":    "JHQ-GPU-v11-OuterLUT",
     "jhq_v12_transposed":  "JHQ-GPU-v12-Transposed",
     "hblock_v1":           "HBlock-v1",
-    "hblock_v2":           "HBlock-v2",
 }
 
 JHQ_IVF_VERSIONS = {
@@ -53,7 +52,7 @@ JHQ_BATCHED_VERSIONS = {
     "jhq_v7_spin_sync", "jhq_v8_timing",
     "jhq_v10_bytelut", "jhq_v11_outerlut", "jhq_v12_transposed",
 }
-HBLOCK_VERSIONS = {"hblock_v1", "hblock_v2"}
+HBLOCK_VERSIONS = {"hblock_v1"}
 ALL_IVF_VERSIONS = JHQ_IVF_VERSIONS | HBLOCK_VERSIONS
 
 
@@ -98,13 +97,16 @@ def main():
     ap.add_argument("--Br", type=int, default=4)
     ap.add_argument("--k", type=int, default=10)
     ap.add_argument("--alpha", type=float, default=4.0)
-    ap.add_argument("--alpha2", type=float, default=2.0,
-                    help="hblock_v1 coarse cascade ratio (ck2/k)")
     ap.add_argument("--alphas", default=",".join(str(x) for x in DEFAULT_ALPHAS))
     ap.add_argument("--nlist", type=int, default=1024)
     ap.add_argument("--nprobes", default=",".join(str(x) for x in DEFAULT_NPROBES))
     ap.add_argument("--ivf-iters", type=int, default=8)
     ap.add_argument("--batch-size", type=int, default=256)
+    # hblock_v1-specific
+    ap.add_argument("--hblock-K1", type=int, default=64, dest="hblock_K1")
+    ap.add_argument("--hblock-K2", type=int, default=128, dest="hblock_K2")
+    ap.add_argument("--hblock-ck1", type=int, default=4, dest="hblock_ck1")
+    ap.add_argument("--hblock-ck3", type=int, default=64, dest="hblock_ck3")
     args = ap.parse_args()
 
     repo = os.path.expanduser("~/JHQ_GPU")
@@ -122,13 +124,12 @@ def main():
         if args.version in ALL_IVF_VERSIONS:
             nprobe = int(val)
             if args.version in HBLOCK_VERSIONS:
+                # hblock_v1: sweep ck2 (= nprobe in this context)
                 cmd = [
                     demo, args.base, args.query, args.gt,
-                    str(args.M), str(args.B), str(args.Br),
-                    str(args.alpha), str(args.alpha2),
-                    str(args.k),
-                    str(args.nlist), str(nprobe), str(args.ivf_iters),
-                    str(args.batch_size),
+                    str(args.hblock_K1), str(args.hblock_K2),
+                    str(args.hblock_ck1), str(nprobe), str(args.hblock_ck3),
+                    str(args.k), str(args.batch_size),
                 ]
             else:
                 cmd = [

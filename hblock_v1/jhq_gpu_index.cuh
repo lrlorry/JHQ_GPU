@@ -5,99 +5,83 @@
 #include <memory>
 #include <vector>
 
-#include "cpu/codebook.h"
 #include "cpu/jl_transform.h"
 #include "hblock_v1/search.cuh"
 
-namespace jhq_gpu {
+namespace hblock {
 
-// JHQHBlockIndex — hierarchical block index with cascaded residual quantization.
+// ── HBlock hierarchical block index ──────────────────────────────────────────
 //
-// Architecture (three-stage cascade):
-//   Stage 1: IVF primary scan  (d_primary_t [M,N], same as v12) → top-ck1
-//   Stage 2: Coarse cascade    (d_coarse_t  [M,N], same layout)  → top-ck2
-//   Stage 3: Fine residual ref (d_list_res  [N,bpv], same as v12) → top-k
+// Architecture (2 routing levels + leaf):
 //
-// Coarse codebook (c1d_coarse_):
-//   Same structure as primary c1d: K1D values trained by 1D k-means on
-//   primary residuals r_y = y_rot - primary_hat_y.
-//   Encoding: M bytes/vector, 1 byte per sub-quantizer (same as primary).
-//   Training: independent of fine codebook res_c1d; both trained on r_y.
+//   L1 routing  (K1 centroids, GEMM-based) → identifies coarse group
+//   └─ L2 routing  (K2 centroids, GEMM-based) → identifies sub-group
+//         └─ Leaf block  (leaf_size=128 vectors × bpv fine-residual bytes)
 //
-// Memory layout:
-//   d_primary_t_ : [M, N]       — primary codes in IVF order (transposed)
-//   d_coarse_t_  : [M, N]       — coarse codes in IVF order (transposed)
-//   d_list_res_  : [N, bpv]     — fine residual codes in IVF order
-//   d_list_corr_ : [N]          — fine correction terms
+// Routing uses 2-level flat IVF (same GEMM mechanism as v12's IVF).
+// Fine code: scalar PQ on the L1+L2 residual (Kr=16, Br=4 bits/dim → 384 B/vec).
+// Data is organized physically: vectors sorted by (L1_code, L2_code), then grouped
+// into leaf_size-vector blocks. Routing table maps (L1, L2) → leaf block range.
 //
-// New vs v12:
-//   d_coarse_t_ (one extra [M,N] buffer)
-//   c1d_coarse_ + d_c1d_coarse_ (K1D floats = 8 bytes — negligible)
-//   d_topck1_*, d_topck2_* in SearchWorkspace (two topck buffers)
-
-class JHQHBlockIndex {
+// Designed for massive datasets where leaf blocks are fetched from storage on demand.
+// On Vogue-768 all data stays in GPU memory; the architecture is validated here.
+class HBlockIndex {
 public:
     struct Params {
-        int   M          = 96;
-        int   B          = 8;
-        int   Br         = 4;
-        float alpha1     = 4.0f;   // ck1 = max(k, ceil(alpha1 * k))
-        float alpha2     = 2.0f;   // ck2 = max(k, ceil(alpha2 * k)), ck2 <= ck1
-        int   nlist      = 1024;
-        int   nprobe     = 8;
-        int   ivf_iters  = 8;
-        int   batch_size = 256;
-        int   seed       = 42;
+        int   K1        = 64;    // L1 routing cells (must be power of 2; uses log2(K1) JL dims)
+        int   K2        = 128;   // L2 routing cells (must be power of 2; uses log2(K2) JL dims)
+        int   Kr        = 16;    // fine residual scalar PQ levels (Lloyd-Max, analytical)
+        int   Br        = 4;     // fine bits per dimension (bpv = d*Br/8 = 384 for d=768)
+        int   leaf_size = 128;   // vectors per leaf block (= SM fine-compute block size)
+        int   ck1       = 8;     // L1 probes
+        int   ck2       = 32;    // L2 probes
+        int   ck3       = 256;   // leaf blocks probed per query (ck3 × 128 = candidates)
+        int   batch_size = 1024; // queries per GPU batch (sized for 8 GB GPU)
+        int   seed      = 42;
     };
 
-    JHQHBlockIndex(int d, Params p);
-    ~JHQHBlockIndex();
+    HBlockIndex(int d, Params p);
+    ~HBlockIndex();
 
-    void  train (const float* h_x, int n_train);
-    void  add   (const float* h_x, int n);
-    void  search(const float* h_q, int nq, int k,
-                 float* h_dists, int* h_labels) const;
+    void train(const float* h_x, int n_train);
+    void add  (const float* h_x, int n);
+    void search(const float* h_q, int nq, int k,
+                float* h_dists, int* h_ids) const;
 
     int ntotal() const { return ntotal_; }
     int dim()    const { return d_; }
 
 private:
-    int   d_, M_, B_, Br_, Ds_, K1D_, bpv_, bits_per_dim_;
-    int   nlist_, nprobe_, ivf_iters_, batch_size_;
-    float alpha1_, alpha2_;
-    int   Kr_;
-    int   ntotal_ = 0;
+    int d_, Kr_, Br_, bpv_, leaf_size_, K1_, K2_, ck1_, ck2_, ck3_;
+    int batch_size_;
+    int ntotal_ = 0;
+    int n_leaf_blocks_ = 0;
 
-    JLTransform                jl_;
-    std::unique_ptr<LloydMaxCodebook> cb_;
-    std::vector<float>         c1d_coarse_;    // [K1D] coarse residual codebook
-    std::vector<float>         res_c1d_;       // [Kr]  fine residual codebook
-    std::vector<float>         centroids_;
+    JLTransform jl_;
+    std::vector<float> fine_c1d_;   // [Kr] sorted fine centroids
+    std::vector<float> h_route1_;   // [K1, d] L1 routing centroids (host copy)
+    std::vector<float> h_route2_;   // [K2, d] L2 routing centroids (host copy)
 
-    float*   d_Pi_            = nullptr;
-    float*   d_c1d_           = nullptr;       // [K1D] primary
-    float*   d_c1d_coarse_    = nullptr;       // [K1D] coarse
-    float*   d_res_c1d_       = nullptr;       // [Kr]  fine
-    float*   d_centroids_     = nullptr;
-    float*   d_cent_norms_    = nullptr;
+    // GPU index data
+    float*   d_Pi_              = nullptr;
+    float*   d_route1_cents_    = nullptr;  // [K1, d]
+    float*   d_route1_norms_    = nullptr;  // [K1]
+    float*   d_route2_cents_    = nullptr;  // [K2, d]
+    float*   d_route2_norms_    = nullptr;  // [K2]
+    float*   d_fine_c1d_        = nullptr;  // [Kr]
+    int*     d_pair_blk_start_  = nullptr;  // [K1 * K2]
+    int*     d_pair_blk_count_  = nullptr;  // [K1 * K2]
+    uint8_t* d_leaf_codes_      = nullptr;  // [n_leaf_blocks, leaf_size, bpv]
+    int*     d_leaf_ids_        = nullptr;  // [n_leaf_blocks, leaf_size]
+    int*     d_leaf_sizes_      = nullptr;  // [n_leaf_blocks]
 
-    int*     d_list_offsets_  = nullptr;
-    int*     d_list_ids_      = nullptr;
-    uint8_t* d_primary_t_     = nullptr;  // [M, N] transposed primary codes
-    uint8_t* d_coarse_t_      = nullptr;  // [M, N] transposed coarse codes
-    uint8_t* d_list_res_      = nullptr;  // [N, bpv]
-    float*   d_list_corr_     = nullptr;  // [N]
+    mutable SearchWorkspace ws_;
+    mutable cublasHandle_t  cublas_;
 
-    mutable SearchWorkspace  ws_;
-    mutable cublasHandle_t   cublas_;
-
-    float* rotate_on_gpu(const float* h_x, int n) const;
-    void   train_ivf_centroids(const float* h_y_train,
-                               const float* d_y_train, int n_train);
-    void   train_codebooks(const float* d_y_train,
-                           const uint8_t* d_codes_train, int n_train);
-    int*   assign_on_gpu(const float* d_y, int n) const;
-    void   alloc_workspace(int batch_size);
+    // Internal helpers
+    void alloc_workspace();
+    void upload_centroids(std::vector<float>& cents,
+                          float*& d_cents, float*& d_norms, int K);
 };
 
-} // namespace jhq_gpu
+} // namespace hblock
