@@ -149,3 +149,84 @@ demo_hblock_v1 <base> <query> <gt> [K1=64] [K2=128] [ck1=4] [ck2=16] [ck3=64] [k
 2. **3层路由**：L1 表常驻 L2，L2/L3 按需载入，覆盖 TB 级数据集
 3. **异步 copy**：叶子块从 host/NVMe 异步预取
 4. **CUDA Graph**：捕获完整搜索 pipeline 为 CUDA Graph
+
+---
+
+## 9. LeafFine 性能瓶颈分析（hblock_v2）
+
+### 现状
+
+| 参数 | 值 |
+|------|----|
+| B (batch) | 256 |
+| ck3 | 256 |
+| leaf_size | 128 |
+| bpv | 384 bytes |
+| LeafFine 耗时 | ~43ms |
+| 有效 HBM 带宽 | ~74 GB/s（峰值 2TB/s 的 3.7%）|
+
+**根因**：B×ck3 = 65536 个 CUDA block 同时对 403MB leaf_codes 发出随机读请求。
+每个 leaf block 平均被 ~8 个 query 各读一次，但 A100 L2=40MB << 403MB，全部是 HBM miss。
+数据总量 3.2GB，全随机，实际有效带宽极低。
+
+已尝试：
+- `sort_leaf_sel`（query 内按 leaf_idx 排序）→ **无效**，因跨 query 的 inter-query 随机性仍然存在
+
+### 方案对比
+
+#### 方案 A：全局跨 query 排序 + 转置 kernel（推荐）
+
+原理：把 leaf_sel[B, ck3] 扁平化为 65536 个 `(leaf_idx, bqi, slot)` 三元组，
+GPU radix sort 按 leaf_idx 全局排序，然后 1D kernel 顺序处理——
+同一 leaf_idx 的 ~8 个 query 请求连续，leaf block 进 shared memory 只读一次，
+对 8 个 query 用各自 LUT 串行计算。
+
+数量：
+- leaf_codes 读：8192 blocks × 49KB = **403MB 顺序读**（vs 3.2GB 随机）
+- LUT 读：256 queries × 49KB = **12MB，L2 常驻**
+- 理论 LeafFine：403MB / 2TB/s ≈ 0.2ms + 计算 ≈ **1–3ms**
+
+实现要点：
+1. CUB DeviceRadixSort 排 65536 条 (key=leaf_idx, val=packed(bqi,slot))
+2. CUB DeviceRunLengthEncode 找 unique leaf_idx 及各自 count
+3. CUB DeviceExclusiveScan 得到 group offset
+4. 新 kernel：grid=n_unique_leaf_blocks, blockDim=leaf_size；shared memory 存 leaf codes (48KB)，对每个命中的 query 串行计算距离
+
+预期收益：LeafFine 43ms → 1–3ms，约 **20–40x 加速**
+
+#### 方案 B：减少 ck3（参数调整，立即可试）
+
+ck3 线性缩减读量，有效带宽不变（仍是随机读）：
+
+| ck3 | 总读量 | 预期 LeafFine | 说明 |
+|-----|--------|--------------|------|
+| 256 | 3.2GB | 43ms | 当前 |
+| 128 | 1.6GB | ~21ms | Recall 会下降 |
+| 64  | 0.8GB | ~11ms | Recall 下降更多 |
+
+治标不治本，适合快速测 Recall/QPS trade-off 曲线。
+
+#### 方案 C：减少 leaf_size（结论：不值得）
+
+减小 leaf_size 会降低每次随机读的粒度，但：
+- 若 ck3 不变 → candidates 减少，Recall 掉
+- 若 ck3 同比增加 → 随机请求数同比增加，总延迟不变甚至更差
+- GPU 随机读的代价是 latency × 请求数，不是 bandwidth × 数据量
+
+leaf block 平均 fill rate ≈ 932K / (n_blocks × 128) ≈ **89%**（k-means 大致均衡），
+11% 是零填充，影响 GPU compute（INF slot）但不影响 HBM 瓶颈。
+
+### Recall 优化方向（独立于延迟）
+
+**Per-block fine codebook**：当前 fine PQ 的 1D centroids `d_fine_c1d` 是全局共享的（在所有向量的 L2 残差上训练）。
+可以为每个 (c1,c2) 对单独训练一套 fine 码本，更贴合该 block 的局部残差分布。
+
+代价：
+- 存储：8192 blocks × 768 dims × Kr × 4 bytes = 8192 × 49KB ≈ **402MB**
+- 搜索时 LUT 需 per-block 构建（不再是全局一张表）
+
+收益：相同 ck3 下 Recall 提升，不影响 LeafFine 延迟。
+
+**注意**：per-block 随机旋转矩阵（768×768）不可行——
+① 存储 8192×2.25MB = 18.4GB；② 随机旋转不改变各向同性 Gaussian 的统计性质，PQ 质量不提升。
+轻量替代（sign-flip + permutation，192B/block）存储可行但同样对质量无帮助。
