@@ -124,6 +124,42 @@ __global__ void build_fine_lut_kernel(
     }
 }
 
+// ── Sort leaf_sel rows by leaf_idx (ascending) ───────────────────────────────
+// Converts routing-score order → memory-address order so the leaf compute kernel
+// accesses leaf_codes sequentially within each query. ck3 must be a power of 2.
+// Grid: (B), blockDim: ck3, shared: ck3 ints (1KB for ck3=256).
+__global__ void sort_leaf_sel_kernel(
+    int*       leaf_sel,   // [B, ck3]
+    const int* leaf_cnt,   // [B]
+    int ck3)
+{
+    int bqi = blockIdx.x;
+    int tid = threadIdx.x;
+
+    int  n_sel = leaf_cnt[bqi];
+    int* row   = leaf_sel + (long long)bqi * ck3;
+
+    extern __shared__ int s[];
+    s[tid] = (tid < n_sel) ? row[tid] : INT_MAX;
+    __syncthreads();
+
+    // Bitonic sort — ascending
+    for (int k = 2; k <= ck3; k <<= 1) {
+        for (int j = k >> 1; j > 0; j >>= 1) {
+            int ij = tid ^ j;
+            if (ij > tid) {
+                bool asc = ((tid & k) == 0);
+                if (asc ? (s[tid] > s[ij]) : (s[tid] < s[ij])) {
+                    int tmp = s[tid]; s[tid] = s[ij]; s[ij] = tmp;
+                }
+            }
+            __syncthreads();
+        }
+    }
+
+    if (tid < n_sel) row[tid] = s[tid];
+}
+
 // ── Leaf block fine distance computation (v2) ─────────────────────────────────
 // Grid: (B, ck3) — one block per (query, leaf-slot) pair.
 // No shared memory: LUT is read via __ldg from L2 cache (same query's 256 slots
@@ -257,8 +293,8 @@ void search_hblock(
 
     const int leaf_cap_per_pair = std::max(1, ck3 / (ck1 * ck2));
 
-    // Per-step timing events: 12 markers for 11 steps
-    static const int NE = 12;
+    // Per-step timing events: 13 markers for 12 steps
+    static const int NE = 13;
     cudaEvent_t e[NE];
     for (int i = 0; i < NE; i++) CUDA_CHECK(cudaEventCreate(&e[i]));
     float step_ms[NE - 1] = {};
@@ -337,6 +373,12 @@ void search_hblock(
         CUDA_CHECK(cudaGetLastError());
         cudaEventRecord(e[7], ws.stream);
 
+        // Sort leaf_sel by leaf_idx → sequential HBM access in LeafFine
+        sort_leaf_sel_kernel<<<B, ck3, (long long)ck3 * sizeof(int), ws.stream>>>(
+            ws.d_leaf_sel, ws.d_leaf_cnt, ck3);
+        CUDA_CHECK(cudaGetLastError());
+        cudaEventRecord(e[8], ws.stream);
+
         // Fine LUT
         {
             long long tot = (long long)B * d * Kr;
@@ -345,7 +387,7 @@ void search_hblock(
                 ws.d_q_r2, d_fine_c1d, ws.d_lut_fine, B, d, Kr);
             CUDA_CHECK(cudaGetLastError());
         }
-        cudaEventRecord(e[8], ws.stream);
+        cudaEventRecord(e[9], ws.stream);
 
         // Leaf fine compute — 2D grid: (B, ck3) blocks, no shared memory
         leaf_fine_compute_kernel<<<dim3(B, ck3), leaf_size, 0, ws.stream>>>(
@@ -355,7 +397,7 @@ void search_hblock(
             ws.d_fine_dists, ws.d_fine_ids,
             ck3, leaf_size, bpv, d, Kr, Br);
         CUDA_CHECK(cudaGetLastError());
-        cudaEventRecord(e[9], ws.stream);
+        cudaEventRecord(e[10], ws.stream);
 
         // Final top-k
         final_topk_kernel<<<B, BLOCK, topk_smem, ws.stream>>>(
@@ -363,7 +405,7 @@ void search_hblock(
             ws.d_final_dists, ws.d_final_ids,
             n_cands, k, B);
         CUDA_CHECK(cudaGetLastError());
-        cudaEventRecord(e[10], ws.stream);
+        cudaEventRecord(e[11], ws.stream);
 
         // D2H
         CUDA_CHECK(cudaMemcpyAsync(h_out_ids   + (long long)qoff * k,
@@ -374,7 +416,7 @@ void search_hblock(
                                    ws.d_final_dists,
                                    (long long)Bq * k * sizeof(float),
                                    cudaMemcpyDeviceToHost, ws.stream));
-        cudaEventRecord(e[11], ws.stream);
+        cudaEventRecord(e[12], ws.stream);
     }
 
     // Spin-wait
@@ -385,7 +427,7 @@ void search_hblock(
     static const char* snames[] = {
         "H2D", "Rotate", "L1 GEMM+topk", "L1 residual",
         "L2 GEMM+topk", "L2 residual", "GatherLeaf",
-        "FineLUT", "LeafFine", "FinalTopk", "D2H"
+        "SortLeaf", "FineLUT", "LeafFine", "FinalTopk", "D2H"
     };
     float total = 0.f;
     for (int i = 0; i < NE - 1; i++) {
