@@ -191,6 +191,7 @@ __global__ void leaf_fine_compute_kernel(
                     ri = (int)rc_base[j * leaf_size + v];
                 }
                 fd += s_lut[j * Kr + ri];
+            }
             my_dists[v] = fd;
             my_ids[v]   = leaf_ids[(long long)leaf_idx * leaf_size + v];
         }
