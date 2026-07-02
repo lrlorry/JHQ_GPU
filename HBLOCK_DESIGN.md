@@ -339,3 +339,56 @@ query 到来
 // 3. 顺序切 batch → search
 ```
 不用改任何 GPU kernel，直接验证 leaf block overlap 的收益。
+
+### 思路 C：GPU 专用 Leaf Cache 模块（解耦设计）
+
+**动机**：Leaf block 全部等大（leaf_size × bpv = 48KB），是最理想的 fixed-size buffer pool 场景，
+不需要处理内存碎片，管理极简单。可以把 leaf 存取完全解耦成一个独立模块，路由模块只负责输出需要哪些 leaf_idx，Leaf Cache 模块负责"给数据"。
+
+**整体架构**：
+```
+┌─────────────────────────────────────────────────────┐
+│                  HBlock Search Pipeline               │
+├─────────────┬───────────────────────────────────────┤
+│ Routing     │ L1/L2 GEMM → gather leaf_sel           │
+│ Module      │ 输出：leaf_idx 列表                    │
+├─────────────┼───────────────────────────────────────┤
+│ Leaf Cache  │ Cuckoo filter（presence check）        │
+│ Module      │ Hot set buffer（HBM，~50-100MB）       │
+│ (NEW)       │ Eviction policy（FIFO / LRU）          │
+│             │ Async prefetch stream                  │
+├─────────────┼───────────────────────────────────────┤
+│ Leaf Compute│ 转置 kernel：leaf block → 所有 query   │
+│ Module      │ 输入来自 Leaf Cache，不直接读 leaf_codes│
+└─────────────┴───────────────────────────────────────┘
+```
+
+**Cuckoo Filter 做 presence check**：
+- 8192 个 leaf block，fingerprint 8-bit，bucket size 4
+- 总大小：~16KB，全程 L2 命中
+- 每次 lookup：2 次内存访问，高度并行
+- 支持删除（比 Bloom filter 优越的地方），eviction 时可以同步删 filter 里的记录
+- false positive rate ~1%：误判为"在缓存"，实际取数据时发现不对，fallback 到 HBM fetch
+
+**Hot set buffer**：
+- 在 GPU HBM 里划一块专用区域（如 50MB ≈ 1000 个 leaf block）
+- 直接映射（leaf_idx % n_slots → slot）或组相联
+- 50MB < A100 L2（40MB）…实际需要更小，约 30MB ≈ 600 个 leaf block 才能稳定 L2 驻留
+- 与 similarity-aware batching 叠加：同一 L1 queue 的连续 batch 访问同 256 个 leaf block（12.5MB），
+  全部 L2 驻留，后续 batch 几乎零 HBM 读
+
+**Async Prefetch**：
+```
+batch N routing 完成 → 得到 leaf_sel
+→ 查 cuckoo filter → 找出 miss 的 leaf_idx
+→ 在 prefetch stream 上异步发起 HBM → hot buffer copy
+→ batch N compute 在 compute stream 上开始（与 prefetch overlap）
+→ batch N+1 routing 同时进行
+```
+
+**为什么完全解耦是对的**：
+- Leaf block 等大 → buffer pool 管理零碎片，trivial free list
+- 路由模块只输出 leaf_idx 列表，不关心数据从哪来
+- Leaf Cache 可以单独演进（换 eviction 策略、换 prefetch 算法）
+- Leaf Compute 只消费数据，不关心 cache 细节
+- 未来扩展到 NVMe/Host memory 时，只需改 Leaf Cache 模块
