@@ -5,8 +5,6 @@
 #include "common/cuda_utils.cuh"
 
 #include <cub/device/device_radix_sort.cuh>
-#include <cub/device/device_run_length_encode.cuh>
-#include <cub/device/device_scan.cuh>
 
 #include <algorithm>
 #include <cmath>
@@ -85,8 +83,6 @@ HBlockIndex::~HBlockIndex() {
     // v5 sort buffers
     cudaFree(ws_.d_pair_keys);   cudaFree(ws_.d_pair_vals);
     cudaFree(ws_.d_pair_keys_s); cudaFree(ws_.d_pair_vals_s);
-    cudaFree(ws_.d_uniq_leaves); cudaFree(ws_.d_seg_count);
-    cudaFree(ws_.d_seg_start);   cudaFree(ws_.d_n_uniq);
     cudaFree(ws_.d_cub_tmp);
 }
 
@@ -280,10 +276,9 @@ void HBlockIndex::add(const float* h_x, int n) {
 }
 
 void HBlockIndex::alloc_workspace() {
-    const int B        = batch_size_;
-    const int nc       = ck3_ * leaf_size_;
-    const int n_pairs  = B * ck3_;
-    const int n_lf_max = n_leaf_blocks_;
+    const int B       = batch_size_;
+    const int nc      = ck3_ * leaf_size_;
+    const int n_pairs = B * ck3_;
 
     // Free existing buffers
     if (ws_.h_q_pinned) cudaFreeHost(ws_.h_q_pinned);
@@ -297,8 +292,6 @@ void HBlockIndex::alloc_workspace() {
     cudaFree(ws_.d_final_dists); cudaFree(ws_.d_final_ids);
     cudaFree(ws_.d_pair_keys);   cudaFree(ws_.d_pair_vals);
     cudaFree(ws_.d_pair_keys_s); cudaFree(ws_.d_pair_vals_s);
-    cudaFree(ws_.d_uniq_leaves); cudaFree(ws_.d_seg_count);
-    cudaFree(ws_.d_seg_start);   cudaFree(ws_.d_n_uniq);
     cudaFree(ws_.d_cub_tmp);
 
     // Standard buffers
@@ -319,34 +312,18 @@ void HBlockIndex::alloc_workspace() {
     CUDA_CHECK(cudaMalloc(&ws_.d_final_dists,      (long long)B * 1024 * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&ws_.d_final_ids,        (long long)B * 1024 * sizeof(int)));
 
-    // v5: sort / RLE / scan buffers
+    // v5: global sort buffers (leaf_id sort → L2 reuse in LeafFine)
     CUDA_CHECK(cudaMalloc(&ws_.d_pair_keys,   (long long)n_pairs * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_pair_vals,   (long long)n_pairs * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_pair_keys_s, (long long)n_pairs * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_pair_vals_s, (long long)n_pairs * sizeof(int)));
-    // +2: RLE may emit n_leaf_blocks+1 entries if INT_MAX sentinel group exists
-    CUDA_CHECK(cudaMalloc(&ws_.d_uniq_leaves, (long long)(n_lf_max + 2) * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_seg_count,   (long long)(n_lf_max + 2) * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_seg_start,   (long long)(n_lf_max + 2) * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_n_uniq,      sizeof(int)));
-    ws_.n_leaf_max = n_lf_max;
 
-    // Compute CUB temp storage size (dry run with nullptr)
-    size_t sort_bytes = 0, rle_bytes = 0, scan_bytes = 0;
+    // CUB temp storage (sort only)
     cub::DeviceRadixSort::SortPairs(
-        nullptr, sort_bytes,
+        nullptr, ws_.cub_bytes,
         (const int*)nullptr, (int*)nullptr,
         (const int*)nullptr, (int*)nullptr,
         n_pairs, 0, 30);
-    cub::DeviceRunLengthEncode::Encode(
-        nullptr, rle_bytes,
-        (const int*)nullptr, (int*)nullptr, (int*)nullptr, (int*)nullptr,
-        n_pairs);
-    cub::DeviceScan::ExclusiveSum(
-        nullptr, scan_bytes,
-        (const int*)nullptr, (int*)nullptr,
-        n_lf_max);
-    ws_.cub_bytes = std::max({sort_bytes, rle_bytes, scan_bytes});
     CUDA_CHECK(cudaMalloc(&ws_.d_cub_tmp, ws_.cub_bytes));
 
     ws_.batch_cap = B;

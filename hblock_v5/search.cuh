@@ -28,18 +28,13 @@ struct SearchWorkspace {
     float*   d_final_dists = nullptr;  // [B, k]
     int*     d_final_ids   = nullptr;  // [B, k]
 
-    // v5: global sort buffers for transposed LeafFine
+    // v5: global sort buffers (replaces per-query bitonic sort)
     int*     d_pair_keys   = nullptr;  // [B*ck3] sort input:  leaf_block_id
     int*     d_pair_vals   = nullptr;  // [B*ck3] sort input:  flat_idx = q*ck3+slot
     int*     d_pair_keys_s = nullptr;  // [B*ck3] sort output: sorted leaf_block_ids
     int*     d_pair_vals_s = nullptr;  // [B*ck3] sort output: sorted flat_idx
-    int*     d_uniq_leaves = nullptr;  // [n_leaf_max] unique leaf ids (RLE output)
-    int*     d_seg_count   = nullptr;  // [n_leaf_max] queries per unique leaf
-    int*     d_seg_start   = nullptr;  // [n_leaf_max] exclusive prefix sum of seg_count
-    int*     d_n_uniq      = nullptr;  // [1] number of unique leaves (device scalar)
     void*    d_cub_tmp     = nullptr;  // CUB temp storage
     size_t   cub_bytes     = 0;
-    int      n_leaf_max    = 0;        // = n_leaf_blocks (set by alloc_workspace)
 
     cudaStream_t stream = nullptr;
 };

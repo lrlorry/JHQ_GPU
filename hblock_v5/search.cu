@@ -2,8 +2,6 @@
 #include "common/cuda_utils.cuh"
 
 #include <cub/device/device_radix_sort.cuh>
-#include <cub/device/device_run_length_encode.cuh>
-#include <cub/device/device_scan.cuh>
 
 #include <algorithm>
 #include <cmath>
@@ -128,94 +126,81 @@ __global__ void build_fine_lut_kernel(
     }
 }
 
-// ── v5: Build (leaf_id, flat_idx) pairs for global sort ──────────────────────
-// flat_idx = q * ck3 + slot encodes both query and slot.
+// ── v5: Build (leaf_id, flat_idx) pairs ──────────────────────────────────────
 __global__ void build_pairs_kernel(
-    const int* __restrict__ leaf_sel,  // [B, ck3]
-    const int* __restrict__ leaf_cnt,  // [B]
-    int* pair_keys,                    // [B*ck3] output: leaf_block_id
-    int* pair_vals,                    // [B*ck3] output: flat_idx
+    const int* __restrict__ leaf_sel,
+    const int* __restrict__ leaf_cnt,
+    int* pair_keys,   // output: leaf_block_id
+    int* pair_vals,   // output: flat_idx = q*ck3+slot
     int B, int ck3)
 {
     int flat = blockIdx.x * blockDim.x + threadIdx.x;
     if (flat >= B * ck3) return;
     int q    = flat / ck3;
     int slot = flat % ck3;
-    // Mark invalid slots (beyond leaf_cnt) with INT_MAX so they sort to end
-    int leaf = (slot < leaf_cnt[q]) ? leaf_sel[q * ck3 + slot] : INT_MAX;
-    pair_keys[flat] = leaf;
+    pair_keys[flat] = (slot < leaf_cnt[q]) ? leaf_sel[q * ck3 + slot] : INT_MAX;
     pair_vals[flat] = flat;
 }
 
-// ── v5: Transposed LeafFine kernel ────────────────────────────────────────────
-// Grid: n_leaf_max blocks (= n_leaf_blocks_, upper bound on unique leaves).
-// Block: leaf_size threads.
-// Smem: leaf_size * bpv bytes (holds one leaf block's codes).
-//
-// Each block owns one unique leaf (from sorted+RLE output).
-// It loads that leaf into shared memory ONCE, then processes every query
-// that needs it sequentially. Eliminates B*ck3 random HBM reads → 1 per leaf.
-__global__ void leaf_fine_trans_kernel(
-    const int*     __restrict__ sorted_vals,   // [B*ck3] query flat_idx, sorted by leaf_id
-    const int*     __restrict__ uniq_leaves,   // [n_leaf_max] unique leaf_block_ids
-    const int*     __restrict__ seg_start,     // [n_leaf_max] start in sorted_vals
-    const int*     __restrict__ seg_count,     // [n_leaf_max] # queries needing this leaf
-    const uint8_t* __restrict__ leaf_codes,    // [n_leaf_blocks, leaf_size, bpv] AoS
-    const int*     __restrict__ leaf_ids,      // [n_leaf_blocks, leaf_size]
-    const int*     __restrict__ leaf_sizes,    // [n_leaf_blocks]
-    const float*   __restrict__ lut_fine,      // [B, d, Kr]
-    float* fine_dists,                         // [B, ck3 * leaf_size]
-    int*   fine_ids,                           // [B, ck3 * leaf_size]
-    int ck3, int leaf_size, int bpv, int d, int Kr, int Br, int n_leaf_max)
+// ── v5: Sorted LeafFine kernel ────────────────────────────────────────────────
+// Grid: B*ck3 blocks (same as v2), but ordered by sorted_keys (leaf_id ascending).
+// Consecutive blocks access the same leaf block → L2 caches the 49 KB codes
+// across ~20 queries instead of re-loading from HBM each time.
+// No shared memory → full occupancy (same as v2).
+__global__ void leaf_fine_sorted_kernel(
+    const int*     __restrict__ sorted_keys,  // [B*ck3] leaf_ids, ascending
+    const int*     __restrict__ sorted_vals,  // [B*ck3] flat_idx = q*ck3+slot
+    const int*     __restrict__ leaf_sizes,
+    const uint8_t* __restrict__ leaf_codes,   // [n_blocks, leaf_size, bpv] AoS
+    const int*     __restrict__ leaf_ids,
+    const float*   __restrict__ lut_fine,     // [B, d, Kr]
+    float* fine_dists,                        // [B, ck3 * leaf_size]
+    int*   fine_ids,
+    int ck3, int leaf_size, int bpv, int d, int Kr, int Br)
 {
-    int uid = blockIdx.x;
-    int tid = threadIdx.x;
-
-    int leaf_blk = uniq_leaves[uid];
-    // Guard: invalid uid (uid >= n_unique), or INT_MAX sentinel for invalid pairs
-    if ((unsigned)leaf_blk >= (unsigned)n_leaf_max) return;
-
-    int sz    = leaf_sizes[leaf_blk];
-    int start = seg_start[uid];
-    int count = seg_count[uid];
-    if (count <= 0) return;
-
-    // Load leaf codes into shared memory (one coalesced block read from HBM)
-    extern __shared__ uint8_t smem[];
-    const uint8_t* src = leaf_codes + (long long)leaf_blk * leaf_size * bpv;
-    for (int i = tid; i < sz * bpv; i += blockDim.x)
-        smem[i] = src[i];
-    __syncthreads();
-
     const float INF = __int_as_float(0x7F800000);
-    const long long leaf_id_base = (long long)leaf_blk * leaf_size;
+    int bid = blockIdx.x;   // sorted pair index
+    int v   = threadIdx.x;  // vector within leaf block
 
-    // Process each query that needs this leaf sequentially.
-    // Different queries write to disjoint output regions → no race conditions.
-    for (int qi = 0; qi < count; qi++) {
-        int flat = sorted_vals[start + qi];
+    int leaf_blk = sorted_keys[bid];
+    if ((unsigned)leaf_blk == (unsigned)INT_MAX) {
+        // invalid sentinel — write INF and return
+        int flat = sorted_vals[bid];
         int q    = flat / ck3;
         int slot = flat % ck3;
-
-        const float* lut  = lut_fine + (long long)q * d * Kr;
-        long long    base = ((long long)q * ck3 + slot) * leaf_size;
-
-        float fd = INF;
-        int   fi = -1;
-        if (tid < sz) {
-            const uint8_t* rc = smem + (long long)tid * bpv;
-            fd = 0.f;
-            for (int j = 0; j < d; ++j) {
-                int ri = (Br == 4)
-                    ? ((j & 1) ? (rc[j >> 1] >> 4) : (rc[j >> 1] & 0x0F))
-                    : rc[j];
-                fd += __ldg(&lut[j * Kr + ri]);
-            }
-            fi = leaf_ids[leaf_id_base + tid];
-        }
-        fine_dists[base + tid] = fd;
-        fine_ids  [base + tid] = fi;
+        long long base = ((long long)q * ck3 + slot) * leaf_size;
+        fine_dists[base + v] = INF;
+        fine_ids  [base + v] = -1;
+        return;
     }
+
+    int flat = sorted_vals[bid];
+    int q    = flat / ck3;
+    int slot = flat % ck3;
+
+    int n_vecs = leaf_sizes[leaf_blk];
+
+    long long base = ((long long)q * ck3 + slot) * leaf_size;
+
+    if (v >= n_vecs) {
+        fine_dists[base + v] = INF;
+        fine_ids  [base + v] = -1;
+        return;
+    }
+
+    // AoS layout: consecutive blocks access same leaf_blk → L2 reuse ~20x
+    const uint8_t* rc     = leaf_codes + ((long long)leaf_blk * leaf_size + v) * bpv;
+    const float*   my_lut = lut_fine   + (long long)q * d * Kr;
+
+    float fd = 0.f;
+    for (int j = 0; j < d; ++j) {
+        int ri = (Br == 4)
+            ? ((j & 1) ? (rc[j >> 1] >> 4) : (rc[j >> 1] & 0x0F))
+            : rc[j];
+        fd += __ldg(&my_lut[j * Kr + ri]);
+    }
+    fine_dists[base + v] = fd;
+    fine_ids  [base + v] = leaf_ids[(long long)leaf_blk * leaf_size + v];
 }
 
 // ── Final top-k (unchanged from v2) ──────────────────────────────────────────
@@ -276,7 +261,7 @@ void search_hblock(
     const float*   h_queries,
     int nq, int d, int K1, int K2, int Kr, int Br, int bpv,
     int leaf_size, int ck1, int ck2, int ck3, int k,
-    int batch_size, int n_leaf_blocks,
+    int batch_size, int /*n_leaf_blocks*/,
     SearchWorkspace& ws,
     float* h_out_dists, int* h_out_ids)
 {
@@ -295,21 +280,6 @@ void search_hblock(
     const int topk_smem   = 2 * BLOCK * (int)sizeof(float);
     const int leaf_cap_per_pair = std::max(1, ck3 / (ck1 * ck2));
 
-    // Shared memory for transposed kernel: leaf_size * bpv bytes
-    const int trans_smem = leaf_size * bpv;
-
-    // Set extended smem limit for transposed kernel (A100 supports up to 164KB)
-    static bool smem_set = false;
-    if (!smem_set) {
-        cudaFuncSetAttribute(leaf_fine_trans_kernel,
-                             cudaFuncAttributeMaxDynamicSharedMemorySize,
-                             std::max(trans_smem, 65536));
-        smem_set = true;
-    }
-
-    // 13 events for 12 steps (same count as v2 for bench script compatibility)
-    // Steps: H2D, Rotate, L1 GEMM+topk, L1 residual, L2 GEMM+topk, L2 residual,
-    //        GatherLeaf, Prepare(sort+RLE+scan), FineLUT, LeafFineTrans, FinalTopk, D2H
     static const int NE = 13;
     cudaEvent_t e[NE];
     for (int i = 0; i < NE; i++) CUDA_CHECK(cudaEventCreate(&e[i]));
@@ -333,7 +303,7 @@ void search_hblock(
                                    cudaMemcpyHostToDevice, ws.stream));
         cudaEventRecord(e[1], ws.stream);
 
-        // Rotate: q_rot = Pi @ q_batch
+        // Rotate
         CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_N, CUBLAS_OP_N,
                                  d, B, d, &one,
                                  d_Pi, d, ws.d_q_batch, d,
@@ -389,39 +359,19 @@ void search_hblock(
         CUDA_CHECK(cudaGetLastError());
         cudaEventRecord(e[7], ws.stream);
 
-        // Prepare: build pairs + global sort by leaf_id + RLE + prefix scan
-        // Pre-fill d_uniq_leaves with n_leaf_max sentinel so excess kernel blocks
-        // return early; pre-fill d_seg_count with 0 for correct prefix scan.
-        CUDA_CHECK(cudaMemsetAsync(ws.d_uniq_leaves, 0xFF,
-                                   (long long)ws.n_leaf_max * sizeof(int), ws.stream));
-        CUDA_CHECK(cudaMemsetAsync(ws.d_seg_count, 0x00,
-                                   (long long)ws.n_leaf_max * sizeof(int), ws.stream));
-
+        // Build pairs + global sort by leaf_id
+        // After sort, consecutive blocks in leaf_fine_sorted_kernel access the
+        // same leaf block → L2 caches 49 KB of codes across ~20 queries.
         build_pairs_kernel<<<(n_pairs + BLOCK - 1) / BLOCK, BLOCK, 0, ws.stream>>>(
             ws.d_leaf_sel, ws.d_leaf_cnt,
             ws.d_pair_keys, ws.d_pair_vals, B, ck3);
         CUDA_CHECK(cudaGetLastError());
 
-        // Sort pairs by leaf_id (30-bit key handles up to 1B leaf blocks)
         cub::DeviceRadixSort::SortPairs(
             ws.d_cub_tmp, ws.cub_bytes,
             ws.d_pair_keys,   ws.d_pair_keys_s,
             ws.d_pair_vals,   ws.d_pair_vals_s,
             n_pairs, 0, 30, ws.stream);
-
-        // Run-length encode sorted keys → unique leaves + per-leaf query counts
-        cub::DeviceRunLengthEncode::Encode(
-            ws.d_cub_tmp, ws.cub_bytes,
-            ws.d_pair_keys_s,
-            ws.d_uniq_leaves, ws.d_seg_count, ws.d_n_uniq,
-            n_pairs, ws.stream);
-
-        // Exclusive prefix sum of seg_count → seg_start (scan ws.n_leaf_max elems;
-        // the 0-padded tail produces correct offsets for all valid uid)
-        cub::DeviceScan::ExclusiveSum(
-            ws.d_cub_tmp, ws.cub_bytes,
-            ws.d_seg_count, ws.d_seg_start,
-            ws.n_leaf_max, ws.stream);
 
         cudaEventRecord(e[8], ws.stream);
 
@@ -435,15 +385,13 @@ void search_hblock(
         }
         cudaEventRecord(e[9], ws.stream);
 
-        // Transposed LeafFine: n_leaf_max blocks, leaf_size threads, leaf_size*bpv smem
-        // Blocks with uid >= n_unique return immediately (d_uniq_leaves[uid] = 0xFF…)
-        leaf_fine_trans_kernel<<<ws.n_leaf_max, leaf_size, trans_smem, ws.stream>>>(
-            ws.d_pair_vals_s,
-            ws.d_uniq_leaves, ws.d_seg_start, ws.d_seg_count,
-            d_leaf_codes, d_leaf_ids, d_leaf_sizes,
+        // Sorted LeafFine: same grid as v2 but globally sorted → L2 leaf reuse
+        leaf_fine_sorted_kernel<<<n_pairs, leaf_size, 0, ws.stream>>>(
+            ws.d_pair_keys_s, ws.d_pair_vals_s,
+            d_leaf_sizes, d_leaf_codes, d_leaf_ids,
             ws.d_lut_fine,
             ws.d_fine_dists, ws.d_fine_ids,
-            ck3, leaf_size, bpv, d, Kr, Br, ws.n_leaf_max);
+            ck3, leaf_size, bpv, d, Kr, Br);
         CUDA_CHECK(cudaGetLastError());
         cudaEventRecord(e[10], ws.stream);
 
@@ -474,7 +422,7 @@ void search_hblock(
     static const char* snames[] = {
         "H2D", "Rotate", "L1 GEMM+topk", "L1 residual",
         "L2 GEMM+topk", "L2 residual", "GatherLeaf",
-        "Prepare(sort+RLE)", "FineLUT", "LeafFineTrans", "FinalTopk", "D2H"
+        "BuildPairs+Sort", "FineLUT", "LeafFineSorted", "FinalTopk", "D2H"
     };
     float total = 0.f;
     for (int i = 0; i < NE - 1; i++) {
