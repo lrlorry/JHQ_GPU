@@ -1,0 +1,357 @@
+=== BUILD Mon Jul  6 02:42:01 CST 2026 ===
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /root/JHQ_GPU/build
+/root/JHQ_GPU/common/fvecs_io.cuh:53:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   53 |         fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable demo_hblock_v4
+[100%] Built target demo_hblock_v4
+
+=== hblock_v2 (JL + analytical, ck3=256) ===
+CMD: ./build/demo_hblock_v2 /root/data/vogue-768_base.fvecs /root/data/vogue-768_query.fvecs /root/data/vogue-768_groundtruth.ivecs 64 128 8 32 256 10 1024
+--- output ---
+base=932328×768  query=1000×768  gt=1000×100
+K1=64  K2=128  ck1=8  ck2=32  ck3=256  k=10  batch_size=1024
+Training on 100000 vectors...
+  sigma=0.0361  L1: K1=64 → M_r1=6 dims  L2: K2=128 → M_r2=7 dims
+  train: 104.5 ms
+Adding 932328 vectors...
+  Built 13140 leaf blocks (leaf_size=128, K1=64, K2=128)
+  add:   1182.0 ms
+  H2D                0.075 ms
+  Rotate             0.131 ms
+  L1 GEMM+topk       16.764 ms
+  L1 residual        0.014 ms
+  L2 GEMM+topk       0.125 ms
+  L2 residual        0.006 ms
+  GatherLeaf         0.099 ms
+  SortLeaf           0.014 ms
+  FineLUT            0.051 ms
+  LeafFine           42.110 ms
+  FinalTopk          0.805 ms
+  D2H                0.031 ms
+  --- TOTAL ---      60.226 ms
+  H2D                0.064 ms
+  Rotate             0.033 ms
+  L1 GEMM+topk       0.029 ms
+  L1 residual        0.007 ms
+  L2 GEMM+topk       0.059 ms
+  L2 residual        0.006 ms
+  GatherLeaf         0.102 ms
+  SortLeaf           0.010 ms
+  FineLUT            0.047 ms
+  LeafFine           42.084 ms
+  FinalTopk          0.793 ms
+  D2H                0.028 ms
+  --- TOTAL ---      43.263 ms
+  H2D                0.063 ms
+  Rotate             0.034 ms
+  L1 GEMM+topk       0.029 ms
+  L1 residual        0.006 ms
+  L2 GEMM+topk       0.059 ms
+  L2 residual        0.006 ms
+  GatherLeaf         0.102 ms
+  SortLeaf           0.010 ms
+  FineLUT            0.047 ms
+  LeafFine           42.041 ms
+  FinalTopk          0.801 ms
+  D2H                0.025 ms
+  --- TOTAL ---      43.224 ms
+  H2D                0.062 ms
+  Rotate             0.034 ms
+  L1 GEMM+topk       0.029 ms
+  L1 residual        0.006 ms
+  L2 GEMM+topk       0.059 ms
+  L2 residual        0.006 ms
+  GatherLeaf         0.102 ms
+  SortLeaf           0.010 ms
+  FineLUT            0.047 ms
+  LeafFine           42.172 ms
+  FinalTopk          0.799 ms
+  D2H                0.024 ms
+  --- TOTAL ---      43.351 ms
+  H2D                0.062 ms
+  Rotate             0.034 ms
+  L1 GEMM+topk       0.029 ms
+  L1 residual        0.006 ms
+  L2 GEMM+topk       0.059 ms
+  L2 residual        0.006 ms
+  GatherLeaf         0.102 ms
+  SortLeaf           0.010 ms
+  FineLUT            0.047 ms
+  LeafFine           42.113 ms
+  FinalTopk          0.797 ms
+  D2H                0.021 ms
+  --- TOTAL ---      43.287 ms
+  H2D                0.062 ms
+  Rotate             0.035 ms
+  L1 GEMM+topk       0.029 ms
+  L1 residual        0.006 ms
+  L2 GEMM+topk       0.059 ms
+  L2 residual        0.006 ms
+  GatherLeaf         0.102 ms
+  SortLeaf           0.010 ms
+  FineLUT            0.047 ms
+  LeafFine           42.158 ms
+  FinalTopk          0.807 ms
+  D2H                0.021 ms
+  --- TOTAL ---      43.343 ms
+
+Recall@10 : 0.8056
+Latency   : 43.52 ms  (1000 queries)
+QPS       : 22980
+
+=== hblock_v3 (PCA cascade, k1=k2=32, ck3=256) ===
+CMD: ./build/demo_hblock_v3 /root/data/vogue-768_base.fvecs /root/data/vogue-768_query.fvecs /root/data/vogue-768_groundtruth.ivecs 64 128 32 32 8 32 256 10 1024
+--- output ---
+base=932328×768  query=1000×768  gt=1000×100
+K1=64 K2=128 k1=32 k2=32 ck1=8 ck2=32 ck3=256 k=10 batch=1024
+Training on 100000 vectors...
+  [L1] PCA top-32 of 768 dims...
+  PCA: top 32 dims explain 66.71% variance
+  [L1] Projecting 100000 vectors to k1=32...
+  [L1] K-means K=64, iters=50...
+  [L1] Computing full-dim centroids...
+  [L2] Computing L1 residuals...
+  [L2] PCA top-32 of 768 dims (residual space)...
+  PCA: top 32 dims explain 33.50% variance
+  [L2] Projecting residuals to k2=32...
+  [L2] K-means K=128, iters=50...
+  [L2] Computing full-dim residual centroids...
+  Computing L2 residuals for sigma estimation...
+  Fine codebook: sigma=0.0237 (from L2 residuals)
+  train: 4035.6 ms
+Adding 932328 vectors...
+  Built 11772 leaf blocks (leaf_size=128, K1=64, K2=128)
+  add:   1165.7 ms
+  H2D                    0.071 ms
+  L1 Proj+GEMM+topk      141.460 ms
+  L1 residual            0.014 ms
+  L2 Proj+GEMM+topk      0.117 ms
+  L2 residual            0.006 ms
+  GatherLeaf             0.101 ms
+  SortLeaf               0.014 ms
+  FineLUT                0.051 ms
+  LeafFine               39.560 ms
+  FinalTopk              0.800 ms
+  D2H                    0.031 ms
+  --- TOTAL ---          182.226 ms
+  H2D                    0.065 ms
+  L1 Proj+GEMM+topk      0.030 ms
+  L1 residual            0.006 ms
+  L2 Proj+GEMM+topk      0.057 ms
+  L2 residual            0.006 ms
+  GatherLeaf             0.100 ms
+  SortLeaf               0.010 ms
+  FineLUT                0.047 ms
+  LeafFine               39.451 ms
+  FinalTopk              0.818 ms
+  D2H                    0.027 ms
+  --- TOTAL ---          40.619 ms
+  H2D                    0.063 ms
+  L1 Proj+GEMM+topk      0.028 ms
+  L1 residual            0.007 ms
+  L2 Proj+GEMM+topk      0.055 ms
+  L2 residual            0.006 ms
+  GatherLeaf             0.100 ms
+  SortLeaf               0.010 ms
+  FineLUT                0.047 ms
+  LeafFine               39.541 ms
+  FinalTopk              0.792 ms
+  D2H                    0.022 ms
+  --- TOTAL ---          40.671 ms
+  H2D                    0.064 ms
+  L1 Proj+GEMM+topk      0.028 ms
+  L1 residual            0.006 ms
+  L2 Proj+GEMM+topk      0.055 ms
+  L2 residual            0.006 ms
+  GatherLeaf             0.100 ms
+  SortLeaf               0.010 ms
+  FineLUT                0.047 ms
+  LeafFine               39.610 ms
+  FinalTopk              0.798 ms
+  D2H                    0.024 ms
+  --- TOTAL ---          40.749 ms
+  H2D                    0.062 ms
+  L1 Proj+GEMM+topk      0.031 ms
+  L1 residual            0.007 ms
+  L2 Proj+GEMM+topk      0.057 ms
+  L2 residual            0.006 ms
+  GatherLeaf             0.100 ms
+  SortLeaf               0.010 ms
+  FineLUT                0.047 ms
+  LeafFine               39.584 ms
+  FinalTopk              0.792 ms
+  D2H                    0.025 ms
+  --- TOTAL ---          40.721 ms
+  H2D                    0.062 ms
+  L1 Proj+GEMM+topk      0.029 ms
+  L1 residual            0.006 ms
+  L2 Proj+GEMM+topk      0.057 ms
+  L2 residual            0.006 ms
+  GatherLeaf             0.102 ms
+  SortLeaf               0.010 ms
+  FineLUT                0.047 ms
+  LeafFine               39.574 ms
+  FinalTopk              0.792 ms
+  D2H                    0.026 ms
+  --- TOTAL ---          40.712 ms
+
+Recall@10 : 0.5044
+Latency   : 40.93 ms  (1000 queries)
+QPS       : 24432
+
+=== hblock_v4 (S_B discriminative, k1=k2=32, ck3=256) ===
+CMD: ./build/demo_hblock_v4 /root/data/vogue-768_base.fvecs /root/data/vogue-768_query.fvecs /root/data/vogue-768_groundtruth.ivecs 64 128 32 32 8 32 256 10 1024
+--- output ---
+base=932328×768  query=1000×768  gt=1000×100
+K1=64 K2=128 k1=32 k2=32 ck1=8 ck2=32 ck3=256 k=10 batch=1024
+Training on 100000 vectors...
+  [L1] PCA init top-32 of 768 dims...
+  [L1] K-means K=64 (init for S_B)...
+  [L1] S_B top-32 eigenvectors...
+  S_B top eigenvalue: 0.0496 (rank≤63)
+  [L1] K-means K=64 (with S_B projection)...
+  [L2] Computing L1 residuals...
+  [L2] PCA init top-32 of 768 dims...
+  [L2] K-means K=128 (init for S_B)...
+  [L2] S_B top-32 eigenvectors...
+  S_B top eigenvalue: 0.0042 (rank≤127)
+  [L2] K-means K=128 (with S_B projection)...
+  Computing L2 residuals for sigma estimation...
+  Fine codebook: sigma=0.0237
+  train: 7511.4 ms
+Adding 932328 vectors...
+  Built 11906 leaf blocks (leaf_size=128, K1=64, K2=128)
+  add:   1728.3 ms
+  H2D                    0.073 ms
+  L1 Proj+GEMM+topk      139.196 ms
+  L1 residual            0.013 ms
+  L2 Proj+GEMM+topk      0.115 ms
+  L2 residual            0.006 ms
+  GatherLeaf             0.099 ms
+  SortLeaf               0.014 ms
+  FineLUT                0.051 ms
+  LeafFine               39.249 ms
+  FinalTopk              0.808 ms
+  D2H                    0.029 ms
+  --- TOTAL ---          179.652 ms
+  H2D                    0.066 ms
+  L1 Proj+GEMM+topk      0.031 ms
+  L1 residual            0.006 ms
+  L2 Proj+GEMM+topk      0.057 ms
+  L2 residual            0.006 ms
+  GatherLeaf             0.098 ms
+  SortLeaf               0.010 ms
+  FineLUT                0.047 ms
+  LeafFine               39.295 ms
+  FinalTopk              0.800 ms
+  D2H                    0.023 ms
+  --- TOTAL ---          40.440 ms
+  H2D                    0.063 ms
+  L1 Proj+GEMM+topk      0.028 ms
+  L1 residual            0.007 ms
+  L2 Proj+GEMM+topk      0.057 ms
+  L2 residual            0.006 ms
+  GatherLeaf             0.098 ms
+  SortLeaf               0.010 ms
+  FineLUT                0.047 ms
+  LeafFine               39.350 ms
+  FinalTopk              0.796 ms
+  D2H                    0.027 ms
+  --- TOTAL ---          40.490 ms
+  H2D                    0.063 ms
+  L1 Proj+GEMM+topk      0.028 ms
+  L1 residual            0.006 ms
+  L2 Proj+GEMM+topk      0.057 ms
+  L2 residual            0.006 ms
+  GatherLeaf             0.098 ms
+  SortLeaf               0.010 ms
+  FineLUT                0.047 ms
+  LeafFine               39.373 ms
+  FinalTopk              0.804 ms
+  D2H                    0.025 ms
+  --- TOTAL ---          40.517 ms
+  H2D                    0.063 ms
+  L1 Proj+GEMM+topk      0.029 ms
+  L1 residual            0.006 ms
+  L2 Proj+GEMM+topk      0.057 ms
+  L2 residual            0.006 ms
+  GatherLeaf             0.098 ms
+  SortLeaf               0.010 ms
+  FineLUT                0.047 ms
+  LeafFine               39.291 ms
+  FinalTopk              0.806 ms
+  D2H                    0.021 ms
+  --- TOTAL ---          40.435 ms
+  H2D                    0.062 ms
+  L1 Proj+GEMM+topk      0.031 ms
+  L1 residual            0.006 ms
+  L2 Proj+GEMM+topk      0.057 ms
+  L2 residual            0.006 ms
+  GatherLeaf             0.100 ms
+  SortLeaf               0.010 ms
+  FineLUT                0.047 ms
+  LeafFine               39.379 ms
+  FinalTopk              0.806 ms
+  D2H                    0.022 ms
+  --- TOTAL ---          40.526 ms
+
+Recall@10 : 0.5038
+Latency   : 40.72 ms  (1000 queries)
+QPS       : 24558
+
+=== hblock_v3 ck3 sweep (recall vs speed tradeoff) ===
+--- v3 ck3=64 ---
+  LeafFine               10.985 ms
+  --- TOTAL ---          22.519 ms
+  LeafFine               10.958 ms
+  --- TOTAL ---          11.307 ms
+  LeafFine               10.956 ms
+  --- TOTAL ---          11.304 ms
+  LeafFine               10.964 ms
+  --- TOTAL ---          11.300 ms
+  LeafFine               10.939 ms
+  --- TOTAL ---          11.286 ms
+  LeafFine               10.956 ms
+  --- TOTAL ---          11.298 ms
+Recall@10 : 0.5547
+Latency   : 11.55 ms  (1000 queries)
+QPS       : 86565
+
+--- v3 ck3=128 ---
+  LeafFine               20.597 ms
+  --- TOTAL ---          32.266 ms
+  LeafFine               20.520 ms
+  --- TOTAL ---          20.962 ms
+  LeafFine               20.534 ms
+  --- TOTAL ---          20.978 ms
+  LeafFine               20.538 ms
+  --- TOTAL ---          20.975 ms
+  LeafFine               20.604 ms
+  --- TOTAL ---          21.043 ms
+  LeafFine               20.600 ms
+  --- TOTAL ---          21.044 ms
+Recall@10 : 0.5327
+Latency   : 21.22 ms  (1000 queries)
+QPS       : 47132
+
+--- v3 ck3=256 ---
+  LeafFine               39.535 ms
+  --- TOTAL ---          51.762 ms
+  LeafFine               39.508 ms
+  --- TOTAL ---          40.643 ms
+  LeafFine               39.640 ms
+  --- TOTAL ---          40.780 ms
+  LeafFine               39.481 ms
+  --- TOTAL ---          40.616 ms
+  LeafFine               39.447 ms
+  --- TOTAL ---          40.594 ms
+  LeafFine               39.665 ms
+  --- TOTAL ---          40.800 ms
+Recall@10 : 0.5044
+Latency   : 40.92 ms  (1000 queries)
+QPS       : 24440
+
+=== DONE: results saved to /root/JHQ_GPU/results/hblock_20260706_024201.txt ===
