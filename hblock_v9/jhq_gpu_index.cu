@@ -430,29 +430,20 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
     };
 
     // ── Double-buffer pipeline ────────────────────────────────────────────────
-    // Step 1: prime buf[0]
-    if (!pack_fn(0)) goto extract;
-    submit_fn(0);
-
-    // Step 2: steady-state
-    //   cur alternates 1→0→1→0...
-    //   Each tick: pack(cur) & submit(cur) [CPU+async GPU],
-    //              then merge(prev) [CPU waits for prev's D2H event]
-    //   The GPU runs both streams' kernels concurrently (A100 MPS / CUDA streams)
-    for (int cur = 1; ; cur ^= 1) {
-        bool has_work = pack_fn(cur);
-        if (has_work) submit_fn(cur);
-
-        // Merge the previous buffer.
-        // cudaEventSynchronize is NON-BLOCKING for the other stream.
-        int prev = cur ^ 1;
-        if (submitted[prev]) merge_fn(prev);
-
-        if (!has_work) break;
+    // Step 1: prime buf[0]. Step 2: steady-state cur alternates 1→0→1→0...
+    // Each tick: pack+submit cur (async), then merge prev (waits only on that event).
+    if (pack_fn(0)) {
+        submit_fn(0);
+        for (int cur = 1; ; cur ^= 1) {
+            bool has_work = pack_fn(cur);
+            if (has_work) submit_fn(cur);
+            int prev = cur ^ 1;
+            if (submitted[prev]) merge_fn(prev);
+            if (!has_work) break;
+        }
     }
     auto t3 = Clock::now();
 
-extract:
     // ── Phase 4: partial-sort each QueryState heap → final top-k ─────────────
     std::vector<int> idx_buf(64);
     for (int qi = 0; qi < nq; qi++) {
