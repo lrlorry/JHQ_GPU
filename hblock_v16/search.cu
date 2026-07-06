@@ -256,52 +256,40 @@ __global__ void multi_query_leaf_kernel(
     int leaf_blk  = blockIdx.x;
     int seg_start = d_seg_offsets[leaf_blk];
     int seg_end   = d_seg_offsets[leaf_blk + 1];
-    if (seg_start == seg_end) return;   // no query visits this leaf block
+    if (seg_start == seg_end) return;
 
-    int tid     = threadIdx.x;
-    int n_vecs  = d_leaf_sizes[leaf_blk];
-    int n_warps = (leaf_size + 31) / 32;
+    int tid    = threadIdx.x;
+    int n_vecs = d_leaf_sizes[leaf_blk];
 
-    // Shared memory layout:
-    //   s_codes [bpv × leaf_size bytes]   — loaded once from HBM
-    //   s_dist  [leaf_size floats]         — reset per query
-    //   s_pos   [leaf_size ints]           — set once (tid), never changed
-    //   s_wdist [4 floats]                 — warp-min scratch
-    //   s_wpos  [4 ints]
-    extern __shared__ char shm[];
-    uint8_t* s_codes = (uint8_t*)shm;
-    float*   s_dist  = (float*)(s_codes + bpv * leaf_size);
-    int*     s_pos   = (int*)  (s_dist  + leaf_size);
-    float*   s_wdist = (float*)(s_pos   + leaf_size);
-    int*     s_wpos  = (int*)  (s_wdist + 4);
+    // Static shared memory: reduction scratch only (< 1 KB total).
+    // Leaf codes are read via __ldg (read-only L1 cache).  Each CUDA block
+    // loops over all queries for the same leaf block, so the 49 KB of codes
+    // stay hot in L1 after the first query — same bandwidth saving as smem
+    // without needing cudaFuncSetAttribute to exceed the 48 KB default limit.
+    __shared__ float s_dist [128];   // leaf_size = 128
+    __shared__ float s_wdist[4];     // n_warps  = 4
+    __shared__ int   s_wpos [4];
 
-    // Load leaf codes into shared memory (amortised across all queries)
     const uint8_t* leaf_base = d_leaf_codes + (long long)leaf_blk * bpv * leaf_size;
-    for (int i = tid; i < bpv * leaf_size; i += blockDim.x)
-        s_codes[i] = leaf_base[i];
-    s_pos[tid] = tid;   // position array: set once, never modified
-    __syncthreads();
 
-    // Loop over all queries in this leaf block's segment
     for (int qi_local = 0; qi_local < (seg_end - seg_start); qi_local++) {
-        int pair_idx      = seg_start + qi_local;
-        int qid           = d_pair_qid_b[pair_idx];
+        int pair_idx    = seg_start + qi_local;
+        int qid         = d_pair_qid_b[pair_idx];
         const float* my_lut = d_lut_fine + (long long)qid * d * Kr;
 
-        // Compute PQ distance for this thread's vector slot
         float fd = INF;
         if (tid < n_vecs) {
             fd = 0.f;
             if (Br == 4) {
                 for (int b = 0; b < bpv; ++b) {
-                    uint8_t c = s_codes[b * leaf_size + tid];
+                    uint8_t c = __ldg(&leaf_base[b * leaf_size + tid]);
                     int j0 = b * 2;
                     fd += __ldg(&my_lut[ j0      * Kr + (c & 0x0F)]);
                     fd += __ldg(&my_lut[(j0 + 1) * Kr + (c >> 4  )]);
                 }
             } else {
                 for (int b = 0; b < bpv; ++b) {
-                    uint8_t c = s_codes[b * leaf_size + tid];
+                    uint8_t c = __ldg(&leaf_base[b * leaf_size + tid]);
                     fd += __ldg(&my_lut[b * Kr + c]);
                 }
             }
@@ -312,7 +300,7 @@ __global__ void multi_query_leaf_kernel(
         long long out_base = (long long)pair_idx * top_p;
         for (int r = 0; r < top_p; ++r) {
             float mv = s_dist[tid];
-            int   mp = s_pos [tid];
+            int   mp = tid;
             for (int mask = 16; mask > 0; mask >>= 1) {
                 float v2 = __shfl_xor_sync(0xffffffff, mv, mask);
                 int   p2 = __shfl_xor_sync(0xffffffff, mp, mask);
@@ -322,7 +310,7 @@ __global__ void multi_query_leaf_kernel(
             __syncthreads();
             if (tid == 0) {
                 float bv = s_wdist[0]; int bp = s_wpos[0];
-                for (int w = 1; w < n_warps; ++w)
+                for (int w = 1; w < 4; ++w)
                     if (s_wdist[w] < bv) { bv = s_wdist[w]; bp = s_wpos[w]; }
                 d_out_dists[out_base + r] = bv;
                 d_out_ids  [out_base + r] = (bv < INF)
@@ -345,31 +333,18 @@ void gpu_find_segments_and_launch_leaf(
 {
     cudaStream_t s = ws.stream;
 
-    // Build per-leaf-block pair counts, then prefix sum → CSR offsets
     CUDA_CHECK(cudaMemsetAsync(ws.d_leaf_counts, 0,
                                (long long)(n_leaf_blocks + 1) * sizeof(int), s));
     count_leaves_kernel<<<(n_pairs + 255) / 256, 256, 0, s>>>(
         ws.d_pair_leaf_b, n_pairs, ws.d_leaf_counts);
     CUDA_CHECK(cudaGetLastError());
 
-    // ExclusiveSum over n_leaf_blocks+1 elements:
-    //   d_seg_offsets[0..n_leaf_blocks-1] = exclusive prefix sums
-    //   d_seg_offsets[n_leaf_blocks]      = n_pairs  (sentinel, because d_leaf_counts[n_leaf_blocks]=0)
     CUDA_CHECK(cub::DeviceScan::ExclusiveSum(
         ws.d_cub_tmp, ws.cub_bytes,
         ws.d_leaf_counts, ws.d_seg_offsets, n_leaf_blocks + 1, s));
 
-    // Launch: one block per leaf block, leaf_size threads each
-    // s_codes alone = bpv*leaf_size = 384*128 = 49KB > 48KB default limit.
-    // Must opt-in to the larger per-block shared memory budget.
-    int smem = bpv  * leaf_size  * (int)sizeof(uint8_t)  // s_codes
-             + leaf_size         * (int)sizeof(float)     // s_dist
-             + leaf_size         * (int)sizeof(int)       // s_pos
-             + 4                 * (int)sizeof(float)     // s_wdist
-             + 4                 * (int)sizeof(int);      // s_wpos
-    CUDA_CHECK(cudaFuncSetAttribute(multi_query_leaf_kernel,
-        cudaFuncAttributeMaxDynamicSharedMemorySize, smem));
-    multi_query_leaf_kernel<<<n_leaf_blocks, leaf_size, smem, s>>>(
+    // No dynamic smem needed: leaf codes read via __ldg (L1 read-only cache).
+    multi_query_leaf_kernel<<<n_leaf_blocks, leaf_size, 0, s>>>(
         ws.d_seg_offsets, d_pair_qid_b,
         d_leaf_codes, d_leaf_ids_data, d_leaf_sizes,
         ws.d_lut_fine,
