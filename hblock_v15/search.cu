@@ -196,15 +196,14 @@ __global__ void gather_leaf_blocks_ci_kernel(
 __global__ void build_pairs_ci_kernel(
     const int* __restrict__ d_leaf_sel_ci,
     int* d_pair_leaf, int* d_pair_qid,
-    int n_ci, int ck3_ci, int n_leaf_blocks)
+    int n_ci, int ck3_ci)
 {
     int lqi = blockIdx.x * blockDim.x + threadIdx.x;
     if (lqi >= n_ci) return;
     for (int s = 0; s < ck3_ci; s++) {
         int off = lqi * ck3_ci + s;
-        int lb  = d_leaf_sel_ci[(long long)lqi * ck3_ci + s];
-        d_pair_leaf[off] = lb;
-        d_pair_qid[off]  = (lb < n_leaf_blocks) ? lqi : -1;
+        d_pair_leaf[off] = d_leaf_sel_ci[(long long)lqi * ck3_ci + s];
+        d_pair_qid[off]  = lqi;  // sentinel pairs detected by leaf_id >= n_leaf_blocks
     }
 }
 
@@ -429,7 +428,7 @@ void process_ci(
     // c. Build pairs (fixed stride, sentinels for short lists)
     build_pairs_ci_kernel<<<(n_ci+255)/256, 256, 0, s>>>(
         ws.d_leaf_sel_ci, ws.d_pair_leaf_ci_a, ws.d_pair_qid_ci_a,
-        n_ci, ck3_ci, n_leaf_blocks);
+        n_ci, ck3_ci);
     CUDA_CHECK(cudaGetLastError());
 
     // d. RadixSort by leaf_id
