@@ -299,30 +299,28 @@ __global__ void leaf_flat_ci_kernel(
     }
 }
 
-// Segmented top-k for n_ci queries. Offsets are fixed-stride (qi * ck3_ci).
+// Segmented top-k for n_ci queries.
+// Query qi's pairs are at fixed-stride positions [qi*ck3_ci, (qi+1)*ck3_ci).
 __global__ void segmented_topk_ci_kernel(
-    const int*   __restrict__ d_pair_perm,
-    const int*   __restrict__ d_offsets,
     const float* __restrict__ d_out_dists,
     const int*   __restrict__ d_out_ids,
     float* d_topk_vals,
     int*   d_topk_ids,
-    int n_ci, int k, int n_pairs, int top_p)
+    int n_ci, int k, int ck3_ci, int top_p)
 {
     const float INF = __int_as_float(0x7F800000);
     int qi = blockIdx.x, tid = threadIdx.x, BLK = blockDim.x;
     if (qi >= n_ci) return;
-    int seg_start = d_offsets[qi];
-    int seg_end   = (qi + 1 < n_ci) ? d_offsets[qi + 1] : n_pairs;
+    int seg_start = qi * ck3_ci;
+    int seg_end   = seg_start + ck3_ci;
     extern __shared__ char shm[];
     float* s_dist = (float*)shm + tid * k;
     int*   s_id   = (int*)((float*)shm + BLK * k) + tid * k;
     for (int i = 0; i < k; i++) { s_dist[i] = INF; s_id[i] = -1; }
     for (int p = seg_start + tid; p < seg_end; p += BLK) {
-        int pi = d_pair_perm[p];
         for (int r = 0; r < top_p; r++) {
-            float dist = __ldg(&d_out_dists[(long long)pi * top_p + r]);
-            int   vid  = __ldg(&d_out_ids  [(long long)pi * top_p + r]);
+            float dist = __ldg(&d_out_dists[(long long)p * top_p + r]);
+            int   vid  = __ldg(&d_out_ids  [(long long)p * top_p + r]);
             if (vid < 0) continue;
             int worst = 0;
             for (int i = 1; i < k; i++) if (s_dist[i] > s_dist[worst]) worst = i;
@@ -431,24 +429,13 @@ void process_ci(
         n_ci, ck3_ci);
     CUDA_CHECK(cudaGetLastError());
 
-    // d. RadixSort by leaf_id
-    {
-        int end_bit = 1;
-        while ((1 << end_bit) < (n_leaf_blocks + 1)) end_bit++;
-        end_bit = std::min(end_bit + 1, 32);
-        CUDA_CHECK(cub::DeviceRadixSort::SortPairs(
-            ws.d_cub_tmp, ws.cub_bytes,
-            ws.d_pair_leaf_ci_a, ws.d_pair_leaf_ci_b,
-            ws.d_pair_qid_ci_a,  ws.d_pair_qid_ci_b,
-            n_pairs_ci, 0, end_bit, s));
-    }
-
-    // e. Leaf PQ kernel with compact L2-resident LUT
+    // d. Leaf PQ kernel — fixed-stride layout, no sort needed
+    //    pairs for query lqi are at [lqi*ck3_ci, (lqi+1)*ck3_ci); sentinels via leaf_id
     {
         int smem = leaf_size * (int)(sizeof(float) + sizeof(int))
                  + 4 * (int)(sizeof(float) + sizeof(int));
         leaf_flat_ci_kernel<<<n_pairs_ci, leaf_size, smem, s>>>(
-            ws.d_pair_leaf_ci_b, ws.d_pair_qid_ci_b,
+            ws.d_pair_leaf_ci_a, ws.d_pair_qid_ci_a,
             d_leaf_sizes, d_leaf_codes, d_leaf_ids_data,
             ws.d_lut_ci,
             ws.d_out_dists_ci, ws.d_out_ids_ci,
@@ -456,38 +443,14 @@ void process_ci(
         CUDA_CHECK(cudaGetLastError());
     }
 
-    // f. iota fill → qid RadixSort → segmented top-k for n_ci queries
-    fill_iota_kernel<<<(n_pairs_ci+255)/256, 256, 0, s>>>(
-        ws.d_pair_leaf_ci_a, n_pairs_ci);
-    CUDA_CHECK(cudaGetLastError());
-
-    {
-        int qid_bits = 1;
-        while ((1 << qid_bits) < n_ci + 1) qid_bits++;
-        qid_bits = std::min(qid_bits + 1, 11);
-        CUDA_CHECK(cub::DeviceRadixSort::SortPairs(
-            ws.d_cub_tmp, ws.cub_bytes,
-            ws.d_pair_qid_ci_b,  ws.d_pair_leaf_ci_b,
-            ws.d_pair_leaf_ci_a, ws.d_pair_qid_ci_a,
-            n_pairs_ci, 0, qid_bits, s));
-    }
-
-    // Fixed-stride offsets: offsets[qi] = qi * ck3_ci
-    fill_stride_offsets_kernel<<<(n_ci + 256) / 256, 256, 0, s>>>(
-        ws.d_q_offsets_ci, n_ci, ck3_ci);
-    CUDA_CHECK(cudaGetLastError());
-
+    // e. Segmented top-k: query qi's results at [qi*ck3_ci, (qi+1)*ck3_ci) — no qid sort needed
     {
         const int TOPK_BLOCK = 32;
         int smem = TOPK_BLOCK * k * (int)(sizeof(float) + sizeof(int));
         segmented_topk_ci_kernel<<<n_ci, TOPK_BLOCK, smem, s>>>(
-            ws.d_pair_qid_ci_a,
-            ws.d_q_offsets_ci,
-            ws.d_out_dists_ci,
-            ws.d_out_ids_ci,
-            ws.d_ci_topk_vals,
-            ws.d_ci_topk_ids,
-            n_ci, k, n_pairs_ci, TOP_P);
+            ws.d_out_dists_ci, ws.d_out_ids_ci,
+            ws.d_ci_topk_vals, ws.d_ci_topk_ids,
+            n_ci, k, ck3_ci, TOP_P);
         CUDA_CHECK(cudaGetLastError());
     }
 
