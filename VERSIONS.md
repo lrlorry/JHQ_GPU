@@ -162,40 +162,6 @@ scan kernel 中访问 `list_primary_t[m * N + abs_pos]`：32 个线程的 `abs_p
 
 ---
 
-## arXiv-Abstracts-768 扩展实验
-
-数据集：arXiv-Abstracts-768（nb=2,253,198，nq=1,000，d=768，LID=31.8，RC=1.50）  
-硬件：RTX 5090（SM120）  
-参数：K1=64，K2=128，ck1=8，ck2=32，leaf_size=128，batch_size=1024，k=10
-
-### ck3 扫描结果（HBlock v14）
-
-| ck3 | QPS | Recall@10 | 覆盖率 |
-|-----|-----|-----------|--------|
-| 256 | 136,339 | 0.2572 | 1.5% |
-| 600 | 87,884 | 0.3963 | 3.4% |
-| 2048 | 35,657 | 0.7312 | 11.6% |
-
-### 与原论文对比（arXiv-768）
-
-| 方法 | QPS | Recall@10 | 硬件 |
-|------|-----|-----------|------|
-| JQ（论文）| ~2,289 | ~0.85 | CPU单线程 |
-| JHQ（论文）| ~889 | ~0.90 | CPU单线程 |
-| HBlock v14，ck3=2048 | 35,657 | 0.731 | RTX 5090 |
-
-### 分析
-
-**QPS**：ck3=2048时35K vs JHQ ~2K，领先约16×。
-
-**Recall瓶颈**：同覆盖率下（ck3=600 ≈ Vogue ck3=256，均约3.5%），arXiv recall仅0.40 vs Vogue 0.81。根本原因是**路由质量**：arXiv为文本embedding（InstructorXL），RC=1.50更小、数据点更集中，JL旋转后near-Gaussian假设成立性较差，L1/L2路由选出的叶块精准度下降。
-
-**QPS不随n下降**：n从933K→2.25M（2.4×），QPS从131K→136K（略升），印证路由开销O(batch×d)与n无关，GPU利用率随叶块数增多反而更充分。
-
-**结论**：HBlock在QPS上有明显优势，但当前路由结构对RC小（近邻密集）的文本数据集泛化性不足，需提升K1/K2或引入数据自适应路由。
-
----
-
 ## 后续可能的优化方向
 
 ### 1. Byte LUT 访问优化（当前最大瓶颈）
@@ -235,7 +201,15 @@ v12 之后 `list_primary` 已经完全合并访问，瓶颈转移到 `byte_lut` 
 当前 `residual_refine_batched_kernel` 对 ck 个候选各做 d=768 维查表。  
 类似 v12 的思路：将 `list_res` 也做转置，从 [N, bpv] 改为 [bpv, N]，改善 warp 访问合并。
 
-### 6. 多 GPU
+### 6. 叶块内空间排序 + 早退
+
+**现状**：`stable_sort` 保证同一 `(c1, c2)` 簇的向量进同一批叶块（簇级 locality ✓），但簇内 128 个向量按原始 ID 顺序填入，没有细粒度空间排序。
+
+**思路**：建图时，对每个叶块内的向量按残差 `r2 = x - c1_center - c2_center` 到叶块中心的距离从近到远排列。搜索时若已累积足够好的 candidate，可在叶块中途跳出，不必扫满 128 个向量。
+
+**前提**：需实现叶块内早退逻辑（当前 kernel 固定扫满整块）。排序本身在 CPU build 阶段完成，zero search overhead；早退减少有效扫描量，可在不增大 ck3 的前提下提升 recall/QPS 曲线。
+
+### 7. 多 GPU
 
 当前单 GPU 在 Recall=0.998 时 QPS≈45K。  
 使用 NVLink 多 GPU 可线性扩展，但需要 query routing 和结果合并逻辑。
