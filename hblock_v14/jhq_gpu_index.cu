@@ -332,20 +332,22 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
 
     gpu_merge_topk(nq, n_pairs, k, ws_);
 
+    // Kernel writes with stride k (not K_MAX), so copy exactly nq×k elements.
     CUDA_CHECK(cudaMemcpyAsync(ws_.h_final_dists, ws_.d_final_dists,
                                (long long)nq * k * sizeof(float),
                                cudaMemcpyDeviceToHost, s));
     CUDA_CHECK(cudaMemcpyAsync(ws_.h_final_ids,   ws_.d_final_ids,
                                (long long)nq * k * sizeof(int),
                                cudaMemcpyDeviceToHost, s));
+    // (Buffer is K_MAX-wide per query; only first k entries per query are valid.)
     CUDA_CHECK(cudaStreamSynchronize(s));
     auto t3 = Clock::now();
 
     // ── Phase 5: CPU extract (partial_sort per query) ─────────────────────────
     std::vector<int> idx_buf(k);
     for (int qi = 0; qi < nq; qi++) {
-        const float* fd = ws_.h_final_dists + (long long)qi * K_MAX;
-        const int*   fi = ws_.h_final_ids   + (long long)qi * K_MAX;
+        const float* fd = ws_.h_final_dists + (long long)qi * k;
+        const int*   fi = ws_.h_final_ids   + (long long)qi * k;
         std::iota(idx_buf.begin(), idx_buf.end(), 0);
         int valid = 0;
         for (int i = 0; i < k; i++) if (fi[i] >= 0) valid++;

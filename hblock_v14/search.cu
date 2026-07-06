@@ -341,14 +341,15 @@ __global__ void fill_iota_kernel(int* arr, int n)
 // One block per query. blockDim threads split the segment, each maintaining
 // a private top-k heap in shared memory. Thread 0 merges all heaps.
 // smem layout: [BLOCK × k floats] then [BLOCK × k ints]
+// Output stride is k (not K_MAX) so D2H is exactly nq × k elements.
 __global__ void segmented_topk_kernel(
     const int*   __restrict__ d_pair_perm,      // [n_pairs] qid-sorted → leaf-sorted idx
-    const int*   __restrict__ d_query_offsets,  // [nq+1]
+    const int*   __restrict__ d_query_offsets,  // [nq]
     const float* __restrict__ d_out_dists,      // [n_pairs × TOP_P]
     const int*   __restrict__ d_out_ids,        // [n_pairs × TOP_P]
-    float* d_final_dists,                       // [nq × K_MAX]
+    float* d_final_dists,                       // [nq × k]  (stride = k)
     int*   d_final_ids,
-    int nq, int k, int top_p)
+    int nq, int k, int n_pairs, int top_p)
 {
     const float INF = __int_as_float(0x7F800000);
     int qi  = blockIdx.x;
@@ -358,11 +359,12 @@ __global__ void segmented_topk_kernel(
     if (qi >= nq) return;
 
     int seg_start = d_query_offsets[qi];
-    int seg_end   = d_query_offsets[qi + 1];
+    // Last query uses n_pairs as seg_end (avoids writing d_query_offsets[nq])
+    int seg_end   = (qi + 1 < nq) ? d_query_offsets[qi + 1] : n_pairs;
 
     extern __shared__ char shm[];
-    float* s_dist = (float*)shm          + (long long)tid * k;
-    int*   s_id   = (int*)((float*)shm + (long long)BLK * k) + (long long)tid * k;
+    float* s_dist = (float*)shm          + tid * k;
+    int*   s_id   = (int*)((float*)shm + BLK * k) + tid * k;
 
     for (int i = 0; i < k; i++) { s_dist[i] = INF; s_id[i] = -1; }
 
@@ -382,15 +384,15 @@ __global__ void segmented_topk_kernel(
     }
     __syncthreads();
 
-    // Thread 0 merges all per-thread heaps into the global output
+    // Thread 0 merges all per-thread heaps into the global output (stride = k)
     if (tid == 0) {
-        float* out_d = d_final_dists + (long long)qi * K_MAX;
-        int*   out_i = d_final_ids   + (long long)qi * K_MAX;
+        float* out_d = d_final_dists + (long long)qi * k;
+        int*   out_i = d_final_ids   + (long long)qi * k;
         for (int i = 0; i < k; i++) { out_d[i] = INF; out_i[i] = -1; }
 
         for (int t = 0; t < BLK; t++) {
-            float* td = (float*)shm + (long long)t * k;
-            int*   ti = (int*)((float*)shm + (long long)BLK * k) + (long long)t * k;
+            float* td = (float*)shm + t * k;
+            int*   ti = (int*)((float*)shm + BLK * k) + t * k;
             for (int i = 0; i < k; i++) {
                 float d = td[i]; int v = ti[i];
                 if (v < 0) continue;
@@ -407,10 +409,6 @@ void gpu_merge_topk(int nq, int n_pairs, int k, SearchWorkspace& ws)
 {
     cudaStream_t s = ws.stream;
 
-    // Write n_pairs to d_query_offsets[nq] so the last query's seg_end is valid
-    CUDA_CHECK(cudaMemcpyAsync(ws.d_query_offsets + nq, &n_pairs, sizeof(int),
-                               cudaMemcpyHostToDevice, s));
-
     // Fill d_pair_leaf_a with iota: it becomes the sort value (pair indices)
     fill_iota_kernel<<<(n_pairs + 255) / 256, 256, 0, s>>>(ws.d_pair_leaf_a, n_pairs);
     CUDA_CHECK(cudaGetLastError());
@@ -426,17 +424,19 @@ void gpu_merge_topk(int nq, int n_pairs, int k, SearchWorkspace& ws)
         ws.d_pair_leaf_a, ws.d_pair_qid_a,
         n_pairs, 0, 10, s));
 
-    // Segmented top-k: one block per query, 32 threads split the segment
+    // Segmented top-k: one block per query, 32 threads split the segment.
+    // n_pairs is passed to handle the last query's seg_end (avoids d_query_offsets[nq]).
+    // Output stride = k (not K_MAX): D2H is exactly nq × k elements.
     const int BLOCK = 32;
     int smem = BLOCK * k * (int)(sizeof(float) + sizeof(int));
     segmented_topk_kernel<<<nq, BLOCK, smem, s>>>(
         ws.d_pair_qid_a,      // permutation
-        ws.d_query_offsets,   // [nq+1]
+        ws.d_query_offsets,   // [nq] (nq-th entry accessed via n_pairs param)
         ws.d_out_dists,
         ws.d_out_ids,
         ws.d_final_dists,
         ws.d_final_ids,
-        nq, k, TOP_P);
+        nq, k, n_pairs, TOP_P);
     CUDA_CHECK(cudaGetLastError());
 }
 
