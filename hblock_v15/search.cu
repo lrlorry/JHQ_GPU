@@ -140,7 +140,7 @@ __global__ void init_heap_kernel(float* vals, int* ids, int n)
 // For each query, record its top-ck1 c1 assignments into per-ci lists.
 __global__ void precompute_ci_groups_kernel(
     const int* __restrict__ d_topk1, int nq, int ck1, int K1,
-    int* d_ci_lists, int* d_ci_counts)
+    int* d_ci_lists, int* d_ci_counts, int list_stride)
 {
     int q = blockIdx.x * blockDim.x + threadIdx.x;
     if (q >= nq) return;
@@ -148,7 +148,8 @@ __global__ void precompute_ci_groups_kernel(
         int ci = d_topk1[q * ck1 + r];
         if (ci >= 0 && ci < K1) {
             int slot = atomicAdd(&d_ci_counts[ci], 1);
-            if (slot < nq) d_ci_lists[(long long)ci * nq + slot] = q;
+            if (slot < list_stride)
+                d_ci_lists[(long long)ci * list_stride + slot] = q;
         }
     }
 }
@@ -385,7 +386,7 @@ void precompute_ci_groups(int nq, int ck1, int K1, SearchWorkspace& ws)
     cudaStream_t s = ws.stream;
     CUDA_CHECK(cudaMemsetAsync(ws.d_ci_counts, 0, (long long)K1 * sizeof(int), s));
     precompute_ci_groups_kernel<<<(nq+255)/256, 256, 0, s>>>(
-        ws.d_top1_ids, nq, ck1, K1, ws.d_ci_lists, ws.d_ci_counts);
+        ws.d_top1_ids, nq, ck1, K1, ws.d_ci_lists, ws.d_ci_counts, ws.batch_cap);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaMemcpyAsync(ws.h_ci_counts, ws.d_ci_counts,
                                (long long)K1 * sizeof(int),
