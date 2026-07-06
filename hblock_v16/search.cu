@@ -360,11 +360,15 @@ void gpu_find_segments_and_launch_leaf(
         ws.d_leaf_counts, ws.d_seg_offsets, n_leaf_blocks + 1, s));
 
     // Launch: one block per leaf block, leaf_size threads each
+    // s_codes alone = bpv*leaf_size = 384*128 = 49KB > 48KB default limit.
+    // Must opt-in to the larger per-block shared memory budget.
     int smem = bpv  * leaf_size  * (int)sizeof(uint8_t)  // s_codes
              + leaf_size         * (int)sizeof(float)     // s_dist
              + leaf_size         * (int)sizeof(int)       // s_pos
              + 4                 * (int)sizeof(float)     // s_wdist
              + 4                 * (int)sizeof(int);      // s_wpos
+    CUDA_CHECK(cudaFuncSetAttribute(multi_query_leaf_kernel,
+        cudaFuncAttributeMaxDynamicSharedMemorySize, smem));
     multi_query_leaf_kernel<<<n_leaf_blocks, leaf_size, smem, s>>>(
         ws.d_seg_offsets, d_pair_qid_b,
         d_leaf_codes, d_leaf_ids_data, d_leaf_sizes,
