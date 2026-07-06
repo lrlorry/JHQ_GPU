@@ -105,6 +105,97 @@ scan kernel 中访问 `list_primary_t[m * N + abs_pos]`：32 个线程的 `abs_p
 
 ---
 
+## HBlock 系列
+
+参数：K1=64，K2=128，ck1=8，ck2=32，ck3=256，leaf_size=128，bpv=384，batch_size=1024，k=10
+
+### 版本汇总表
+
+| 版本 | 核心改动 | QPS | Recall@10 |
+|------|---------|-----|-----------|
+| hblock_v1 | 三层层级索引基线（L1→L2→叶块），解析码本，GPU叶块kernel | — | — |
+| hblock_v2 | 2D grid叶块kernel，100%占用率；sort_leaf_sel_kernel改善HBM局部性 | — | — |
+| hblock_v3 | PCA级联路由投影 | — | — |
+| hblock_v4 | 判别式S_B投影路由 | — | — |
+| hblock_v5 | 转置LeafFine kernel；全局排序+L2残差复用，修复HBM随机读瓶颈 | — | — |
+| hblock_v6 | 查询按L1中心预排序再派发（B2路由策略） | — | — |
+| hblock_v7 | 每个unique叶块一个CUDA block | — | — |
+| hblock_v8 | Flink风格micro-batch流式搜索，in-kernel top-p过滤 | — | — |
+| hblock_v9 | 真正双缓冲流式派发 | — | — |
+| hblock_v10 | 单次大kernel launch，充分利用GPU并行度 | — | — |
+| hblock_v11 | 每个(查询, 叶块)对一个block；去掉codes的smem，100%占用率 | — | — |
+| hblock_v12 | GPU端构建任务对 + CUB RadixSort(14-bit)按leaf_id排序；消除CPU排序 | 17,182 | 0.8862 |
+| hblock_v13 | **转置codes布局[blk][bpv][leaf_size]**：128线程读1个cache line/step；kernel 50ms→7ms | 68,629 | 0.8056 |
+| hblock_v14 | **GPU端top-k合并**：iota→qid RadixSort(10-bit)→分段top-k kernel；D2H 9MB→82KB | 131,277 | 0.8056 |
+
+### hblock_v13 详细说明
+
+**问题**：旧布局[blk][leaf_size][bpv]，128个线程各自读第b个字节时地址间隔bpv=384字节→128次cache miss/step。
+
+**改动**：建图时按[blk][bpv][leaf_size]存储，搜索时`leaf_base[b * leaf_size + tid]`，128个线程读连续128字节=1个cache line。
+
+**效果**：叶块kernel 50.4ms→6.9ms（7.3×），QPS 17K→69K。
+
+### hblock_v14 详细说明
+
+**问题**：v13叶块kernel后需回CPU合并结果（255K×4次heap push，7ms）+9MB D2H传输。
+
+**改动**：全程在GPU完成——
+1. iota fill d_pair_leaf_a [0..n_pairs)
+2. CUB DeviceRadixSort按qid(10-bit)排序，得到qid有序置换数组
+3. segmented_topk_kernel：每个query一个block，32线程共享内存堆，输出nq×k结果
+4. D2H只传82KB（nq×k×8字节）
+
+**关键bug修复**：输出stride必须用k而非K_MAX，否则D2H只覆盖前160条query的结果（84%数据读到未初始化内存，Recall从0.81跌到0.13）。
+
+**效果**：CPU merge 7ms→0ms，D2H 9MB→82KB（110×），QPS 69K→131K。
+
+### HBlock性能对比（Vogue-768，n=933K，RTX 5090）
+
+| 方法 | Recall@10 | QPS | vs JHQ CPU |
+|------|-----------|-----|-----------|
+| JQ CPU | ~0.88 | ~24,500 | 0.19× |
+| JHQ CPU | ~0.88 | ~17,000 | baseline |
+| HBlock v12 | 0.8862 | 49,123 | 2.9× |
+| HBlock v13 | 0.8056 | 68,629 | 4.0× |
+| HBlock v14 | 0.8056 | 131,277 | **7.7×** |
+
+---
+
+## arXiv-Abstracts-768 扩展实验
+
+数据集：arXiv-Abstracts-768（nb=2,253,198，nq=1,000，d=768，LID=31.8，RC=1.50）  
+硬件：RTX 5090（SM120）  
+参数：K1=64，K2=128，ck1=8，ck2=32，leaf_size=128，batch_size=1024，k=10
+
+### ck3 扫描结果（HBlock v14）
+
+| ck3 | QPS | Recall@10 | 覆盖率 |
+|-----|-----|-----------|--------|
+| 256 | 136,339 | 0.2572 | 1.5% |
+| 600 | 87,884 | 0.3963 | 3.4% |
+| 2048 | 35,657 | 0.7312 | 11.6% |
+
+### 与原论文对比（arXiv-768）
+
+| 方法 | QPS | Recall@10 | 硬件 |
+|------|-----|-----------|------|
+| JQ（论文）| ~2,289 | ~0.85 | CPU单线程 |
+| JHQ（论文）| ~889 | ~0.90 | CPU单线程 |
+| HBlock v14，ck3=2048 | 35,657 | 0.731 | RTX 5090 |
+
+### 分析
+
+**QPS**：ck3=2048时35K vs JHQ ~2K，领先约16×。
+
+**Recall瓶颈**：同覆盖率下（ck3=600 ≈ Vogue ck3=256，均约3.5%），arXiv recall仅0.40 vs Vogue 0.81。根本原因是**路由质量**：arXiv为文本embedding（InstructorXL），RC=1.50更小、数据点更集中，JL旋转后near-Gaussian假设成立性较差，L1/L2路由选出的叶块精准度下降。
+
+**QPS不随n下降**：n从933K→2.25M（2.4×），QPS从131K→136K（略升），印证路由开销O(batch×d)与n无关，GPU利用率随叶块数增多反而更充分。
+
+**结论**：HBlock在QPS上有明显优势，但当前路由结构对RC小（近邻密集）的文本数据集泛化性不足，需提升K1/K2或引入数据自适应路由。
+
+---
+
 ## 后续可能的优化方向
 
 ### 1. Byte LUT 访问优化（当前最大瓶颈）
