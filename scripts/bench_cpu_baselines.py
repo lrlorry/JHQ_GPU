@@ -81,37 +81,6 @@ def bench_dataset(ds_name, ds):
     nlist = ds["nlist"]
     results = []
 
-    # ── FAISS IVFPQ ──────────────────────────────────────────────────────────
-    try:
-        import faiss
-        def bench_faiss(M, label):
-            print(f"\n{label}  M={M}")
-            quant = faiss.IndexFlatL2(d)
-            idx   = faiss.IndexIVFPQ(quant, d, nlist, M, 8)
-            t0 = time.time()
-            idx.train(xb[:200000])
-            idx.add(xb)
-            build = time.time() - t0
-            print(f"  build: {build:.2f}s")
-            for np_ in NPROBES:
-                if np_ > nlist: break
-                idx.nprobe = np_
-                t1 = time.time()
-                _, I = idx.search(xq, K)
-                elapsed = time.time() - t1
-                rec = recall_at_k(I, gt, K)
-                qps = len(xq) / elapsed
-                print(f"  nprobe={np_:<4}  recall={rec:.4f}  qps={qps:.0f}")
-                results.append({"method": label, "ck": np_, "probed": np_,
-                                "rerank_r": 0, "recall": rec, "qps": qps,
-                                "build_time": build})
-
-        bench_faiss(96,  "FAISS-IVFPQ-96B")
-        bench_faiss(192, "FAISS-IVFPQ-192B")
-        bench_faiss(384, "FAISS-IVFPQ-384B")
-    except ImportError:
-        print("faiss not found, skipping FAISS baselines")
-
     # ── JQ+IVF / JHQ+IVF ─────────────────────────────────────────────────────
     def run_binary(exe, extra_args, label):
         if not os.path.exists(exe):
