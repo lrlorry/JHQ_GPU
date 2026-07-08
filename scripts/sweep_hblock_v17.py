@@ -73,7 +73,7 @@ def sweep_dataset(ds_name, ds_info, out_csv):
     print(f"Dataset: {ds_name}  →  {out_csv}")
     print(f"{'='*60}")
     for ck in CK_SWEEP:
-        rerank_r = max(64, 2 * ck * ck * ck)
+        rerank_r = min(128, max(64, ck * ck * ck))
         print(f"\n  ck={ck}  probed_cells={ck**3}  rerank_r={rerank_r}", flush=True)
         try:
             recall, qps, bt = run_one(

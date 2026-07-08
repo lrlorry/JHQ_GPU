@@ -612,7 +612,8 @@ __global__ void segmented_topk_kernel(
 void gpu_merge_pq_topk_v17(int nq, int n_pairs, int rerank_r, SearchWorkspace& ws)
 {
     cudaStream_t s = ws.stream;
-    int k = rerank_r;
+    // K_MAX caps the smem: BLOCK*k*8 must stay under GPU shared mem limit (~100KB on SM120)
+    int k = std::min(rerank_r, (int)K_MAX);
 
     fill_iota_kernel<<<(n_pairs + 255) / 256, 256, 0, s>>>(ws.d_pair_leaf_a, n_pairs);
     CUDA_CHECK(cudaGetLastError());
