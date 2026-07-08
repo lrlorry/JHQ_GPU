@@ -36,20 +36,13 @@ plt.rcParams.update({
 })
 
 STYLES = {
-    "HBlock-v17 (Vogue-768)":  dict(color="#E31A1C", marker="o",  ls="-",  lw=2.4, zorder=9,
-                                     label="HBlock-v17 GPU (Vogue-768)"),
-    "HBlock-v17 (Arxiv-768)":  dict(color="#FF7F00", marker="D",  ls="-",  lw=2.4, zorder=8,
-                                     label="HBlock-v17 GPU (Arxiv-768)"),
-    "JHQ+IVF":                 dict(color="#1F77B4", marker="s",  ls="--", lw=2.0, zorder=5,
-                                     label="JHQ+IVF CPU (Vogue-768)"),
-    "JQ+IVF":                  dict(color="#2CA02C", marker="^",  ls="--", lw=2.0, zorder=5,
-                                     label="JQ+IVF CPU (Vogue-768)"),
-    "FAISS-IVFPQ-96B":         dict(color="#9467BD", marker="v",  ls=":",  lw=1.6, zorder=3,
-                                     label="FAISS IVFPQ 96B CPU"),
-    "FAISS-IVFPQ-192B":        dict(color="#8C564B", marker="<",  ls=":",  lw=1.6, zorder=3,
-                                     label="FAISS IVFPQ 192B CPU"),
-    "FAISS-IVFPQ-384B":        dict(color="#7F7F7F", marker=">",  ls=":",  lw=1.6, zorder=3,
-                                     label="FAISS IVFPQ 384B CPU"),
+    "HBlock-v17 (Vogue-768)":  dict(color="#E31A1C", marker="o",  ls="-",  lw=2.4, zorder=9),
+    "HBlock-v17 (Arxiv-768)":  dict(color="#FF7F00", marker="D",  ls="-",  lw=2.4, zorder=8),
+    "JHQ+IVF":                 dict(color="#1F77B4", marker="s",  ls="--", lw=2.0, zorder=5),
+    "JQ+IVF":                  dict(color="#2CA02C", marker="^",  ls="--", lw=2.0, zorder=5),
+    "FAISS-IVFPQ-96B":         dict(color="#9467BD", marker="v",  ls=":",  lw=1.6, zorder=3),
+    "FAISS-IVFPQ-192B":        dict(color="#8C564B", marker="<",  ls=":",  lw=1.6, zorder=3),
+    "FAISS-IVFPQ-384B":        dict(color="#7F7F7F", marker=">",  ls=":",  lw=1.6, zorder=3),
 }
 
 
@@ -65,8 +58,7 @@ def load_csv(path):
     return data
 
 
-def plot_panel(ax, data, title):
-    plotted = set()
+def plot_panel(ax, data, title, ds_tag=""):
     # GPU first, then CPU
     order = [k for k in STYLES if k in data and k.startswith("HBlock")] + \
             [k for k in STYLES if k in data and not k.startswith("HBlock")]
@@ -74,9 +66,13 @@ def plot_panel(ax, data, title):
         if mname not in data:
             continue
         d     = data[mname]
-        style = STYLES.get(mname, dict(color="black", marker="o", ls="-", lw=1.5, zorder=2,
-                                        label=mname))
-        # Sort by recall for a clean line
+        style = STYLES.get(mname, dict(color="black", marker="o", ls="-", lw=1.5, zorder=2))
+        if mname.startswith("HBlock"):
+            label = f"{mname.replace('HBlock-v17 ', 'HBlock-v17 GPU ')}"
+        elif mname.startswith("FAISS"):
+            label = f"{mname} CPU"
+        else:
+            label = f"{mname} CPU ({ds_tag})" if ds_tag else f"{mname} CPU"
         pairs = sorted(zip(d["recall"], d["qps"]))
         rs    = [p[0] * 100 for p in pairs]
         qs    = [p[1]        for p in pairs]
@@ -89,8 +85,7 @@ def plot_panel(ax, data, title):
                     markeredgecolor=style["color"],
                     markeredgewidth=1.2,
                     zorder=style["zorder"],
-                    label=style["label"])
-        plotted.add(mname)
+                    label=label)
 
     ax.set_xlabel("Recall@10 (%)")
     ax.set_ylabel("QPS")
@@ -113,30 +108,36 @@ def main():
     args = sys.argv[1:]
     if len(args) < 2:
         print("Usage: plot_v17_comparison.py <gpu_vogue.csv> <cpu_vogue.csv> "
-              "[gpu_arxiv.csv] [output_prefix]")
+              "[gpu_arxiv.csv] [cpu_arxiv.csv] [output_prefix]")
         sys.exit(1)
 
-    gpu_vogue_csv = args[0]
-    cpu_csv       = args[1]
-    gpu_arxiv_csv = args[2] if len(args) > 2 and args[2].endswith(".csv") else None
-    prefix        = next((a for a in args[2:] if not a.endswith(".csv")),
-                         "results/v17_comparison")
+    csv_args = [a for a in args if a.endswith(".csv")]
+    prefix   = next((a for a in args if not a.endswith(".csv")),
+                    "results/v17_comparison")
 
-    data_vogue = load_csv(cpu_csv)
+    gpu_vogue_csv = csv_args[0]
+    cpu_vogue_csv = csv_args[1]
+    gpu_arxiv_csv = csv_args[2] if len(csv_args) > 2 else None
+    cpu_arxiv_csv = csv_args[3] if len(csv_args) > 3 else None
+
+    data_vogue = load_csv(cpu_vogue_csv)
     data_vogue.update(load_csv(gpu_vogue_csv))
 
     has_arxiv = gpu_arxiv_csv and os.path.exists(gpu_arxiv_csv)
 
     if has_arxiv:
-        data_arxiv = load_csv(gpu_arxiv_csv)
+        data_arxiv = {}
+        if cpu_arxiv_csv and os.path.exists(cpu_arxiv_csv):
+            data_arxiv.update(load_csv(cpu_arxiv_csv))
+        data_arxiv.update(load_csv(gpu_arxiv_csv))
         fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(14, 5))
-        plot_panel(ax0, data_vogue,  "Vogue-768  (N=933K, d=768, k=10)")
-        plot_panel(ax1, data_arxiv,  "Arxiv-768  (N=2.3M, d=768, k=10)")
+        plot_panel(ax0, data_vogue,  "Vogue-768  (N=933K, d=768, k=10)", "Vogue-768")
+        plot_panel(ax1, data_arxiv,  "Arxiv-768  (N=2.3M, d=768, k=10)", "Arxiv-768")
         fig.suptitle("HBlock-v17 GPU vs CPU Baselines", fontsize=12,
                      fontweight="bold", y=1.02)
     else:
         fig, ax0 = plt.subplots(1, 1, figsize=(8, 5))
-        plot_panel(ax0, data_vogue, "Vogue-768  (N=933K, d=768, k=10)  —  GPU vs CPU")
+        plot_panel(ax0, data_vogue, "Vogue-768  (N=933K, d=768, k=10)  —  GPU vs CPU", "Vogue-768")
         fig.suptitle("HBlock-v17 GPU vs CPU Baselines", fontsize=12,
                      fontweight="bold", y=1.02)
 
