@@ -81,3 +81,21 @@ add_jhq_version(hblock_v14)
 add_jhq_version(hblock_v15)
 add_jhq_version(hblock_v16)
 add_jhq_version(hblock_v17)
+
+# v18: JL coarse scan — no encode.cu, added manually
+add_library(jhq_hblock_v18 STATIC
+    hblock_v18/search.cu
+    hblock_v18/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v18 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v18 PUBLIC
+    jhq_hblock_v17   # reuses encode.cu kernels
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v18 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+)
+add_executable(demo_hblock_v18 examples/demo_hblock_v18.cu)
+target_link_libraries(demo_hblock_v18 PRIVATE jhq_hblock_v18)
