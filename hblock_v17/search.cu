@@ -557,8 +557,8 @@ __global__ void exact_rerank_kernel(
     const float* q   = d_q_batch  + (long long)qi * d;
     const int*   ids = d_cand_ids + (long long)qi * R;
 
-    extern __shared__ float shm[];  // [R] dot products
-    float* s_dots = shm;
+    extern __shared__ char shm_rerank[];
+    float* s_dots = (float*)shm_rerank;
 
     // Round-robin: warp wid handles candidates wid, wid+n_warps, wid+2*n_warps, ...
     for (int ri = wid; ri < R; ri += n_warps) {
