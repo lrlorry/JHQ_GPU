@@ -8,25 +8,29 @@
 
 namespace hblock_v17 {
 
-// HBlock v17: true 3-level JL routing + PQ coarse scan + exact re-rank
+// HBlock v17: 3-level hierarchical JL routing + PQ coarse scan + exact re-rank
 //
-// Routing: L1(q) → L2(r1) → L3(r2) → ck1×ck2×ck3 leaf cells
-// Leaf:    PQ-encode r3 = r2 - C3_full[c3]
-// Rerank:  exact inner product on gathered original vectors
+// Routing: L1(q) → L2_local(r1, per-c1) → L3_local(r2, per-(c1,c2)) → leaf cells
+// Leaf:    PQ-encode r3 = r2 - C3_full[c1][c2][c3]
+// Rerank:  exact L2 on gathered original vectors
+//
+// C2 centroids are LOCAL to each c1 group: C2[c1*K2 + local_c2]
+// C3 centroids are LOCAL to each (c1,c2) group: C3[(c1*K2+c2)*K3 + local_c3]
+// Leaf index: c1*K2*K3 + local_c2*K3 + local_c3
 class HBlockIndex {
 public:
     struct Params {
-        int K1         = 64;
-        int K2         = 64;
-        int K3         = 64;    // L3 centroids
+        int K1         = 16;   // L1 global centroids
+        int K2         = 16;   // L2 local centroids per c1
+        int K3         = 16;   // L3 local centroids per (c1,c2)
         int Kr         = 16;
         int Br         = 4;
         int leaf_size  = 128;
         int ck1        = 4;
         int ck2        = 4;
-        int ck3        = 4;     // L3 selections; total leaf = ck1*ck2*ck3
-        int d_proj     = 64;    // JL projection dimension (shared across all levels)
-        int rerank_r   = 64;    // top-R candidates for exact re-rank
+        int ck3        = 4;
+        int d_proj     = 64;
+        int rerank_r   = 64;
         int km_iters   = 30;
         int batch_size = 1024;
     };
@@ -49,28 +53,28 @@ private:
     int ntotal_        = 0;
     int n_leaf_blocks_ = 0;
 
-    // L1 JL + k-means
+    // L1: global JL + k-means
     float* d_Pi1_                = nullptr;  // [d_proj, d]
     float* d_route1_cents_proj_  = nullptr;  // [K1, d_proj]
     float* d_route1_cents_full_  = nullptr;  // [K1, d]
     float* d_route1_norms_       = nullptr;  // [K1]
 
-    // L2 JL + k-means  (on r1)
+    // L2: per-c1 local JL + k-means
     float* d_Pi2_                = nullptr;  // [d_proj, d]
-    float* d_route2_cents_proj_  = nullptr;  // [K2, d_proj]
-    float* d_route2_cents_full_  = nullptr;  // [K2, d]
-    float* d_route2_norms_       = nullptr;  // [K2]
+    float* d_route2_cents_proj_  = nullptr;  // [K1*K2, d_proj]  local per-c1
+    float* d_route2_cents_full_  = nullptr;  // [K1*K2, d]
+    float* d_route2_norms_       = nullptr;  // [K1*K2]
 
-    // L3 JL + k-means  (on r2)
+    // L3: per-(c1,c2) local JL + k-means
     float* d_Pi3_                = nullptr;  // [d_proj, d]
-    float* d_route3_cents_proj_  = nullptr;  // [K3, d_proj]
-    float* d_route3_cents_full_  = nullptr;  // [K3, d]
-    float* d_route3_norms_       = nullptr;  // [K3]
+    float* d_route3_cents_proj_  = nullptr;  // [K1*K2*K3, d_proj]  local per-(c1,c2)
+    float* d_route3_cents_full_  = nullptr;  // [K1*K2*K3, d]
+    float* d_route3_norms_       = nullptr;  // [K1*K2*K3]
 
     // Fine PQ codebook (on r3)
     float* d_fine_c1d_ = nullptr;  // [Kr]
 
-    // Leaf block structures: indexed by c1*K2*K3 + c2*K3 + c3
+    // Leaf block structures: indexed by c1*K2*K3 + local_c2*K3 + local_c3
     int*     d_pair_blk_start_ = nullptr;  // [K1*K2*K3]
     int*     d_pair_blk_count_ = nullptr;  // [K1*K2*K3]
     uint8_t* d_leaf_codes_     = nullptr;  // [n_leaf_blocks, bpv, leaf_size]

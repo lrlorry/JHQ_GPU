@@ -57,10 +57,13 @@ HBlockIndex::~HBlockIndex() {
     free_h(ws_.h_q_pinned); free_h(ws_.h_leaf_cnt);
     free_h(ws_.h_final_dists); free_h(ws_.h_final_ids);
     free_d(ws_.d_q_batch);
-    free_d(ws_.d_q_proj1);  free_d(ws_.d_q_proj2);  free_d(ws_.d_q_proj3);
-    free_d(ws_.d_q_r1);     free_d(ws_.d_q_r2);     free_d(ws_.d_q_r3);
-    free_d(ws_.d_dots1);    free_d(ws_.d_dots2);    free_d(ws_.d_dots3);
-    free_d(ws_.d_top1_ids); free_d(ws_.d_top2_ids); free_d(ws_.d_top3_ids);
+    free_d(ws_.d_q_proj1);
+    free_d(ws_.d_dots1);
+    free_d(ws_.d_top1_ids);
+    free_d(ws_.d_r1_beam);
+    free_d(ws_.d_top2_beam);
+    free_d(ws_.d_top3_beam);
+    free_d(ws_.d_q_r3);
     free_d(ws_.d_leaf_sel); free_d(ws_.d_leaf_cnt);
     free_d(ws_.d_lut_fine);
     free_d(ws_.d_query_offsets);
@@ -220,6 +223,34 @@ void HBlockIndex::upload_cents(const std::vector<float>& h_proj, const std::vect
     CUDA_CHECK(cudaMemcpy(d_norms_out, h_norms.data(),  (long long)K * sizeof(float),             cudaMemcpyHostToDevice));
 }
 
+// ── Local assignment kernel (used in add()) ───────────────────────────────────
+// For each vector i with outer group outer_id[i], find nearest centroid
+// in LOCAL group (K_inner centroids) using precomputed projected residual.
+static __global__ void local_assign_kernel(
+    const float* __restrict__ r_proj,    // [n, d_proj]
+    const float* __restrict__ C_proj,    // [K_outer * K_inner, d_proj]
+    const float* __restrict__ C_norms,   // [K_outer * K_inner]
+    const int*   __restrict__ outer_id,  // [n]
+    int*         assign,                 // [n] output: LOCAL index 0..K_inner-1
+    int n, int d_proj, int K_inner)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+    int og = outer_id[i];
+    const float* r_i    = r_proj  + (long long)i  * d_proj;
+    const float* c_base = C_proj  + (long long)og * K_inner * d_proj;
+    const float* n_base = C_norms + (long long)og * K_inner;
+    float bv = 1e30f; int bi = 0;
+    for (int k = 0; k < K_inner; k++) {
+        const float* c_k = c_base + (long long)k * d_proj;
+        float dot = 0.f;
+        for (int j = 0; j < d_proj; j++) dot += r_i[j] * c_k[j];
+        float dist = n_base[k] - 2.f * dot;
+        if (dist < bv) { bv = dist; bi = k; }
+    }
+    assign[i] = bi;
+}
+
 // ── train() ──────────────────────────────────────────────────────────────────
 
 void HBlockIndex::train(const float* h_x, int n_train)
@@ -227,11 +258,13 @@ void HBlockIndex::train(const float* h_x, int n_train)
     auto T0 = std::chrono::high_resolution_clock::now();
     using Clock = std::chrono::high_resolution_clock;
 
-    const int n_km  = std::min(n_train, 100000);
+    const int n_km  = std::min(n_train, 200000);
 
     printf("[v17 train] d=%d d_proj=%d K1=%d K2=%d K3=%d ck1=%d ck2=%d ck3=%d\n",
            d_, d_proj_, K1_, K2_, K3_, ck1_, ck2_, ck3_);
     printf("  n_train=%d n_km=%d km_iters=%d\n", n_train, n_km, km_iters_);
+    printf("  Hierarchical: L2 per-c1, L3 per-(c1,c2). Total cells=%d\n",
+           K1_ * K2_ * K3_);
 
     // ── Step 1: L1 JL projection ──────────────────────────────────────────────
     std::vector<float> Pi1;
@@ -292,8 +325,8 @@ void HBlockIndex::train(const float* h_x, int n_train)
         auto t2 = Clock::now();
         printf("%.1f ms\n", Ms(t2 - t1).count());
 
-        // ── Step 2: L2 JL on L1 residuals ────────────────────────────────────
-        printf("  [L2 JL + k-means] K2=%d ... ", K2_); fflush(stdout);
+        // ── Step 2: L2 hierarchical k-means (per-c1 local) ───────────────────
+        printf("  [L2 hierarchical k-means] K2=%d per c1 ... ", K2_); fflush(stdout);
         auto t3 = Clock::now();
 
         // Compute L1 residuals for training data
@@ -305,84 +338,143 @@ void HBlockIndex::train(const float* h_x, int n_train)
                                               - h_c1_full[(long long)c1 * d_ + j];
         }
 
-        // JL projection for L2 (different seed → independent projection)
+        // JL projection for L2
         std::vector<float> Pi2;
         init_jl_proj(d_, d_proj_, /*seed=*/43, Pi2);
-
         CUDA_CHECK(cudaMalloc(&d_Pi2_, (long long)d_proj_ * d_ * sizeof(float)));
         CUDA_CHECK(cudaMemcpy(d_Pi2_, Pi2.data(), (long long)d_proj_ * d_ * sizeof(float), cudaMemcpyHostToDevice));
 
-        // Project r1 to d_proj-D
-        float *d_r1_gpu, *d_r1_proj;
-        CUDA_CHECK(cudaMalloc(&d_r1_gpu,  (long long)n_km * d_     * sizeof(float)));
-        CUDA_CHECK(cudaMalloc(&d_r1_proj, (long long)n_km * d_proj_ * sizeof(float)));
+        // Project ALL r1 by Pi2 on GPU
+        float *d_r1_gpu, *d_r1_proj_gpu;
+        CUDA_CHECK(cudaMalloc(&d_r1_gpu,      (long long)n_km * d_      * sizeof(float)));
+        CUDA_CHECK(cudaMalloc(&d_r1_proj_gpu, (long long)n_km * d_proj_ * sizeof(float)));
         CUDA_CHECK(cudaMemcpy(d_r1_gpu, h_r1.data(), (long long)n_km * d_ * sizeof(float), cudaMemcpyHostToDevice));
         CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
                                  d_proj_, n_km, d_, &one,
-                                 d_Pi2_, d_,
-                                 d_r1_gpu, d_, &zero,
-                                 d_r1_proj, d_proj_));
+                                 d_Pi2_, d_, d_r1_gpu, d_, &zero, d_r1_proj_gpu, d_proj_));
         std::vector<float> h_r1_proj((long long)n_km * d_proj_);
-        CUDA_CHECK(cudaMemcpy(h_r1_proj.data(), d_r1_proj,
+        CUDA_CHECK(cudaMemcpy(h_r1_proj.data(), d_r1_proj_gpu,
                               (long long)n_km * d_proj_ * sizeof(float), cudaMemcpyDeviceToHost));
-        cudaFree(d_r1_gpu); cudaFree(d_r1_proj);
+        cudaFree(d_r1_gpu); cudaFree(d_r1_proj_gpu);
 
-        std::vector<float> h_c2_proj, h_c2_full;
-        std::vector<int> h_assign2;
-        gpu_kmeans(h_r1_proj.data(), h_r1.data(), n_km, K2_,
-                   h_c2_proj, h_c2_full, h_assign2);
+        // Per-c1 local k-means
+        std::vector<float> h_all_c2_proj((long long)K1_ * K2_ * d_proj_, 0.f);
+        std::vector<float> h_all_c2_full((long long)K1_ * K2_ * d_,      0.f);
+        std::vector<int>   h_assign2(n_km, 0);
 
-        upload_cents(h_c2_proj, h_c2_full, K2_,
+        for (int c1 = 0; c1 < K1_; c1++) {
+            std::vector<int>   idx;
+            for (int i = 0; i < n_km; i++) if (h_assign1[i] == c1) idx.push_back(i);
+            int nc1 = (int)idx.size();
+            if (nc1 == 0) continue;
+            int K2e = std::min(K2_, nc1);
+
+            std::vector<float> grp_proj((long long)nc1 * d_proj_);
+            std::vector<float> grp_full((long long)nc1 * d_);
+            for (int k = 0; k < nc1; k++) {
+                std::memcpy(grp_proj.data() + (long long)k * d_proj_,
+                            h_r1_proj.data() + (long long)idx[k] * d_proj_, d_proj_ * sizeof(float));
+                std::memcpy(grp_full.data() + (long long)k * d_,
+                            h_r1.data()      + (long long)idx[k] * d_,      d_       * sizeof(float));
+            }
+
+            std::vector<float> c2p, c2f; std::vector<int> a2;
+            gpu_kmeans(grp_proj.data(), grp_full.data(), nc1, K2e, c2p, c2f, a2);
+            c2p.resize((long long)K2_ * d_proj_, 0.f);
+            c2f.resize((long long)K2_ * d_,      0.f);
+
+            std::memcpy(h_all_c2_proj.data() + (long long)c1 * K2_ * d_proj_,
+                        c2p.data(), (long long)K2_ * d_proj_ * sizeof(float));
+            std::memcpy(h_all_c2_full.data() + (long long)c1 * K2_ * d_,
+                        c2f.data(), (long long)K2_ * d_       * sizeof(float));
+            for (int k = 0; k < nc1; k++) h_assign2[idx[k]] = a2[k];
+        }
+        upload_cents(h_all_c2_proj, h_all_c2_full, K1_ * K2_,
                      d_route2_cents_proj_, d_route2_cents_full_, d_route2_norms_);
 
         auto t4 = Clock::now();
         printf("%.1f ms\n", Ms(t4 - t3).count());
 
-        // ── Step 3: L3 JL + k-means on L2 residuals (r2) ────────────────────
-        printf("  [L3 JL+k-means] K3=%d ... ", K3_); fflush(stdout);
+        // ── Step 3: L3 hierarchical k-means (per-(c1,c2) local) ──────────────
+        printf("  [L3 hierarchical k-means] K3=%d per (c1,c2) ... ", K3_); fflush(stdout);
         auto t5 = Clock::now();
 
-        // Compute L2 residuals: r2 = r1 - C2_full[c2]
+        // Compute L2 residuals: r2 = r1 - C2_full[c1][c2]
         std::vector<float> h_r2((long long)n_km * d_);
         for (int i = 0; i < n_km; i++) {
-            int c2 = h_assign2[i];
+            int c1 = h_assign1[i], c2 = h_assign2[i];
+            long long c12 = (long long)c1 * K2_ + c2;
             for (int j = 0; j < d_; j++)
                 h_r2[(long long)i * d_ + j] = h_r1[(long long)i * d_ + j]
-                                              - h_c2_full[(long long)c2 * d_ + j];
+                                              - h_all_c2_full[c12 * d_ + j];
         }
 
+        // JL projection for L3
         std::vector<float> Pi3;
         init_jl_proj(d_, d_proj_, /*seed=*/44, Pi3);
         CUDA_CHECK(cudaMalloc(&d_Pi3_, (long long)d_proj_ * d_ * sizeof(float)));
         CUDA_CHECK(cudaMemcpy(d_Pi3_, Pi3.data(), (long long)d_proj_ * d_ * sizeof(float), cudaMemcpyHostToDevice));
 
-        // Project r2 to 64D for L3 k-means
-        float *d_r2_gpu, *d_r2_proj;
-        CUDA_CHECK(cudaMalloc(&d_r2_gpu,  (long long)n_km * d_     * sizeof(float)));
-        CUDA_CHECK(cudaMalloc(&d_r2_proj, (long long)n_km * d_proj_ * sizeof(float)));
+        // Project ALL r2 on GPU
+        float *d_r2_gpu, *d_r2_proj_gpu;
+        CUDA_CHECK(cudaMalloc(&d_r2_gpu,      (long long)n_km * d_      * sizeof(float)));
+        CUDA_CHECK(cudaMalloc(&d_r2_proj_gpu, (long long)n_km * d_proj_ * sizeof(float)));
         CUDA_CHECK(cudaMemcpy(d_r2_gpu, h_r2.data(), (long long)n_km * d_ * sizeof(float), cudaMemcpyHostToDevice));
         CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
                                  d_proj_, n_km, d_, &one,
-                                 d_Pi3_, d_, d_r2_gpu, d_, &zero,
-                                 d_r2_proj, d_proj_));
+                                 d_Pi3_, d_, d_r2_gpu, d_, &zero, d_r2_proj_gpu, d_proj_));
         std::vector<float> h_r2_proj((long long)n_km * d_proj_);
-        CUDA_CHECK(cudaMemcpy(h_r2_proj.data(), d_r2_proj,
+        CUDA_CHECK(cudaMemcpy(h_r2_proj.data(), d_r2_proj_gpu,
                               (long long)n_km * d_proj_ * sizeof(float), cudaMemcpyDeviceToHost));
-        cudaFree(d_r2_gpu); cudaFree(d_r2_proj);
+        cudaFree(d_r2_gpu); cudaFree(d_r2_proj_gpu);
 
-        std::vector<float> h_c3_proj, h_c3_full;
-        std::vector<int> h_assign3;
-        gpu_kmeans(h_r2_proj.data(), h_r2.data(), n_km, K3_,
-                   h_c3_proj, h_c3_full, h_assign3);
-        upload_cents(h_c3_proj, h_c3_full, K3_,
+        // Per-(c1,c2) local k-means
+        long long n_c12 = (long long)K1_ * K2_;
+        std::vector<float> h_all_c3_proj(n_c12 * K3_ * d_proj_, 0.f);
+        std::vector<float> h_all_c3_full(n_c12 * K3_ * d_,      0.f);
+        std::vector<int>   h_assign3(n_km, 0);
+
+        for (int c1 = 0; c1 < K1_; c1++) {
+            for (int c2 = 0; c2 < K2_; c2++) {
+                long long c12 = (long long)c1 * K2_ + c2;
+                std::vector<int> idx;
+                for (int i = 0; i < n_km; i++)
+                    if (h_assign1[i] == c1 && h_assign2[i] == c2) idx.push_back(i);
+                int nc12 = (int)idx.size();
+                if (nc12 == 0) continue;
+                int K3e = std::min(K3_, nc12);
+
+                std::vector<float> grp_proj((long long)nc12 * d_proj_);
+                std::vector<float> grp_full((long long)nc12 * d_);
+                for (int k = 0; k < nc12; k++) {
+                    std::memcpy(grp_proj.data() + (long long)k * d_proj_,
+                                h_r2_proj.data() + (long long)idx[k] * d_proj_, d_proj_ * sizeof(float));
+                    std::memcpy(grp_full.data() + (long long)k * d_,
+                                h_r2.data()      + (long long)idx[k] * d_,      d_       * sizeof(float));
+                }
+
+                std::vector<float> c3p, c3f; std::vector<int> a3;
+                gpu_kmeans(grp_proj.data(), grp_full.data(), nc12, K3e, c3p, c3f, a3);
+                c3p.resize((long long)K3_ * d_proj_, 0.f);
+                c3f.resize((long long)K3_ * d_,      0.f);
+
+                std::memcpy(h_all_c3_proj.data() + (c12 * K3_) * d_proj_,
+                            c3p.data(), (long long)K3_ * d_proj_ * sizeof(float));
+                std::memcpy(h_all_c3_full.data() + (c12 * K3_) * d_,
+                            c3f.data(), (long long)K3_ * d_       * sizeof(float));
+                for (int k = 0; k < nc12; k++) h_assign3[idx[k]] = a3[k];
+            }
+        }
+        upload_cents(h_all_c3_proj, h_all_c3_full, n_c12 * K3_,
                      d_route3_cents_proj_, d_route3_cents_full_, d_route3_norms_);
 
-        // ── Step 4: Fine PQ codebook on r3 = r2 - C3_full[c3] ───────────────
+        // ── Step 4: Fine PQ codebook on r3 = r2 - C3_full[c1][c2][c3] ───────
         double sum_sq = 0.0;
         for (int i = 0; i < n_km; i++) {
-            int c3 = h_assign3[i];
+            int c1 = h_assign1[i], c2 = h_assign2[i], c3 = h_assign3[i];
+            long long c123 = ((long long)c1 * K2_ + c2) * K3_ + c3;
             for (int j = 0; j < d_; j++) {
-                float v = h_r2[(long long)i * d_ + j] - h_c3_full[(long long)c3 * d_ + j];
+                float v = h_r2[(long long)i * d_ + j] - h_all_c3_full[c123 * d_ + j];
                 sum_sq += (double)v * v;
             }
         }
@@ -410,7 +502,8 @@ void HBlockIndex::add(const float* h_x, int n)
     const int BATCH = 8192;
     const float one = 1.f, zero = 0.f;
 
-    float *d_x, *d_r1, *d_r2, *d_r3, *d_proj1, *d_proj2, *d_proj3, *d_dots;
+    // GPU buffers for add() (local_assign_kernel uses d_route{2,3}_cents_proj_)
+    float *d_x, *d_r1, *d_r2, *d_r3, *d_proj1, *d_proj2, *d_proj3;
     int *d_c1, *d_c2, *d_c3; uint8_t *d_fc;
     CUDA_CHECK(cudaMalloc(&d_x,     (long long)BATCH * d_      * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&d_proj1, (long long)BATCH * d_proj_ * sizeof(float)));
@@ -423,7 +516,9 @@ void HBlockIndex::add(const float* h_x, int n)
     CUDA_CHECK(cudaMalloc(&d_c2,    (long long)BATCH * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&d_c3,    (long long)BATCH * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&d_fc,    (long long)BATCH * bpv_));
-    CUDA_CHECK(cudaMalloc(&d_dots,  (long long)std::max({K1_, K2_, K3_}) * BATCH * sizeof(float)));
+    // For L1 assignment (global K1 centroids)
+    float* d_dots1;
+    CUDA_CHECK(cudaMalloc(&d_dots1, (long long)K1_ * BATCH * sizeof(float)));
 
     std::vector<int>     h_code1(n), h_code2(n), h_code3(n);
     std::vector<uint8_t> h_fc_all((long long)n * bpv_);
@@ -435,33 +530,75 @@ void HBlockIndex::add(const float* h_x, int n)
         CUDA_CHECK(cudaMemcpy(d_x, h_x + (long long)s * d_,
                               (long long)nb * d_ * sizeof(float), cudaMemcpyHostToDevice));
 
-        // L1: project to d_proj, GEMM with L1 centroids, assign
+        // ── L1: global assignment ──────────────────────────────────────────────
         CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
                                  d_proj_, nb, d_, &one, d_Pi1_, d_, d_x, d_, &zero, d_proj1, d_proj_));
         CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
                                  K1_, nb, d_proj_, &one,
-                                 d_route1_cents_proj_, d_proj_, d_proj1, d_proj_, &zero, d_dots, K1_));
-        launch_assign_from_dots(d_dots, d_route1_norms_, d_c1, K1_, nb, nullptr);
-        // L1 residual in full d space
+                                 d_route1_cents_proj_, d_proj_, d_proj1, d_proj_, &zero, d_dots1, K1_));
+        launch_assign_from_dots(d_dots1, d_route1_norms_, d_c1, K1_, nb, nullptr);
         launch_subtract_centroid(d_x, d_c1, d_route1_cents_full_, d_r1, nb, d_, nullptr);
 
-        // L2: project r1, GEMM, assign c2, compute r2
+        // ── L2: local assignment using per-c1 centroids ───────────────────────
+        // Project r1 by Pi2
         CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
                                  d_proj_, nb, d_, &one, d_Pi2_, d_, d_r1, d_, &zero, d_proj2, d_proj_));
-        CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
-                                 K2_, nb, d_proj_, &one,
-                                 d_route2_cents_proj_, d_proj_, d_proj2, d_proj_, &zero, d_dots, K2_));
-        launch_assign_from_dots(d_dots, d_route2_norms_, d_c2, K2_, nb, nullptr);
-        launch_subtract_centroid(d_r1, d_c2, d_route2_cents_full_, d_r2, nb, d_, nullptr);
+        // local_assign_kernel: for each vector, search K2 centroids in its c1 group
+        local_assign_kernel<<<(nb + 255) / 256, 256>>>(
+            d_proj2, d_route2_cents_proj_, d_route2_norms_, d_c1, d_c2, nb, d_proj_, K2_);
+        // r2 = r1 - C2_full[c1*K2 + c2]  (c2 is LOCAL index)
+        // Use launch_subtract_centroid with custom indexing via a small kernel
+        {
+            // Inline: r3[i] = r1[i] - C2_full[(c1[i]*K2_ + c2[i]) * d_]
+            // Reuse subtract_centroid logic with compound index
+            // We'll compute compound index on CPU temporarily, then use it
+            // Actually: directly compute in a kernel
+            int grid = (nb + 255) / 256;
+            // Subtract local centroid C2 from r1 → r2
+            auto sub_local2 = [&]() __attribute__((unused)) {};
+            // Use existing launch_subtract_centroid but need c12 index
+            // Build d_c12 = c1*K2 + c2
+            int* d_c12; CUDA_CHECK(cudaMalloc(&d_c12, nb * sizeof(int)));
+            // Simple kernel to compute c12
+            // Inline via lambda not possible in device code; use thrust or manual kernel
+            // For simplicity: download c1,c2, compute on CPU, upload c12, use subtract
+            std::vector<int> h_c1b(nb), h_c2b(nb);
+            CUDA_CHECK(cudaMemcpy(h_c1b.data(), d_c1, nb*sizeof(int), cudaMemcpyDeviceToHost));
+            CUDA_CHECK(cudaMemcpy(h_c2b.data(), d_c2, nb*sizeof(int), cudaMemcpyDeviceToHost));
+            std::vector<int> h_c12(nb);
+            for (int i = 0; i < nb; i++) h_c12[i] = h_c1b[i] * K2_ + h_c2b[i];
+            CUDA_CHECK(cudaMemcpy(d_c12, h_c12.data(), nb*sizeof(int), cudaMemcpyHostToDevice));
+            launch_subtract_centroid(d_r1, d_c12, d_route2_cents_full_, d_r2, nb, d_, nullptr);
+            cudaFree(d_c12);
+        }
 
-        // L3: project r2, GEMM, assign c3, compute r3
+        // ── L3: local assignment using per-(c1,c2) centroids ──────────────────
+        // Project r2 by Pi3
         CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
                                  d_proj_, nb, d_, &one, d_Pi3_, d_, d_r2, d_, &zero, d_proj3, d_proj_));
-        CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
-                                 K3_, nb, d_proj_, &one,
-                                 d_route3_cents_proj_, d_proj_, d_proj3, d_proj_, &zero, d_dots, K3_));
-        launch_assign_from_dots(d_dots, d_route3_norms_, d_c3, K3_, nb, nullptr);
-        launch_subtract_centroid(d_r2, d_c3, d_route3_cents_full_, d_r3, nb, d_, nullptr);
+        // local_assign_kernel with outer_id = c12 (c1*K2 + c2)
+        {
+            int* d_c12; CUDA_CHECK(cudaMalloc(&d_c12, nb * sizeof(int)));
+            std::vector<int> h_c1b(nb), h_c2b(nb);
+            CUDA_CHECK(cudaMemcpy(h_c1b.data(), d_c1, nb*sizeof(int), cudaMemcpyDeviceToHost));
+            CUDA_CHECK(cudaMemcpy(h_c2b.data(), d_c2, nb*sizeof(int), cudaMemcpyDeviceToHost));
+            std::vector<int> h_c12(nb);
+            for (int i = 0; i < nb; i++) h_c12[i] = h_c1b[i] * K2_ + h_c2b[i];
+            CUDA_CHECK(cudaMemcpy(d_c12, h_c12.data(), nb*sizeof(int), cudaMemcpyHostToDevice));
+
+            local_assign_kernel<<<(nb + 255) / 256, 256>>>(
+                d_proj3, d_route3_cents_proj_, d_route3_norms_, d_c12, d_c3, nb, d_proj_, K3_);
+
+            // r3 = r2 - C3_full[(c12*K3 + c3)*d_]
+            std::vector<int> h_c3b(nb), h_c123(nb);
+            CUDA_CHECK(cudaDeviceSynchronize());
+            CUDA_CHECK(cudaMemcpy(h_c3b.data(), d_c3, nb*sizeof(int), cudaMemcpyDeviceToHost));
+            for (int i = 0; i < nb; i++) h_c123[i] = h_c12[i] * K3_ + h_c3b[i];
+            int* d_c123; CUDA_CHECK(cudaMalloc(&d_c123, nb*sizeof(int)));
+            CUDA_CHECK(cudaMemcpy(d_c123, h_c123.data(), nb*sizeof(int), cudaMemcpyHostToDevice));
+            launch_subtract_centroid(d_r2, d_c123, d_route3_cents_full_, d_r3, nb, d_, nullptr);
+            cudaFree(d_c12); cudaFree(d_c123);
+        }
 
         // Fine encode on r3
         launch_fine_encode(d_r3, d_fine_c1d_, d_fc, nb, d_, Kr_, Br_, bpv_, nullptr);
@@ -475,7 +612,7 @@ void HBlockIndex::add(const float* h_x, int n)
     }
     cudaFree(d_x); cudaFree(d_proj1); cudaFree(d_proj2); cudaFree(d_proj3);
     cudaFree(d_r1); cudaFree(d_r2); cudaFree(d_r3);
-    cudaFree(d_c1); cudaFree(d_c2); cudaFree(d_c3); cudaFree(d_fc); cudaFree(d_dots);
+    cudaFree(d_c1); cudaFree(d_c2); cudaFree(d_c3); cudaFree(d_fc); cudaFree(d_dots1);
 
     // Sort by (c1, c2, c3)
     long long K2K3 = (long long)K2_ * K3_;
@@ -575,29 +712,27 @@ void HBlockIndex::alloc_workspace()
     CUDA_CHECK(cudaMallocHost(&ws_.h_final_ids,   (long long)B * K_MAX * sizeof(int)));
 
     FD(d_q_batch);
-    FD(d_q_proj1); FD(d_q_proj2); FD(d_q_proj3);
-    FD(d_q_r1);    FD(d_q_r2);    FD(d_q_r3);
-    FD(d_dots1);   FD(d_dots2);   FD(d_dots3);
-    FD(d_top1_ids); FD(d_top2_ids); FD(d_top3_ids);
+    FD(d_q_proj1);
+    FD(d_dots1);
+    FD(d_top1_ids);
+    FD(d_r1_beam);
+    FD(d_top2_beam);
+    FD(d_top3_beam);
+    FD(d_q_r3);
     FD(d_leaf_sel); FD(d_leaf_cnt);
     FD(d_lut_fine);
 
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_batch,   (long long)B * d_      * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_proj1,   (long long)B * d_proj_ * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_proj2,   (long long)B * d_proj_ * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_proj3,   (long long)B * d_proj_ * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_r1,      (long long)B * d_      * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_r2,      (long long)B * d_      * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_r3,      (long long)B * d_      * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_dots1,     (long long)B * K1_     * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_dots2,     (long long)B * K2_     * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_dots3,     (long long)B * K3_     * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_top1_ids,  (long long)B * ck1_    * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_top2_ids,  (long long)B * ck2_    * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_top3_ids,  (long long)B * ck3_    * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_leaf_sel,  (long long)B * total_ck * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_leaf_cnt,  (long long)B * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_lut_fine,  (long long)B * d_      * Kr_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_batch,    (long long)B * d_               * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_proj1,    (long long)B * d_proj_           * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_dots1,      (long long)B * K1_               * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_top1_ids,   (long long)B * ck1_              * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_r1_beam,    (long long)B * ck1_ * d_         * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_top2_beam,  (long long)B * ck1_ * ck2_       * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_top3_beam,  (long long)B * ck1_ * ck2_ * ck3_ * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_r3,       (long long)B * d_               * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_leaf_sel,   (long long)B * total_ck          * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_leaf_cnt,   (long long)B * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_lut_fine,   (long long)B * d_ * Kr_          * sizeof(float)));
 
     FD(d_query_offsets);
     FD(d_pair_leaf_a); FD(d_pair_qid_a);
@@ -673,7 +808,7 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
     auto t2 = Clock::now();
 
     // ── Phase 3: GPU pair sort ───────────────────────────────────────────────
-    gpu_build_and_sort_pairs_v17(nq, n_pairs, n_leaf_blocks_, ck3_, ws_);
+    gpu_build_and_sort_pairs_v17(nq, n_pairs, n_leaf_blocks_, ck1_*ck2_*ck3_, ws_);
     auto t3 = Clock::now();
 
     // ── Phase 4: Leaf PQ scan ────────────────────────────────────────────────

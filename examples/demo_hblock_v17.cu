@@ -28,7 +28,7 @@ int main(int argc, char** argv)
     if (argc < 4) {
         fprintf(stderr,
             "Usage: %s <base.fvecs> <query.fvecs> <gt.ivecs>\n"
-            "         [K1=64] [K2=64] [K3=64] [ck1=4] [ck2=4] [ck3=4]\n"
+            "         [K1=16] [K2=16] [K3=16] [ck1=4] [ck2=4] [ck3=4]\n"
             "         [k=10] [batch_size=1024] [d_proj=64] [rerank_r=64] [km_iters=30]\n",
             argv[0]);
         return 1;
@@ -37,9 +37,9 @@ int main(int argc, char** argv)
     const char* base_path  = argv[1];
     const char* query_path = argv[2];
     const char* gt_path    = argv[3];
-    int K1        = (argc >  4) ? atoi(argv[4])  : 64;
-    int K2        = (argc >  5) ? atoi(argv[5])  : 64;
-    int K3        = (argc >  6) ? atoi(argv[6])  : 64;
+    int K1        = (argc >  4) ? atoi(argv[4])  : 16;
+    int K2        = (argc >  5) ? atoi(argv[5])  : 16;
+    int K3        = (argc >  6) ? atoi(argv[6])  : 16;
     int ck1       = (argc >  7) ? atoi(argv[7])  : 4;
     int ck2       = (argc >  8) ? atoi(argv[8])  : 4;
     int ck3       = (argc >  9) ? atoi(argv[9])  : 4;

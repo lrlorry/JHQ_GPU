@@ -21,20 +21,21 @@ struct SearchWorkspace {
     float* h_final_dists = nullptr;
     int*   h_final_ids   = nullptr;
 
-    // ── Routing buffers ───────────────────────────────────────────────────────
+    // ── L1 routing buffers ────────────────────────────────────────────────────
     float* d_q_batch   = nullptr;   // [B, d]
-    float* d_q_proj1   = nullptr;   // [B, d_proj]  L1 projected
-    float* d_q_proj2   = nullptr;   // [B, d_proj]  L2 projected (of r1)
-    float* d_q_proj3   = nullptr;   // [B, d_proj]  L3 projected (of r2)
-    float* d_q_r1      = nullptr;   // [B, d]  r1 = q  - C1_full[c1]
-    float* d_q_r2      = nullptr;   // [B, d]  r2 = r1 - C2_full[c2]
-    float* d_q_r3      = nullptr;   // [B, d]  r3 = r2 - C3_full[c3]  → for LUT
+    float* d_q_proj1   = nullptr;   // [B, d_proj]  L1 projected q
     float* d_dots1     = nullptr;   // [B, K1]
-    float* d_dots2     = nullptr;   // [B, K2]
-    float* d_dots3     = nullptr;   // [B, K3]
     int*   d_top1_ids  = nullptr;   // [B, ck1]
-    int*   d_top2_ids  = nullptr;   // [B, ck2]
-    int*   d_top3_ids  = nullptr;   // [B, ck3]
+
+    // ── Hierarchical beam routing buffers ─────────────────────────────────────
+    float* d_r1_beam   = nullptr;   // [B*ck1, d]     per-beam L1 residuals
+    int*   d_top2_beam = nullptr;   // [B*ck1, ck2]   per-beam L2 top-k (LOCAL index)
+    int*   d_top3_beam = nullptr;   // [B*ck1*ck2, ck3]  per-beam L3 top-k (LOCAL index)
+
+    // ── Best-path residual for LUT ────────────────────────────────────────────
+    float* d_q_r3      = nullptr;   // [B, d]  r3 = q - C1[c1] - C2[c2] - C3[c3]
+
+    // ── Leaf selection ────────────────────────────────────────────────────────
     int*   d_leaf_sel  = nullptr;   // [B, ck1*ck2*ck3]
     int*   d_leaf_cnt  = nullptr;   // [B]
     float* d_lut_fine  = nullptr;   // [B, d, Kr]
@@ -50,12 +51,12 @@ struct SearchWorkspace {
     float* d_out_dists = nullptr;   // [max_pairs, TOP_P]
     int*   d_out_ids   = nullptr;   // [max_pairs, TOP_P]
 
-    // ── PQ merge → top-rerank_r (intermediate) ───────────────────────────────
-    float* d_pq_dists  = nullptr;   // [B, K_MAX]  PQ merge output (rerank_r valid)
+    // ── PQ merge → top-rerank_r ───────────────────────────────────────────────
+    float* d_pq_dists  = nullptr;   // [B, K_MAX]
     int*   d_pq_ids    = nullptr;   // [B, K_MAX]
 
     // ── Re-rank buffers ───────────────────────────────────────────────────────
-    float* d_cand_vecs   = nullptr;  // [B, rerank_r, d]   gathered original vecs
+    float* d_cand_vecs   = nullptr;  // [B, rerank_r, d]
     float* d_exact_dists = nullptr;  // [B, rerank_r]
 
     // ── Final top-k ───────────────────────────────────────────────────────────
@@ -71,7 +72,7 @@ struct SearchWorkspace {
 
 // ── Function declarations ─────────────────────────────────────────────────────
 
-// 3-level JL routing + LUT construction
+// 3-level hierarchical JL routing + LUT construction
 void route_queries_v17(
     cublasHandle_t cublas,
     const float*   d_Pi1,
@@ -93,9 +94,9 @@ void route_queries_v17(
 // Sort (leaf, qid) pairs by leaf_id
 void gpu_build_and_sort_pairs_v17(
     int nq, int n_pairs, int n_leaf_blocks,
-    int ck3, SearchWorkspace& ws);
+    int total_ck, SearchWorkspace& ws);
 
-// Leaf PQ distance kernel (one GPU block per (query,leaf) pair)
+// Leaf PQ distance kernel
 void launch_leaf_flat_v17(
     const int*     d_pair_leaf_ids,
     const int*     d_pair_qids,
@@ -122,7 +123,7 @@ void launch_gather_vecs(
     int B, int R, int d,
     cudaStream_t   s);
 
-// Exact inner-product + top-k rerank
+// Exact L2 rerank + top-k
 void launch_exact_rerank(
     const float*   d_q_batch,
     const float*   d_cand_vecs,
@@ -132,10 +133,5 @@ void launch_exact_rerank(
     int*           d_final_ids,
     int B, int R, int d, int k,
     cudaStream_t   s);
-
-// iota + qid sort + segmented top-k (reused from PQ merge)
-void gpu_merge_topk_v17(
-    int nq, int n_pairs, int k,
-    SearchWorkspace& ws);
 
 } // namespace hblock_v17

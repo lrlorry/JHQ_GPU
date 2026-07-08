@@ -50,25 +50,197 @@ __global__ void select_route_topk_kernel(
     }
 }
 
-// Subtract centroid for best (first) assignment: d_out[b] = d_in[b] - cents[top_ids[b*stride]]
-__global__ void subtract_best_cent_kernel(
-    const float* __restrict__ d_in, const int* __restrict__ top_ids,
-    const float* __restrict__ d_cents, float* d_out, int d, int B, int stride)
+// ── Hierarchical beam routing kernels ─────────────────────────────────────────
+
+// L2 beam: one block per (query, c1_candidate).
+// Computes r1 = q - C1[c1] and routes L2 using LOCAL C2 centroids for that c1.
+__global__ void route_l2_beam_kernel(
+    const float* __restrict__ q,          // [B, d]
+    const float* __restrict__ C1_full,    // [K1, d]
+    const float* __restrict__ Pi2,        // [d_proj, d]
+    const float* __restrict__ C2_proj,    // [K1*K2, d_proj]  local per-c1
+    const float* __restrict__ C2_norms,   // [K1*K2]
+    const int*   __restrict__ top1,       // [B, ck1]
+    float*       r1_beam,                 // [B*ck1, d]  output
+    int*         top2_beam,               // [B*ck1, ck2] output (LOCAL c2 index)
+    int B, int d, int d_proj, int K2, int ck1, int ck2)
 {
-    long long total = (long long)B * d;
-    for (long long tid = (long long)blockIdx.x * blockDim.x + threadIdx.x;
-         tid < total; tid += (long long)gridDim.x * blockDim.x) {
-        int b = (int)(tid / d), j = (int)(tid % d);
-        d_out[tid] = d_in[tid] - d_cents[(long long)top_ids[b * stride] * d + j];
+    int beam = blockIdx.x;   // qi*ck1 + c1_i
+    int qi   = beam / ck1;
+    int c1_i = beam % ck1;
+    if (qi >= B) return;
+
+    int c1 = top1[qi * ck1 + c1_i];
+    if (c1 < 0) {
+        int* my_top2 = top2_beam + beam * ck2;
+        for (int r = threadIdx.x; r < ck2; r += blockDim.x) my_top2[r] = -1;
+        return;
+    }
+
+    extern __shared__ float shm_l2[];
+    float* s_r1   = shm_l2;
+    float* s_proj = s_r1 + d;
+    float* s_dist = s_proj + d_proj;
+
+    const float* q_ptr  = q       + (long long)qi * d;
+    const float* c1_ptr = C1_full + (long long)c1 * d;
+    float*       r1_ptr = r1_beam + (long long)beam * d;
+
+    // Compute r1 = q - C1[c1], store in shared + global
+    for (int j = threadIdx.x; j < d; j += blockDim.x) {
+        float v = q_ptr[j] - c1_ptr[j];
+        s_r1[j] = v;
+        r1_ptr[j] = v;
+    }
+    __syncthreads();
+
+    // Project r1 by Pi2
+    for (int jp = threadIdx.x; jp < d_proj; jp += blockDim.x) {
+        float v = 0.f;
+        const float* pi_row = Pi2 + (long long)jp * d;
+        for (int j = 0; j < d; j++) v += pi_row[j] * s_r1[j];
+        s_proj[jp] = v;
+    }
+    __syncthreads();
+
+    // L2 distances using LOCAL C2 centroids for this c1
+    const float* c2_proj_base  = C2_proj  + (long long)c1 * K2 * d_proj;
+    const float* c2_norms_base = C2_norms + (long long)c1 * K2;
+    for (int c2 = threadIdx.x; c2 < K2; c2 += blockDim.x) {
+        float dot = 0.f;
+        const float* c2_row = c2_proj_base + (long long)c2 * d_proj;
+        for (int jp = 0; jp < d_proj; jp++) dot += s_proj[jp] * c2_row[jp];
+        s_dist[c2] = c2_norms_base[c2] - 2.f * dot;
+    }
+    __syncthreads();
+
+    // Thread 0: select top-ck2
+    if (threadIdx.x == 0) {
+        const float INF = __int_as_float(0x7F800000);
+        int* my_top2 = top2_beam + beam * ck2;
+        for (int r = 0; r < ck2; r++) {
+            float bv = INF; int bi = -1;
+            for (int c2 = 0; c2 < K2; c2++)
+                if (s_dist[c2] < bv) { bv = s_dist[c2]; bi = c2; }
+            my_top2[r] = bi;
+            if (bi >= 0) s_dist[bi] = INF;
+        }
     }
 }
 
-// Gather leaf blocks: scan (c1,c2,c3) triples → one leaf block per triple
-// leaf index: c1*K2*K3 + c2*K3 + c3
-__global__ void gather_leaf_blocks_kernel(
-    const int* __restrict__ top1_ids,
-    const int* __restrict__ top2_ids,
-    const int* __restrict__ top3_ids,
+// L3 beam: one block per (query, c1_beam, c2_beam).
+// Computes r2 = r1_beam - C2[c12] and routes L3 using LOCAL C3 centroids for (c1,c2).
+__global__ void route_l3_beam_kernel(
+    const float* __restrict__ r1_beam,    // [B*ck1, d]
+    const float* __restrict__ C2_full,    // [K1*K2, d]  local per-c1
+    const float* __restrict__ Pi3,        // [d_proj, d]
+    const float* __restrict__ C3_proj,    // [K1*K2*K3, d_proj]  local per-(c1,c2)
+    const float* __restrict__ C3_norms,   // [K1*K2*K3]
+    const int*   __restrict__ top1,       // [B, ck1]
+    const int*   __restrict__ top2_beam,  // [B*ck1, ck2]
+    int*         top3_beam,               // [B*ck1*ck2, ck3] output (LOCAL c3 index)
+    int B, int d, int d_proj, int K2, int K3, int ck1, int ck2, int ck3)
+{
+    int blk  = blockIdx.x;  // qi*ck1*ck2 + c1_i*ck2 + c2_j
+    int qi   = blk / (ck1 * ck2);
+    int rem  = blk % (ck1 * ck2);
+    int c1_i = rem / ck2;
+    int c2_j = rem % ck2;
+    if (qi >= B) return;
+
+    int c1  = top1      [qi * ck1 + c1_i];
+    int b1  = qi * ck1 + c1_i;
+    int c2  = top2_beam [b1 * ck2 + c2_j];
+    if (c1 < 0 || c2 < 0) {
+        int* my_top3 = top3_beam + blk * ck3;
+        for (int r = threadIdx.x; r < ck3; r += blockDim.x) my_top3[r] = -1;
+        return;
+    }
+    int c12 = c1 * K2 + c2;
+
+    extern __shared__ float shm_l3[];
+    float* s_r2   = shm_l3;
+    float* s_proj = s_r2 + d;
+    float* s_dist = s_proj + d_proj;
+
+    // r2 = r1_beam[b1] - C2_full[c12]
+    const float* r1_ptr = r1_beam + (long long)b1  * d;
+    const float* c2_ptr = C2_full + (long long)c12 * d;
+    for (int j = threadIdx.x; j < d; j += blockDim.x)
+        s_r2[j] = r1_ptr[j] - c2_ptr[j];
+    __syncthreads();
+
+    // Project r2 by Pi3
+    for (int jp = threadIdx.x; jp < d_proj; jp += blockDim.x) {
+        float v = 0.f;
+        const float* pi_row = Pi3 + (long long)jp * d;
+        for (int j = 0; j < d; j++) v += pi_row[j] * s_r2[j];
+        s_proj[jp] = v;
+    }
+    __syncthreads();
+
+    // L3 distances using LOCAL C3 centroids for (c1, c2)
+    const float* c3_proj_base  = C3_proj  + (long long)c12 * K3 * d_proj;
+    const float* c3_norms_base = C3_norms + (long long)c12 * K3;
+    for (int c3 = threadIdx.x; c3 < K3; c3 += blockDim.x) {
+        float dot = 0.f;
+        const float* c3_row = c3_proj_base + (long long)c3 * d_proj;
+        for (int jp = 0; jp < d_proj; jp++) dot += s_proj[jp] * c3_row[jp];
+        s_dist[c3] = c3_norms_base[c3] - 2.f * dot;
+    }
+    __syncthreads();
+
+    // Thread 0: select top-ck3
+    if (threadIdx.x == 0) {
+        const float INF = __int_as_float(0x7F800000);
+        int* my_top3 = top3_beam + blk * ck3;
+        for (int r = 0; r < ck3; r++) {
+            float bv = INF; int bi = -1;
+            for (int c3 = 0; c3 < K3; c3++)
+                if (s_dist[c3] < bv) { bv = s_dist[c3]; bi = c3; }
+            my_top3[r] = bi;
+            if (bi >= 0) s_dist[bi] = INF;
+        }
+    }
+}
+
+// Extract best-path r3 for fine LUT: r3 = q - C1[best_c1] - C2[best_c2] - C3[best_c3]
+__global__ void extract_best_r3_kernel(
+    const float* __restrict__ q,          // [B, d]
+    const float* __restrict__ C1_full,    // [K1, d]
+    const float* __restrict__ C2_full,    // [K1*K2, d]
+    const float* __restrict__ C3_full,    // [K1*K2*K3, d]
+    const int*   __restrict__ top1,       // [B, ck1]
+    const int*   __restrict__ top2_beam,  // [B*ck1, ck2]
+    const int*   __restrict__ top3_beam,  // [B*ck1*ck2, ck3]
+    float*       d_q_r3,                  // [B, d] output
+    int B, int d, int K2, int K3, int ck1, int ck2, int ck3)
+{
+    int qi = blockIdx.x;
+    if (qi >= B) return;
+
+    int c1   = top1      [qi * ck1 + 0];
+    int c2   = top2_beam [(qi * ck1 + 0) * ck2 + 0];
+    int c3   = top3_beam [(qi * ck1 * ck2 + 0) * ck3 + 0];
+    int c12  = c1 * K2 + c2;
+    int c123 = c12 * K3 + c3;
+
+    const float* q_ptr  = q       + (long long)qi   * d;
+    const float* c1_ptr = C1_full + (long long)c1   * d;
+    const float* c2_ptr = C2_full + (long long)c12  * d;
+    const float* c3_ptr = C3_full + (long long)c123 * d;
+    float*       r3_ptr = d_q_r3  + (long long)qi   * d;
+
+    for (int j = threadIdx.x; j < d; j += blockDim.x)
+        r3_ptr[j] = q_ptr[j] - c1_ptr[j] - c2_ptr[j] - c3_ptr[j];
+}
+
+// Gather leaf block start indices from hierarchical beam results.
+// c2 and c3 are LOCAL indices within their parent group.
+__global__ void gather_leaf_blocks_hierarchical_kernel(
+    const int* __restrict__ top1_ids,    // [B, ck1]
+    const int* __restrict__ top2_beam,   // [B*ck1, ck2]
+    const int* __restrict__ top3_beam,   // [B*ck1*ck2, ck3]
     const int* __restrict__ pair_start,
     const int* __restrict__ pair_cnt,
     int* leaf_sel, int* leaf_cnt,
@@ -76,18 +248,20 @@ __global__ void gather_leaf_blocks_kernel(
 {
     int bqi = blockIdx.x * blockDim.x + threadIdx.x;
     if (bqi >= B) return;
-    const int* my1   = top1_ids + bqi * ck1;
-    const int* my2   = top2_ids + bqi * ck2;
-    const int* my3   = top3_ids + bqi * ck3;
-    int total_ck     = ck1 * ck2 * ck3;
-    int* my_sel      = leaf_sel + bqi * total_ck;
+    int total_ck = ck1 * ck2 * ck3;
+    int* my_sel  = leaf_sel + bqi * total_ck;
     int cnt = 0;
     for (int i1 = 0; i1 < ck1; ++i1) {
-        int c1 = my1[i1]; if (c1 < 0) continue;
+        int c1 = top1_ids[bqi * ck1 + i1];
+        if (c1 < 0) continue;
+        int b1 = bqi * ck1 + i1;
         for (int i2 = 0; i2 < ck2; ++i2) {
-            int c2 = my2[i2]; if (c2 < 0) continue;
+            int c2 = top2_beam[b1 * ck2 + i2];
+            if (c2 < 0) continue;
+            int b2 = b1 * ck2 + i2;
             for (int i3 = 0; i3 < ck3; ++i3) {
-                int c3 = my3[i3]; if (c3 < 0) continue;
+                int c3 = top3_beam[b2 * ck3 + i3];
+                if (c3 < 0) continue;
                 int pidx = c1 * K2 * K3 + c2 * K3 + c3;
                 if (pair_cnt[pidx] > 0)
                     my_sel[cnt++] = pair_start[pidx];
@@ -133,10 +307,10 @@ void route_queries_v17(
     if (nq > ws.batch_cap)
         throw std::runtime_error("hblock_v17: nq > batch_cap");
 
-    const int B     = ws.batch_cap;
-    const int BLOCK = 256;
-    const float one = 1.f, zero = 0.f;
-    cudaStream_t s  = ws.stream;
+    const int B      = ws.batch_cap;
+    const int BLOCK  = 128;
+    const float one  = 1.f, zero = 0.f;
+    cudaStream_t s   = ws.stream;
 
     // H2D queries
     std::memcpy(ws.h_q_pinned, h_queries, (long long)nq * d * sizeof(float));
@@ -146,9 +320,7 @@ void route_queries_v17(
     CUDA_CHECK(cudaMemcpyAsync(ws.d_q_batch, ws.h_q_pinned,
                                (long long)B * d * sizeof(float), cudaMemcpyHostToDevice, s));
 
-    // ── L1: project q → 64D, GEMM K1 centroids, top-ck1 ─────────────────────
-    // proj1[B,d_proj] = q[B,d] × Pi1^T[d,d_proj]
-    // cuBLAS col-major: proj1[d_proj,B] = Pi1[d_proj,d](OP_T) × q[d,B](OP_N)
+    // ── L1: project q → d_proj, GEMM K1 global centroids, top-ck1 ───────────
     CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_T, CUBLAS_OP_N,
                              d_proj, B, d, &one,
                              d_Pi1, d, ws.d_q_batch, d, &zero,
@@ -158,68 +330,47 @@ void route_queries_v17(
                              d_route1_cents_proj, d_proj,
                              ws.d_q_proj1, d_proj, &zero,
                              ws.d_dots1, K1));
-    select_route_topk_kernel<<<B, BLOCK, (K1 + 2*BLOCK)*sizeof(float), s>>>(
-        ws.d_dots1, d_route1_norms, ws.d_top1_ids, K1, ck1);
-    CUDA_CHECK(cudaGetLastError());
-
-    // r1 = q - C1_full[best_c1]
     {
-        long long tot = (long long)B * d;
-        int grid = (int)std::min((tot + BLOCK - 1) / BLOCK, (long long)65535);
-        subtract_best_cent_kernel<<<grid, BLOCK, 0, s>>>(
-            ws.d_q_batch, ws.d_top1_ids, d_route1_cents_full, ws.d_q_r1, d, B, ck1);
+        int shm1 = (K1 + 2 * BLOCK) * (int)sizeof(float);
+        select_route_topk_kernel<<<B, BLOCK, shm1, s>>>(
+            ws.d_dots1, d_route1_norms, ws.d_top1_ids, K1, ck1);
         CUDA_CHECK(cudaGetLastError());
     }
 
-    // ── L2: project r1 → 64D, GEMM K2 centroids, top-ck2 ────────────────────
-    CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_T, CUBLAS_OP_N,
-                             d_proj, B, d, &one,
-                             d_Pi2, d, ws.d_q_r1, d, &zero,
-                             ws.d_q_proj2, d_proj));
-    CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_T, CUBLAS_OP_N,
-                             K2, B, d_proj, &one,
-                             d_route2_cents_proj, d_proj,
-                             ws.d_q_proj2, d_proj, &zero,
-                             ws.d_dots2, K2));
-    select_route_topk_kernel<<<B, BLOCK, (K2 + 2*BLOCK)*sizeof(float), s>>>(
-        ws.d_dots2, d_route2_norms, ws.d_top2_ids, K2, ck2);
-    CUDA_CHECK(cudaGetLastError());
-
-    // r2 = r1 - C2_full[best_c2]
+    // ── L2 beam: per-c1 routing with LOCAL C2 centroids ──────────────────────
+    // For each (query, c1_candidate): compute r1, project by Pi2, top-ck2 local c2s
     {
-        long long tot = (long long)B * d;
-        int grid = (int)std::min((tot + BLOCK - 1) / BLOCK, (long long)65535);
-        subtract_best_cent_kernel<<<grid, BLOCK, 0, s>>>(
-            ws.d_q_r1, ws.d_top2_ids, d_route2_cents_full, ws.d_q_r2, d, B, ck2);
+        int shm_l2 = (d + d_proj + K2) * (int)sizeof(float);
+        route_l2_beam_kernel<<<B * ck1, BLOCK, shm_l2, s>>>(
+            ws.d_q_batch, d_route1_cents_full, d_Pi2,
+            d_route2_cents_proj, d_route2_norms,
+            ws.d_top1_ids, ws.d_r1_beam, ws.d_top2_beam,
+            B, d, d_proj, K2, ck1, ck2);
         CUDA_CHECK(cudaGetLastError());
     }
 
-    // ── L3: project r2 → 64D, GEMM K3 centroids, top-ck3 ────────────────────
-    CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_T, CUBLAS_OP_N,
-                             d_proj, B, d, &one,
-                             d_Pi3, d, ws.d_q_r2, d, &zero,
-                             ws.d_q_proj3, d_proj));
-    CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_T, CUBLAS_OP_N,
-                             K3, B, d_proj, &one,
-                             d_route3_cents_proj, d_proj,
-                             ws.d_q_proj3, d_proj, &zero,
-                             ws.d_dots3, K3));
-    select_route_topk_kernel<<<B, BLOCK, (K3 + 2*BLOCK)*sizeof(float), s>>>(
-        ws.d_dots3, d_route3_norms, ws.d_top3_ids, K3, ck3);
-    CUDA_CHECK(cudaGetLastError());
-
-    // r3 = r2 - C3_full[best_c3]  → used for fine LUT
+    // ── L3 beam: per-(c1,c2) routing with LOCAL C3 centroids ─────────────────
+    // For each (query, c1_beam, c2_beam): compute r2, project by Pi3, top-ck3 local c3s
     {
-        long long tot = (long long)B * d;
-        int grid = (int)std::min((tot + BLOCK - 1) / BLOCK, (long long)65535);
-        subtract_best_cent_kernel<<<grid, BLOCK, 0, s>>>(
-            ws.d_q_r2, ws.d_top3_ids, d_route3_cents_full, ws.d_q_r3, d, B, ck3);
+        int shm_l3 = (d + d_proj + K3) * (int)sizeof(float);
+        route_l3_beam_kernel<<<B * ck1 * ck2, BLOCK, shm_l3, s>>>(
+            ws.d_r1_beam, d_route2_cents_full, d_Pi3,
+            d_route3_cents_proj, d_route3_norms,
+            ws.d_top1_ids, ws.d_top2_beam, ws.d_top3_beam,
+            B, d, d_proj, K2, K3, ck1, ck2, ck3);
         CUDA_CHECK(cudaGetLastError());
     }
 
-    // ── Gather leaf blocks: (c1,c2,c3) → leaf block ──────────────────────────
-    gather_leaf_blocks_kernel<<<(B + 63) / 64, 64, 0, s>>>(
-        ws.d_top1_ids, ws.d_top2_ids, ws.d_top3_ids,
+    // ── Extract best-path r3 for fine LUT ────────────────────────────────────
+    extract_best_r3_kernel<<<B, BLOCK, 0, s>>>(
+        ws.d_q_batch, d_route1_cents_full, d_route2_cents_full, d_route3_cents_full,
+        ws.d_top1_ids, ws.d_top2_beam, ws.d_top3_beam,
+        ws.d_q_r3, B, d, K2, K3, ck1, ck2, ck3);
+    CUDA_CHECK(cudaGetLastError());
+
+    // ── Gather leaf block start indices from hierarchical beam ────────────────
+    gather_leaf_blocks_hierarchical_kernel<<<(B + 63) / 64, 64, 0, s>>>(
+        ws.d_top1_ids, ws.d_top2_beam, ws.d_top3_beam,
         d_pair_blk_start, d_pair_blk_count,
         ws.d_leaf_sel, ws.d_leaf_cnt,
         B, ck1, ck2, ck3, K2, K3);
@@ -227,9 +378,10 @@ void route_queries_v17(
 
     // ── Fine LUT on r3: [B, d, Kr] ───────────────────────────────────────────
     {
-        long long tot = (long long)B * d * Kr;
-        int grid = (int)std::min((tot + BLOCK - 1) / BLOCK, (long long)65535);
-        build_fine_lut_kernel<<<grid, BLOCK, 0, s>>>(
+        const int BLUT = 256;
+        long long tot  = (long long)B * d * Kr;
+        int grid = (int)std::min((tot + BLUT - 1) / BLUT, (long long)65535);
+        build_fine_lut_kernel<<<grid, BLUT, 0, s>>>(
             ws.d_q_r3, d_fine_c1d, ws.d_lut_fine, B, d, Kr);
         CUDA_CHECK(cudaGetLastError());
     }
@@ -248,14 +400,14 @@ __global__ void build_pairs_kernel(
     const int* __restrict__ d_query_offsets,
     int* d_pair_leaf_ids,
     int* d_pair_qids,
-    int n_leaf_blocks, int ck3, int nq)
+    int n_leaf_blocks, int total_ck, int nq)
 {
     int qi = blockIdx.x * blockDim.x + threadIdx.x;
     if (qi >= nq) return;
     int cnt = d_leaf_cnt[qi];
     int off = d_query_offsets[qi];
     for (int s = 0; s < cnt; s++) {
-        int lb = d_leaf_sel[qi * ck3 + s];
+        int lb = d_leaf_sel[qi * total_ck + s];
         if (lb >= 0 && lb < n_leaf_blocks) {
             d_pair_leaf_ids[off + s] = lb;
             d_pair_qids    [off + s] = qi;
@@ -265,7 +417,7 @@ __global__ void build_pairs_kernel(
 
 void gpu_build_and_sort_pairs_v17(
     int nq, int n_pairs, int n_leaf_blocks,
-    int ck3, SearchWorkspace& ws)
+    int total_ck, SearchWorkspace& ws)
 {
     cudaStream_t s = ws.stream;
 
@@ -276,7 +428,7 @@ void gpu_build_and_sort_pairs_v17(
     build_pairs_kernel<<<(nq + 255) / 256, 256, 0, s>>>(
         ws.d_leaf_sel, ws.d_leaf_cnt, ws.d_query_offsets,
         ws.d_pair_leaf_a, ws.d_pair_qid_a,
-        n_leaf_blocks, ck3, nq);
+        n_leaf_blocks, total_ck, nq);
     CUDA_CHECK(cudaGetLastError());
 
     int end_bit = 1;
