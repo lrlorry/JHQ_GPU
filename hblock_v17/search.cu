@@ -27,7 +27,7 @@ __global__ void select_route_topk_kernel(
     int*   s_ridx = (int*)(s_rval + BLOCK);
     const float* row = dots + (long long)bqi * K;
     for (int c = tid; c < K; c += BLOCK)
-        s_dist[c] = -row[c];  // inner product search: argmax dot → negate for min-heap
+        s_dist[c] = cent_norms[c] - 2.0f * row[c];  // L2: ||q-c||^2 - ||q||^2
     __syncthreads();
     int* my_ids = topk_ids + bqi * ck;
     for (int r = 0; r < ck; ++r) {
@@ -562,16 +562,18 @@ __global__ void exact_rerank_kernel(
 
     // Round-robin: warp wid handles candidates wid, wid+n_warps, wid+2*n_warps, ...
     for (int ri = wid; ri < R; ri += n_warps) {
-        float dot = 0.f;
+        float l2sq = 0.f;
         if (ids[ri] >= 0) {
             const float* c = d_cand_vecs + ((long long)qi * R + ri) * d;
-            for (int j = lane; j < d; j += 32)
-                dot += q[j] * c[j];
+            for (int j = lane; j < d; j += 32) {
+                float diff = q[j] - c[j];
+                l2sq += diff * diff;
+            }
         }
         // Warp reduction
         for (int mask = 16; mask > 0; mask >>= 1)
-            dot += __shfl_xor_sync(0xffffffff, dot, mask);
-        if (lane == 0) s_dots[ri] = dot;
+            l2sq += __shfl_xor_sync(0xffffffff, l2sq, mask);
+        if (lane == 0) s_dots[ri] = l2sq;
     }
     __syncthreads();
 
@@ -584,7 +586,7 @@ __global__ void exact_rerank_kernel(
 
         for (int r = 0; r < R; ++r) {
             if (ids[r] < 0) { ed[r] = INF; continue; }
-            float dist = -s_dots[r];  // negative inner product → smaller = better
+            float dist = s_dots[r];  // L2 squared distance, smaller = better
             ed[r] = dist;
             int worst = 0;
             for (int i = 1; i < k; i++)
