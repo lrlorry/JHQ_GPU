@@ -99,3 +99,21 @@ target_compile_options(jhq_hblock_v18 PRIVATE
 )
 add_executable(demo_hblock_v18 examples/demo_hblock_v18.cu)
 target_link_libraries(demo_hblock_v18 PRIVATE jhq_hblock_v18)
+
+# v19: split d_proj_route/d_proj_scan + empty-centroid fix + K_MAX=192
+add_library(jhq_hblock_v19 STATIC
+    hblock_v19/search.cu
+    hblock_v19/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v19 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v19 PUBLIC
+    jhq_hblock_v17   # reuses encode.cu kernels
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v19 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+)
+add_executable(demo_hblock_v19 examples/demo_hblock_v19.cu)
+target_link_libraries(demo_hblock_v19 PRIVATE jhq_hblock_v19)
