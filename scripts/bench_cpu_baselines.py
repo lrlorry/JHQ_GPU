@@ -11,7 +11,7 @@ import numpy as np
 
 # ── Environment detection ─────────────────────────────────────────────────────
 _SERVER_BASE = "/root/data/vogue-768_base.fvecs"
-ON_SERVER    = os.path.exists(_SERVER_BASE)
+ON_SERVER    = os.path.exists(_SERVER_BASE) or "--server" in sys.argv
 
 if ON_SERVER:
     BASE_F    = "/root/data/vogue-768_base.fvecs"
