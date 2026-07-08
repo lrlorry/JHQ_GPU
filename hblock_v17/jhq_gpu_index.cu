@@ -17,18 +17,6 @@
 
 using Ms = std::chrono::duration<double, std::milli>;
 
-// ── LAPACK / BLAS declarations ────────────────────────────────────────────────
-extern "C" {
-    // Symmetric eigensolver (divide-and-conquer)
-    void ssyevd_(char* jobz, char* uplo, int* n, float* a, int* lda,
-                 float* w, float* work, int* lwork, int* iwork, int* liwork, int* info);
-    // Level-3 BLAS SGEMM
-    void sgemm_(char* transa, char* transb, int* m, int* n, int* k,
-                float* alpha, const float* a, int* lda,
-                const float* b, int* ldb,
-                float* beta,  float* c, int* ldc);
-}
-
 namespace hblock_v17 {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -94,181 +82,14 @@ HBlockIndex::~HBlockIndex() {
     cublasDestroy(cublas_);
 }
 
-// ── PCA via LAPACK ────────────────────────────────────────────────────────────
+// ── JL random projection ──────────────────────────────────────────────────────
 
-void HBlockIndex::compute_pca(const float* h_x, int n, int d, int d_proj,
-                               std::vector<float>& Pi, std::vector<float>& eigvals)
+void HBlockIndex::init_jl_proj(int d, int d_proj, int seed, std::vector<float>& Pi)
 {
-    printf("  [PCA] n=%d d=%d d_proj=%d ... ", n, d, d_proj);
-    fflush(stdout);
-
-    // Compute column mean
-    std::vector<double> mean(d, 0.0);
-    for (int i = 0; i < n; i++)
-        for (int j = 0; j < d; j++)
-            mean[j] += h_x[(long long)i * d + j];
-    for (int j = 0; j < d; j++) mean[j] /= n;
-
-    // Center training data: X_c [n, d]
-    std::vector<float> X_c((long long)n * d);
-    for (int i = 0; i < n; i++)
-        for (int j = 0; j < d; j++)
-            X_c[(long long)i * d + j] = h_x[(long long)i * d + j] - (float)mean[j];
-
-    // Covariance: C = X_c^T X_c / n  [d, d] column-major
-    // sgemm_("N","T", M=d, N=d, K=n, alpha, A=X_c^T_colmaj, lda, B=X_c_colmaj, ldb, beta, C, ldc)
-    // X_c is [n, d] row-major = [d, n] col-major (LDA=d)
-    // X_c^T col-major: we use TRANSA='T' to use X_c [d, n] col-major transposed = X_c^T [n, d] col-major
-    // Wait: sgemm_ C[M×N] = A[M×K] × B[K×N] (col-major)
-    // We want C[d, d] = X_c_colmaj[d, n] × (X_c_colmaj)^T[n, d]
-    // A = X_c_colmaj [d, n], TRANSA='N' (use as-is), M=d, K=n
-    // B = X_c_colmaj [d, n], TRANSB='T' → B^T [n, d], K=n, N=d
-    std::vector<float> Cov((long long)d * d, 0.f);
-    float alpha = 1.f / n, beta_v = 0.f;
-    // X_c is stored row-major [n, d] = col-major [d, n] with LDA = d
-    // sgemm_("N","T", m=d, n=d, k=n, alpha, X_c (col [d,n]), lda=d,
-    //                                        X_c (col [d,n]), ldb=d,
-    //                                        beta, Cov (col [d,d]), ldc=d)
-    // Result Cov is col-major [d, d] = X_c_col^T × X_c_col^T^T ... hmm
-
-    // Let me think again:
-    // C = X_c^T × X_c where X_c is [n, d] in C/row-major notation
-    // In BLAS (col-major):
-    //   X_c [n, d] row-major = Fortran/col-major [d, n] (just different indexing)
-    //   X_c^T in Fortran = [n, d] col-major
-    //   We want C_fort [d, d] = X_c_fort^T [d, n] × X_c_fort [n, d]
-    //                         where X_c_fort is the col-major [d, n] view of our data
-    //   M=d, N=d, K=n
-    //   A = X_c_fort [d, n], TRANSA='T' → A^T [n, d], but we want A^T on LEFT side...
-    //   Wait: C = op(A) × op(B) where:
-    //     op(A) = A^T if TRANSA='T': A is [K=n, M=d] → hmm no
-    //
-    // Standard: C(M,N) = op(A)(M,K) × op(B)(K,N)
-    // We want: C(d,d) = X_c^T(d,n) × X_c(n,d) in Fortran notation
-    //   op(A) = X_c^T → TRANSA='T', A = X_c_fort [d, n] col-major, LDA_A = d → but M=d, K=n
-    //   Wait if TRANSA='T': op(A) has size [M, K] = [d, n], and A has size [K, M] = [n, d]
-    //   So A should be [n, d] col-major with LDA = n.
-    //   X_c_fort is [d, n] col-major = X_c row-major [n, d]... these are the same data.
-    //
-    // I'll use the ssyrk_ approach for simplicity:
-    // ssyrk_("L","T", N=d, K=n, alpha, X_c, LDA=d, beta, Cov, LDC=d)
-    //   ssyrk: C = alpha * A^T * A + beta * C
-    //   TRANS='T': C(N,N) += alpha * A^T(N,K) * A(K,N)... wait
-    //   Actually ssyrk_: TRANS='T' → C(N,N) = A^T(N,K) * A(K,N) where A is (K, N) in col-major
-    //   N=d, K=n, A is X_c [n, d] row-major = [d, n] col-major → here K=d??? Not matching.
-    //
-    // OK forget it, let me just use ssyrk with TRANS='N':
-    //   TRANS='N': C(N,N) = A(N,K) * A^T(K,N) where A is (N,K) col-major
-    //   N=d, K=n: A is [d, n] col-major = X_c [n,d] row-major (same data!) ✓
-    //   LDA = d (leading dim of A [d, n] col-major)
-    //   C(d,d) col-major, LDC=d
-
-    {
-        // Use ssyrk_: C = alpha * A * A^T + beta*C, UPLO='L', TRANS='N'
-        // A is [d, n] col-major (= X_c row-major [n, d]), LDA=d
-        // This computes C = X_c_colmaj * X_c_colmaj^T... but we want X_c^T * X_c!
-        // X_c_colmaj [d, n] * X_c_colmaj^T [n, d] = [d, d] → NOT what we want
-        //
-        // We want X_c_colmaj^T * X_c_colmaj = [n, n]... no that's also wrong.
-        //
-        // ARGHHH. Let me just use manual outer-product with BLAS level-1.
-        // For n=50K, d=768: compute C = X_c^T X_c / n
-        // Use batched approach: C += x_i x_i^T for each i (ger update)
-        // With BLAS sspr/sger this takes n iterations.
-        // Alternatively just compute C directly:
-        //
-        // For n=50K and d=768, using simple loops won't be fast enough.
-        // Let me use sgemm_ for C = X_c^T * X_c.
-        //
-        // sgemm_(TRANSA, TRANSB, M, N, K, alpha, A, LDA, B, LDB, beta, C, LDC)
-        // C[M,N] = alpha * op(A)[M,K] * op(B)[K,N] + beta * C[M,N]  (ALL col-major)
-        //
-        // We want: C[d, d] = (1/n) * X_c^T[d, n] * X_c[n, d]
-        // In col-major:
-        //   X_c is [n, d] row-major. The SAME data in col-major [d, n].
-        //   X_c^T in col-major is [n, d] (transpose of [d, n]).
-        //
-        //   C[d, d] = X_c_colmaj^T [d, n] * X_c_colmaj [n, d]... wait that's [d,n]*[n,d]=[d,d] ✓
-        //   But X_c_colmaj^T means we transpose X_c_colmaj[d, n] to get [n, d] which has LDA=n
-        //
-        // Alternatively treat X_c as [n, d] col-major (a different matrix!):
-        //   X_c_fake_colmaj[n, d] with LDA=n (each column has n elements)
-        //   X_c_fake_colmaj * X_c_fake_colmaj^T = [n, n]... not useful
-        //
-        // Let me try a fresh approach: Let A = X_c viewed as [n*d] data.
-        //   In our INTENDED operation: C[d,d] = X[n,d]^T * X[n,d] / n
-        //   col-major for X: each column has n elements, stride 1 → LDA = n
-        //   X is [n, d] and col-major storage with LDA=n means:
-        //   element (i, j) = X[j*n + i] → but our data is stored as X[i*d + j] (row-major)
-        //   These are DIFFERENT layouts (unless transposed)!
-        //
-        // Final answer: our X is [n, d] row-major, stored as X[i*d + j].
-        // In col-major: the SAME byte array viewed as col-major [d, n] means
-        //   col-major element (i, j) = data[j*d + i] ... wait that's "element at row i, col j"
-        //   = data[j*d + i] but our array has data[i*d + j] (row i, col j in row-major)
-        //   So col-major view would give: (i, j) -> data[j*d + i] which is row-major (j, i)
-        //   = X_rowmajor[j, i] = (X^T)_rowmajor[i, j]
-        //   In other words: the col-major [d, n] interpretation of our data gives us X^T (transposed)!
-        //
-        // So: if I pass our data with LDA=d to BLAS as col-major [d, n]:
-        //   BLAS sees the matrix X^T [d, n] (not X [n, d])
-        //
-        // Now: sgemm_ to compute X^T * X:
-        //   We want C[d,d] = X^T[d,n] * X[n,d]
-        //   BLAS sees our data as "X^T" [d, n] col-major.
-        //   To compute X^T * X = (our_data_as_colmaj) * (our_data_as_colmaj)^T
-        //   sgemm_("N", "T", &d, &d, &n, &alpha, data, &d, data, &d, &beta, Cov, &d)
-        //   = C = op(A) * op(B) where TRANSA='N', TRANSB='T'
-        //   op(A) = A [d, n] col-major with LDA=d → this is our data viewed as X^T
-        //   op(B) = B^T where B is [d, n] col-major → B^T is [n, d] col-major
-        //          = (X^T)^T = X [n, d] col-major = [n, d] where element (i,j) = data[j*n+i]
-        //          but that's not how our data is stored!
-        //   Hmm, B^T in col-major: B is [d, n] col-major (= our data viewed as X^T)
-        //   B^T is [n, d] col-major = same data with LDA = n? No...
-        //
-        // OK let me just explicitly use TRANS='T' for B:
-        //   TRANSB='T': op(B) = B^T. If B is [LDB, K] col-major, B^T is [K, LDB].
-        //   For our SGEMM: C[M×N] = A[M×K] × B^T[K×N], where B is [N×K] = [d×n] col-major
-        //   But we want K=n, N=d, B^T = [n, d] col-major...
-        //
-        //   sgemm_("N", "T", &d, &d, &n, &alpha, data, &d, data, &d, &beta, Cov, &d):
-        //   op(A) = A[M=d, K=n] col-major with LDA=d → A is data viewed as [d,n] → X^T ✓
-        //   op(B) = B^T where B has TRANSB='T': B is [N=d, K=n] col-major with LDB=d
-        //          → B is also data viewed as [d,n] → B^T is [n,d] col-major = X^T transposed = X ✓
-        //   Result: C = X^T × X [d,d] col-major ✓ ✓ ✓
-
-        char trN = 'N', trT = 'T';
-        sgemm_(&trN, &trT, &d, &d, &n, &alpha, X_c.data(), &d, X_c.data(), &d, &beta_v, Cov.data(), &d);
-    }
-
-    // Eigendecomposition: ssyevd_('V', 'L', d, Cov, d, W, work, lwork, iwork, liwork, info)
-    // Cov is [d,d] col-major (symmetric); W is eigenvalues ascending; Cov becomes eigenvectors.
-    std::vector<float> W(d);
-    int info, lwork_q = -1, liwork_q = -1;
-    float work_q;
-    int iwork_q;
-    char jobz = 'V', uplo = 'L';
-    ssyevd_(&jobz, &uplo, &d, Cov.data(), &d, W.data(), &work_q, &lwork_q, &iwork_q, &liwork_q, &info);
-    int lwork  = (int)work_q;
-    int liwork = iwork_q;
-    std::vector<float> work_buf(lwork);
-    std::vector<int>   iwork_buf(liwork);
-    ssyevd_(&jobz, &uplo, &d, Cov.data(), &d, W.data(), work_buf.data(), &lwork,
-            iwork_buf.data(), &liwork, &info);
-    if (info != 0) throw std::runtime_error("ssyevd_ failed, info=" + std::to_string(info));
-
-    // Cov is now eigenvectors as cols (col-major): col k at offset k*d
-    // Extract top-d_proj (largest eigenvalues = last d_proj cols)
     Pi.resize((long long)d_proj * d);
-    eigvals.resize(d_proj);
-    for (int r = 0; r < d_proj; r++) {
-        int k = d - d_proj + r;  // col k = (d-d_proj+r)-th eigenvector
-        eigvals[r] = W[k];
-        for (int j = 0; j < d; j++)
-            Pi[(long long)r * d + j] = Cov[(long long)k * d + j];  // col k, row j
-    }
-
-    printf("top eigval: %.4f  %.4f  %.4f\n", eigvals[0], eigvals[d_proj/2], eigvals[d_proj-1]);
+    std::mt19937 rng(seed);
+    std::normal_distribution<float> g(0.f, 1.f / std::sqrt((float)d_proj));
+    for (float& v : Pi) v = g(rng);
 }
 
 // ── GPU k-means (in d_proj-D) ─────────────────────────────────────────────────
@@ -401,16 +222,15 @@ void HBlockIndex::train(const float* h_x, int n_train)
     auto T0 = std::chrono::high_resolution_clock::now();
     using Clock = std::chrono::high_resolution_clock;
 
-    const int n_pca = std::min(n_train, 50000);
     const int n_km  = std::min(n_train, 100000);
 
     printf("[v17 train] d=%d d_proj=%d K1=%d K2=%d ck1=%d ck2=%d ck3=%d\n",
            d_, d_proj_, K1_, K2_, ck1_, ck2_, ck3_);
-    printf("  n_train=%d n_pca=%d n_km=%d km_iters=%d\n", n_train, n_pca, n_km, km_iters_);
+    printf("  n_train=%d n_km=%d km_iters=%d\n", n_train, n_km, km_iters_);
 
-    // ── Step 1: L1 PCA ────────────────────────────────────────────────────────
-    std::vector<float> Pi1, eig1;
-    compute_pca(h_x, n_pca, d_, d_proj_, Pi1, eig1);
+    // ── Step 1: L1 JL projection ──────────────────────────────────────────────
+    std::vector<float> Pi1;
+    init_jl_proj(d_, d_proj_, /*seed=*/42, Pi1);
 
     // Upload Pi1 to GPU
     CUDA_CHECK(cudaMalloc(&d_Pi1_, (long long)d_proj_ * d_ * sizeof(float)));
@@ -418,7 +238,7 @@ void HBlockIndex::train(const float* h_x, int n_train)
 
     // Project training data (n_km vectors) to d_proj-D for L1 k-means
     // GPU: y1 [n_km, d_proj] = x [n_km, d] × Pi1^T
-    printf("  [L1 k-means] K1=%d iters=%d ... ", K1_, km_iters_); fflush(stdout);
+    printf("  [L1 JL+k-means] K1=%d iters=%d ... ", K1_, km_iters_); fflush(stdout);
     auto t1 = Clock::now();
     {
         float *d_x_gpu, *d_y_proj, *d_dots_km;
@@ -467,8 +287,8 @@ void HBlockIndex::train(const float* h_x, int n_train)
         auto t2 = Clock::now();
         printf("%.1f ms\n", Ms(t2 - t1).count());
 
-        // ── Step 2: L2 PCA on L1 residuals ───────────────────────────────────
-        printf("  [L2 PCA + k-means] K2=%d ... ", K2_); fflush(stdout);
+        // ── Step 2: L2 JL on L1 residuals ────────────────────────────────────
+        printf("  [L2 JL + k-means] K2=%d ... ", K2_); fflush(stdout);
         auto t3 = Clock::now();
 
         // Compute L1 residuals for training data
@@ -480,9 +300,9 @@ void HBlockIndex::train(const float* h_x, int n_train)
                                               - h_c1_full[(long long)c1 * d_ + j];
         }
 
-        // PCA on r1
-        std::vector<float> Pi2, eig2;
-        compute_pca(h_r1.data(), std::min(n_km, n_pca), d_, d_proj_, Pi2, eig2);
+        // JL projection for L2 (different seed → independent projection)
+        std::vector<float> Pi2;
+        init_jl_proj(d_, d_proj_, /*seed=*/43, Pi2);
 
         CUDA_CHECK(cudaMalloc(&d_Pi2_, (long long)d_proj_ * d_ * sizeof(float)));
         CUDA_CHECK(cudaMemcpy(d_Pi2_, Pi2.data(), (long long)d_proj_ * d_ * sizeof(float), cudaMemcpyHostToDevice));
