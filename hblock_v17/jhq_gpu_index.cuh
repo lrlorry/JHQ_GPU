@@ -50,8 +50,9 @@ private:
     int d_, d_proj_, Kr_, Br_, bpv_, leaf_size_;
     int K1_, K2_, K3_, ck1_, ck2_, ck3_;
     int rerank_r_, km_iters_, batch_size_;
-    int ntotal_        = 0;
-    int n_leaf_blocks_ = 0;
+    int ntotal_           = 0;
+    int n_leaf_blocks_    = 0;
+    int max_blk_per_cell_ = 1;
 
     // L1: global JL + k-means
     float* d_Pi1_                = nullptr;  // [d_proj, d]

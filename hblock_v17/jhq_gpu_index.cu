@@ -639,6 +639,7 @@ void HBlockIndex::add(const float* h_x, int n)
     int total_blocks = 0;
     for (long long p = 0; p < n_cells; ++p) { pair_start[p] = total_blocks; total_blocks += pair_cnt[p]; }
     n_leaf_blocks_ = total_blocks;
+    max_blk_per_cell_ = *std::max_element(pair_cnt.begin(), pair_cnt.end());
 
     // Build leaf arrays
     std::vector<uint8_t> h_leaf_codes((long long)total_blocks * bpv_ * leaf_size_, 0);
@@ -692,9 +693,10 @@ void HBlockIndex::add(const float* h_x, int n)
 
 void HBlockIndex::alloc_workspace()
 {
-    const int B         = batch_size_;
-    const int total_ck  = ck1_ * ck2_ * ck3_;  // leaf blocks per query
-    const int max_pairs = B * total_ck;
+    const int B            = batch_size_;
+    const int total_ck     = ck1_ * ck2_ * ck3_;
+    const int max_leaf_sel = total_ck * std::max(max_blk_per_cell_, 1);
+    const int max_pairs    = B * max_leaf_sel;
     const int R         = rerank_r_;
 
     if (ws_.stream) { cublasSetStream(cublas_, nullptr); cudaStreamDestroy(ws_.stream); }
@@ -730,7 +732,7 @@ void HBlockIndex::alloc_workspace()
     CUDA_CHECK(cudaMalloc(&ws_.d_top2_beam,  (long long)B * ck1_ * ck2_       * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_top3_beam,  (long long)B * ck1_ * ck2_ * ck3_ * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_q_r3,       (long long)B * d_               * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_leaf_sel,   (long long)B * total_ck          * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_leaf_sel,   (long long)B * max_leaf_sel      * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_leaf_cnt,   (long long)B * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_lut_fine,   (long long)B * d_ * Kr_          * sizeof(float)));
 
@@ -770,10 +772,11 @@ void HBlockIndex::alloc_workspace()
     FD(d_cub_tmp);
     CUDA_CHECK(cudaMalloc(&ws_.d_cub_tmp, ws_.cub_bytes));
 
-    ws_.batch_cap = B;
-    ws_.max_pairs = max_pairs;
-    ws_.rerank_r  = R;
-    ws_.d_proj    = d_proj_;
+    ws_.batch_cap    = B;
+    ws_.max_pairs    = max_pairs;
+    ws_.max_leaf_sel = max_leaf_sel;
+    ws_.rerank_r     = R;
+    ws_.d_proj       = d_proj_;
 
 #undef FH
 #undef FD
@@ -808,7 +811,7 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
     auto t2 = Clock::now();
 
     // ── Phase 3: GPU pair sort ───────────────────────────────────────────────
-    gpu_build_and_sort_pairs_v17(nq, n_pairs, n_leaf_blocks_, ck1_*ck2_*ck3_, ws_);
+    gpu_build_and_sort_pairs_v17(nq, n_pairs, n_leaf_blocks_, ws_.max_leaf_sel, ws_);
     auto t3 = Clock::now();
 
     // ── Phase 4: Leaf PQ scan ────────────────────────────────────────────────

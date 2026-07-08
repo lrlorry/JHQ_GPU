@@ -244,12 +244,12 @@ __global__ void gather_leaf_blocks_hierarchical_kernel(
     const int* __restrict__ pair_start,
     const int* __restrict__ pair_cnt,
     int* leaf_sel, int* leaf_cnt,
-    int B, int ck1, int ck2, int ck3, int K2, int K3)
+    int B, int ck1, int ck2, int ck3, int K2, int K3,
+    int max_leaf_sel)  // stride per query = total_ck * max_blk_per_cell
 {
     int bqi = blockIdx.x * blockDim.x + threadIdx.x;
     if (bqi >= B) return;
-    int total_ck = ck1 * ck2 * ck3;
-    int* my_sel  = leaf_sel + bqi * total_ck;
+    int* my_sel = leaf_sel + bqi * max_leaf_sel;
     int cnt = 0;
     for (int i1 = 0; i1 < ck1; ++i1) {
         int c1 = top1_ids[bqi * ck1 + i1];
@@ -263,8 +263,10 @@ __global__ void gather_leaf_blocks_hierarchical_kernel(
                 int c3 = top3_beam[b2 * ck3 + i3];
                 if (c3 < 0) continue;
                 int pidx = c1 * K2 * K3 + c2 * K3 + c3;
-                if (pair_cnt[pidx] > 0)
-                    my_sel[cnt++] = pair_start[pidx];
+                int nblk = pair_cnt[pidx];
+                int base = pair_start[pidx];
+                for (int b = 0; b < nblk && cnt < max_leaf_sel; ++b)
+                    my_sel[cnt++] = base + b;
             }
         }
     }
@@ -373,7 +375,7 @@ void route_queries_v17(
         ws.d_top1_ids, ws.d_top2_beam, ws.d_top3_beam,
         d_pair_blk_start, d_pair_blk_count,
         ws.d_leaf_sel, ws.d_leaf_cnt,
-        B, ck1, ck2, ck3, K2, K3);
+        B, ck1, ck2, ck3, K2, K3, ws.max_leaf_sel);
     CUDA_CHECK(cudaGetLastError());
 
     // ── Fine LUT on r3: [B, d, Kr] ───────────────────────────────────────────
@@ -400,14 +402,14 @@ __global__ void build_pairs_kernel(
     const int* __restrict__ d_query_offsets,
     int* d_pair_leaf_ids,
     int* d_pair_qids,
-    int n_leaf_blocks, int total_ck, int nq)
+    int n_leaf_blocks, int max_leaf_sel, int nq)
 {
     int qi = blockIdx.x * blockDim.x + threadIdx.x;
     if (qi >= nq) return;
     int cnt = d_leaf_cnt[qi];
     int off = d_query_offsets[qi];
     for (int s = 0; s < cnt; s++) {
-        int lb = d_leaf_sel[qi * total_ck + s];
+        int lb = d_leaf_sel[qi * max_leaf_sel + s];
         if (lb >= 0 && lb < n_leaf_blocks) {
             d_pair_leaf_ids[off + s] = lb;
             d_pair_qids    [off + s] = qi;
@@ -417,7 +419,7 @@ __global__ void build_pairs_kernel(
 
 void gpu_build_and_sort_pairs_v17(
     int nq, int n_pairs, int n_leaf_blocks,
-    int total_ck, SearchWorkspace& ws)
+    int max_leaf_sel, SearchWorkspace& ws)
 {
     cudaStream_t s = ws.stream;
 
@@ -428,7 +430,7 @@ void gpu_build_and_sort_pairs_v17(
     build_pairs_kernel<<<(nq + 255) / 256, 256, 0, s>>>(
         ws.d_leaf_sel, ws.d_leaf_cnt, ws.d_query_offsets,
         ws.d_pair_leaf_a, ws.d_pair_qid_a,
-        n_leaf_blocks, total_ck, nq);
+        n_leaf_blocks, max_leaf_sel, nq);
     CUDA_CHECK(cudaGetLastError());
 
     int end_bit = 1;

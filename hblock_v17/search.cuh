@@ -10,10 +10,11 @@ static constexpr int TOP_P  = 4;
 static constexpr int K_MAX  = 128;  // max k for rerank output (must >= rerank_r)
 
 struct SearchWorkspace {
-    int batch_cap = 0;
-    int max_pairs = 0;
-    int rerank_r  = 0;
-    int d_proj    = 0;
+    int batch_cap    = 0;
+    int max_pairs    = 0;
+    int max_leaf_sel = 0;  // stride per query in d_leaf_sel = total_ck * max_blk_per_cell
+    int rerank_r     = 0;
+    int d_proj       = 0;
 
     // ── Pinned host buffers ───────────────────────────────────────────────────
     float* h_q_pinned    = nullptr;
@@ -94,7 +95,7 @@ void route_queries_v17(
 // Sort (leaf, qid) pairs by leaf_id
 void gpu_build_and_sort_pairs_v17(
     int nq, int n_pairs, int n_leaf_blocks,
-    int total_ck, SearchWorkspace& ws);
+    int max_leaf_sel, SearchWorkspace& ws);
 
 // Leaf PQ distance kernel
 void launch_leaf_flat_v17(
