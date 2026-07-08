@@ -199,25 +199,52 @@ scan kernel 中访问 `list_primary_t[m * N + abs_pos]`：32 个线程的 `abs_p
 
 ---
 
-### hblock_v20 — v17 + 路由升维（计划中）
+### hblock_v20 — v17 + 路由升维 128D + 空质心修复
 
-**改动：** 路由投影 64D → 128D（`d_proj_route=128`），PQ 粗排不变；空质心 norm=1e30f 修复
+**改动：** 路由投影 64D → 128D，PQ 粗排不变；`upload_cents` 追踪 `h_valid` mask，空 cell norm=1e30f
 
-**预期：** ck=3 即可达到 0.99 recall，QPS 从 26K 升至 ~90K
+**结果（RTX 5090）：**
+
+| ck | Vogue recall | Vogue QPS | Arxiv recall | Arxiv QPS |
+|----|-------------|-----------|-------------|-----------|
+| 2  | 0.8872 | 101,646 | 0.9527 | 191,628 |
+| 3  | 0.9657 |  67,778 | 0.9871 |  85,348 |
+| 4  | 0.9803 |  42,163 | 0.9904 |  44,253 |
+| 5  | 0.9963 |  20,855 | 0.9963 |  19,674 |
+| 6  | 0.9971 |  15,091 | 0.9924 |  13,459 |
+
+**分析：**
+
+- **低-中 ck（2-5）：Pareto 改进明显。** 同等 recall 目标下需要更少的 probe：v17 ck=4 达到 0.9657，v20 ck=3 即可（67K vs 65K QPS，更快）；v17 ck=6 达到 0.9937，v20 ck=5 即可（21K vs 26K QPS，v20 慢但召回更高）。
+- **高 ck（8-10）：recall 略有退步。** 根因：128D 路由改变了 k-means 分配，L3 残差 r3 分布改变影响 PQ 编码精度；加上 rerank_r=128 是瓶颈，大 ck 时 merge 截断吃掉了路由增益。
+- **QPS 代价约 20-25%**：128D GEMM 比 64D 更贵。
+- **结论：在 0.85-0.98 recall 区间，v20 Pareto 优于 v17；0.99+ 区间大体相当但 QPS 较低。**
 
 ---
 
-### hblock_v21 — v17 + 稀疏子树路由（计划中）
+### hblock_v21 — v17 + 稀疏子树 bitmask 路由
 
-**改动：** 每个父节点存 valid children 16-bit bitmask，routing 只在非空子节点中选 top-ck
+**改动：** train 时为每个父节点构建 16-bit valid children bitmask：
+- `d_valid_c2_[c1]`：K2=16 bits，第 k 位置 1 表示 c1 的第 k 个 L2 子节点非空
+- `d_valid_c3_[c1*K2+c2]`：K3=16 bits，同理
+- 存储：16×2B + 256×2B = 544B，常驻 L1 cache
+- `route_l2_beam_kernel` / `route_l3_beam_kernel` 对空子节点直接赋 INF，不竞争 beam 名额
 
-```
-valid_c2[c1]:    16-bit mask（K2=16）
-valid_c3[c1,c2]: 16-bit mask（K3=16）
-存储: 512B + 8KB，常驻 L1 cache
-```
+**结果（RTX 5090）：**
 
-**预期：** 空 cell 不占 beam 名额，有效 ck = 名义 ck，可与 v20 叠加
+| ck | Vogue recall | Vogue QPS | Arxiv recall | Arxiv QPS |
+|----|-------------|-----------|-------------|-----------|
+| 3  | 0.9511 |  97,544 | 0.9789 | 113,978 |
+| 4  | 0.9675 |  63,542 | 0.9918 |  56,152 |
+| 5  | 0.9938 |  26,685 | 0.9978 |  24,448 |
+| 6  | 0.9937 |  18,879 | 0.9984 |  15,683 |
+
+**分析：**
+
+- **null result：与 v17 几乎无差别。** recall 和 QPS 差距均在噪声范围内（<0.003 recall，<2% QPS）。
+- **根因：几乎没有空 cell。** n_km=200K 均匀分布在 K1×K2×K3=4096 个 cell，平均每 cell 约 49 个训练向量，L3 级别的空 cell 极少，bitmask 近乎全 1，对路由决策无影响。
+- **bitmask 的适用条件：** K1×K2×K3 远大于 n/leaf_size（数据极度稀疏时）或数据分布高度不均匀时才能发挥作用。当前配置不满足。
+- **结论：v21 在现有参数下无效，暂不作为后续基础版本。**
 
 ---
 
