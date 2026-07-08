@@ -27,7 +27,7 @@ __global__ void select_route_topk_kernel(
     int*   s_ridx = (int*)(s_rval + BLOCK);
     const float* row = dots + (long long)bqi * K;
     for (int c = tid; c < K; c += BLOCK)
-        s_dist[c] = cent_norms[c] - 2.0f * row[c];
+        s_dist[c] = -row[c];  // inner product search: argmax dot → negate for min-heap
     __syncthreads();
     int* my_ids = topk_ids + bqi * ck;
     for (int r = 0; r < ck; ++r) {
