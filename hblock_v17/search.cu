@@ -63,34 +63,43 @@ __global__ void subtract_best_cent_kernel(
     }
 }
 
-// Gather leaf blocks for each query: scan (c1, c2) pairs → leaf block IDs
+// Gather leaf blocks: scan (c1,c2,c3) triples → one leaf block per triple
+// leaf index: c1*K2*K3 + c2*K3 + c3
 __global__ void gather_leaf_blocks_kernel(
-    const int* __restrict__ top1_ids, const int* __restrict__ top2_ids,
-    const int* __restrict__ pair_start, const int* __restrict__ pair_cnt,
+    const int* __restrict__ top1_ids,
+    const int* __restrict__ top2_ids,
+    const int* __restrict__ top3_ids,
+    const int* __restrict__ pair_start,
+    const int* __restrict__ pair_cnt,
     int* leaf_sel, int* leaf_cnt,
-    int B, int ck1, int ck2, int ck3, int K2, int leaf_cap_per_pair)
+    int B, int ck1, int ck2, int ck3, int K2, int K3)
 {
     int bqi = blockIdx.x * blockDim.x + threadIdx.x;
     if (bqi >= B) return;
-    const int* my1 = top1_ids + bqi * ck1;
-    const int* my2 = top2_ids + bqi * ck2;
-    int* my_sel = leaf_sel + bqi * ck3;
+    const int* my1   = top1_ids + bqi * ck1;
+    const int* my2   = top2_ids + bqi * ck2;
+    const int* my3   = top3_ids + bqi * ck3;
+    int total_ck     = ck1 * ck2 * ck3;
+    int* my_sel      = leaf_sel + bqi * total_ck;
     int cnt = 0;
-    for (int i1 = 0; i1 < ck1 && cnt < ck3; ++i1) {
+    for (int i1 = 0; i1 < ck1; ++i1) {
         int c1 = my1[i1]; if (c1 < 0) continue;
-        for (int i2 = 0; i2 < ck2 && cnt < ck3; ++i2) {
+        for (int i2 = 0; i2 < ck2; ++i2) {
             int c2 = my2[i2]; if (c2 < 0) continue;
-            int pidx = c1 * K2 + c2;
-            int take = min(min(pair_cnt[pidx], leaf_cap_per_pair), ck3 - cnt);
-            for (int b = 0; b < take; ++b) my_sel[cnt++] = pair_start[pidx] + b;
+            for (int i3 = 0; i3 < ck3; ++i3) {
+                int c3 = my3[i3]; if (c3 < 0) continue;
+                int pidx = c1 * K2 * K3 + c2 * K3 + c3;
+                if (pair_cnt[pidx] > 0)
+                    my_sel[cnt++] = pair_start[pidx];
+            }
         }
     }
     leaf_cnt[bqi] = cnt;
 }
 
-// Build fine LUT: LUT[qi][dim][k] = (q_r2[qi][dim] - fine_c1d[k])^2
+// Build fine LUT on r3: LUT[qi][dim][k] = (r3[qi][dim] - fine_c1d[k])^2
 __global__ void build_fine_lut_kernel(
-    const float* __restrict__ d_q_r2, const float* __restrict__ d_c1d,
+    const float* __restrict__ d_q_r3, const float* __restrict__ d_c1d,
     float* d_lut_fine, int B, int d, int Kr)
 {
     long long total = (long long)B * d * Kr;
@@ -98,7 +107,7 @@ __global__ void build_fine_lut_kernel(
          i < total; i += (long long)gridDim.x * blockDim.x) {
         int bqi   = (int)(i / ((long long)d * Kr));
         int local = (int)(i % ((long long)d * Kr));
-        float diff = d_q_r2[(long long)bqi * d + local / Kr] - d_c1d[local % Kr];
+        float diff = d_q_r3[(long long)bqi * d + local / Kr] - d_c1d[local % Kr];
         d_lut_fine[i] = diff * diff;
     }
 }
@@ -107,18 +116,16 @@ void route_queries_v17(
     cublasHandle_t cublas,
     const float*   d_Pi1,
     const float*   d_Pi2,
-    const float*   d_route1_cents_proj,
-    const float*   d_route1_cents_full,
-    const float*   d_route1_norms,
-    const float*   d_route2_cents_proj,
-    const float*   d_route2_cents_full,
-    const float*   d_route2_norms,
+    const float*   d_Pi3,
+    const float*   d_route1_cents_proj, const float* d_route1_cents_full, const float* d_route1_norms,
+    const float*   d_route2_cents_proj, const float* d_route2_cents_full, const float* d_route2_norms,
+    const float*   d_route3_cents_proj, const float* d_route3_cents_full, const float* d_route3_norms,
     const float*   d_fine_c1d,
     const int*     d_pair_blk_start,
     const int*     d_pair_blk_count,
     const float*   h_queries,
     int nq, int d, int d_proj,
-    int K1, int K2, int Kr, int Br,
+    int K1, int K2, int K3, int Kr, int Br,
     int ck1, int ck2, int ck3,
     int batch_size,
     SearchWorkspace& ws)
@@ -129,11 +136,9 @@ void route_queries_v17(
     const int B     = ws.batch_cap;
     const int BLOCK = 256;
     const float one = 1.f, zero = 0.f;
-    const int leaf_cap_per_pair = std::max(1, ck3 / (ck1 * ck2));
+    cudaStream_t s  = ws.stream;
 
-    cudaStream_t s = ws.stream;
-
-    // H2D
+    // H2D queries
     std::memcpy(ws.h_q_pinned, h_queries, (long long)nq * d * sizeof(float));
     if (nq < B)
         std::memset(ws.h_q_pinned + (long long)nq * d, 0,
@@ -141,40 +146,13 @@ void route_queries_v17(
     CUDA_CHECK(cudaMemcpyAsync(ws.d_q_batch, ws.h_q_pinned,
                                (long long)B * d * sizeof(float), cudaMemcpyHostToDevice, s));
 
-    // L1 projection: d_q_proj1 = d_q_batch × Pi1^T  [B, d_proj]
-    // d_Pi1: [d_proj, d] (row-major) → in CUBLAS column-major: [d, d_proj]
-    // cublasSgemm: C[d_proj, B] = Pi1[d_proj, d] × q^T[d, B]
-    //   => CUBLAS_OP_N × CUBLAS_OP_N: M=d_proj, N=B, K=d
-    //   A = Pi1 (d_proj × d, stored col-major as d × d_proj? No.)
-    //
-    // Row-major [d_proj, d] stored in row-major = FORTRAN [d, d_proj]
-    // q [B, d] row-major = FORTRAN [d, B]
-    // We want result [B, d_proj] row-major = FORTRAN [d_proj, B]
-    //
-    // In cuBLAS (col-major): C = A × B
-    // C[d_proj, B] = Pi1[d_proj, d] × q_batch[d, B]
-    // => A = Pi1 as FORTRAN col-major? Pi1 is stored row-major [d_proj, d]
-    //    treating it as col-major [d, d_proj] = Pi1^T.
-    // So: C = A × B = Pi1^T × q_batch... we want Pi1 × q_batch = Pi1 (OP_T) × q_batch (OP_N)
-    // CUBLAS: C[M×N] = A[M×K] × B[K×N] in col-major
-    // We want: d_q_proj1[d_proj, B] = Pi1[d_proj, d] × d_q_batch[d, B]
-    //          M=d_proj, N=B, K=d
-    //          A = Pi1 as Fortran [d, d_proj] but stored row-major → treat with OP_T
-    //          B = d_q_batch as Fortran [d, B] (col-major: d×B)
-    // cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, d_proj, B, d,
-    //             &one, d_Pi1, d, d_q_batch, d, &zero, d_q_proj1, d_proj)
-    //
-    // This gives d_q_proj1 as [d_proj, B] col-major = [B, d_proj] row-major: CORRECT
+    // ── L1: project q → 64D, GEMM K1 centroids, top-ck1 ─────────────────────
+    // proj1[B,d_proj] = q[B,d] × Pi1^T[d,d_proj]
+    // cuBLAS col-major: proj1[d_proj,B] = Pi1[d_proj,d](OP_T) × q[d,B](OP_N)
     CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_T, CUBLAS_OP_N,
                              d_proj, B, d, &one,
-                             d_Pi1, d,           // Pi1 stored row-major [d_proj, d]
-                             ws.d_q_batch, d, &zero,
+                             d_Pi1, d, ws.d_q_batch, d, &zero,
                              ws.d_q_proj1, d_proj));
-
-    // L1 GEMM: dots1[B, K1] = d_q_proj1[B, d_proj] × route1_cents_proj^T[d_proj, K1]
-    // Fortran: dots1[K1, B] = cents_proj[K1, d_proj] × q_proj[d_proj, B]
-    //   OP_T on cents (row-major [K1, d_proj] → treat as [d_proj, K1] + OP_T)
-    //   OP_N on q_proj ([d_proj, B])
     CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_T, CUBLAS_OP_N,
                              K1, B, d_proj, &one,
                              d_route1_cents_proj, d_proj,
@@ -184,7 +162,7 @@ void route_queries_v17(
         ws.d_dots1, d_route1_norms, ws.d_top1_ids, K1, ck1);
     CUDA_CHECK(cudaGetLastError());
 
-    // L1 residual in full d space: r1 = q - C1_full[best_c1]
+    // r1 = q - C1_full[best_c1]
     {
         long long tot = (long long)B * d;
         int grid = (int)std::min((tot + BLOCK - 1) / BLOCK, (long long)65535);
@@ -193,14 +171,11 @@ void route_queries_v17(
         CUDA_CHECK(cudaGetLastError());
     }
 
-    // L2 projection: d_q_proj2 = d_q_r1 × Pi2^T  [B, d_proj]
+    // ── L2: project r1 → 64D, GEMM K2 centroids, top-ck2 ────────────────────
     CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_T, CUBLAS_OP_N,
                              d_proj, B, d, &one,
-                             d_Pi2, d,
-                             ws.d_q_r1, d, &zero,
+                             d_Pi2, d, ws.d_q_r1, d, &zero,
                              ws.d_q_proj2, d_proj));
-
-    // L2 GEMM: dots2[B, K2] = d_q_proj2[B, d_proj] × route2_cents_proj^T
     CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_T, CUBLAS_OP_N,
                              K2, B, d_proj, &one,
                              d_route2_cents_proj, d_proj,
@@ -210,7 +185,7 @@ void route_queries_v17(
         ws.d_dots2, d_route2_norms, ws.d_top2_ids, K2, ck2);
     CUDA_CHECK(cudaGetLastError());
 
-    // L2 residual: r2 = r1 - C2_full[best_c2]  (used for LUT)
+    // r2 = r1 - C2_full[best_c2]
     {
         long long tot = (long long)B * d;
         int grid = (int)std::min((tot + BLOCK - 1) / BLOCK, (long long)65535);
@@ -219,24 +194,47 @@ void route_queries_v17(
         CUDA_CHECK(cudaGetLastError());
     }
 
-    // Gather leaf block IDs
-    gather_leaf_blocks_kernel<<<(B + 63) / 64, 64, 0, s>>>(
-        ws.d_top1_ids, ws.d_top2_ids,
-        d_pair_blk_start, d_pair_blk_count,
-        ws.d_leaf_sel, ws.d_leaf_cnt,
-        B, ck1, ck2, ck3, K2, leaf_cap_per_pair);
+    // ── L3: project r2 → 64D, GEMM K3 centroids, top-ck3 ────────────────────
+    CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_T, CUBLAS_OP_N,
+                             d_proj, B, d, &one,
+                             d_Pi3, d, ws.d_q_r2, d, &zero,
+                             ws.d_q_proj3, d_proj));
+    CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_T, CUBLAS_OP_N,
+                             K3, B, d_proj, &one,
+                             d_route3_cents_proj, d_proj,
+                             ws.d_q_proj3, d_proj, &zero,
+                             ws.d_dots3, K3));
+    select_route_topk_kernel<<<B, BLOCK, (K3 + 2*BLOCK)*sizeof(float), s>>>(
+        ws.d_dots3, d_route3_norms, ws.d_top3_ids, K3, ck3);
     CUDA_CHECK(cudaGetLastError());
 
-    // Build fine LUT: [B, d, Kr]
+    // r3 = r2 - C3_full[best_c3]  → used for fine LUT
+    {
+        long long tot = (long long)B * d;
+        int grid = (int)std::min((tot + BLOCK - 1) / BLOCK, (long long)65535);
+        subtract_best_cent_kernel<<<grid, BLOCK, 0, s>>>(
+            ws.d_q_r2, ws.d_top3_ids, d_route3_cents_full, ws.d_q_r3, d, B, ck3);
+        CUDA_CHECK(cudaGetLastError());
+    }
+
+    // ── Gather leaf blocks: (c1,c2,c3) → leaf block ──────────────────────────
+    gather_leaf_blocks_kernel<<<(B + 63) / 64, 64, 0, s>>>(
+        ws.d_top1_ids, ws.d_top2_ids, ws.d_top3_ids,
+        d_pair_blk_start, d_pair_blk_count,
+        ws.d_leaf_sel, ws.d_leaf_cnt,
+        B, ck1, ck2, ck3, K2, K3);
+    CUDA_CHECK(cudaGetLastError());
+
+    // ── Fine LUT on r3: [B, d, Kr] ───────────────────────────────────────────
     {
         long long tot = (long long)B * d * Kr;
         int grid = (int)std::min((tot + BLOCK - 1) / BLOCK, (long long)65535);
         build_fine_lut_kernel<<<grid, BLOCK, 0, s>>>(
-            ws.d_q_r2, d_fine_c1d, ws.d_lut_fine, B, d, Kr);
+            ws.d_q_r3, d_fine_c1d, ws.d_lut_fine, B, d, Kr);
         CUDA_CHECK(cudaGetLastError());
     }
 
-    // D2H leaf counts (needed by CPU to sum n_pairs)
+    // D2H leaf counts
     CUDA_CHECK(cudaMemcpyAsync(ws.h_leaf_cnt, ws.d_leaf_cnt,
                                (long long)nq * sizeof(int), cudaMemcpyDeviceToHost, s));
     CUDA_CHECK(cudaStreamSynchronize(s));

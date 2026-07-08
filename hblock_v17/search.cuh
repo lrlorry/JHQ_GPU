@@ -22,16 +22,20 @@ struct SearchWorkspace {
     int*   h_final_ids   = nullptr;
 
     // ── Routing buffers ───────────────────────────────────────────────────────
-    float* d_q_batch   = nullptr;   // [B, d]  raw queries
-    float* d_q_proj1   = nullptr;   // [B, d_proj]  L1 projected queries
+    float* d_q_batch   = nullptr;   // [B, d]
+    float* d_q_proj1   = nullptr;   // [B, d_proj]  L1 projected
     float* d_q_proj2   = nullptr;   // [B, d_proj]  L2 projected (of r1)
-    float* d_q_r1      = nullptr;   // [B, d]   L1 residual (for L2 proj + LUT)
-    float* d_q_r2      = nullptr;   // [B, d]   L2 residual (for LUT)
+    float* d_q_proj3   = nullptr;   // [B, d_proj]  L3 projected (of r2)
+    float* d_q_r1      = nullptr;   // [B, d]  r1 = q  - C1_full[c1]
+    float* d_q_r2      = nullptr;   // [B, d]  r2 = r1 - C2_full[c2]
+    float* d_q_r3      = nullptr;   // [B, d]  r3 = r2 - C3_full[c3]  → for LUT
     float* d_dots1     = nullptr;   // [B, K1]
     float* d_dots2     = nullptr;   // [B, K2]
+    float* d_dots3     = nullptr;   // [B, K3]
     int*   d_top1_ids  = nullptr;   // [B, ck1]
     int*   d_top2_ids  = nullptr;   // [B, ck2]
-    int*   d_leaf_sel  = nullptr;   // [B, ck3]
+    int*   d_top3_ids  = nullptr;   // [B, ck3]
+    int*   d_leaf_sel  = nullptr;   // [B, ck1*ck2*ck3]
     int*   d_leaf_cnt  = nullptr;   // [B]
     float* d_lut_fine  = nullptr;   // [B, d, Kr]
 
@@ -67,26 +71,21 @@ struct SearchWorkspace {
 
 // ── Function declarations ─────────────────────────────────────────────────────
 
-// L1/L2 routing + LUT construction
+// 3-level JL routing + LUT construction
 void route_queries_v17(
     cublasHandle_t cublas,
-    // PCA projections (d_proj × d)
     const float*   d_Pi1,
     const float*   d_Pi2,
-    // L1 centroids: proj=[K1,d_proj] full=[K1,d] norms=[K1]
-    const float*   d_route1_cents_proj,
-    const float*   d_route1_cents_full,
-    const float*   d_route1_norms,
-    // L2 centroids: proj=[K2,d_proj] full=[K2,d] norms=[K2]
-    const float*   d_route2_cents_proj,
-    const float*   d_route2_cents_full,
-    const float*   d_route2_norms,
+    const float*   d_Pi3,
+    const float*   d_route1_cents_proj, const float* d_route1_cents_full, const float* d_route1_norms,
+    const float*   d_route2_cents_proj, const float* d_route2_cents_full, const float* d_route2_norms,
+    const float*   d_route3_cents_proj, const float* d_route3_cents_full, const float* d_route3_norms,
     const float*   d_fine_c1d,
     const int*     d_pair_blk_start,
     const int*     d_pair_blk_count,
     const float*   h_queries,
     int nq, int d, int d_proj,
-    int K1, int K2, int Kr, int Br,
+    int K1, int K2, int K3, int Kr, int Br,
     int ck1, int ck2, int ck3,
     int batch_size,
     SearchWorkspace& ws);

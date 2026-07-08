@@ -38,7 +38,7 @@ HBlockIndex::HBlockIndex(int d, Params p)
     : d_(d), d_proj_(p.d_proj), Kr_(p.Kr), Br_(p.Br),
       bpv_((d * p.Br + 7) / 8),
       leaf_size_(p.leaf_size),
-      K1_(p.K1), K2_(p.K2),
+      K1_(p.K1), K2_(p.K2), K3_(p.K3),
       ck1_(p.ck1), ck2_(p.ck2), ck3_(p.ck3),
       rerank_r_(p.rerank_r), km_iters_(p.km_iters),
       batch_size_(p.batch_size)
@@ -56,11 +56,12 @@ HBlockIndex::~HBlockIndex() {
 
     free_h(ws_.h_q_pinned); free_h(ws_.h_leaf_cnt);
     free_h(ws_.h_final_dists); free_h(ws_.h_final_ids);
-    free_d(ws_.d_q_batch);    free_d(ws_.d_q_proj1);  free_d(ws_.d_q_proj2);
-    free_d(ws_.d_q_r1);       free_d(ws_.d_q_r2);
-    free_d(ws_.d_dots1);      free_d(ws_.d_dots2);
-    free_d(ws_.d_top1_ids);   free_d(ws_.d_top2_ids);
-    free_d(ws_.d_leaf_sel);   free_d(ws_.d_leaf_cnt);
+    free_d(ws_.d_q_batch);
+    free_d(ws_.d_q_proj1);  free_d(ws_.d_q_proj2);  free_d(ws_.d_q_proj3);
+    free_d(ws_.d_q_r1);     free_d(ws_.d_q_r2);     free_d(ws_.d_q_r3);
+    free_d(ws_.d_dots1);    free_d(ws_.d_dots2);    free_d(ws_.d_dots3);
+    free_d(ws_.d_top1_ids); free_d(ws_.d_top2_ids); free_d(ws_.d_top3_ids);
+    free_d(ws_.d_leaf_sel); free_d(ws_.d_leaf_cnt);
     free_d(ws_.d_lut_fine);
     free_d(ws_.d_query_offsets);
     free_d(ws_.d_pair_leaf_a); free_d(ws_.d_pair_qid_a);
@@ -71,11 +72,12 @@ HBlockIndex::~HBlockIndex() {
     free_d(ws_.d_final_dists); free_d(ws_.d_final_ids);
     free_d(ws_.d_cub_tmp);
 
-    free_d(d_Pi1_);            free_d(d_Pi2_);
+    free_d(d_Pi1_); free_d(d_Pi2_); free_d(d_Pi3_);
     free_d(d_route1_cents_proj_); free_d(d_route1_cents_full_); free_d(d_route1_norms_);
     free_d(d_route2_cents_proj_); free_d(d_route2_cents_full_); free_d(d_route2_norms_);
+    free_d(d_route3_cents_proj_); free_d(d_route3_cents_full_); free_d(d_route3_norms_);
     free_d(d_fine_c1d_);
-    free_d(d_pair_blk_start_); free_d(d_pair_blk_count_);
+    free_d(d_pair_blk_start_);  free_d(d_pair_blk_count_);
     free_d(d_leaf_codes_);     free_d(d_leaf_ids_);    free_d(d_leaf_sizes_);
     free_d(d_base_vecs_);
 
@@ -224,8 +226,8 @@ void HBlockIndex::train(const float* h_x, int n_train)
 
     const int n_km  = std::min(n_train, 100000);
 
-    printf("[v17 train] d=%d d_proj=%d K1=%d K2=%d ck1=%d ck2=%d ck3=%d\n",
-           d_, d_proj_, K1_, K2_, ck1_, ck2_, ck3_);
+    printf("[v17 train] d=%d d_proj=%d K1=%d K2=%d K3=%d ck1=%d ck2=%d ck3=%d\n",
+           d_, d_proj_, K1_, K2_, K3_, ck1_, ck2_, ck3_);
     printf("  n_train=%d n_km=%d km_iters=%d\n", n_train, n_km, km_iters_);
 
     // ── Step 1: L1 JL projection ──────────────────────────────────────────────
@@ -330,19 +332,61 @@ void HBlockIndex::train(const float* h_x, int n_train)
         upload_cents(h_c2_proj, h_c2_full, K2_,
                      d_route2_cents_proj_, d_route2_cents_full_, d_route2_norms_);
 
-        // ── Step 3: Fine PQ codebook (analytical, on L2 residuals) ───────────
-        // Compute L2 residuals
-        double sum_sq = 0.0;
+        auto t4 = Clock::now();
+        printf("%.1f ms\n", Ms(t4 - t3).count());
+
+        // ── Step 3: L3 JL + k-means on L2 residuals (r2) ────────────────────
+        printf("  [L3 JL+k-means] K3=%d ... ", K3_); fflush(stdout);
+        auto t5 = Clock::now();
+
+        // Compute L2 residuals: r2 = r1 - C2_full[c2]
+        std::vector<float> h_r2((long long)n_km * d_);
         for (int i = 0; i < n_km; i++) {
             int c2 = h_assign2[i];
+            for (int j = 0; j < d_; j++)
+                h_r2[(long long)i * d_ + j] = h_r1[(long long)i * d_ + j]
+                                              - h_c2_full[(long long)c2 * d_ + j];
+        }
+
+        std::vector<float> Pi3;
+        init_jl_proj(d_, d_proj_, /*seed=*/44, Pi3);
+        CUDA_CHECK(cudaMalloc(&d_Pi3_, (long long)d_proj_ * d_ * sizeof(float)));
+        CUDA_CHECK(cudaMemcpy(d_Pi3_, Pi3.data(), (long long)d_proj_ * d_ * sizeof(float), cudaMemcpyHostToDevice));
+
+        // Project r2 to 64D for L3 k-means
+        float *d_r2_gpu, *d_r2_proj;
+        CUDA_CHECK(cudaMalloc(&d_r2_gpu,  (long long)n_km * d_     * sizeof(float)));
+        CUDA_CHECK(cudaMalloc(&d_r2_proj, (long long)n_km * d_proj_ * sizeof(float)));
+        CUDA_CHECK(cudaMemcpy(d_r2_gpu, h_r2.data(), (long long)n_km * d_ * sizeof(float), cudaMemcpyHostToDevice));
+        const float one = 1.f, zero = 0.f;
+        CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
+                                 d_proj_, n_km, d_, &one,
+                                 d_Pi3_, d_, d_r2_gpu, d_, &zero,
+                                 d_r2_proj, d_proj_));
+        std::vector<float> h_r2_proj((long long)n_km * d_proj_);
+        CUDA_CHECK(cudaMemcpy(h_r2_proj.data(), d_r2_proj,
+                              (long long)n_km * d_proj_ * sizeof(float), cudaMemcpyDeviceToHost));
+        cudaFree(d_r2_gpu); cudaFree(d_r2_proj);
+
+        std::vector<float> h_c3_proj, h_c3_full;
+        std::vector<int> h_assign3;
+        gpu_kmeans(h_r2_proj.data(), h_r2.data(), n_km, K3_,
+                   h_c3_proj, h_c3_full, h_assign3);
+        upload_cents(h_c3_proj, h_c3_full, K3_,
+                     d_route3_cents_proj_, d_route3_cents_full_, d_route3_norms_);
+
+        // ── Step 4: Fine PQ codebook on r3 = r2 - C3_full[c3] ───────────────
+        double sum_sq = 0.0;
+        for (int i = 0; i < n_km; i++) {
+            int c3 = h_assign3[i];
             for (int j = 0; j < d_; j++) {
-                float v = h_r1[(long long)i * d_ + j] - h_c2_full[(long long)c2 * d_ + j];
+                float v = h_r2[(long long)i * d_ + j] - h_c3_full[(long long)c3 * d_ + j];
                 sum_sq += (double)v * v;
             }
         }
         float sigma = (float)std::sqrt(sum_sq / (double)((long long)n_km * d_));
-        auto t4 = Clock::now();
-        printf("%.1f ms  sigma_r2=%.4f\n", Ms(t4 - t3).count(), sigma);
+        auto t6 = Clock::now();
+        printf("%.1f ms  sigma_r3=%.4f\n", Ms(t6 - t5).count(), sigma);
 
         std::vector<float> fine_c1d = analytical_fine_c1d(Kr_, sigma);
         CUDA_CHECK(cudaMalloc(&d_fine_c1d_, Kr_ * sizeof(float)));
@@ -364,19 +408,22 @@ void HBlockIndex::add(const float* h_x, int n)
     const int BATCH = 8192;
     const float one = 1.f, zero = 0.f;
 
-    float *d_x, *d_r1, *d_r2, *d_proj1, *d_proj2, *d_dots;
-    int *d_c1, *d_c2; uint8_t *d_fc;
-    CUDA_CHECK(cudaMalloc(&d_x,     (long long)BATCH * d_     * sizeof(float)));
+    float *d_x, *d_r1, *d_r2, *d_r3, *d_proj1, *d_proj2, *d_proj3, *d_dots;
+    int *d_c1, *d_c2, *d_c3; uint8_t *d_fc;
+    CUDA_CHECK(cudaMalloc(&d_x,     (long long)BATCH * d_      * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&d_proj1, (long long)BATCH * d_proj_ * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&d_proj2, (long long)BATCH * d_proj_ * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_r1,    (long long)BATCH * d_     * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_r2,    (long long)BATCH * d_     * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_proj3, (long long)BATCH * d_proj_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_r1,    (long long)BATCH * d_      * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_r2,    (long long)BATCH * d_      * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_r3,    (long long)BATCH * d_      * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&d_c1,    (long long)BATCH * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&d_c2,    (long long)BATCH * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_c3,    (long long)BATCH * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&d_fc,    (long long)BATCH * bpv_));
-    CUDA_CHECK(cudaMalloc(&d_dots,  (long long)std::max(K1_, K2_) * BATCH * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_dots,  (long long)std::max({K1_, K2_, K3_}) * BATCH * sizeof(float)));
 
-    std::vector<int>     h_code1(n), h_code2(n);
+    std::vector<int>     h_code1(n), h_code2(n), h_code3(n);
     std::vector<uint8_t> h_fc_all((long long)n * bpv_);
 
     CUBLAS_CHECK(cublasSetStream(cublas_, nullptr));
@@ -396,48 +443,62 @@ void HBlockIndex::add(const float* h_x, int n)
         // L1 residual in full d space
         launch_subtract_centroid(d_x, d_c1, d_route1_cents_full_, d_r1, nb, d_, nullptr);
 
-        // L2: project residual to d_proj, GEMM, assign
+        // L2: project r1, GEMM, assign c2, compute r2
         CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
                                  d_proj_, nb, d_, &one, d_Pi2_, d_, d_r1, d_, &zero, d_proj2, d_proj_));
         CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
                                  K2_, nb, d_proj_, &one,
                                  d_route2_cents_proj_, d_proj_, d_proj2, d_proj_, &zero, d_dots, K2_));
         launch_assign_from_dots(d_dots, d_route2_norms_, d_c2, K2_, nb, nullptr);
-        // L2 residual
         launch_subtract_centroid(d_r1, d_c2, d_route2_cents_full_, d_r2, nb, d_, nullptr);
 
-        // Fine encode
-        launch_fine_encode(d_r2, d_fine_c1d_, d_fc, nb, d_, Kr_, Br_, bpv_, nullptr);
+        // L3: project r2, GEMM, assign c3, compute r3
+        CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
+                                 d_proj_, nb, d_, &one, d_Pi3_, d_, d_r2, d_, &zero, d_proj3, d_proj_));
+        CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
+                                 K3_, nb, d_proj_, &one,
+                                 d_route3_cents_proj_, d_proj_, d_proj3, d_proj_, &zero, d_dots, K3_));
+        launch_assign_from_dots(d_dots, d_route3_norms_, d_c3, K3_, nb, nullptr);
+        launch_subtract_centroid(d_r2, d_c3, d_route3_cents_full_, d_r3, nb, d_, nullptr);
+
+        // Fine encode on r3
+        launch_fine_encode(d_r3, d_fine_c1d_, d_fc, nb, d_, Kr_, Br_, bpv_, nullptr);
         CUDA_CHECK(cudaDeviceSynchronize());
 
         CUDA_CHECK(cudaMemcpy(h_code1.data() + s, d_c1, nb * sizeof(int), cudaMemcpyDeviceToHost));
         CUDA_CHECK(cudaMemcpy(h_code2.data() + s, d_c2, nb * sizeof(int), cudaMemcpyDeviceToHost));
+        CUDA_CHECK(cudaMemcpy(h_code3.data() + s, d_c3, nb * sizeof(int), cudaMemcpyDeviceToHost));
         CUDA_CHECK(cudaMemcpy(h_fc_all.data() + (long long)s * bpv_,
                               d_fc, (long long)nb * bpv_, cudaMemcpyDeviceToHost));
     }
-    cudaFree(d_x); cudaFree(d_proj1); cudaFree(d_proj2);
-    cudaFree(d_r1); cudaFree(d_r2);
-    cudaFree(d_c1); cudaFree(d_c2); cudaFree(d_fc); cudaFree(d_dots);
+    cudaFree(d_x); cudaFree(d_proj1); cudaFree(d_proj2); cudaFree(d_proj3);
+    cudaFree(d_r1); cudaFree(d_r2); cudaFree(d_r3);
+    cudaFree(d_c1); cudaFree(d_c2); cudaFree(d_c3); cudaFree(d_fc); cudaFree(d_dots);
 
-    // Sort by (c1, c2)
+    // Sort by (c1, c2, c3)
+    long long K2K3 = (long long)K2_ * K3_;
     std::vector<int> order(n);
     std::iota(order.begin(), order.end(), 0);
     std::stable_sort(order.begin(), order.end(), [&](int a, int b) {
-        return (long long)h_code1[a] * K2_ + h_code2[a]
-             < (long long)h_code1[b] * K2_ + h_code2[b];
+        long long ka = (long long)h_code1[a] * K2K3 + h_code2[a] * K3_ + h_code3[a];
+        long long kb = (long long)h_code1[b] * K2K3 + h_code2[b] * K3_ + h_code3[b];
+        return ka < kb;
     });
 
-    // Count blocks per pair
-    std::vector<int> pair_cnt(K1_ * K2_, 0);
+    // Count blocks per (c1,c2,c3) triple
+    long long n_cells = (long long)K1_ * K2_ * K3_;
+    std::vector<int> pair_cnt(n_cells, 0);
     for (int i = 0, j; i < n; i = j) {
-        int c1 = h_code1[order[i]], c2 = h_code2[order[i]];
-        for (j = i; j < n && h_code1[order[j]] == c1 && h_code2[order[j]] == c2; ++j) {}
-        pair_cnt[c1 * K2_ + c2] = (j - i + leaf_size_ - 1) / leaf_size_;
+        int c1 = h_code1[order[i]], c2 = h_code2[order[i]], c3 = h_code3[order[i]];
+        for (j = i; j < n && h_code1[order[j]] == c1
+                           && h_code2[order[j]] == c2
+                           && h_code3[order[j]] == c3; ++j) {}
+        pair_cnt[(long long)c1 * K2K3 + c2 * K3_ + c3] = (j - i + leaf_size_ - 1) / leaf_size_;
     }
 
-    std::vector<int> pair_start(K1_ * K2_, 0);
+    std::vector<int> pair_start(n_cells, 0);
     int total_blocks = 0;
-    for (int p = 0; p < K1_ * K2_; ++p) { pair_start[p] = total_blocks; total_blocks += pair_cnt[p]; }
+    for (long long p = 0; p < n_cells; ++p) { pair_start[p] = total_blocks; total_blocks += pair_cnt[p]; }
     n_leaf_blocks_ = total_blocks;
 
     // Build leaf arrays
@@ -446,9 +507,11 @@ void HBlockIndex::add(const float* h_x, int n)
     std::vector<int>     h_leaf_sizes(total_blocks, 0);
 
     for (int i = 0, j; i < n; i = j) {
-        int c1 = h_code1[order[i]], c2 = h_code2[order[i]];
-        for (j = i; j < n && h_code1[order[j]] == c1 && h_code2[order[j]] == c2; ++j) {}
-        int base_blk = pair_start[c1 * K2_ + c2];
+        int c1 = h_code1[order[i]], c2 = h_code2[order[i]], c3 = h_code3[order[i]];
+        for (j = i; j < n && h_code1[order[j]] == c1
+                           && h_code2[order[j]] == c2
+                           && h_code3[order[j]] == c3; ++j) {}
+        int base_blk = pair_start[(long long)c1 * K2K3 + c2 * K3_ + c3];
         for (int vi = i; vi < j; ++vi) {
             int in_blk = vi - i, blk = base_blk + in_blk / leaf_size_, pos = in_blk % leaf_size_;
             int oid = order[vi];
@@ -456,16 +519,16 @@ void HBlockIndex::add(const float* h_x, int n)
             const uint8_t* src = h_fc_all.data() + (long long)oid * bpv_;
             uint8_t* dst_base  = h_leaf_codes.data() + (long long)blk * bpv_ * leaf_size_;
             for (int b = 0; b < bpv_; b++)
-                dst_base[(long long)b * leaf_size_ + pos] = src[b];  // transposed layout
+                dst_base[(long long)b * leaf_size_ + pos] = src[b];
             h_leaf_sizes[blk] = std::max(h_leaf_sizes[blk], pos + 1);
         }
     }
 
     // Upload leaf structures
-    CUDA_CHECK(cudaMalloc(&d_pair_blk_start_, (long long)K1_ * K2_ * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&d_pair_blk_count_, (long long)K1_ * K2_ * sizeof(int)));
-    CUDA_CHECK(cudaMemcpy(d_pair_blk_start_, pair_start.data(), (long long)K1_*K2_*sizeof(int), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_pair_blk_count_, pair_cnt.data(),   (long long)K1_*K2_*sizeof(int), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMalloc(&d_pair_blk_start_, n_cells * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_pair_blk_count_, n_cells * sizeof(int)));
+    CUDA_CHECK(cudaMemcpy(d_pair_blk_start_, pair_start.data(), n_cells * sizeof(int), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_pair_blk_count_, pair_cnt.data(),   n_cells * sizeof(int), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMalloc(&d_leaf_codes_, (long long)total_blocks * bpv_ * leaf_size_));
     CUDA_CHECK(cudaMalloc(&d_leaf_ids_,   (long long)total_blocks * leaf_size_ * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&d_leaf_sizes_, total_blocks * sizeof(int)));
@@ -491,7 +554,8 @@ void HBlockIndex::add(const float* h_x, int n)
 void HBlockIndex::alloc_workspace()
 {
     const int B         = batch_size_;
-    const int max_pairs = B * ck3_;
+    const int total_ck  = ck1_ * ck2_ * ck3_;  // leaf blocks per query
+    const int max_pairs = B * total_ck;
     const int R         = rerank_r_;
 
     if (ws_.stream) { cublasSetStream(cublas_, nullptr); cudaStreamDestroy(ws_.stream); }
@@ -508,25 +572,30 @@ void HBlockIndex::alloc_workspace()
     CUDA_CHECK(cudaMallocHost(&ws_.h_final_dists, (long long)B * K_MAX * sizeof(float)));
     CUDA_CHECK(cudaMallocHost(&ws_.h_final_ids,   (long long)B * K_MAX * sizeof(int)));
 
-    FD(d_q_batch);  FD(d_q_proj1); FD(d_q_proj2);
-    FD(d_q_r1);     FD(d_q_r2);
-    FD(d_dots1);    FD(d_dots2);
-    FD(d_top1_ids); FD(d_top2_ids);
+    FD(d_q_batch);
+    FD(d_q_proj1); FD(d_q_proj2); FD(d_q_proj3);
+    FD(d_q_r1);    FD(d_q_r2);    FD(d_q_r3);
+    FD(d_dots1);   FD(d_dots2);   FD(d_dots3);
+    FD(d_top1_ids); FD(d_top2_ids); FD(d_top3_ids);
     FD(d_leaf_sel); FD(d_leaf_cnt);
     FD(d_lut_fine);
 
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_batch,   (long long)B * d_     * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_batch,   (long long)B * d_      * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&ws_.d_q_proj1,   (long long)B * d_proj_ * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&ws_.d_q_proj2,   (long long)B * d_proj_ * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_r1,      (long long)B * d_     * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_r2,      (long long)B * d_     * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_dots1,     (long long)B * K1_    * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_dots2,     (long long)B * K2_    * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_top1_ids,  (long long)B * ck1_   * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_top2_ids,  (long long)B * ck2_   * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_leaf_sel,  (long long)B * ck3_   * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_proj3,   (long long)B * d_proj_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_r1,      (long long)B * d_      * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_r2,      (long long)B * d_      * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_r3,      (long long)B * d_      * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_dots1,     (long long)B * K1_     * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_dots2,     (long long)B * K2_     * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_dots3,     (long long)B * K3_     * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_top1_ids,  (long long)B * ck1_    * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_top2_ids,  (long long)B * ck2_    * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_top3_ids,  (long long)B * ck3_    * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_leaf_sel,  (long long)B * total_ck * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_leaf_cnt,  (long long)B * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_lut_fine,  (long long)B * d_     * Kr_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_lut_fine,  (long long)B * d_      * Kr_ * sizeof(float)));
 
     FD(d_query_offsets);
     FD(d_pair_leaf_a); FD(d_pair_qid_a);
@@ -587,11 +656,12 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
 
     // ── Phase 1: Routing + LUT ───────────────────────────────────────────────
     route_queries_v17(cublas_,
-                      d_Pi1_, d_Pi2_,
+                      d_Pi1_, d_Pi2_, d_Pi3_,
                       d_route1_cents_proj_, d_route1_cents_full_, d_route1_norms_,
                       d_route2_cents_proj_, d_route2_cents_full_, d_route2_norms_,
+                      d_route3_cents_proj_, d_route3_cents_full_, d_route3_norms_,
                       d_fine_c1d_, d_pair_blk_start_, d_pair_blk_count_,
-                      h_q, nq, d_, d_proj_, K1_, K2_, Kr_, Br_,
+                      h_q, nq, d_, d_proj_, K1_, K2_, K3_, Kr_, Br_,
                       ck1_, ck2_, ck3_, batch_size_, ws_);
     auto t1 = Clock::now();
 

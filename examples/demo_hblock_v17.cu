@@ -28,7 +28,7 @@ int main(int argc, char** argv)
     if (argc < 4) {
         fprintf(stderr,
             "Usage: %s <base.fvecs> <query.fvecs> <gt.ivecs>\n"
-            "         [K1=64] [K2=128] [ck1=4] [ck2=4] [ck3=16]\n"
+            "         [K1=64] [K2=64] [K3=64] [ck1=4] [ck2=4] [ck3=4]\n"
             "         [k=10] [batch_size=1024] [d_proj=64] [rerank_r=64] [km_iters=30]\n",
             argv[0]);
         return 1;
@@ -38,15 +38,16 @@ int main(int argc, char** argv)
     const char* query_path = argv[2];
     const char* gt_path    = argv[3];
     int K1        = (argc >  4) ? atoi(argv[4])  : 64;
-    int K2        = (argc >  5) ? atoi(argv[5])  : 128;
-    int ck1       = (argc >  6) ? atoi(argv[6])  : 4;
-    int ck2       = (argc >  7) ? atoi(argv[7])  : 4;
-    int ck3       = (argc >  8) ? atoi(argv[8])  : 16;
-    int k         = (argc >  9) ? atoi(argv[9])  : 10;
-    int batch_sz  = (argc > 10) ? atoi(argv[10]) : 1024;
-    int d_proj    = (argc > 11) ? atoi(argv[11]) : 64;
-    int rerank_r  = (argc > 12) ? atoi(argv[12]) : 64;
-    int km_iters  = (argc > 13) ? atoi(argv[13]) : 30;
+    int K2        = (argc >  5) ? atoi(argv[5])  : 64;
+    int K3        = (argc >  6) ? atoi(argv[6])  : 64;
+    int ck1       = (argc >  7) ? atoi(argv[7])  : 4;
+    int ck2       = (argc >  8) ? atoi(argv[8])  : 4;
+    int ck3       = (argc >  9) ? atoi(argv[9])  : 4;
+    int k         = (argc > 10) ? atoi(argv[10]) : 10;
+    int batch_sz  = (argc > 11) ? atoi(argv[11]) : 1024;
+    int d_proj    = (argc > 12) ? atoi(argv[12]) : 64;
+    int rerank_r  = (argc > 13) ? atoi(argv[13]) : 64;
+    int km_iters  = (argc > 14) ? atoi(argv[14]) : 30;
 
     std::vector<float> base, query;
     std::vector<int>   gt;
@@ -59,13 +60,15 @@ int main(int argc, char** argv)
     int d = d_base;
     printf("base=%d×%d  query=%d×%d  gt=%d×%d\n",
            nb, d, nq, d_query, (int)(gt.size()/d_gt), d_gt);
-    printf("K1=%d  K2=%d  ck1=%d  ck2=%d  ck3=%d  k=%d  batch=%d"
+    printf("K1=%d  K2=%d  K3=%d  ck1=%d  ck2=%d  ck3=%d  k=%d  batch=%d"
            "  d_proj=%d  rerank_r=%d  km_iters=%d\n",
-           K1, K2, ck1, ck2, ck3, k, batch_sz, d_proj, rerank_r, km_iters);
+           K1, K2, K3, ck1, ck2, ck3, k, batch_sz, d_proj, rerank_r, km_iters);
+    printf("Total leaf blocks per query: %d\n", ck1 * ck2 * ck3);
 
     hblock_v17::HBlockIndex::Params p;
     p.K1        = K1;
     p.K2        = K2;
+    p.K3        = K3;
     p.ck1       = ck1;
     p.ck2       = ck2;
     p.ck3       = ck3;
