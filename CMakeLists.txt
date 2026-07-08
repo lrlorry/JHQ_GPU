@@ -117,3 +117,39 @@ target_compile_options(jhq_hblock_v19 PRIVATE
 )
 add_executable(demo_hblock_v19 examples/demo_hblock_v19.cu)
 target_link_libraries(demo_hblock_v19 PRIVATE jhq_hblock_v19)
+
+# v20: v17 + d_proj=128 routing + empty-centroid norm=1e30f fix
+add_library(jhq_hblock_v20 STATIC
+    hblock_v20/search.cu
+    hblock_v20/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v20 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v20 PUBLIC
+    jhq_hblock_v17
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v20 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+)
+add_executable(demo_hblock_v20 examples/demo_hblock_v20.cu)
+target_link_libraries(demo_hblock_v20 PRIVATE jhq_hblock_v20)
+
+# v21: v17 + sparse subtree bitmask routing (valid_c2/valid_c3 per parent)
+add_library(jhq_hblock_v21 STATIC
+    hblock_v21/search.cu
+    hblock_v21/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v21 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v21 PUBLIC
+    jhq_hblock_v17
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v21 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+)
+add_executable(demo_hblock_v21 examples/demo_hblock_v21.cu)
+target_link_libraries(demo_hblock_v21 PRIVATE jhq_hblock_v21)
