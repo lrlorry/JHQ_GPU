@@ -102,6 +102,9 @@ void HBlockIndex::gpu_kmeans(const float* h_x_proj, const float* h_x_full,
                               std::vector<float>& h_cents_full,
                               std::vector<int>&   h_assigns)
 {
+    // Pre-size output buffers (needed inside loop for D2H copy)
+    h_cents_proj.resize((long long)K * d_proj_);
+
     // Upload data to GPU
     float *d_x_proj, *d_dots;
     int   *d_assigns, *d_counts;
