@@ -358,7 +358,6 @@ void HBlockIndex::train(const float* h_x, int n_train)
         CUDA_CHECK(cudaMalloc(&d_r2_gpu,  (long long)n_km * d_     * sizeof(float)));
         CUDA_CHECK(cudaMalloc(&d_r2_proj, (long long)n_km * d_proj_ * sizeof(float)));
         CUDA_CHECK(cudaMemcpy(d_r2_gpu, h_r2.data(), (long long)n_km * d_ * sizeof(float), cudaMemcpyHostToDevice));
-        const float one = 1.f, zero = 0.f;
         CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
                                  d_proj_, n_km, d_, &one,
                                  d_Pi3_, d_, d_r2_gpu, d_, &zero,
