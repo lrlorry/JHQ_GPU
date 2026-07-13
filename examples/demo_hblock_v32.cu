@@ -3,6 +3,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
 #include <vector>
 #include <chrono>
 #include <algorithm>
@@ -64,6 +65,17 @@ int main(int argc, char** argv)
     for (int e = 8; e <= max_ef; e *= 2) efs.push_back(e);
     if (efs.empty() || efs.back() != max_ef) efs.push_back(max_ef);
 
+    // CSV output alongside stdout
+    char csv_path[256];
+    {
+        time_t t = time(nullptr);
+        struct tm* tm = localtime(&t);
+        strftime(csv_path, sizeof(csv_path),
+                 "results/hblock_v32_%Y%m%d_%H%M%S.csv", tm);
+    }
+    FILE* csv = fopen(csv_path, "w");
+    if (csv) fprintf(csv, "ef,recall@10,qps,latency_ms\n");
+
     printf("\n%-8s %-12s %-10s\n", "ef", "recall@10", "QPS");
     printf("%-8s %-12s %-10s\n", "----", "---------", "---");
 
@@ -86,7 +98,9 @@ int main(int argc, char** argv)
         double qps    = nq / (ms / 1000.0);
 
         printf("%-8d %-12.4f %-10.0f  (%.2f ms)\n", ef, recall, qps, ms);
+        if (csv) fprintf(csv, "%d,%.6f,%.1f,%.3f\n", ef, recall, qps, ms);
     }
 
+    if (csv) { fclose(csv); printf("\nCSV: %s\n", csv_path); }
     return 0;
 }
