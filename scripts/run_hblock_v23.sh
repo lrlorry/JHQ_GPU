@@ -10,9 +10,9 @@ VOGUE_BASE=/root/data/vogue-768_base.fvecs
 VOGUE_QRY=/root/data/vogue-768_query.fvecs
 VOGUE_GT=/root/data/vogue-768_groundtruth.ivecs
 
-ARXIV_BASE=/root/autodl-tmp/arxiv-768_base.fvecs
-ARXIV_QRY=/root/autodl-tmp/arxiv-768_query.fvecs
-ARXIV_GT=/root/autodl-tmp/arxiv-768_groundtruth.ivecs
+ARXIV_BASE=/root/autodl-tmp/arxiv-abstracts-768/base.fvecs
+ARXIV_QRY=/root/autodl-tmp/arxiv-abstracts-768/query.fvecs
+ARXIV_GT=/root/autodl-tmp/arxiv-abstracts-768/groundtruth.ivecs
 
 # Fixed params
 K1=16; K2=16; K3=16
