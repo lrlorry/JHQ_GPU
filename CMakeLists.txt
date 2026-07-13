@@ -154,6 +154,24 @@ target_compile_options(jhq_hblock_v21 PRIVATE
 add_executable(demo_hblock_v21 examples/demo_hblock_v21.cu)
 target_link_libraries(demo_hblock_v21 PRIVATE jhq_hblock_v21)
 
+# v28: per-block exact rerank (PQ filter → exact L2 within block → merge)
+add_library(jhq_hblock_v28 STATIC
+    hblock_v28/search.cu
+    hblock_v28/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v28 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v28 PUBLIC
+    jhq_hblock_v27   # for gpu_build_block_adj_v27 and encode kernels
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v28 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --expt-extended-lambda --use_fast_math>
+)
+add_executable(demo_hblock_v28 examples/demo_hblock_v28.cu)
+target_link_libraries(demo_hblock_v28 PRIVATE jhq_hblock_v28)
+
 # v27: v26 + bitonic warp sort in leaf_flat → top-32 per block (restore QPS, keep quality)
 add_library(jhq_hblock_v27 STATIC
     hblock_v27/search.cu
