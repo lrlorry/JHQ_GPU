@@ -153,3 +153,39 @@ target_compile_options(jhq_hblock_v21 PRIVATE
 )
 add_executable(demo_hblock_v21 examples/demo_hblock_v21.cu)
 target_link_libraries(demo_hblock_v21 PRIVATE jhq_hblock_v21)
+
+# v23: block-level graph with true block centroids + hierarchical candidate cells
+add_library(jhq_hblock_v23 STATIC
+    hblock_v23/search.cu
+    hblock_v23/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v23 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v23 PUBLIC
+    jhq_hblock_v17
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v23 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --expt-extended-lambda --use_fast_math>
+)
+add_executable(demo_hblock_v23 examples/demo_hblock_v23.cu)
+target_link_libraries(demo_hblock_v23 PRIVATE jhq_hblock_v23)
+
+# v22: L1+L2 GPU beam + L3 CPU graph traversal over leaf cells
+add_library(jhq_hblock_v22 STATIC
+    hblock_v22/search.cu
+    hblock_v22/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v22 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v22 PUBLIC
+    jhq_hblock_v17
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v22 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+)
+add_executable(demo_hblock_v22 examples/demo_hblock_v22.cu)
+target_link_libraries(demo_hblock_v22 PRIVATE jhq_hblock_v22)
