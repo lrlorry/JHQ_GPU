@@ -864,7 +864,8 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
     if(ntotal_==0)  throw std::runtime_error("empty index");
     if(k>K_MAX)     throw std::runtime_error("k exceeds K_MAX");
     if(k>klocal_)   throw std::runtime_error("k must be <= klocal");
-    const int ef = (ef_search > 0 && ef_search <= ef_) ? ef_search : ef_;
+    const int ef     = (ef_search > 0 && ef_search <= ef_) ? ef_search : ef_;
+    const int max_ls = std::max(256, ef * 16);
 
     using Clock=std::chrono::high_resolution_clock;
     cudaStream_t s=ws_.stream;
@@ -882,7 +883,7 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
                       K1_,K2_,K3_,Kr_,ef,batch_size_,ws_);
 
         gpu_block_search_v32(nb, n_leaf_blocks_, d_proj_,
-                             ef, graph_degree_, ws_.max_leaf_sel,
+                             ef, graph_degree_, max_ls,
                              entry_per_cell_,
                              d_block_adj_gpu_, d_blk_proj_gpu_, d_blk_norm_gpu_,
                              d_pair_blk_start_, d_pair_blk_count_, ws_);
