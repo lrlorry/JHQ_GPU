@@ -898,10 +898,10 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
         std::memcpy(h_ids  +(long long)qstart*k,ws_.h_final_ids,  (long long)nb*k*sizeof(int));
     }
 
-    printf("  [v28] Route=%.2f  Traverse=%.2f  Pairs=%.2f  PerBlkExact=%.2f  Merge=%.2f  D2H=%.2f ms\n",
-           ms_route,ms_trav,ms_pairs,ms_pq,ms_merge,ms_d2h);
-    printf("  [v28 stats] avg_visited=%.1f  avg_pairs=%.1f  (over %d queries)\n",
-           (double)stat_visited/nq, (double)stat_pairs/nq, nq);
+    // printf("  [v28] Route=%.2f  Traverse=%.2f  Pairs=%.2f  PerBlkExact=%.2f  Merge=%.2f  D2H=%.2f ms\n",
+    //        ms_route,ms_trav,ms_pairs,ms_pq,ms_merge,ms_d2h);
+    // printf("  [v28 stats] avg_visited=%.1f  avg_pairs=%.1f  (over %d queries)\n",
+    //        (double)stat_visited/nq, (double)stat_pairs/nq, nq);
 }
 
 double HBlockIndex::oracle_recall(const float* h_q, int nq, int k,
