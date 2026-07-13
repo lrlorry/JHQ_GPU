@@ -21,7 +21,7 @@ public:
         int Kr           = 16;
         int Br           = 4;
         int leaf_size    = 128;
-        int beam         = 32;   // single beam width: routing + graph search
+        int ef           = 32;   // single beam width: routing + graph search
         int d_proj       = 64;
         int per_block_r  = 16;
         int klocal       = 10;
@@ -54,7 +54,7 @@ private:
     int per_block_r_, klocal_, km_iters_, batch_size_;
     int graph_degree_, entry_per_cell_;
     int n_c2_nbrs_, n_c1_nbrs_;
-    int beam_, mini_km_iters_;
+    int ef_, mini_km_iters_;
     int ntotal_           = 0;
     int n_leaf_blocks_    = 0;
     int max_blk_per_cell_ = 1;

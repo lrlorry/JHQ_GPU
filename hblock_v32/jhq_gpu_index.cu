@@ -43,7 +43,7 @@ HBlockIndex::HBlockIndex(int d, Params p)
       graph_degree_(p.graph_degree),
       entry_per_cell_(p.entry_per_cell),
       n_c2_nbrs_(p.n_c2_nbrs), n_c1_nbrs_(p.n_c1_nbrs),
-      beam_(p.beam), mini_km_iters_(p.mini_km_iters)
+      ef_(p.ef), mini_km_iters_(p.mini_km_iters)
 {
     if (d <= 0)                  throw std::invalid_argument("d must be positive");
     if (p.Br != 4 && p.Br != 8) throw std::invalid_argument("Br must be 4 or 8");
@@ -184,7 +184,7 @@ void HBlockIndex::train(const float* h_x, int n_train)
     const int n_km = std::min(n_train, 200000);
     printf("[v32 train] d=%d d_proj=%d K1=%d K2=%d K3=%d beam=%d"
            " graph_degree=%d entry_per_cell=%d\n",
-           d_, d_proj_, K1_, K2_, K3_, beam_, graph_degree_, entry_per_cell_);
+           d_, d_proj_, K1_, K2_, K3_, ef_, graph_degree_, entry_per_cell_);
 
     const float one=1.f, zero=0.f;
     CUBLAS_CHECK(cublasSetStream(cublas_, nullptr));
@@ -291,7 +291,7 @@ void HBlockIndex::add(const float* h_x, int n)
     if (ntotal_ != 0) throw std::runtime_error("HBlock supports one add() call");
     using Clock = std::chrono::high_resolution_clock;
     auto T_add = Clock::now();
-    printf("[v32 add] n=%d  d=%d  beam=%d\n", n, d_, beam_);
+    printf("[v32 add] n=%d  d=%d  beam=%d\n", n, d_, ef_);
 
     const int BATCH=8192;
     const float one=1.f, zero=0.f;
@@ -783,7 +783,7 @@ void HBlockIndex::build_block_graph(
 void HBlockIndex::alloc_workspace()
 {
     const int B  = batch_size_;
-    const int ef = beam_;
+    const int ef = ef_;
     // max_ls: upper bound on graph iterations per query (natural termination kicks in earlier)
     const int max_ls = std::max(256, ef * 16);
     const int max_pairs = B * max_ls;
@@ -878,10 +878,10 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
                       d_route2_cents_proj_,d_route2_cents_full_,d_route2_norms_,
                       d_route3_cents_proj_,d_route3_cents_full_,d_route3_norms_,
                       d_fine_c1d_,h_qb,nb,d_,d_proj_,
-                      K1_,K2_,K3_,Kr_,beam_,batch_size_,ws_);
+                      K1_,K2_,K3_,Kr_,ef_,batch_size_,ws_);
 
         gpu_block_search_v32(nb, n_leaf_blocks_, d_proj_,
-                             beam_, graph_degree_, ws_.max_leaf_sel,
+                             ef_, graph_degree_, ws_.max_leaf_sel,
                              entry_per_cell_,
                              d_block_adj_gpu_, d_blk_proj_gpu_, d_blk_norm_gpu_,
                              d_pair_blk_start_, d_pair_blk_count_, ws_);
@@ -948,12 +948,12 @@ double HBlockIndex::oracle_recall(const float* h_q, int nq, int k,
                       d_route2_cents_proj_, d_route2_cents_full_, d_route2_norms_,
                       d_route3_cents_proj_, d_route3_cents_full_, d_route3_norms_,
                       d_fine_c1d_, h_qb, nb, d_, d_proj_,
-                      K1_, K2_, K3_, Kr_, beam_, batch_size_, ws_);
+                      K1_, K2_, K3_, Kr_, ef_, batch_size_, ws_);
 
         // D2H the selected cells and scan for GT
-        std::vector<int> h_top3(nb * beam_);
+        std::vector<int> h_top3(nb * ef_);
         CUDA_CHECK(cudaMemcpyAsync(h_top3.data(), ws_.d_top3_cells,
-                                   (long long)nb * beam_ * sizeof(int),
+                                   (long long)nb * ef_ * sizeof(int),
                                    cudaMemcpyDeviceToHost, s));
         CUDA_CHECK(cudaStreamSynchronize(s));
 
@@ -961,8 +961,8 @@ double HBlockIndex::oracle_recall(const float* h_q, int nq, int k,
         for (int qi = 0; qi < nb; qi++) {
             // Build set of selected blocks for this query
             std::vector<bool> sel_block(n_leaf_blocks_, false);
-            for (int r = 0; r < beam_; r++) {
-                int c123 = h_top3[qi * beam_ + r];
+            for (int r = 0; r < ef_; r++) {
+                int c123 = h_top3[qi * ef_ + r];
                 if (c123 < 0) continue;
                 int bs = h_pair_blk_start_cpu_[c123];
                 int bc = h_pair_blk_count_cpu_[c123];
