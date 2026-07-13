@@ -21,7 +21,7 @@ public:
         int Kr           = 16;
         int Br           = 4;
         int leaf_size    = 128;
-        int ef           = 32;   // single beam width: routing + graph search
+        int max_ef       = 128;  // max searchable ef (sets workspace buffer sizes)
         int d_proj       = 64;
         int per_block_r  = 16;
         int klocal       = 10;
@@ -39,8 +39,9 @@ public:
 
     void train (const float* h_x, int n_train);
     void add   (const float* h_x, int n);
+    // ef_search: beam width at query time (1..max_ef). -1 uses max_ef.
     void search(const float* h_q, int nq, int k,
-                float* h_dists, int* h_ids) const;
+                float* h_dists, int* h_ids, int ef_search = -1) const;
 
     double oracle_recall(const float* h_q, int nq, int k,
                          const float* h_base, const int* h_gt, int gt_k) const;

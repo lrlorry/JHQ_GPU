@@ -43,7 +43,7 @@ HBlockIndex::HBlockIndex(int d, Params p)
       graph_degree_(p.graph_degree),
       entry_per_cell_(p.entry_per_cell),
       n_c2_nbrs_(p.n_c2_nbrs), n_c1_nbrs_(p.n_c1_nbrs),
-      ef_(p.ef), mini_km_iters_(p.mini_km_iters)
+      ef_(p.max_ef), mini_km_iters_(p.mini_km_iters)
 {
     if (d <= 0)                  throw std::invalid_argument("d must be positive");
     if (p.Br != 4 && p.Br != 8) throw std::invalid_argument("Br must be 4 or 8");
@@ -291,7 +291,7 @@ void HBlockIndex::add(const float* h_x, int n)
     if (ntotal_ != 0) throw std::runtime_error("HBlock supports one add() call");
     using Clock = std::chrono::high_resolution_clock;
     auto T_add = Clock::now();
-    printf("[v32 add] n=%d  d=%d  beam=%d\n", n, d_, ef_);
+    printf("[v32 add] n=%d  d=%d  max_ef=%d\n", n, d_, ef_);
 
     const int BATCH=8192;
     const float one=1.f, zero=0.f;
@@ -859,11 +859,12 @@ void HBlockIndex::alloc_workspace()
 }
 
 void HBlockIndex::search(const float* h_q, int nq, int k,
-                          float* h_dists, int* h_ids) const
+                          float* h_dists, int* h_ids, int ef_search) const
 {
     if(ntotal_==0)  throw std::runtime_error("empty index");
     if(k>K_MAX)     throw std::runtime_error("k exceeds K_MAX");
     if(k>klocal_)   throw std::runtime_error("k must be <= klocal");
+    const int ef = (ef_search > 0 && ef_search <= ef_) ? ef_search : ef_;
 
     using Clock=std::chrono::high_resolution_clock;
     cudaStream_t s=ws_.stream;
@@ -878,10 +879,10 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
                       d_route2_cents_proj_,d_route2_cents_full_,d_route2_norms_,
                       d_route3_cents_proj_,d_route3_cents_full_,d_route3_norms_,
                       d_fine_c1d_,h_qb,nb,d_,d_proj_,
-                      K1_,K2_,K3_,Kr_,ef_,batch_size_,ws_);
+                      K1_,K2_,K3_,Kr_,ef,batch_size_,ws_);
 
         gpu_block_search_v32(nb, n_leaf_blocks_, d_proj_,
-                             ef_, graph_degree_, ws_.max_leaf_sel,
+                             ef, graph_degree_, ws_.max_leaf_sel,
                              entry_per_cell_,
                              d_block_adj_gpu_, d_blk_proj_gpu_, d_blk_norm_gpu_,
                              d_pair_blk_start_, d_pair_blk_count_, ws_);
