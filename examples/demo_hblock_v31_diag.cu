@@ -23,13 +23,13 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    auto base  = load_fvecs(argv[1]);
-    auto query = load_fvecs(argv[2]);
-    auto gt    = load_ivecs(argv[3]);
-
-    int nb = base.rows, d = base.cols;
-    int nq = query.rows;
-    int d_gt = gt.cols;
+    std::vector<float> base, query;
+    std::vector<int>   gt;
+    int d_base, d_query, d_gt;
+    int nb = read_fvecs(argv[1], base,  d_base);
+    int nq = read_fvecs(argv[2], query, d_query);
+             read_ivecs(argv[3], gt,    d_gt);
+    int d = d_base;
     int k = 10;
 
     int K1   = (argc > 4)  ? atoi(argv[4])  : 16;
@@ -51,7 +51,7 @@ int main(int argc, char** argv)
     int kloc = (argc > 20) ? atoi(argv[20]) : 10;
     int mki  = (argc > 21) ? atoi(argv[21]) : 5;
 
-    printf("nb=%d  nq=%d  d=%d  d_gt=%d\n", nb, nq, d, d_gt);
+    printf("nb=%d  nq=%d  d=%d  d_gt=%d\n", nb, nq, d_base, d_gt);
 
     hblock_v30::HBlockIndex::Params p;
     p.K1=K1; p.K2=K2; p.K3=K3; p.Kr=Kr; p.Br=4;
@@ -62,7 +62,7 @@ int main(int argc, char** argv)
     p.n_c2_nbrs=c2n; p.n_c1_nbrs=c1n;
     p.beam_size=beam; p.mini_km_iters=mki;
 
-    hblock_v30::HBlockIndex idx(d, p);
+    hblock_v30::HBlockIndex idx(d_base, p);
 
     int n_train = std::min(nb, 200000);
     printf("Training on %d vectors...\n", n_train);
