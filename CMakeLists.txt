@@ -154,6 +154,24 @@ target_compile_options(jhq_hblock_v21 PRIVATE
 add_executable(demo_hblock_v21 examples/demo_hblock_v21.cu)
 target_link_libraries(demo_hblock_v21 PRIVATE jhq_hblock_v21)
 
+# v25: v24 + semantic block construction via mini k-means within each L3 cell
+add_library(jhq_hblock_v25 STATIC
+    hblock_v25/search.cu
+    hblock_v25/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v25 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v25 PUBLIC
+    jhq_hblock_v17
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v25 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --expt-extended-lambda --use_fast_math>
+)
+add_executable(demo_hblock_v25 examples/demo_hblock_v25.cu)
+target_link_libraries(demo_hblock_v25 PRIVATE jhq_hblock_v25)
+
 # v24: v23 + oracle diagnostic + TOP_P/beam_size runtime sweep + no route D2H
 add_library(jhq_hblock_v24 STATIC
     hblock_v24/search.cu
