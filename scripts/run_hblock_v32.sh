@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 cd /root/JHQ_GPU
-BASE=/root/data/vogue-768/base.fvecs
-QUERY=/root/data/vogue-768/query.fvecs
-GT=/root/data/vogue-768/gt.ivecs
+BASE=/root/data/vogue-768_base.fvecs
+QUERY=/root/data/vogue-768_query.fvecs
+GT=/root/data/vogue-768_groundtruth.ivecs
 OUT=results/hblock_v32_$(date +%Y%m%d_%H%M%S).txt
 mkdir -p results
 
