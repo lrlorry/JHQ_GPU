@@ -113,7 +113,7 @@ scan kernel 中访问 `list_primary_t[m * N + abs_pos]`：32 个线程的 `abs_p
 
 | 版本 | 核心改动 | QPS | Recall@10 |
 |------|---------|-----|-----------|
-| hblock_v1 | 三层层级索引基线（L1→L2→叶块），解析码本，GPU叶块kernel | — | — |
+| hblock_v1～v21 | 基础架构探索（IVF路由、JL路由、block graph雏形，见下文详细说明） | — | — |
 | hblock_v2 | 2D grid叶块kernel，100%占用率；sort_leaf_sel_kernel改善HBM局部性 | — | — |
 | hblock_v3 | PCA级联路由投影 | — | — |
 | hblock_v4 | 判别式S_B投影路由 | — | — |
@@ -127,6 +127,11 @@ scan kernel 中访问 `list_primary_t[m * N + abs_pos]`：32 个线程的 `abs_p
 | hblock_v12 | GPU端构建任务对 + CUB RadixSort(14-bit)按leaf_id排序；消除CPU排序 | 17,182 | 0.8862 |
 | hblock_v13 | **转置codes布局[blk][bpv][leaf_size]**：128线程读1个cache line/step；kernel 50ms→7ms | 68,629 | 0.8056 |
 | hblock_v14 | **GPU端top-k合并**：iota→qid RadixSort(10-bit)→分段top-k kernel；D2H 9MB→82KB | 131,277 | 0.8056 |
+| hblock_v17 | 3级JL路由+PQ粗排，当前IVF路线最佳 | 26,468 | 0.9914（ck=5） |
+| hblock_v22～v27 | block graph架构探索：GPU beam search on block graph，bitonic sort，template beam | — | — |
+| hblock_v28 | per-block exact L2 rerank，消除跨block PQ误差；oracle≈actual | ~200K | 0.9741（d=64,b=64） |
+| hblock_v29 | balanced k-means（cluster=block），block centroid更精准 | ~200K | 0.9741（d=64,b=64） |
+| **hblock_v30** | **修复visited-before-insert bug；depth=256可达0.9914** | **107K** | **0.9914（d=256,b=128）** |
 
 ### hblock_v13 详细说明
 
@@ -222,6 +227,34 @@ scan kernel 中访问 `list_primary_t[m * N + abs_pos]`：32 个线程的 `abs_p
 
 ---
 
+### hblock_v22 — L1+L2 GPU beam + L3 CPU graph traversal
+
+**改动：** 引入 block-level graph 搜索思路的雏形——L1/L2 级用 GPU beam 选候选 cell，L3 级在 CPU 上做 graph traversal over leaf cells。
+
+**结论：** 架构验证，为后续全 GPU block graph 版本奠基。
+
+---
+
+### hblock_v23 — block-level graph with true block centroids
+
+**改动：**
+- 对每个 leaf block 计算真实质心（block centroid）
+- 在 block-level 建 kNN 图，图节点 = block，边 = 最近邻 block
+- 搜索时 beam search on block graph，而非枚举所有 leaf cell
+
+**意义：** 从 IVF 式"枚举 cell"转向"图遍历"，图搜索天然支持跨 cell 导航，突破 ck 参数限制的 recall 天花板。
+
+---
+
+### hblock_v24 — oracle diagnostic + runtime sweep
+
+**改动：**
+- 引入 oracle recall 诊断：CPU 精确扫描 visited blocks，衡量"路由+图遍历"选到的 blocks 能给出多少 recall 上界
+- TOP_P / beam_size 支持 runtime sweep（build 一次，搜索时调参）
+- 去掉路由 D2H，减少 H2D/D2H 次数
+
+---
+
 ### hblock_v21 — v17 + 稀疏子树 bitmask 路由
 
 **改动：** train 时为每个父节点构建 16-bit valid children bitmask：
@@ -245,6 +278,113 @@ scan kernel 中访问 `list_primary_t[m * N + abs_pos]`：32 个线程的 `abs_p
 - **根因：几乎没有空 cell。** n_km=200K 均匀分布在 K1×K2×K3=4096 个 cell，平均每 cell 约 49 个训练向量，L3 级别的空 cell 极少，bitmask 近乎全 1，对路由决策无影响。
 - **bitmask 的适用条件：** K1×K2×K3 远大于 n/leaf_size（数据极度稀疏时）或数据分布高度不均匀时才能发挥作用。当前配置不满足。
 - **结论：v21 在现有参数下无效，暂不作为后续基础版本。**
+
+---
+
+### hblock_v25 — mini k-means 语义 block 构造
+
+**改动：** 在每个 L3 cell 内部跑 mini k-means（CPU，迭代 5 次），把 cell 内向量聚成 K 个子簇，每个子簇打包成一个 block。
+
+**效果：** 同一 block 内的向量语义更接近，block centroid 更能代表 block 内容，block graph 的路由精度提升。
+
+---
+
+### hblock_v26 — template beam (32/64/128 slots) + global top-rerank_r
+
+**改动：**
+- beam size 通过 C++ template 参数 `<int SPT>` 实现（SPT=1/2/4 对应 32/64/128 slots），一次编译覆盖所有规格
+- 去掉 per-block top_p 过滤，改为 global top-rerank_r 统一排名
+
+---
+
+### hblock_v27 — bitonic warp sort in leaf_flat
+
+**改动：** leaf_flat kernel 内部用 bitonic warp sort 求 top-32（每 block 最佳候选），替换原来的线性扫描。保持 QPS，提升局部排序精度。
+
+---
+
+### hblock_v28 — per-block exact L2 rerank（消除跨 block PQ 误差）
+
+**核心问题：** 原版在 global 层面用 PQ 距离比较跨 block 的候选，但不同 L3 cell 的 PQ 残差基点不同，PQ 距离存在系统性偏差，无法公平比较跨 block 候选。
+
+**改动：**
+- 每个 (query, block) 对先用 PQ 筛出 top `per_block_r=16` 候选
+- 再对这 16 个候选做精确 L2（加载原始向量，128 线程并行）
+- 最终合并各 block 的精确 top-`klocal=10`
+
+**关键 bug 修复：** CUB SortPairs 参数顺序写反（keys_in/keys_out 与 values_in/values_out 对调），导致 recall 0.9235 → 0.0013。修复后 oracle ≈ actual（gap ≤ 0.002）。
+
+**结果（RTX 5090，depth=64，beam=64）：**
+
+| 数据集 | oracle recall | actual recall | QPS |
+|--------|-------------|--------------|-----|
+| Vogue | 0.9750 | 0.9741 | ~200K |
+| Arxiv | 0.9701 | 0.9694 | ~199K |
+
+---
+
+### hblock_v29 — balanced k-means（cluster = block）
+
+**问题：** v28 的 mini k-means 用标准 assignment，一个 cluster 可能超过 leaf_size=128 个向量，导致一个逻辑 cluster 被截断分到多个 block，block centroid 不再对应 k-means 质心，图搜索用质心导航时精度下降。
+
+**改动：** 最终 assignment 改为 greedy sorted-pairs balanced assignment——按 (dist, vi, k) 排序后贪心分配，保证每个 cluster ≤ leaf_size 个向量，cluster 和 block 一一对应，block centroid 即 k-means 质心。
+
+**结果（RTX 5090，depth=64，beam=64）：**
+
+| 数据集 | oracle recall | actual recall | QPS |
+|--------|-------------|--------------|-----|
+| Vogue | 0.9750 | 0.9741 | ~200K |
+| Arxiv | 0.9701 | 0.9694 | ~199K |
+
+改善主要体现在 beam=128 路径比 v28 更稳定；oracle ≈ actual 的性质保持。
+
+---
+
+### hblock_v30 — 修复 visited-before-insert bug
+
+**核心 bug：** beam search expansion 阶段，`try_visit`（atomicOr 标记 visited）在 `bmax` 检查之前执行。当一个 neighbor block 距离 ≥ bmax（无法进入 beam）时，它已被永久标记为 visited，后续通过其他图路径到达这个 block 时会被跳过——切断了通往 GT 近邻的图路径。
+
+**表现：** beam=128 的 oracle recall 反常地低于 beam=64（beam 越大，bmax 在 entry 阶段保持 1e38f 越久，期间允许更多 distant block 进入并被 visited 标记，堵死更多路径）。
+
+**修复：**
+1. **entry 阶段**：先算 bmax，只有 mn < bmax 时才 atomicOr + insert
+2. **expansion 阶段**：先用非原子读软检查 visited，再算距离，再检查 bmax，只有 nd < bmax 时才 atomicOr + insert
+
+```cpp
+// 修复后的 insert_if_better
+auto insert_if_better = [&](float nd, int ni) {
+    float lw; int ls; local_worst(lw, ls);
+    float bmax = ...; // warp reduce
+    if (nd >= bmax) return;  // 不够好 → 不标记 visited，路径保持开放
+    bool fv = false;
+    if (tid == 0) fv = try_visit(vis, ni, n_blks);
+    if (!__shfl_sync(..., fv, 0)) return;
+    // 插入 beam
+};
+```
+
+**结果（RTX 5090，depth 和 beam sweep）：**
+
+| depth | beam | Vogue oracle | Vogue actual | Vogue QPS |
+|-------|------|-------------|-------------|-----------|
+| 64 | 64 | 0.9745 | 0.9740 | 200K |
+| 64 | 128 | 0.9706 | 0.9689 | 197K |
+| 128 | 128 | **0.9889** | **0.9888** | 124K |
+| 256 | 128 | **0.9916** | **0.9914** | 107K |
+
+| depth | beam | Arxiv oracle | Arxiv actual | Arxiv QPS |
+|-------|------|-------------|-------------|-----------|
+| 64 | 64 | 0.9697 | 0.9692 | 192K |
+| 128 | 128 | 0.9859 | 0.9857 | 119K |
+| 256 | 128 | **0.9890** | **0.9889** | 111K |
+
+**分析：**
+- oracle ≈ actual（差距 <0.002）说明 per-block exact rerank 几乎无损，recall 瓶颈完全在 block 覆盖
+- beam=32 在大 depth 下不涨：frontier 太窄，好候选被挤出去
+- depth=256 vs depth=64：recall +0.017（Vogue），证明 graph 连通性足够，问题是 depth 不够
+- 剩余 ~1% recall 缺口可通过增大 degree（32→64）或扩大建图 candidate 范围解决
+
+**当前参数：** degree=32，n_c2_nbrs=4，n_c1_nbrs=2，max_cand_blocks=2048
 
 ---
 
