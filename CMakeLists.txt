@@ -154,6 +154,24 @@ target_compile_options(jhq_hblock_v21 PRIVATE
 add_executable(demo_hblock_v21 examples/demo_hblock_v21.cu)
 target_link_libraries(demo_hblock_v21 PRIVATE jhq_hblock_v21)
 
+# v26: v25 + template beam (32/64/128 slots) + global top-rerank_r (no per-block top_p)
+add_library(jhq_hblock_v26 STATIC
+    hblock_v26/search.cu
+    hblock_v26/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v26 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v26 PUBLIC
+    jhq_hblock_v17
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v26 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --expt-extended-lambda --use_fast_math>
+)
+add_executable(demo_hblock_v26 examples/demo_hblock_v26.cu)
+target_link_libraries(demo_hblock_v26 PRIVATE jhq_hblock_v26)
+
 # v25: v24 + semantic block construction via mini k-means within each L3 cell
 add_library(jhq_hblock_v25 STATIC
     hblock_v25/search.cu
