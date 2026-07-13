@@ -154,6 +154,24 @@ target_compile_options(jhq_hblock_v21 PRIVATE
 add_executable(demo_hblock_v21 examples/demo_hblock_v21.cu)
 target_link_libraries(demo_hblock_v21 PRIVATE jhq_hblock_v21)
 
+# v29: v28 + balanced k-means (each cluster ≤ 128 → cluster = block, clean centroid)
+add_library(jhq_hblock_v29 STATIC
+    hblock_v29/search.cu
+    hblock_v29/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v29 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v29 PUBLIC
+    jhq_hblock_v27
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v29 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --expt-extended-lambda --use_fast_math>
+)
+add_executable(demo_hblock_v29 examples/demo_hblock_v29.cu)
+target_link_libraries(demo_hblock_v29 PRIVATE jhq_hblock_v29)
+
 # v28: per-block exact rerank (PQ filter → exact L2 within block → merge)
 add_library(jhq_hblock_v28 STATIC
     hblock_v28/search.cu
