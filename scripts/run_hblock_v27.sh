@@ -1,0 +1,56 @@
+#!/bin/bash
+# Run hblock_v27 on both vogue-768 and arxiv-768
+# v27: bitonic warp sort in leaf_flat → top-32 per block
+#      Sweeps: budget × beam_size (block_topk=32 fixed)
+
+set -e
+BIN=./build/demo_hblock_v27
+
+VOGUE_BASE=/root/data/vogue-768_base.fvecs
+VOGUE_QRY=/root/data/vogue-768_query.fvecs
+VOGUE_GT=/root/data/vogue-768_groundtruth.ivecs
+
+ARXIV_BASE=/root/autodl-tmp/arxiv-abstracts-768/base.fvecs
+ARXIV_QRY=/root/autodl-tmp/arxiv-abstracts-768/query.fvecs
+ARXIV_GT=/root/autodl-tmp/arxiv-abstracts-768/groundtruth.ivecs
+
+K1=16; K2=16; K3=16
+CK1=2; CK2=2; CK3=4
+K=10; BATCH=1024; D_PROJ=64; RERANK_R=128; KM_ITERS=30
+DEGREE=32; ENTRY=4; C2N=4; C1N=2
+BLOCK_TOPK=32; MINI_KM=5
+
+BUDGETS="8 16 32 64"
+BEAM_SIZES="32 64 128"
+
+run_dataset() {
+    local NAME=$1; local BASE=$2; local QRY=$3; local GT=$4
+    local CSV=results/hblock_v27_${NAME}.csv
+    echo "========================================"
+    echo "Dataset: $NAME  ->  $CSV"
+    echo "========================================"
+    echo "budget,beam_size,oracle_recall@10,recall@10,latency_ms,qps" > $CSV
+    for BUD in $BUDGETS; do
+        for BS in $BEAM_SIZES; do
+            echo "--- budget=$BUD  beam_size=$BS  block_topk=$BLOCK_TOPK ---"
+            OUT=$($BIN $BASE $QRY $GT \
+                $K1 $K2 $K3 $CK1 $CK2 \
+                $K $BATCH $D_PROJ $RERANK_R $KM_ITERS \
+                $DEGREE $BUD $ENTRY $C2N $C1N $BS $BLOCK_TOPK $MINI_KM 2>&1)
+            echo "$OUT"
+            ORACLE=$(echo "$OUT" | grep "Oracle Recall@" | tail -1 | awk '{print $NF}')
+            RECALL=$(echo "$OUT" | grep "PQ    Recall@"  | awk '{print $NF}')
+            LATENCY=$(echo "$OUT" | grep "Latency" | awk '{print $3}')
+            QPS=$(echo "$OUT"    | grep "QPS"     | awk '{print $NF}')
+            echo "$BUD,$BS,$ORACLE,$RECALL,$LATENCY,$QPS" | tee -a $CSV
+            echo ""
+        done
+    done
+    echo "Done: $NAME  csv=$CSV"
+}
+
+run_dataset vogue "$VOGUE_BASE" "$VOGUE_QRY" "$VOGUE_GT"
+run_dataset arxiv "$ARXIV_BASE" "$ARXIV_QRY" "$ARXIV_GT"
+
+echo ""
+echo "All done. Results in results/hblock_v27_vogue.csv and results/hblock_v27_arxiv.csv"
