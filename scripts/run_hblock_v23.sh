@@ -1,7 +1,6 @@
 #!/bin/bash
 # Run hblock_v23 on both vogue-768 and arxiv-768, sweep graph_budget
-# Usage: bash scripts/run_hblock_v23.sh
-# Logs:  /tmp/v23_vogue.log  /tmp/v23_arxiv.log
+# Output: /tmp/v23_vogue.csv  /tmp/v23_arxiv.csv
 
 set -e
 BIN=./build/demo_hblock_v23
@@ -24,25 +23,29 @@ BUDGETS="8 16 32 64"
 
 run_dataset() {
     local NAME=$1; local BASE=$2; local QRY=$3; local GT=$4
-    local LOG=/tmp/v23_${NAME}.log
+    local CSV=/tmp/v23_${NAME}.csv
     echo "========================================"
-    echo "Dataset: $NAME  ->  $LOG"
+    echo "Dataset: $NAME  ->  $CSV"
     echo "========================================"
-    > $LOG
+    echo "budget,recall@10,latency_ms,qps" > $CSV
     for BUD in $BUDGETS; do
-        echo "--- budget=$BUD ---" | tee -a $LOG
-        $BIN $BASE $QRY $GT \
+        echo "--- budget=$BUD ---"
+        OUT=$($BIN $BASE $QRY $GT \
             $K1 $K2 $K3 $CK1 $CK2 \
             $K $BATCH $D_PROJ $RERANK_R $KM_ITERS \
-            $DEGREE $BUD $ENTRY $C2N $C1N \
-            2>&1 | tee -a $LOG
-        echo "" | tee -a $LOG
+            $DEGREE $BUD $ENTRY $C2N $C1N 2>&1)
+        echo "$OUT"
+        RECALL=$(echo "$OUT" | grep "Recall@10" | awk '{print $NF}')
+        LATENCY=$(echo "$OUT" | grep "Latency" | awk '{print $3}')
+        QPS=$(echo "$OUT" | grep "QPS" | awk '{print $NF}')
+        echo "$BUD,$RECALL,$LATENCY,$QPS" | tee -a $CSV
+        echo ""
     done
-    echo "Done: $NAME  log=$LOG"
+    echo "Done: $NAME  csv=$CSV"
 }
 
 run_dataset vogue "$VOGUE_BASE" "$VOGUE_QRY" "$VOGUE_GT"
 run_dataset arxiv "$ARXIV_BASE" "$ARXIV_QRY" "$ARXIV_GT"
 
 echo ""
-echo "All done. Results in /tmp/v23_vogue.log and /tmp/v23_arxiv.log"
+echo "All done. Results in /tmp/v23_vogue.csv and /tmp/v23_arxiv.csv"
