@@ -88,11 +88,22 @@ __global__ void route_l2_global_kernel(
     const float* c1_ptr = C1_full + (long long)c1 * d;
     float*       r1_ptr = r1_beam + (long long)beam_id * d;
 
+    __shared__ float s_r1sq;
+    if (threadIdx.x == 0) s_r1sq = 0.f;
+    __syncthreads();
+
     for (int j = threadIdx.x; j < d; j += blockDim.x) {
         float v = q_ptr[j] - c1_ptr[j];
         s_r1[j] = v;
         r1_ptr[j] = v;
     }
+    __syncthreads();
+
+    // ||r1||² needed for cross-parent global comparison
+    float local_sq = 0.f;
+    for (int j = threadIdx.x; j < d; j += blockDim.x) local_sq += s_r1[j] * s_r1[j];
+    for (int o = 16; o >= 1; o >>= 1) local_sq += __shfl_xor_sync(0xffffffff, local_sq, o);
+    if (threadIdx.x % 32 == 0) atomicAdd(&s_r1sq, local_sq);
     __syncthreads();
 
     for (int jp = threadIdx.x; jp < d_proj; jp += blockDim.x) {
@@ -109,7 +120,8 @@ __global__ void route_l2_global_kernel(
         float dot = 0.f;
         const float* c2_row = c2_proj_base + (long long)c2 * d_proj;
         for (int jp = 0; jp < d_proj; jp++) dot += s_proj[jp] * c2_row[jp];
-        s_dist[c2] = c2_norms_base[c2] - 2.f * dot;
+        // full ||r1 - c2||² for cross-parent ranking
+        s_dist[c2] = s_r1sq + c2_norms_base[c2] - 2.f * dot;
     }
     __syncthreads();
 
@@ -188,10 +200,21 @@ __global__ void route_l3_global_kernel(
     float* s_proj = s_r2   + d;
     float* s_dist = s_proj + d_proj;
 
+    __shared__ float s_r2sq;
+    if (threadIdx.x == 0) s_r2sq = 0.f;
+    __syncthreads();
+
     const float* r1_ptr = r1_beam + (long long)(qi * ef + l1_slot) * d;
     const float* c2_ptr = C2_full + (long long)c12 * d;
     for (int j = threadIdx.x; j < d; j += blockDim.x)
         s_r2[j] = r1_ptr[j] - c2_ptr[j];
+    __syncthreads();
+
+    // ||r2||² needed for cross-parent global comparison
+    float local_sq = 0.f;
+    for (int j = threadIdx.x; j < d; j += blockDim.x) local_sq += s_r2[j] * s_r2[j];
+    for (int o = 16; o >= 1; o >>= 1) local_sq += __shfl_xor_sync(0xffffffff, local_sq, o);
+    if (threadIdx.x % 32 == 0) atomicAdd(&s_r2sq, local_sq);
     __syncthreads();
 
     for (int jp = threadIdx.x; jp < d_proj; jp += blockDim.x) {
@@ -208,7 +231,8 @@ __global__ void route_l3_global_kernel(
         float dot = 0.f;
         const float* c3_row = c3_proj_base + (long long)c3 * d_proj;
         for (int jp = 0; jp < d_proj; jp++) dot += s_proj[jp] * c3_row[jp];
-        s_dist[c3] = c3_norms_base[c3] - 2.f * dot;
+        // full ||r2 - c3||² for cross-parent ranking
+        s_dist[c3] = s_r2sq + c3_norms_base[c3] - 2.f * dot;
     }
     __syncthreads();
 
