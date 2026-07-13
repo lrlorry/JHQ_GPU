@@ -299,12 +299,16 @@ void HBlockIndex::add(const float* h_x, int n)
 {
     if (!d_Pi1_)      throw std::runtime_error("call train() before add()");
     if (ntotal_ != 0) throw std::runtime_error("HBlock supports one add() call");
-    printf("[v23 add] n=%d ...\n", n);
+    using Clock = std::chrono::high_resolution_clock;
+    auto T_add = Clock::now();
+    printf("[v23 add] n=%d  d=%d  batch=%d\n", n, d_, 8192);
 
     const int BATCH=8192;
     const float one=1.f, zero=0.f;
     CUBLAS_CHECK(cublasSetStream(cublas_, nullptr));
 
+    // ── Encoding loop ─────────────────────────────────────────────────────────
+    auto T0 = Clock::now();
     float *d_x,*d_r1,*d_r2,*d_r3,*d_proj1,*d_proj2,*d_proj3;
     int *d_c1,*d_c2,*d_c3; uint8_t *d_fc; float *d_dots1;
     CUDA_CHECK(cudaMalloc(&d_x,     (long long)BATCH*d_     *sizeof(float)));
@@ -323,6 +327,8 @@ void HBlockIndex::add(const float* h_x, int n)
     std::vector<int>     h_code1(n), h_code2(n), h_code3(n);
     std::vector<uint8_t> h_fc_all((long long)n*bpv_);
 
+    int n_batches = (n + BATCH - 1) / BATCH;
+    int report_every = std::max(1, n_batches / 10);
     for (int s=0;s<n;s+=BATCH) {
         int nb=std::min(BATCH,n-s);
         CUDA_CHECK(cudaMemcpy(d_x,h_x+(long long)s*d_,(long long)nb*d_*sizeof(float),cudaMemcpyHostToDevice));
@@ -358,12 +364,18 @@ void HBlockIndex::add(const float* h_x, int n)
             CUDA_CHECK(cudaMemcpy(h_fc_all.data()+(long long)s*bpv_,d_fc,(long long)nb*bpv_,cudaMemcpyDeviceToHost));
             cudaFree(d_c12); cudaFree(d_c123);
         }
+        int batch_idx = s/BATCH + 1;
+        if(batch_idx % report_every == 0 || batch_idx == n_batches)
+            printf("  [encode] %d/%d batches  %.1f ms\n",
+                   batch_idx, n_batches, Ms(Clock::now()-T0).count());
     }
     cudaFree(d_x);cudaFree(d_proj1);cudaFree(d_proj2);cudaFree(d_proj3);
     cudaFree(d_r1);cudaFree(d_r2);cudaFree(d_r3);
     cudaFree(d_c1);cudaFree(d_c2);cudaFree(d_c3);cudaFree(d_fc);cudaFree(d_dots1);
+    printf("  [encode total] %.1f ms\n", Ms(Clock::now()-T0).count());
 
-    // ── Sort by (c1,c2,c3) and build leaf blocks ──────────────────────────────
+    // ── Sort by (c1,c2,c3) ────────────────────────────────────────────────────
+    T0 = Clock::now();
     long long K2K3=(long long)K2_*K3_;
     std::vector<int> order(n);
     std::iota(order.begin(),order.end(),0);
@@ -372,7 +384,10 @@ void HBlockIndex::add(const float* h_x, int n)
         long long kb=(long long)h_code1[b]*K2K3+h_code2[b]*K3_+h_code3[b];
         return ka<kb;
     });
+    printf("  [sort] %.1f ms\n", Ms(Clock::now()-T0).count());
 
+    // ── Build leaf block layout ───────────────────────────────────────────────
+    T0 = Clock::now();
     long long n_cells=(long long)K1_*K2_*K3_;
     std::vector<int> pair_cnt(n_cells,0);
     for(int i=0,j;i<n;i=j){
@@ -385,13 +400,15 @@ void HBlockIndex::add(const float* h_x, int n)
     for(long long p=0;p<n_cells;++p){pair_start[p]=total_blocks;total_blocks+=pair_cnt[p];}
     n_leaf_blocks_=total_blocks;
     max_blk_per_cell_=*std::max_element(pair_cnt.begin(),pair_cnt.end());
+    printf("  [leaf layout] %d blocks  max_per_cell=%d  %.1f ms\n",
+           total_blocks, max_blk_per_cell_, Ms(Clock::now()-T0).count());
 
+    // ── Pack leaf codes + block centroids ─────────────────────────────────────
+    T0 = Clock::now();
     std::vector<uint8_t> h_leaf_codes((long long)total_blocks*bpv_*leaf_size_,0);
     std::vector<int>     h_leaf_ids  ((long long)total_blocks*leaf_size_,-1);
     std::vector<int>     h_leaf_sizes(total_blocks,0);
     h_block_cell_id_.assign(total_blocks,0);
-
-    // ── Compute true block centroids (mean of raw vectors in each block) ──────
     h_block_cent_.assign((long long)total_blocks*d_, 0.f);
 
     for(int i=0,j;i<n;i=j){
@@ -408,25 +425,23 @@ void HBlockIndex::add(const float* h_x, int n)
             for(int b=0;b<bpv_;b++) dst_base[(long long)b*leaf_size_+pos]=src[b];
             h_leaf_sizes[blk]=std::max(h_leaf_sizes[blk],pos+1);
             h_block_cell_id_[blk]=(int)cidx;
-            // Accumulate into block centroid
             const float* xv=h_x+(long long)oid*d_;
             float* bc=h_block_cent_.data()+(long long)blk*d_;
             for(int dim=0;dim<d_;dim++) bc[dim]+=xv[dim];
         }
     }
-    // Divide by block size to get true mean
     for(int b=0;b<total_blocks;b++){
         int sz=h_leaf_sizes[b]; if(sz==0) continue;
-        float inv=(float)1.0f/sz;
+        float inv=1.0f/sz;
         float* bc=h_block_cent_.data()+(long long)b*d_;
         for(int dim=0;dim<d_;dim++) bc[dim]*=inv;
     }
-    printf("  Block centroids computed: %d blocks x %d dim = %.1f MB\n",
-           total_blocks, d_, (double)total_blocks*d_*4/1e6);
+    printf("  [pack+centroids] %.1f ms  (%.2f GB leaf codes)\n",
+           Ms(Clock::now()-T0).count(),
+           (double)total_blocks*bpv_*leaf_size_/1e9);
 
-    // ── Project block centroids via cuBLAS GEMM (Pi1 stays on GPU) ───────────
-    // proj[n×d_proj] = cent[n×d] × Pi1^T[d×d_proj]
-    // cuBLAS col-major: proj^T[d_proj×n] = Pi1[d_proj×d] × cent^T[d×n]
+    // ── Project block centroids via cuBLAS GEMM ───────────────────────────────
+    T0 = Clock::now();
     {
         float *d_cent=nullptr, *d_proj_buf=nullptr;
         CUDA_CHECK(cudaMalloc(&d_cent,     (long long)total_blocks*d_*sizeof(float)));
@@ -435,20 +450,13 @@ void HBlockIndex::add(const float* h_x, int n)
                               (long long)total_blocks*d_*sizeof(float), cudaMemcpyHostToDevice));
         const float one=1.f, zero=0.f;
         CUBLAS_CHECK(cublasSgemm(cublas_,
-            CUBLAS_OP_N, CUBLAS_OP_N,
-            d_proj_, total_blocks, d_,
-            &one,
-            d_Pi1_,    d_proj_,   // Pi1 [d_proj×d] col-major
-            d_cent,    d_,        // cent^T [d×n] (= cent[n×d] row-major)
-            &zero,
-            d_proj_buf, d_proj_)); // proj^T [d_proj×n] = proj[n×d_proj] row-major
+            CUBLAS_OP_N, CUBLAS_OP_N, d_proj_, total_blocks, d_,
+            &one, d_Pi1_, d_proj_, d_cent, d_, &zero, d_proj_buf, d_proj_));
         h_block_cent_proj_.resize((long long)total_blocks*d_proj_);
         CUDA_CHECK(cudaMemcpy(h_block_cent_proj_.data(), d_proj_buf,
                               (long long)total_blocks*d_proj_*sizeof(float), cudaMemcpyDeviceToHost));
-        cudaFree(d_cent);
-        cudaFree(d_proj_buf);
+        cudaFree(d_cent); cudaFree(d_proj_buf);
     }
-    // Norms from projected centroids (CPU, O(n×d_proj))
     h_block_cent_norm_.resize(total_blocks);
     for(int b=0;b<total_blocks;b++){
         const float* p=h_block_cent_proj_.data()+(long long)b*d_proj_;
@@ -456,10 +464,10 @@ void HBlockIndex::add(const float* h_x, int n)
         for(int jp=0;jp<d_proj_;jp++) norm+=p[jp]*p[jp];
         h_block_cent_norm_[b]=norm;
     }
-    printf("  Block proj centroids (GEMM): %d x %d = %.1f MB\n",
-           total_blocks, d_proj_, (double)total_blocks*d_proj_*4/1e6);
+    printf("  [proj GEMM + norms] %.1f ms\n", Ms(Clock::now()-T0).count());
 
-    // ── Upload leaf structures ────────────────────────────────────────────────
+    // ── Upload leaf structures to GPU ─────────────────────────────────────────
+    T0 = Clock::now();
     CUDA_CHECK(cudaMalloc(&d_pair_blk_start_,n_cells*sizeof(int)));
     CUDA_CHECK(cudaMalloc(&d_pair_blk_count_,n_cells*sizeof(int)));
     CUDA_CHECK(cudaMemcpy(d_pair_blk_start_,pair_start.data(),n_cells*sizeof(int),cudaMemcpyHostToDevice));
@@ -470,11 +478,14 @@ void HBlockIndex::add(const float* h_x, int n)
     CUDA_CHECK(cudaMemcpy(d_leaf_codes_,h_leaf_codes.data(),(long long)total_blocks*bpv_*leaf_size_,cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(d_leaf_ids_,  h_leaf_ids.data(),  (long long)total_blocks*leaf_size_*sizeof(int),cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(d_leaf_sizes_,h_leaf_sizes.data(),total_blocks*sizeof(int),cudaMemcpyHostToDevice));
-
     h_pair_blk_start_cpu_=pair_start;
     h_pair_blk_count_cpu_=pair_cnt;
+    printf("  [upload leaf GPU] %.1f ms  (%.2f GB)\n",
+           Ms(Clock::now()-T0).count(),
+           (double)(total_blocks*bpv_*leaf_size_ + total_blocks*leaf_size_*4)/1e9);
 
-    // ── Compute abs centroids (for candidate cell generation in build_block_graph) ─
+    // ── Abs centroids for graph candidate generation ──────────────────────────
+    T0 = Clock::now();
     {
         std::vector<float> h_c1f((long long)K1_*d_),h_c2f((long long)K1_*K2_*d_),h_c3f((long long)K1_*K2_*K3_*d_);
         CUDA_CHECK(cudaMemcpy(h_c1f.data(),d_route1_cents_full_,(long long)K1_*d_*sizeof(float),cudaMemcpyDeviceToHost));
@@ -493,8 +504,10 @@ void HBlockIndex::add(const float* h_x, int n)
             }
         }
     }
+    printf("  [abs centroids] %.1f ms\n", Ms(Clock::now()-T0).count());
 
     // ── Upload proj/norm to GPU (needed by GPU graph build kernel) ────────────
+    T0 = Clock::now();
     {
         long long proj_b = (long long)total_blocks * d_proj_ * sizeof(float);
         long long norm_b = (long long)total_blocks * sizeof(float);
@@ -504,25 +517,33 @@ void HBlockIndex::add(const float* h_x, int n)
         CUDA_CHECK(cudaMalloc(&d_blk_norm_gpu_, norm_b));
         CUDA_CHECK(cudaMemcpy(d_blk_proj_gpu_, h_block_cent_proj_.data(), proj_b, cudaMemcpyHostToDevice));
         CUDA_CHECK(cudaMemcpy(d_blk_norm_gpu_, h_block_cent_norm_.data(), norm_b, cudaMemcpyHostToDevice));
-        printf("  Block proj/norm GPU: proj=%.1f MB  norm=%.1f MB\n", proj_b/1e6, norm_b/1e6);
     }
+    printf("  [upload proj/norm GPU] %.1f ms\n", Ms(Clock::now()-T0).count());
 
-    // ── Build block graph (GPU-accelerated; writes d_block_adj_gpu_ directly) ─
-    printf("  Building block graph (n_blocks=%d, degree=%d, n_c2_nbrs=%d, n_c1_nbrs=%d) ...\n",
+    // ── Build block graph ─────────────────────────────────────────────────────
+    T0 = Clock::now();
+    printf("  [graph build] n_blocks=%d degree=%d n_c2_nbrs=%d n_c1_nbrs=%d ...\n",
            total_blocks, graph_degree_, n_c2_nbrs_, n_c1_nbrs_);
     build_block_graph(pair_start, pair_cnt);
+    printf("  [graph build total] %.1f ms\n", Ms(Clock::now()-T0).count());
 
     // ── Upload base vectors ───────────────────────────────────────────────────
-    printf("  Uploading base vecs %.2f GB ...\n",(double)n*d_*4/1e9);
+    T0 = Clock::now();
+    printf("  [upload base vecs] %.2f GB ...\n",(double)n*d_*4/1e9);
     CUDA_CHECK(cudaMalloc(&d_base_vecs_,(long long)n*d_*sizeof(float)));
     CUDA_CHECK(cudaMemcpy(d_base_vecs_,h_x,(long long)n*d_*sizeof(float),cudaMemcpyHostToDevice));
+    printf("  [upload base vecs] %.1f ms\n", Ms(Clock::now()-T0).count());
 
+    // ── Finalize ──────────────────────────────────────────────────────────────
     ntotal_=n;
-    printf("  Built %d leaf blocks  max_blk_per_cell=%d\n",total_blocks,max_blk_per_cell_);
-    // Free full-dim block centroids (no longer needed after graph is built + projected)
-    h_block_cent_.clear();
-    h_block_cent_.shrink_to_fit();
+    h_block_cent_.clear(); h_block_cent_.shrink_to_fit();
+
+    T0 = Clock::now();
     alloc_workspace();
+    printf("  [alloc workspace] %.1f ms\n", Ms(Clock::now()-T0).count());
+
+    printf("[v23 add total] %.1f ms  blocks=%d\n",
+           Ms(Clock::now()-T_add).count(), total_blocks);
 }
 
 // Helper: squared L2 distance between two float vectors
@@ -587,6 +608,9 @@ void HBlockIndex::build_block_graph(
         std::sort(row.begin(),row.end());
         for(auto& [d2,idx]:row) nearest_c1[c1].push_back(idx);
     }
+
+    using Clock = std::chrono::high_resolution_clock;
+    auto Tg = Clock::now();
 
     std::vector<int> h_csr_start(n_cells+1, 0);
     std::vector<int> h_csr_list;
@@ -671,6 +695,11 @@ void HBlockIndex::build_block_graph(
     }
 
     int total_cands = (int)h_csr_list.size();
+    printf("    [graph/csr_build] %.1f ms  cells=%d  total_cands=%d  avg_cands/block=%.0f\n",
+           Ms(Clock::now()-Tg).count(), n_cells, total_cands,
+           (double)total_cands/n_blocks);
+
+    auto Tup = Clock::now();
     int *d_csr_start=nullptr, *d_csr_list_g=nullptr, *d_cell_id_g=nullptr;
     CUDA_CHECK(cudaMalloc(&d_csr_start,    (long long)(n_cells+1)*sizeof(int)));
     CUDA_CHECK(cudaMalloc(&d_csr_list_g,   (long long)total_cands*sizeof(int)));
@@ -680,13 +709,18 @@ void HBlockIndex::build_block_graph(
     CUDA_CHECK(cudaMemcpy(d_csr_start,  h_csr_start.data(), (long long)(n_cells+1)*sizeof(int), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(d_csr_list_g, h_csr_list.data(),  (long long)total_cands*sizeof(int), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(d_cell_id_g,  h_cell_id.data(),   (long long)n_blocks*sizeof(int),    cudaMemcpyHostToDevice));
+    printf("    [graph/upload_csr] %.1f ms\n", Ms(Clock::now()-Tup).count());
+
+    auto Tkernel = Clock::now();
     gpu_build_block_adj_v23(d_blk_proj_gpu_, d_blk_norm_gpu_,
                             d_csr_start, d_csr_list_g, d_cell_id_g,
                             d_block_adj_gpu_, n_blocks, d_proj_, deg, nullptr);
     CUDA_CHECK(cudaDeviceSynchronize());
+    printf("    [graph/GPU_kernel] %.1f ms\n", Ms(Clock::now()-Tkernel).count());
+
     cudaFree(d_csr_start); cudaFree(d_csr_list_g); cudaFree(d_cell_id_g);
-    printf("    Block graph done (GPU): %d blocks x %d degree, %d total cands\n",
-           n_blocks, deg, total_cands);
+    printf("    [graph total] %.1f ms  %d blocks x %d degree\n",
+           Ms(Clock::now()-Tg).count(), n_blocks, deg);
 }
 
 
