@@ -154,6 +154,23 @@ target_compile_options(jhq_hblock_v21 PRIVATE
 add_executable(demo_hblock_v21 examples/demo_hblock_v21.cu)
 target_link_libraries(demo_hblock_v21 PRIVATE jhq_hblock_v21)
 
+# v30: v29 + fix visited-before-insert bug (check bmax before atomicOr, unblocks graph paths)
+add_library(jhq_hblock_v30 STATIC
+    hblock_v30/search.cu
+    hblock_v30/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v30 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v30 PUBLIC
+    jhq_hblock_v27
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v30 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --expt-extended-lambda --use_fast_math>)
+add_executable(demo_hblock_v30 examples/demo_hblock_v30.cu)
+target_link_libraries(demo_hblock_v30 PRIVATE jhq_hblock_v30)
+
 # v29: v28 + balanced k-means (each cluster ≤ 128 → cluster = block, clean centroid)
 add_library(jhq_hblock_v29 STATIC
     hblock_v29/search.cu
