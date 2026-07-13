@@ -4,15 +4,16 @@ cd /root/JHQ_GPU
 BASE=/root/data/vogue-768_base.fvecs
 QUERY=/root/data/vogue-768_query.fvecs
 GT=/root/data/vogue-768_groundtruth.ivecs
-OUT=results/hblock_v32_$(date +%Y%m%d_%H%M%S).txt
+TS=$(date +%Y%m%d_%H%M%S)
+OUT=results/hblock_v32_${TS}.txt
+CSV=results/hblock_v32_${TS}.csv
 mkdir -p results
 
 {
 echo "=== HBlock v32: single beam parameter, build once + sweep ef ==="
 echo "date: $(date)"
 echo ""
-# Build with max_ef=128; demo sweeps ef=8,16,32,64,128 at search time
-./build/demo_hblock_v32 $BASE $QUERY $GT 128
+./build/demo_hblock_v32 $BASE $QUERY $GT 128 16 16 16 32 4 64 16 1024 $CSV
 } 2>&1 | tee $OUT
 
-echo "Done: $OUT"
+echo "Done: $OUT  CSV: $CSV"
