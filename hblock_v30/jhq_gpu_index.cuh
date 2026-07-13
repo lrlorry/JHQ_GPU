@@ -49,6 +49,15 @@ public:
     double oracle_recall(const float* h_q, int nq, int k,
                          const float* h_base, const int* h_gt, int gt_k) const;
 
+    // Diagnostic: for missed GT neighbors, classify into:
+    //   A routing   — GT block's cell was not selected by routing
+    //   B unreachable — cell selected, but GT block unreachable via BFS from entry blocks
+    //   C depth     — reachable, but beam search ran out of depth before visiting
+    //   D rerank    — visited but not in final top-k (should be ~0 with exact rerank)
+    // Also prints hop-count histogram for class-C misses.
+    void diagnose_missed_gt(const float* h_q, int nq, int k,
+                            const int* h_gt, int gt_k) const;
+
     int ntotal() const { return ntotal_; }
     int dim()    const { return d_; }
 

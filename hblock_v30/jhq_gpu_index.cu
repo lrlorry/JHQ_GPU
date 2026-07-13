@@ -788,6 +788,13 @@ void HBlockIndex::build_block_graph(
     printf("    [graph/GPU_kernel] %.1f ms\n", Ms(Clock::now()-Tkernel).count());
 
     cudaFree(d_csr_start); cudaFree(d_csr_list_g); cudaFree(d_cell_id_g);
+
+    // Keep CPU copy for BFS diagnostic
+    h_block_adj_.resize((long long)n_blocks * deg);
+    CUDA_CHECK(cudaMemcpy(h_block_adj_.data(), d_block_adj_gpu_,
+                          (long long)n_blocks * deg * sizeof(int),
+                          cudaMemcpyDeviceToHost));
+
     printf("    [graph total] %.1f ms  %d blocks x %d degree\n",
            Ms(Clock::now()-Tg).count(), n_blocks, deg);
 }
@@ -1022,6 +1029,157 @@ double HBlockIndex::oracle_recall(const float* h_q, int nq, int k,
     }
 
     return (double)hits / ((double)nq * k);
+}
+
+void HBlockIndex::diagnose_missed_gt(
+    const float* h_q, int nq, int k,
+    const int* h_gt, int gt_k) const
+{
+    if (ntotal_ == 0) throw std::runtime_error("empty index");
+    if (h_leaf_ids_cpu_.empty()) throw std::runtime_error("h_leaf_ids_cpu_ not built");
+    if (h_block_adj_.empty()) throw std::runtime_error("h_block_adj_ not built");
+
+    int n_blks = n_leaf_blocks_;
+    int deg    = graph_degree_;
+    int n_c3   = ck1_ * ck2_ * ck3_;
+    int max_ls = ws_.max_leaf_sel;
+
+    // vec_id → block_id
+    std::vector<int> vec_to_block(ntotal_, -1);
+    for (int b = 0; b < n_blks; b++) {
+        int sz = h_leaf_sizes_cpu_[b];
+        for (int p = 0; p < sz; p++) {
+            int vid = h_leaf_ids_cpu_[(long long)b * leaf_size_ + p];
+            if (vid >= 0) vec_to_block[vid] = b;
+        }
+    }
+
+    // BFS state reused across queries
+    std::vector<int> hop(n_blks);
+    std::vector<int> bfs_q(n_blks);
+
+    long long cnt_A=0, cnt_B=0, cnt_C=0, cnt_D=0, cnt_found=0, cnt_total=0;
+    constexpr int MAX_HOP = 512;
+    std::vector<int> hop_hist(MAX_HOP + 1, 0);
+
+    cudaStream_t s = ws_.stream;
+
+    for (int qstart = 0; qstart < nq; qstart += batch_size_) {
+        int nb = std::min(batch_size_, nq - qstart);
+        const float* h_qb = h_q + (long long)qstart * d_;
+
+        route_gpu_v29(cublas_,
+                      d_Pi1_, d_Pi2_, d_Pi3_,
+                      d_route1_cents_proj_, d_route1_cents_full_, d_route1_norms_,
+                      d_route2_cents_proj_, d_route2_cents_full_, d_route2_norms_,
+                      d_route3_cents_proj_, d_route3_cents_full_, d_route3_norms_,
+                      d_fine_c1d_, h_qb, nb, d_, d_proj_,
+                      K1_, K2_, K3_, Kr_, ck1_, ck2_, ck3_, batch_size_, ws_);
+
+        gpu_block_search_v27(nb, n_blks, d_proj_,
+                             K2_, K3_, ck1_, ck2_, ck3_,
+                             graph_degree_, graph_depth_, max_ls, entry_per_cell_,
+                             d_block_adj_gpu_, d_blk_proj_gpu_, d_blk_norm_gpu_,
+                             d_pair_blk_start_, d_pair_blk_count_, ws_);
+
+        CUDA_CHECK(cudaMemcpyAsync(ws_.h_leaf_cnt,  ws_.d_leaf_cnt,
+                                   (long long)nb * sizeof(int), cudaMemcpyDeviceToHost, s));
+        CUDA_CHECK(cudaMemcpyAsync(ws_.h_block_sel, ws_.d_leaf_sel,
+                                   (long long)nb * max_ls * sizeof(int), cudaMemcpyDeviceToHost, s));
+        CUDA_CHECK(cudaMemcpyAsync(ws_.h_top3_beam, ws_.d_top3_beam,
+                                   (long long)nb * n_c3 * sizeof(int), cudaMemcpyDeviceToHost, s));
+        CUDA_CHECK(cudaStreamSynchronize(s));
+
+        for (int qi = 0; qi < nb; qi++) {
+            // Selected L3 cells for this query
+            const int* top3 = ws_.h_top3_beam + (long long)qi * n_c3;
+            std::vector<bool> cell_sel(K1_ * K2_ * K3_, false);
+            for (int ci = 0; ci < n_c3; ci++)
+                if (top3[ci] >= 0) cell_sel[top3[ci]] = true;
+
+            // Visited blocks
+            int vcnt = ws_.h_leaf_cnt[qi];
+            std::vector<bool> visited(n_blks, false);
+            for (int s = 0; s < vcnt; s++) {
+                int blk = ws_.h_block_sel[(long long)qi * max_ls + s];
+                if (blk >= 0 && blk < n_blks) visited[blk] = true;
+            }
+
+            // BFS from entry blocks (all blocks in selected cells)
+            std::fill(hop.begin(), hop.end(), -1);
+            int bfs_head = 0, bfs_tail = 0;
+            for (int c = 0; c < K1_ * K2_ * K3_; c++) {
+                if (!cell_sel[c]) continue;
+                int bs = h_pair_blk_start_cpu_[c], bc = h_pair_blk_count_cpu_[c];
+                for (int i = bs; i < bs + bc; i++) {
+                    if (hop[i] < 0) { hop[i] = 0; bfs_q[bfs_tail++] = i; }
+                }
+            }
+            while (bfs_head < bfs_tail) {
+                int cur = bfs_q[bfs_head++];
+                if (hop[cur] >= MAX_HOP) continue;
+                for (int d = 0; d < deg; d++) {
+                    int nb2 = h_block_adj_[(long long)cur * deg + d];
+                    if (nb2 >= 0 && nb2 < n_blks && hop[nb2] < 0) {
+                        hop[nb2] = hop[cur] + 1;
+                        bfs_q[bfs_tail++] = nb2;
+                    }
+                }
+            }
+
+            // Classify each GT neighbor
+            const int* gt = h_gt + (long long)(qstart + qi) * gt_k;
+            for (int g = 0; g < k; g++) {
+                int gt_vid = gt[g];
+                if (gt_vid < 0 || gt_vid >= ntotal_) continue;
+                int gt_blk = vec_to_block[gt_vid];
+                if (gt_blk < 0) continue;
+                cnt_total++;
+
+                if (visited[gt_blk]) { cnt_found++; continue; }
+
+                int gt_c = h_block_cell_id_[gt_blk];
+                if (gt_c < 0 || gt_c >= K1_ * K2_ * K3_ || !cell_sel[gt_c]) {
+                    cnt_A++; continue;
+                }
+                if (hop[gt_blk] < 0) {
+                    cnt_B++; continue;
+                }
+                cnt_C++;
+                int h = std::min(hop[gt_blk], MAX_HOP);
+                hop_hist[h]++;
+            }
+        }
+    }
+
+    long long n_miss = cnt_A + cnt_B + cnt_C + cnt_D;
+    printf("\n=== Missed-GT Diagnostic (%d queries, k=%d) ===\n", nq, k);
+    printf("  Total (query,gt) pairs  : %lld\n", cnt_total);
+    printf("  Found (in visited blks) : %lld  (%.2f%%)\n",
+           cnt_found, 100.0 * cnt_found / cnt_total);
+    printf("  Missed total            : %lld  (%.2f%%)\n",
+           n_miss,   100.0 * n_miss   / cnt_total);
+    printf("\n  A  routing miss        : %lld  (%.2f%% of missed)\n",
+           cnt_A, n_miss ? 100.0*cnt_A/n_miss : 0.0);
+    printf("  B  graph unreachable   : %lld  (%.2f%% of missed)\n",
+           cnt_B, n_miss ? 100.0*cnt_B/n_miss : 0.0);
+    printf("  C  depth miss          : %lld  (%.2f%% of missed)\n",
+           cnt_C, n_miss ? 100.0*cnt_C/n_miss : 0.0);
+    printf("  D  rerank miss         : %lld\n", cnt_D);
+
+    if (cnt_C > 0) {
+        printf("\n  Hop-count histogram for depth-miss (C) cases:\n");
+        int bucket_edges[] = {1,2,3,4,5,8,12,20,32,64,128,256,MAX_HOP+1};
+        int prev = 0;
+        for (int edge : bucket_edges) {
+            long long cnt_bkt = 0;
+            for (int h = prev; h < edge && h <= MAX_HOP; h++) cnt_bkt += hop_hist[h];
+            if (cnt_bkt > 0)
+                printf("    hops %3d-%3d : %lld\n", prev, edge-1, cnt_bkt);
+            prev = edge;
+        }
+    }
+    printf("=================================================\n\n");
 }
 
 } // namespace hblock_v30

@@ -171,6 +171,10 @@ target_compile_options(jhq_hblock_v30 PRIVATE
 add_executable(demo_hblock_v30 examples/demo_hblock_v30.cu)
 target_link_libraries(demo_hblock_v30 PRIVATE jhq_hblock_v30)
 
+# v31 diagnostic: missed-GT classification (routing/connectivity/depth) via BFS
+add_executable(demo_hblock_v31_diag examples/demo_hblock_v31_diag.cu)
+target_link_libraries(demo_hblock_v31_diag PRIVATE jhq_hblock_v30)
+
 # v29: v28 + balanced k-means (each cluster ≤ 128 → cluster = block, clean centroid)
 add_library(jhq_hblock_v29 STATIC
     hblock_v29/search.cu
