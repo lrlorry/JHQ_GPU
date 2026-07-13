@@ -250,6 +250,29 @@ scan kernel 中访问 `list_primary_t[m * N + abs_pos]`：32 个线程的 `abs_p
 
 ## 后续可能的优化方向
 
+### 0. Block-level graph + super-block 物理布局（1B 方向）
+
+**核心想法**：graph 节点保持为小粒度 logical block（如 128 vectors，GPU 扫描单元），但物理存储/传输单位可以是更大的 super-block/page，把若干空间上接近的 logical blocks 放在同一个连续物理块中。
+
+```text
+logical block      = graph node / GPU scan tile
+physical page      = transfer unit
+physical page      = 4 / 8 / 16 nearby logical blocks
+```
+
+**优势**：
+- block-level graph 的节点数约为 `N / block_size`，相比 vector-level graph 小约 `block_size` 倍，因此图本身不会很大，建图也会比 vector graph 更快。
+- 搜索 frontier 仍然按 `block_id` 做细粒度扩展，但加载时映射到 `page_id`，一次搬运可覆盖多个后续可能访问的 nearby blocks。
+- 如果几个近距离 logical blocks 被放在同一个 physical page，图搜索的几次 hop 可能命中同一页，减少小随机传输和 PCIe/SSD 调度开销。
+- 复杂度可从按 `visited_blocks * block_bytes` 进一步优化为按 `visited_pages * page_bytes`；只要布局好，`visited_pages << visited_blocks`。
+
+**建议实验参数**：
+- logical block 固定为 128 vectors；
+- super-block/page 可扫 `4 / 8 / 16` 个 logical blocks；
+- 初始建议 `8 blocks/page`，即 1024 vectors/page，在顺序读收益和无效搬运之间折中。
+
+**关键约束**：super-block 只是物理 I/O 单元，不改变搜索粒度。graph node 仍然是 logical block，避免把算法剪枝粒度变粗。
+
 ### 1. Byte LUT 访问优化（当前最大瓶颈）
 
 v12 之后 `list_primary` 已经完全合并访问，瓶颈转移到 `byte_lut` 查表。
