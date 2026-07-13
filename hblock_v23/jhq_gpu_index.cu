@@ -450,8 +450,8 @@ void HBlockIndex::add(const float* h_x, int n)
                               (long long)total_blocks*d_*sizeof(float), cudaMemcpyHostToDevice));
         const float one=1.f, zero=0.f;
         CUBLAS_CHECK(cublasSgemm(cublas_,
-            CUBLAS_OP_N, CUBLAS_OP_N, d_proj_, total_blocks, d_,
-            &one, d_Pi1_, d_proj_, d_cent, d_, &zero, d_proj_buf, d_proj_));
+            CUBLAS_OP_T, CUBLAS_OP_N, d_proj_, total_blocks, d_,
+            &one, d_Pi1_, d_, d_cent, d_, &zero, d_proj_buf, d_proj_));
         h_block_cent_proj_.resize((long long)total_blocks*d_proj_);
         CUDA_CHECK(cudaMemcpy(h_block_cent_proj_.data(), d_proj_buf,
                               (long long)total_blocks*d_proj_*sizeof(float), cudaMemcpyDeviceToHost));
