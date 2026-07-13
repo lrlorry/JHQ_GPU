@@ -7,7 +7,7 @@ Usage:
       results/hblock_v17_vogue.csv \
       results/cpu_vogue.csv \
       [results/hblock_v17_arxiv.csv]   # optional second GPU dataset
-  Output: results/v17_comparison.pdf / .png
+  Output: results/hblock_v17_comparison.pdf / .png
 """
 import sys, os, csv
 import numpy as np
@@ -113,7 +113,7 @@ def main():
 
     csv_args = [a for a in args if a.endswith(".csv")]
     prefix   = next((a for a in args if not a.endswith(".csv")),
-                    "results/v17_comparison")
+                    "results/hblock_v17_comparison")
 
     gpu_vogue_csv = csv_args[0]
     cpu_vogue_csv = csv_args[1]

@@ -3,8 +3,8 @@ v5 CUDA Graph vs CPU 480B/vec baselines (Official-JHQ + JHQ Repro).
 Usage:
     python3 scripts/plot_v5_vs_cpu.py \
         ../JHQ_repro/results/vogue768_results.csv \
-        results/jhq_gpu_v5_cuda_graph_vogue768.csv \
-        results/vogue768_v5_vs_cpu
+        results/jhq_v5_vogue.csv \
+        results/jhq_v5_vs_cpu_vogue
 """
 import sys, csv
 import numpy as np
@@ -130,7 +130,7 @@ def main():
     args = sys.argv[1:]
     cpu_csv = args[0]
     gpu_csv = args[1]
-    prefix  = args[2] if len(args) > 2 else "results/vogue768_v5_vs_cpu"
+    prefix  = args[2] if len(args) > 2 else "results/jhq_v5_vs_cpu_vogue"
 
     data = load_csv(cpu_csv)
     data.update(load_csv(gpu_csv))

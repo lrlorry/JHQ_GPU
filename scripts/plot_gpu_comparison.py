@@ -1,10 +1,10 @@
 """
 GPU v1_plain vs CPU baselines comparison figure.
 
-Usage (run locally after scp-ing jhq_gpu_v1_results.csv):
+Usage (run locally after scp-ing jhq_v1_vogue.csv):
     python3 scripts/plot_gpu_comparison.py \
         ../JHQ_repro/results/vogue768_results.csv \
-        jhq_gpu_v1_results.csv \
+        jhq_v1_vogue.csv \
         [output_prefix]
 """
 import sys, csv
@@ -196,7 +196,7 @@ def main():
 
     cpu_csv = args[0]
     gpu_csv = args[1]
-    prefix  = args[2] if len(args) > 2 else "results/vogue768_gpu_comparison"
+    prefix  = args[2] if len(args) > 2 else "results/jhq_vogue768_comparison"
 
     data = load_csv(cpu_csv)
     data.update(load_csv(gpu_csv))

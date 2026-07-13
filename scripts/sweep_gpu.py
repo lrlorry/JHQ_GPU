@@ -7,7 +7,7 @@ Defaults match the existing vogue768_gpu_comparison figure:
   JHQ/JQ parameters = M=96, B=8, Br=4
 
 Examples:
-  python3 scripts/sweep_gpu.py --version jhq_v12_transposed --output results/jhq_gpu_v12.csv
+  python3 scripts/sweep_gpu.py --version jhq_v12_transposed --output results/jhq_v12_vogue.csv
   python3 scripts/sweep_gpu.py --version hblock_v1 --alpha 4.0 --alpha2 2.0
 """
 import argparse

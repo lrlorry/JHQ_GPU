@@ -1,6 +1,6 @@
 #!/bin/bash
 # Run hblock_v23 on both vogue-768 and arxiv-768, sweep graph_budget
-# Output: /tmp/v23_vogue.csv  /tmp/v23_arxiv.csv
+# Output: results/hblock_v23_vogue.csv  results/hblock_v23_arxiv.csv
 
 set -e
 BIN=./build/demo_hblock_v23
@@ -23,7 +23,7 @@ BUDGETS="8 16 32 64"
 
 run_dataset() {
     local NAME=$1; local BASE=$2; local QRY=$3; local GT=$4
-    local CSV=/tmp/v23_${NAME}.csv
+    local CSV=results/hblock_v23_${NAME}.csv
     echo "========================================"
     echo "Dataset: $NAME  ->  $CSV"
     echo "========================================"
@@ -48,4 +48,4 @@ run_dataset vogue "$VOGUE_BASE" "$VOGUE_QRY" "$VOGUE_GT"
 run_dataset arxiv "$ARXIV_BASE" "$ARXIV_QRY" "$ARXIV_GT"
 
 echo ""
-echo "All done. Results in /tmp/v23_vogue.csv and /tmp/v23_arxiv.csv"
+echo "All done. Results in results/hblock_v23_vogue.csv and results/hblock_v23_arxiv.csv"
