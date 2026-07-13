@@ -726,8 +726,8 @@ void launch_final_merge_v28(int nq, int n_pairs, int klocal, int k, SearchWorksp
     { int nq_ = nq; while ((1 << end_bit) < nq_) end_bit++; end_bit = std::min(end_bit+1, 32); }
     CUDA_CHECK(cub::DeviceRadixSort::SortPairs(
         ws.d_cub_tmp, ws.cub_bytes,
-        ws.d_pair_qid_b, ws.d_pair_leaf_a,   // keys_in: qids, values_in: iota
-        ws.d_pair_qid_a, ws.d_pair_leaf_b,   // keys_out: sorted qids, values_out: perm
+        ws.d_pair_qid_b, ws.d_pair_qid_a,    // keys_in: qids, keys_out: sorted qids
+        ws.d_pair_leaf_a, ws.d_pair_leaf_b,  // values_in: iota, values_out: perm
         n_pairs, 0, end_bit, s));
 
     const int BLOCK = 32;
