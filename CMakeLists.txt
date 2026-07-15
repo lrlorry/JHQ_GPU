@@ -226,6 +226,23 @@ target_compile_options(jhq_hblock_v34 PRIVATE
 add_executable(demo_hblock_v34 examples/demo_hblock_v34.cu)
 target_link_libraries(demo_hblock_v34 PRIVATE jhq_hblock_v34)
 
+# v35: ceiling test — beam=ef (no cap), no early termination, expanded-block output
+add_library(jhq_hblock_v35 STATIC
+    hblock_v35/search.cu
+    hblock_v35/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v35 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v35 PUBLIC
+    jhq_hblock_v27
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v35 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --expt-extended-lambda --use_fast_math>)
+add_executable(demo_hblock_v35 examples/demo_hblock_v35.cu)
+target_link_libraries(demo_hblock_v35 PRIVATE jhq_hblock_v35)
+
 # v29: v28 + balanced k-means (each cluster ≤ 128 → cluster = block, clean centroid)
 add_library(jhq_hblock_v29 STATIC
     hblock_v29/search.cu
