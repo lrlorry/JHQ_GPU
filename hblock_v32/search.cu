@@ -1,8 +1,8 @@
 // hblock_v32/search.cu
-// Single beam parameter: global top-ef routing (not per-parent) + HNSW natural termination.
-// Replaces ck1/ck2/ck3/depth/beam_size with a single `ef`.
+// Per-block exact rerank: PQ filter → exact L2 within block (using d_base_vecs) → merge.
+// Eliminates cross-block PQ ranking errors; oracle recall ≈ actual recall.
 #include "hblock_v32/search.cuh"
-#include "hblock_v27/search.cuh"   // gpu_build_block_adj_v27
+#include "hblock_v27/search.cuh"   // for gpu_build_block_adj_v27
 #include "common/cuda_utils.cuh"
 #include <cub/cub.cuh>
 #include <algorithm>
@@ -12,7 +12,7 @@
 
 namespace hblock_v32 {
 
-// ── L1 topk (same as v30) ─────────────────────────────────────────────────────
+// ── Routing kernels (identical to v27, different namespace) ───────────────────
 
 __global__ void select_route_topk_kernel(
     const float* __restrict__ dots, const float* __restrict__ cent_norms,
@@ -50,62 +50,30 @@ __global__ void select_route_topk_kernel(
     }
 }
 
-// ── L2 global kernel ──────────────────────────────────────────────────────────
-// B*ef blocks. Each block handles one (query, L1_slot) pair.
-// Computes K2 distances for the L1 parent, stores r1 and distances.
-
-__global__ void route_l2_global_kernel(
-    const float* __restrict__ q,
-    const float* __restrict__ C1_full,
-    const float* __restrict__ Pi2,
-    const float* __restrict__ C2_proj,
-    const float* __restrict__ C2_norms,
-    const int*   __restrict__ top1,
-    float* r1_beam,   // [B*ef*d]
-    float* dist2_all, // [B*ef*K2]
-    int B, int d, int d_proj, int K2, int ef)
+__global__ void route_l2_beam_kernel(
+    const float* __restrict__ q, const float* __restrict__ C1_full,
+    const float* __restrict__ Pi2, const float* __restrict__ C2_proj,
+    const float* __restrict__ C2_norms, const int* __restrict__ top1,
+    float* r1_beam, int* top2_beam,
+    int B, int d, int d_proj, int K2, int ck1, int ck2)
 {
-    const int beam_id = blockIdx.x;
-    const int qi      = beam_id / ef;
-    const int l1_slot = beam_id % ef;
+    int beam = blockIdx.x, qi = beam / ck1, c1_i = beam % ck1;
     if (qi >= B) return;
-
-    const float INF   = __int_as_float(0x7F800000);
-    float* my_dists   = dist2_all + (long long)beam_id * K2;
-
-    int c1 = top1[qi * ef + l1_slot];
+    int c1 = top1[qi * ck1 + c1_i];
     if (c1 < 0) {
-        for (int c2 = threadIdx.x; c2 < K2; c2 += blockDim.x) my_dists[c2] = INF;
+        int* my_top2 = top2_beam + beam * ck2;
+        for (int r = threadIdx.x; r < ck2; r += blockDim.x) my_top2[r] = -1;
         return;
     }
-
-    extern __shared__ char shm_l2[];
-    float* s_r1   = (float*)shm_l2;
-    float* s_proj = s_r1   + d;
-    float* s_dist = s_proj + d_proj;
-
+    extern __shared__ float shm_l2[];
+    float* s_r1 = shm_l2, *s_proj = s_r1 + d, *s_dist = s_proj + d_proj;
     const float* q_ptr  = q       + (long long)qi * d;
     const float* c1_ptr = C1_full + (long long)c1 * d;
-    float*       r1_ptr = r1_beam + (long long)beam_id * d;
-
-    __shared__ float s_r1sq;
-    if (threadIdx.x == 0) s_r1sq = 0.f;
-    __syncthreads();
-
+    float*       r1_ptr = r1_beam + (long long)beam * d;
     for (int j = threadIdx.x; j < d; j += blockDim.x) {
-        float v = q_ptr[j] - c1_ptr[j];
-        s_r1[j] = v;
-        r1_ptr[j] = v;
+        float v = q_ptr[j] - c1_ptr[j]; s_r1[j] = v; r1_ptr[j] = v;
     }
     __syncthreads();
-
-    // ||r1||² needed for cross-parent global comparison
-    float local_sq = 0.f;
-    for (int j = threadIdx.x; j < d; j += blockDim.x) local_sq += s_r1[j] * s_r1[j];
-    for (int o = 16; o >= 1; o >>= 1) local_sq += __shfl_xor_sync(0xffffffff, local_sq, o);
-    if (threadIdx.x % 32 == 0) atomicAdd(&s_r1sq, local_sq);
-    __syncthreads();
-
     for (int jp = threadIdx.x; jp < d_proj; jp += blockDim.x) {
         float v = 0.f;
         const float* pi_row = Pi2 + (long long)jp * d;
@@ -113,129 +81,52 @@ __global__ void route_l2_global_kernel(
         s_proj[jp] = v;
     }
     __syncthreads();
-
     const float* c2_proj_base  = C2_proj  + (long long)c1 * K2 * d_proj;
     const float* c2_norms_base = C2_norms + (long long)c1 * K2;
     for (int c2 = threadIdx.x; c2 < K2; c2 += blockDim.x) {
         float dot = 0.f;
         const float* c2_row = c2_proj_base + (long long)c2 * d_proj;
         for (int jp = 0; jp < d_proj; jp++) dot += s_proj[jp] * c2_row[jp];
-        // full ||r1 - c2||² for cross-parent ranking
-        s_dist[c2] = s_r1sq + c2_norms_base[c2] - 2.f * dot;
+        s_dist[c2] = c2_norms_base[c2] - 2.f * dot;
     }
     __syncthreads();
-
-    for (int c2 = threadIdx.x; c2 < K2; c2 += blockDim.x)
-        my_dists[c2] = s_dist[c2];
-}
-
-// ── Global top-ef selection ───────────────────────────────────────────────────
-// B blocks. Picks top-ef from ef*K distances per query.
-// Shared mem layout: [n floats: s_dist | BLOCK floats: s_val | BLOCK ints: s_idx]
-
-__global__ void pick_global_topk_kernel(
-    const float* __restrict__ d_dists,
-    int* d_sel,
-    int ef, int K)
-{
-    const float INF   = __int_as_float(0x7F800000);
-    const int   BLOCK = blockDim.x;
-    const int   qi    = blockIdx.x;
-    const int   n     = ef * K;
-    const float* my_d = d_dists + (long long)qi * n;
-    int*      my_sel  = d_sel   + qi * ef;
-
-    extern __shared__ char shm_pk[];
-    float* s_dist = (float*)shm_pk;
-    float* s_val  = s_dist + n;
-    int*   s_idx  = (int*)(s_val + BLOCK);
-
-    for (int i = threadIdx.x; i < n; i += BLOCK) s_dist[i] = my_d[i];
-    __syncthreads();
-
-    for (int r = 0; r < ef; r++) {
-        // Each thread finds local minimum over its stripe
-        float lv = INF; int li = -1;
-        for (int i = threadIdx.x; i < n; i += BLOCK)
-            if (s_dist[i] < lv) { lv = s_dist[i]; li = i; }
-        s_val[threadIdx.x] = lv;
-        s_idx[threadIdx.x] = li;
-        __syncthreads();
-
-        // Parallel reduction to find global minimum
-        for (int stride = BLOCK >> 1; stride > 0; stride >>= 1) {
-            if (threadIdx.x < stride && s_val[threadIdx.x + stride] < s_val[threadIdx.x]) {
-                s_val[threadIdx.x] = s_val[threadIdx.x + stride];
-                s_idx[threadIdx.x] = s_idx[threadIdx.x + stride];
-            }
-            __syncthreads();
+    if (threadIdx.x == 0) {
+        const float INF = __int_as_float(0x7F800000);
+        int* my_top2 = top2_beam + beam * ck2;
+        for (int r = 0; r < ck2; r++) {
+            float bv = INF; int bi = -1;
+            for (int c2 = 0; c2 < K2; c2++)
+                if (s_dist[c2] < bv) { bv = s_dist[c2]; bi = c2; }
+            my_top2[r] = bi;
+            if (bi >= 0) s_dist[bi] = INF;
         }
-
-        if (threadIdx.x == 0) {
-            int wi = s_idx[0];
-            my_sel[r] = wi;
-            if (wi >= 0) s_dist[wi] = INF;
-        }
-        __syncthreads();
     }
 }
 
-// ── L3 global kernel ──────────────────────────────────────────────────────────
-// B*ef blocks. Each block handles one top2 selection (l2_slot).
-// Loads r1 from the L1 slot of this top2 selection, computes r2 and K3 dists.
-
-__global__ void route_l3_global_kernel(
-    const float* __restrict__ r1_beam,   // [B*ef*d]
-    const float* __restrict__ C2_full,   // [K1*K2*d]
-    const float* __restrict__ Pi3,       // [d_proj*d]
-    const float* __restrict__ C3_proj,   // [K1*K2*K3*d_proj]
-    const float* __restrict__ C3_norms,  // [K1*K2*K3]
-    const int*   __restrict__ top1,      // [B*ef]
-    const int*   __restrict__ top2_sel,  // [B*ef] l1slot*K2+c2local
-    float* dist3_all,                    // [B*ef*K3]
-    int B, int d, int d_proj, int K2, int K3, int ef)
+__global__ void route_l3_beam_kernel(
+    const float* __restrict__ r1_beam, const float* __restrict__ C2_full,
+    const float* __restrict__ Pi3, const float* __restrict__ C3_proj,
+    const float* __restrict__ C3_norms, const int* __restrict__ top1,
+    const int* __restrict__ top2_beam, int* top3_beam,
+    int B, int d, int d_proj, int K2, int K3, int ck1, int ck2, int ck3)
 {
-    const int beam_id = blockIdx.x;
-    const int qi      = beam_id / ef;
-    const int r       = beam_id % ef;
+    int blk = blockIdx.x, qi = blk / (ck1*ck2), rem = blk % (ck1*ck2);
+    int c1_i = rem / ck2, c2_j = rem % ck2;
     if (qi >= B) return;
-
-    const float INF   = __int_as_float(0x7F800000);
-    float* my_dists   = dist3_all + (long long)beam_id * K3;
-
-    int sel2 = top2_sel[qi * ef + r];
-    if (sel2 < 0) {
-        for (int c3 = threadIdx.x; c3 < K3; c3 += blockDim.x) my_dists[c3] = INF;
+    int c1 = top1[qi*ck1+c1_i], b1 = qi*ck1+c1_i;
+    int c2 = top2_beam[b1*ck2+c2_j];
+    if (c1 < 0 || c2 < 0) {
+        int* my_top3 = top3_beam + blk * ck3;
+        for (int r = threadIdx.x; r < ck3; r += blockDim.x) my_top3[r] = -1;
         return;
     }
-
-    int l1_slot  = sel2 / K2;
-    int c2_local = sel2 % K2;
-    int c1       = top1[qi * ef + l1_slot];
-    int c12      = c1 * K2 + c2_local;
-
-    extern __shared__ char shm_l3[];
-    float* s_r2   = (float*)shm_l3;
-    float* s_proj = s_r2   + d;
-    float* s_dist = s_proj + d_proj;
-
-    __shared__ float s_r2sq;
-    if (threadIdx.x == 0) s_r2sq = 0.f;
-    __syncthreads();
-
-    const float* r1_ptr = r1_beam + (long long)(qi * ef + l1_slot) * d;
+    int c12 = c1*K2+c2;
+    extern __shared__ float shm_l3[];
+    float* s_r2 = shm_l3, *s_proj = s_r2+d, *s_dist = s_proj+d_proj;
+    const float* r1_ptr = r1_beam + (long long)b1 * d;
     const float* c2_ptr = C2_full + (long long)c12 * d;
-    for (int j = threadIdx.x; j < d; j += blockDim.x)
-        s_r2[j] = r1_ptr[j] - c2_ptr[j];
+    for (int j = threadIdx.x; j < d; j += blockDim.x) s_r2[j] = r1_ptr[j] - c2_ptr[j];
     __syncthreads();
-
-    // ||r2||² needed for cross-parent global comparison
-    float local_sq = 0.f;
-    for (int j = threadIdx.x; j < d; j += blockDim.x) local_sq += s_r2[j] * s_r2[j];
-    for (int o = 16; o >= 1; o >>= 1) local_sq += __shfl_xor_sync(0xffffffff, local_sq, o);
-    if (threadIdx.x % 32 == 0) atomicAdd(&s_r2sq, local_sq);
-    __syncthreads();
-
     for (int jp = threadIdx.x; jp < d_proj; jp += blockDim.x) {
         float v = 0.f;
         const float* pi_row = Pi3 + (long long)jp * d;
@@ -243,105 +134,47 @@ __global__ void route_l3_global_kernel(
         s_proj[jp] = v;
     }
     __syncthreads();
-
     const float* c3_proj_base  = C3_proj  + (long long)c12 * K3 * d_proj;
     const float* c3_norms_base = C3_norms + (long long)c12 * K3;
     for (int c3 = threadIdx.x; c3 < K3; c3 += blockDim.x) {
         float dot = 0.f;
         const float* c3_row = c3_proj_base + (long long)c3 * d_proj;
         for (int jp = 0; jp < d_proj; jp++) dot += s_proj[jp] * c3_row[jp];
-        // full ||r2 - c3||² for cross-parent ranking
-        s_dist[c3] = s_r2sq + c3_norms_base[c3] - 2.f * dot;
+        s_dist[c3] = c3_norms_base[c3] - 2.f * dot;
     }
     __syncthreads();
-
-    for (int c3 = threadIdx.x; c3 < K3; c3 += blockDim.x)
-        my_dists[c3] = s_dist[c3];
+    if (threadIdx.x == 0) {
+        const float INF = __int_as_float(0x7F800000);
+        int* my_top3 = top3_beam + blk * ck3;
+        for (int r = 0; r < ck3; r++) {
+            float bv = INF; int bi = -1;
+            for (int c3 = 0; c3 < K3; c3++)
+                if (s_dist[c3] < bv) { bv = s_dist[c3]; bi = c3; }
+            my_top3[r] = bi;
+            if (bi >= 0) s_dist[bi] = INF;
+        }
+    }
 }
 
-// ── Expand all K3 children of each selected L2 cell → global c123 ────────────
-// Outputs B*ef*K3 cells (exhaustive L3, same semantics as v30).
-// top3_cells[qi*ef*K3 + l2_slot*K3 + c3] = global c123
-
-__global__ void expand_l3_all_kernel(
-    const int* __restrict__ top1,          // [B*ef]
-    const int* __restrict__ top2_localidx, // [B*ef]
-    int* top3_cells,                        // [B*ef*K3]
-    int B, int K2, int K3, int ef)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int total = B * ef * K3;
-    if (idx >= total) return;
-
-    int qi      = idx / (ef * K3);
-    int rem     = idx % (ef * K3);
-    int l2_slot = rem / K3;
-    int c3      = rem % K3;
-
-    int sel2 = top2_localidx[qi * ef + l2_slot];
-    if (sel2 < 0) { top3_cells[idx] = -1; return; }
-    int l1_slot  = sel2 / K2;
-    int c2_local = sel2 % K2;
-
-    int c1 = top1[qi * ef + l1_slot];
-    if (c1 < 0) { top3_cells[idx] = -1; return; }
-
-    top3_cells[idx] = (c1 * K2 + c2_local) * K3 + c3;
-}
-
-// ── Convert best top3 local index → global c123 (for PQ LUT only) ────────────
-__global__ void top3_best_to_cell_kernel(
-    const int* __restrict__ top1,          // [B*ef]
-    const int* __restrict__ top2_localidx, // [B*ef]
-    const int* __restrict__ top3_localidx, // [B*ef]  top-1 used
-    int* best_cell,                         // [B]
-    int B, int K2, int K3, int ef)
-{
-    int qi = blockIdx.x * blockDim.x + threadIdx.x;
-    if (qi >= B) return;
-    int sel3 = top3_localidx[qi * ef + 0];
-    if (sel3 < 0) { best_cell[qi] = -1; return; }
-    int l2_slot  = sel3 / K3;
-    int c3_local = sel3 % K3;
-    int sel2 = top2_localidx[qi * ef + l2_slot];
-    if (sel2 < 0) { best_cell[qi] = -1; return; }
-    int l1_slot  = sel2 / K2;
-    int c2_local = sel2 % K2;
-    int c1 = top1[qi * ef + l1_slot];
-    if (c1 < 0) { best_cell[qi] = -1; return; }
-    best_cell[qi] = (c1 * K2 + c2_local) * K3 + c3_local;
-}
-
-// ── Fine residual for PQ LUT (best L3 cell) ──────────────────────────────────
-
-__global__ void extract_best_r3_v32_kernel(
+__global__ void extract_best_r3_kernel(
     const float* __restrict__ q,
-    const float* __restrict__ C1_full,
-    const float* __restrict__ C2_full,
+    const float* __restrict__ C1_full, const float* __restrict__ C2_full,
     const float* __restrict__ C3_full,
-    const int*   __restrict__ best_cell, // [B] — nearest L3 cell per query
+    const int* __restrict__ top1, const int* __restrict__ top2_beam,
+    const int* __restrict__ top3_beam,
     float* d_q_r3,
-    int B, int d, int K2, int K3, int ef)
+    int B, int d, int K2, int K3, int ck1, int ck2, int ck3)
 {
     int qi = blockIdx.x; if (qi >= B) return;
-    int c123 = best_cell[qi];
-
-    const float* q_ptr  = q + (long long)qi * d;
-    float*       r3_ptr = d_q_r3 + (long long)qi * d;
-
-    if (c123 < 0) {
-        for (int j = threadIdx.x; j < d; j += blockDim.x)
-            r3_ptr[j] = q_ptr[j];
-        return;
-    }
-
-    int c12 = c123 / K3;
-    int c3  = c123 % K3;
-    int c1  = c12  / K2;
-
+    int c1  = top1      [qi * ck1 + 0];
+    int c2  = top2_beam [(qi * ck1 + 0) * ck2 + 0];
+    int c3  = top3_beam [(qi * ck1 * ck2 + 0) * ck3 + 0];
+    int c12 = c1*K2+c2, c123 = c12*K3+c3;
+    const float* q_ptr  = q       + (long long)qi   * d;
     const float* c1_ptr = C1_full + (long long)c1   * d;
     const float* c2_ptr = C2_full + (long long)c12  * d;
     const float* c3_ptr = C3_full + (long long)c123 * d;
+    float* r3_ptr = d_q_r3 + (long long)qi * d;
     for (int j = threadIdx.x; j < d; j += blockDim.x)
         r3_ptr[j] = q_ptr[j] - c1_ptr[j] - c2_ptr[j] - c3_ptr[j];
 }
@@ -360,9 +193,7 @@ __global__ void build_fine_lut_kernel(
     }
 }
 
-// ── Routing pipeline ──────────────────────────────────────────────────────────
-
-void route_gpu_v32(
+void route_gpu_v29(
     cublasHandle_t cublas,
     const float* d_Pi1, const float* d_Pi2, const float* d_Pi3,
     const float* d_route1_cents_proj, const float* d_route1_cents_full, const float* d_route1_norms,
@@ -371,7 +202,8 @@ void route_gpu_v32(
     const float* d_fine_c1d,
     const float* h_queries,
     int nq, int d, int d_proj,
-    int K1, int K2, int K3, int Kr, int ef,
+    int K1, int K2, int K3, int Kr,
+    int ck1, int ck2, int ck3,
     int batch_size,
     SearchWorkspace& ws)
 {
@@ -385,73 +217,37 @@ void route_gpu_v32(
     CUDA_CHECK(cudaMemcpyAsync(ws.d_q_batch, ws.h_q_pinned,
                                (long long)B*d*sizeof(float), cudaMemcpyHostToDevice, s));
 
-    // L1: project queries, gemm, pick top-ef
     CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_T, CUBLAS_OP_N,
                              d_proj, B, d, &one, d_Pi1, d, ws.d_q_batch, d, &zero, ws.d_q_proj1, d_proj));
     CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_T, CUBLAS_OP_N,
                              K1, B, d_proj, &one, d_route1_cents_proj, d_proj, ws.d_q_proj1, d_proj, &zero, ws.d_dots1, K1));
     {
         int shm1 = (K1 + 2*BLOCK) * (int)sizeof(float);
-        select_route_topk_kernel<<<B, BLOCK, shm1, s>>>(
-            ws.d_dots1, d_route1_norms, ws.d_top1_ids, K1, ef);
+        select_route_topk_kernel<<<B, BLOCK, shm1, s>>>(ws.d_dots1, d_route1_norms, ws.d_top1_ids, K1, ck1);
         CUDA_CHECK(cudaGetLastError());
     }
-
-    // L2: B*ef blocks compute K2 dists, store r1 and dists
     {
-        int shm2 = (d + d_proj + K2) * (int)sizeof(float);
-        route_l2_global_kernel<<<B*ef, BLOCK, shm2, s>>>(
+        int shm_l2 = (d + d_proj + K2) * (int)sizeof(float);
+        route_l2_beam_kernel<<<B*ck1, BLOCK, shm_l2, s>>>(
             ws.d_q_batch, d_route1_cents_full, d_Pi2,
             d_route2_cents_proj, d_route2_norms,
-            ws.d_top1_ids, ws.d_r1_beam, ws.d_dist2_all,
-            B, d, d_proj, K2, ef);
+            ws.d_top1_ids, ws.d_r1_beam, ws.d_top2_beam,
+            B, d, d_proj, K2, ck1, ck2);
         CUDA_CHECK(cudaGetLastError());
     }
-    // L2: pick global top-ef from ef*K2 per query
     {
-        int shm_pk = (ef * K2 + 2 * BLOCK) * (int)sizeof(float);
-        pick_global_topk_kernel<<<B, BLOCK, shm_pk, s>>>(
-            ws.d_dist2_all, ws.d_top2_localidx, ef, K2);
-        CUDA_CHECK(cudaGetLastError());
-    }
-
-    // L3: B*ef blocks compute K3 dists
-    {
-        int shm3 = (d + d_proj + K3) * (int)sizeof(float);
-        route_l3_global_kernel<<<B*ef, BLOCK, shm3, s>>>(
+        int shm_l3 = (d + d_proj + K3) * (int)sizeof(float);
+        route_l3_beam_kernel<<<B*ck1*ck2, BLOCK, shm_l3, s>>>(
             ws.d_r1_beam, d_route2_cents_full, d_Pi3,
             d_route3_cents_proj, d_route3_norms,
-            ws.d_top1_ids, ws.d_top2_localidx, ws.d_dist3_all,
-            B, d, d_proj, K2, K3, ef);
+            ws.d_top1_ids, ws.d_top2_beam, ws.d_top3_beam,
+            B, d, d_proj, K2, K3, ck1, ck2, ck3);
         CUDA_CHECK(cudaGetLastError());
     }
-    // L3: pick top-1 from ef*K3 per query (for PQ LUT only)
-    {
-        int shm_pk = (ef * K3 + 2 * BLOCK) * (int)sizeof(float);
-        pick_global_topk_kernel<<<B, BLOCK, shm_pk, s>>>(
-            ws.d_dist3_all, ws.d_top3_localidx, 1, ef * K3);
-        CUDA_CHECK(cudaGetLastError());
-    }
-    // PQ LUT: convert best localidx to global c123
-    {
-        top3_best_to_cell_kernel<<<(B+255)/256, 256, 0, s>>>(
-            ws.d_top1_ids, ws.d_top2_localidx, ws.d_top3_localidx,
-            ws.d_pq_best_cell, B, K2, K3, ef);
-        CUDA_CHECK(cudaGetLastError());
-    }
-    // Expand all K3 children of each selected L2 cell → ef*K3 entry cells
-    {
-        int total = B * ef * K3;
-        expand_l3_all_kernel<<<(total+255)/256, 256, 0, s>>>(
-            ws.d_top1_ids, ws.d_top2_localidx,
-            ws.d_top3_cells, B, K2, K3, ef);
-        CUDA_CHECK(cudaGetLastError());
-    }
-
-    // Fine residual and PQ LUT
-    extract_best_r3_v32_kernel<<<B, BLOCK, 0, s>>>(
+    extract_best_r3_kernel<<<B, BLOCK, 0, s>>>(
         ws.d_q_batch, d_route1_cents_full, d_route2_cents_full, d_route3_cents_full,
-        ws.d_pq_best_cell, ws.d_q_r3, B, d, K2, K3, ef);
+        ws.d_top1_ids, ws.d_top2_beam, ws.d_top3_beam,
+        ws.d_q_r3, B, d, K2, K3, ck1, ck2, ck3);
     CUDA_CHECK(cudaGetLastError());
     {
         const int BLUT = 256;
@@ -462,9 +258,9 @@ void route_gpu_v32(
     }
 }
 
-// ── Pair build ────────────────────────────────────────────────────────────────
+// ── Pair build (identical to v27) ─────────────────────────────────────────────
 
-__global__ void build_pairs_kernel_v32(
+__global__ void build_pairs_kernel_v29(
     const int* __restrict__ d_leaf_sel,
     const int* __restrict__ d_leaf_cnt,
     const int* __restrict__ d_query_offsets,
@@ -483,14 +279,14 @@ __global__ void build_pairs_kernel_v32(
     }
 }
 
-void gpu_build_and_sort_pairs_v32(
+void gpu_build_and_sort_pairs_v29(
     int nq, int n_pairs, int n_leaf_blocks,
     int max_leaf_sel, SearchWorkspace& ws)
 {
     cudaStream_t s = ws.stream;
     CUDA_CHECK(cub::DeviceScan::ExclusiveSum(
         ws.d_cub_tmp, ws.cub_bytes, ws.d_leaf_cnt, ws.d_query_offsets, nq, s));
-    build_pairs_kernel_v32<<<(nq+255)/256, 256, 0, s>>>(
+    build_pairs_kernel_v29<<<(nq+255)/256, 256, 0, s>>>(
         ws.d_leaf_sel, ws.d_leaf_cnt, ws.d_query_offsets,
         ws.d_pair_leaf_a, ws.d_pair_qid_a,
         n_leaf_blocks, max_leaf_sel, nq);
@@ -505,10 +301,10 @@ void gpu_build_and_sort_pairs_v32(
         n_pairs, 0, end_bit, s));
 }
 
-// ── Block beam search with flat entry + HNSW natural termination ──────────────
+// ── Beam search (identical to v27, different namespace) ───────────────────────
 
 __device__ __forceinline__ float
-blk_qdist_v32(const float* __restrict__ s_q, float q_norm,
+blk_qdist_v29(const float* __restrict__ s_q, float q_norm,
               const float* __restrict__ d_blk_proj,
               const float* __restrict__ d_blk_norm,
               int b, int d_proj)
@@ -520,7 +316,7 @@ blk_qdist_v32(const float* __restrict__ s_q, float q_norm,
 }
 
 __device__ __forceinline__ bool
-try_visit_v32(int* __restrict__ vis, int b, int n_blks)
+try_visit_v29(int* __restrict__ vis, int b, int n_blks)
 {
     if (b < 0 || b >= n_blks) return false;
     int w = b >> 5, bit = b & 31;
@@ -528,22 +324,21 @@ try_visit_v32(int* __restrict__ vis, int b, int n_blks)
 }
 
 template <int SPT>
-__global__ void block_search_fused_v32(
-    const int*   __restrict__ d_top3_cells,  // [B*ef_cells] global c123 entry cells
-    const int*   __restrict__ d_blk_start,
-    const int*   __restrict__ d_blk_count,
+__global__ void block_search_fused_v29(
+    const int*   __restrict__ d_top1,  const int*   __restrict__ d_top2,
+    const int*   __restrict__ d_top3,
+    const int*   __restrict__ d_blk_start, const int* __restrict__ d_blk_count,
     const int*   __restrict__ d_block_adj,
-    const float* __restrict__ d_blk_proj,
-    const float* __restrict__ d_blk_norm,
+    const float* __restrict__ d_blk_proj, const float* __restrict__ d_blk_norm,
     const float* __restrict__ d_q_proj1,
     int* d_leaf_sel, int* d_leaf_cnt, int* d_visited,
-    int n_blks, int d_proj,
-    int ef_cells, int degree, int max_ls, int entry_per_cell, int bitmap_words)
+    int n_blks, int d_proj, int K2, int K3,
+    int ck1, int ck2, int ck3,
+    int degree, int depth, int max_ls,
+    int entry_per_cell, int bitmap_words)
 {
-    const int qi  = blockIdx.x;
-    const int tid = threadIdx.x;
+    const int qi = blockIdx.x, tid = threadIdx.x;
     constexpr unsigned FULL = 0xffffffff;
-
     extern __shared__ float s_q[];
     for (int jp = tid; jp < d_proj; jp += 32)
         s_q[jp] = d_q_proj1[(long long)qi * d_proj + jp];
@@ -564,61 +359,60 @@ __global__ void block_search_fused_v32(
     };
 
     // insert_if_better: check bmax BEFORE marking visited.
+    // If nd >= bmax the block can never enter the beam (bmax only decreases),
+    // so we skip the atomicOr entirely, keeping the path open for graph traversal.
     auto insert_if_better = [&](float nd, int ni) {
         float lw; int ls; local_worst(lw, ls);
         float bmax = lw;
         for (int o = 16; o >= 1; o >>= 1) bmax = fmaxf(bmax, __shfl_xor_sync(FULL, bmax, o));
-        if (nd >= bmax) return;
+        if (nd >= bmax) return;          // too far: don't visit, don't insert
         bool fv = false;
-        if (tid == 0) fv = try_visit_v32(vis, ni, n_blks);
-        if (!(bool)__shfl_sync(FULL, (int)fv, 0)) return;
+        if (tid == 0) fv = try_visit_v29(vis, ni, n_blks);
+        if (!(bool)__shfl_sync(FULL, (int)fv, 0)) return;  // already in beam
         unsigned em = __ballot_sync(FULL, lw == bmax);
         int el = __ffs(em) - 1;
         if (tid == el) { my_dist[ls] = nd; my_id[ls] = ni; my_exp[ls] = false; }
     };
 
-    // Entry phase: all ef*K3 global L3 cells (exhaustive L3 expansion)
-    for (int r = 0; r < ef_cells; r++) {
-        int c123 = d_top3_cells[(long long)qi * ef_cells + r];
-        if (c123 < 0) continue;
-        int bs = d_blk_start[c123], bc = d_blk_count[c123];
-        if (bc == 0) continue;
-        for (int start = 0; start < bc; start += 32) {
-            int bi = start + tid;
-            float ck_d = 1e38f; int ck_id = -1;
-            if (bi < bc) {
-                ck_d  = blk_qdist_v32(s_q, q_norm, d_blk_proj, d_blk_norm, bs+bi, d_proj);
-                ck_id = bs + bi;
-            }
-            for (int ep = 0; ep < entry_per_cell; ep++) {
-                float mn = ck_d;
-                for (int o = 16; o >= 1; o >>= 1) mn = fminf(mn, __shfl_xor_sync(FULL, mn, o));
-                if (mn >= 1e37f) break;
-                unsigned wmask = __ballot_sync(FULL, ck_d == mn);
-                int wlane = __ffs(wmask) - 1;
-                int ins_id = __shfl_sync(FULL, ck_id, wlane);
-                if (tid == wlane) { ck_d = 1e38f; ck_id = -1; }
-                insert_if_better(mn, ins_id);
+    for (int i1 = 0; i1 < ck1; i1++) {
+        int c1 = d_top1[qi*ck1+i1]; if (c1 < 0) continue;
+        for (int i2 = 0; i2 < ck2; i2++) {
+            int c2 = d_top2[qi*ck1*ck2+i1*ck2+i2]; if (c2 < 0) continue;
+            for (int i3 = 0; i3 < ck3; i3++) {
+                int c3 = d_top3[qi*(ck1*ck2*ck3)+(i1*ck2+i2)*ck3+i3]; if (c3 < 0) continue;
+                int c123 = c1*K2*K3+c2*K3+c3;
+                int bs = d_blk_start[c123], bc = d_blk_count[c123];
+                if (bc == 0) continue;
+                for (int start = 0; start < bc; start += 32) {
+                    int bi = start + tid;
+                    float ck_d = 1e38f; int ck_id = -1;
+                    if (bi < bc) {
+                        ck_d  = blk_qdist_v29(s_q, q_norm, d_blk_proj, d_blk_norm, bs+bi, d_proj);
+                        ck_id = bs + bi;
+                    }
+                    for (int ep = 0; ep < entry_per_cell; ep++) {
+                        float mn = ck_d;
+                        for (int o = 16; o >= 1; o >>= 1) mn = fminf(mn, __shfl_xor_sync(FULL, mn, o));
+                        if (mn >= 1e37f) break;
+                        unsigned wmask = __ballot_sync(FULL, ck_d == mn);
+                        int wlane = __ffs(wmask) - 1;
+                        int ins_id = __shfl_sync(FULL, ck_id, wlane);
+                        if (tid == wlane) { ck_d = 1e38f; ck_id = -1; }
+                        insert_if_better(mn, ins_id);
+                    }
+                }
             }
         }
     }
 
-    // Graph expansion with HNSW natural termination
     int out_cnt = 0;
-    for (int iter = 0; iter < max_ls; iter++) {
+    for (int iter = 0; iter < depth; iter++) {
         float lb = 1e38f; int lbs = -1;
         for (int s = 0; s < SPT; s++)
             if (!my_exp[s] && my_id[s] >= 0 && my_dist[s] < lb) { lb = my_dist[s]; lbs = s; }
         float mn = lb;
         for (int o = 16; o >= 1; o >>= 1) mn = fminf(mn, __shfl_xor_sync(FULL, mn, o));
         if (mn >= 1e37f) break;
-
-        // HNSW natural termination: if best unexpanded >= beam max, can't improve
-        float lw_w; int ls_w; local_worst(lw_w, ls_w);
-        float bmax = lw_w;
-        for (int o = 16; o >= 1; o >>= 1) bmax = fmaxf(bmax, __shfl_xor_sync(FULL, bmax, o));
-        if (mn >= bmax) break;
-
         unsigned wm = __ballot_sync(FULL, lb == mn);
         int win_lane = __ffs(wm) - 1;
         int expand_id = -1;
@@ -626,12 +420,13 @@ __global__ void block_search_fused_v32(
         expand_id = __shfl_sync(FULL, expand_id, win_lane);
         if (tid == 0 && out_cnt < max_ls) d_leaf_sel[(long long)qi*max_ls+out_cnt] = expand_id;
         out_cnt++;
-
         float new_d = 1e38f; int new_id = -1;
         if (tid < degree) {
             int nb = d_block_adj[(long long)expand_id*degree+tid];
+            // Soft-check (non-atomic): avoid expensive distance compute for already-visited blocks.
+            // try_visit_v29 (atomic) is deferred until after bmax check in insert_if_better.
             if (nb >= 0 && nb < n_blks && !((vis[nb >> 5] >> (nb & 31)) & 1)) {
-                new_d = blk_qdist_v32(s_q, q_norm, d_blk_proj, d_blk_norm, nb, d_proj);
+                new_d = blk_qdist_v29(s_q, q_norm, d_blk_proj, d_blk_norm, nb, d_proj);
                 new_id = nb;
             }
         }
@@ -644,34 +439,52 @@ __global__ void block_search_fused_v32(
     if (tid == 0) d_leaf_cnt[qi] = out_cnt;
 }
 
-#define LAUNCH_BEAM_V32(SPT_VAL) \
-    block_search_fused_v32<SPT_VAL><<<B, 32, smem, ws.stream>>>( \
-        ws.d_top3_cells, \
+#define LAUNCH_BEAM_V28(SPT_VAL) \
+    block_search_fused_v29<SPT_VAL><<<B, 32, smem, ws.stream>>>( \
+        ws.d_top1_ids, ws.d_top2_beam, ws.d_top3_beam, \
         d_pair_blk_start, d_pair_blk_count, \
         d_block_adj, d_blk_proj, d_blk_norm, \
         ws.d_q_proj1, \
         ws.d_leaf_sel, ws.d_leaf_cnt, ws.d_visited, \
-        n_blks, d_proj, ef_cells, degree, max_ls, entry_per_cell, ws.bitmap_words)
+        n_blks, d_proj, K2, K3, \
+        ck1, ck2, ck3, degree, depth, max_ls, entry_per_cell, ws.bitmap_words)
 
-void gpu_block_search_v32(
+void gpu_block_search_v27(  // name kept for linkage compatibility
     int B, int n_blks, int d_proj,
-    int ef_cells, int degree, int max_ls, int entry_per_cell,
+    int K2, int K3, int ck1, int ck2, int ck3,
+    int degree, int depth, int max_ls, int entry_per_cell,
     const int*   d_block_adj, const float* d_blk_proj, const float* d_blk_norm,
-    const int*   d_pair_blk_start, const int* d_pair_blk_count,
+    const int*   d_pair_blk_start, const int*   d_pair_blk_count,
     SearchWorkspace& ws)
 {
-    if (degree > 32) throw std::runtime_error("gpu_block_search_v32: graph_degree must be <= 32");
+    if (degree > 32) throw std::runtime_error("gpu_block_search: graph_degree must be <= 32");
     int smem = d_proj * (int)sizeof(float);
-    if      (ef_cells <= 32)  { LAUNCH_BEAM_V32(1); }
-    else if (ef_cells <= 64)  { LAUNCH_BEAM_V32(2); }
-    else                      { LAUNCH_BEAM_V32(4); }
+    if      (ws.beam_size <= 32) { LAUNCH_BEAM_V28(1); }
+    else if (ws.beam_size <= 64) { LAUNCH_BEAM_V28(2); }
+    else                         { LAUNCH_BEAM_V28(4); }
     CUDA_CHECK(cudaGetLastError());
 }
-#undef LAUNCH_BEAM_V32
+#undef LAUNCH_BEAM_V28
 
-// ── Leaf flat + merge (identical to v30, different namespace) ─────────────────
+// ── v29 key kernel: per-block PQ filter → exact L2 → top klocal ─────────────
+//
+// Phase 1: PQ distances (128 threads, one per vector)
+// Phase 2: Bitonic warp sort (4 warps, ascending)
+// Phase 3: Load query into smem
+// Phase 4: Thread-0 k-way merge → top per_block_r candidate IDs in s_sel
+// Phase 5: For each candidate, all 128 threads compute exact L2;
+//           thread-0 keeps top klocal by exact dist in s_exact
+// Phase 6: Thread-0 writes top klocal to output
+//
+// smem layout (per_block_r ≤ 32):
+//   float s_dist[leaf_size]        (PQ sort output)
+//   int   s_id  [leaf_size]        (PQ sort output)
+//   float s_query[d]               (query vector, loaded once)
+//   float s_wsum[4]                (warp partial sums for exact L2 reduce)
+//   int   s_sel [per_block_r]      (PQ-selected candidate IDs)
+//   float s_exact[per_block_r]     (exact L2 for each candidate)
 
-__global__ void leaf_flat_kernel_v32(
+__global__ void leaf_flat_kernel_v29(
     const int*     __restrict__ d_pair_leaf_ids,
     const int*     __restrict__ d_pair_qids,
     const int*     __restrict__ leaf_sizes,
@@ -689,7 +502,7 @@ __global__ void leaf_flat_kernel_v32(
     const int pi   = blockIdx.x;
     const int tid  = threadIdx.x;
     const int lane = tid & 31, wid = tid >> 5;
-    const int n_warps = leaf_size >> 5;
+    const int n_warps = leaf_size >> 5;  // = 4 for leaf_size=128
 
     const int leaf_blk = d_pair_leaf_ids[pi];
     const int qid      = d_pair_qids[pi];
@@ -698,6 +511,7 @@ __global__ void leaf_flat_kernel_v32(
     const float*   my_lut    = lut_fine   + (long long)qid      * d * Kr;
     const uint8_t* leaf_base = leaf_codes + (long long)leaf_blk * bpv * leaf_size;
 
+    // ── Phase 1: PQ distances ─────────────────────────────────────────────────
     float my_dist = INF; int my_id = -1;
     if (tid < n_vecs) {
         my_dist = 0.f;
@@ -717,33 +531,39 @@ __global__ void leaf_flat_kernel_v32(
         my_id = leaf_ids_data[(long long)leaf_blk * leaf_size + tid];
     }
 
+    // ── Phase 2: Bitonic warp sort (ascending, lane 0 = min dist) ────────────
     for (int k = 2; k <= 32; k <<= 1) {
         bool asc = ((lane & k) == 0);
         for (int j = k >> 1; j > 0; j >>= 1) {
             float od = __shfl_xor_sync(FULL, my_dist, j);
             int   oi = __shfl_xor_sync(FULL, my_id,   j);
-            bool swap = asc ? (od < my_dist) : (od > my_dist);
+            bool lower    = ((lane & j) == 0);
+            bool want_min = (asc == lower);
+            bool swap     = want_min ? (my_dist > od) : (my_dist < od);
             if (swap) { my_dist = od; my_id = oi; }
         }
     }
 
-    extern __shared__ char shm_lf[];
-    float* s_dist  = (float*)shm_lf;
+    // Write sorted warps to smem
+    extern __shared__ char shm[];
+    float* s_dist  = (float*)shm;
     int*   s_id    = (int*)(s_dist + leaf_size);
     float* s_query = (float*)(s_id + leaf_size);
-    float* s_wsum  = s_query + d;
-    int*   s_sel   = (int*)(s_wsum + 4);
-    float* s_exact = (float*)(s_sel + per_block_r);
+    float* s_wsum  = s_query + d;                      // [4] warp partial sums
+    int*   s_sel   = (int*)(s_wsum + 4);               // [per_block_r] selected IDs
+    float* s_exact = (float*)(s_sel + per_block_r);    // [per_block_r] exact dists
 
     s_dist[tid] = my_dist;
     s_id  [tid] = my_id;
     __syncthreads();
 
+    // ── Phase 3: Load query vector into smem ──────────────────────────────────
     const float* q_ptr = d_q_batch + (long long)qid * d;
     for (int j = tid; j < d; j += blockDim.x)
         s_query[j] = q_ptr[j];
     __syncthreads();
 
+    // ── Phase 4: Thread-0 k-way merge → top per_block_r → s_sel ─────────────
     if (tid == 0) {
         int ptrs[4] = {0, 32, 64, 96};
         int actual_r = (per_block_r < n_vecs) ? per_block_r : n_vecs;
@@ -756,10 +576,13 @@ __global__ void leaf_flat_kernel_v32(
             s_sel[r] = (best_w >= 0 && best_d < INF) ? s_id[ptrs[best_w]] : -1;
             if (best_w >= 0) ptrs[best_w]++;
         }
-        for (int r = (per_block_r < n_vecs ? per_block_r : n_vecs); r < per_block_r; r++) s_sel[r] = -1;
+        for (int r = actual_r; r < per_block_r; r++) s_sel[r] = -1;
     }
-    __syncthreads();
+    __syncthreads();  // ensure s_sel ready for all threads
 
+    // ── Phase 5: Exact L2 for each of per_block_r candidates ─────────────────
+    // All 128 threads cooperate for each candidate (d/128 loads per thread).
+    // 2 syncs per iteration: (1) protect s_wsum from prev iter; (2) ensure written.
     for (int r = 0; r < per_block_r; r++) {
         int cand_id = s_sel[r];
         float partial = 0.f;
@@ -770,43 +593,62 @@ __global__ void leaf_flat_kernel_v32(
                 partial += diff * diff;
             }
         }
-        for (int o = 16; o >= 1; o >>= 1) partial += __shfl_xor_sync(FULL, partial, o);
+        // Warp reduce
+        for (int o = 16; o >= 1; o >>= 1)
+            partial += __shfl_xor_sync(FULL, partial, o);
+
+        // Sync 1: ensures thread-0 has finished reading s_wsum from prev iteration
         __syncthreads();
         if (lane == 0) s_wsum[wid] = partial;
+        // Sync 2: ensures all 4 warp sums are written before thread-0 reads
         __syncthreads();
+
         if (tid == 0) {
             float total = s_wsum[0] + s_wsum[1] + s_wsum[2] + s_wsum[3];
             s_exact[r] = (cand_id >= 0) ? total : INF;
         }
     }
-    __syncthreads();
+    __syncthreads();  // ensure s_exact fully written
 
+    // ── Phase 6: Thread-0 selects top klocal from per_block_r exact results ──
     if (tid == 0) {
         long long out_base = (long long)pi * klocal;
+        // Initialize output
         for (int r = 0; r < klocal; r++) { d_out_dists[out_base+r] = INF; d_out_ids[out_base+r] = -1; }
+
         bool used[32] = {};
         for (int slot = 0; slot < klocal; slot++) {
             float best = INF; int bi = -1;
-            for (int r = 0; r < per_block_r; r++)
-                if (!used[r] && s_sel[r] >= 0 && s_exact[r] < best) { best = s_exact[r]; bi = r; }
-            if (bi >= 0) { d_out_dists[out_base+slot] = best; d_out_ids[out_base+slot] = s_sel[bi]; used[bi] = true; }
+            for (int r = 0; r < per_block_r; r++) {
+                if (!used[r] && s_sel[r] >= 0 && s_exact[r] < best) {
+                    best = s_exact[r]; bi = r;
+                }
+            }
+            if (bi >= 0) {
+                d_out_dists[out_base + slot] = best;
+                d_out_ids  [out_base + slot] = s_sel[bi];
+                used[bi] = true;
+            }
         }
     }
 }
 
-void launch_leaf_flat_v32(
+void launch_leaf_flat_v29(
     const int* d_pair_leaf_ids, const int* d_pair_qids,
     const uint8_t* d_leaf_codes, const int* d_leaf_ids_data, const int* d_leaf_sizes,
-    const float* d_lut_fine, const float* d_base_vecs, const float* d_q_batch,
+    const float* d_lut_fine,
+    const float* d_base_vecs, const float* d_q_batch,
     float* d_out_dists, int* d_out_ids,
     int n_pairs, int d, int Kr, int Br, int bpv, int leaf_size,
-    int per_block_r, int klocal, cudaStream_t stream)
+    int per_block_r, int klocal,
+    cudaStream_t stream)
 {
+    // smem = PQ sort (float+int per vector) + query (float) + wsum(4f) + sel+exact (int+float per candidate)
     int smem = leaf_size * (int)(sizeof(float) + sizeof(int))
              + d         * (int)sizeof(float)
              + 4         * (int)sizeof(float)
              + per_block_r * (int)(sizeof(int) + sizeof(float));
-    leaf_flat_kernel_v32<<<n_pairs, leaf_size, smem, stream>>>(
+    leaf_flat_kernel_v29<<<n_pairs, leaf_size, smem, stream>>>(
         d_pair_leaf_ids, d_pair_qids,
         d_leaf_sizes, d_leaf_codes, d_leaf_ids_data,
         d_lut_fine, d_base_vecs, d_q_batch,
@@ -815,16 +657,23 @@ void launch_leaf_flat_v32(
     CUDA_CHECK(cudaGetLastError());
 }
 
-__global__ void fill_iota_kernel_v32(int* arr, int n) {
+// ── Final merge: per-block exact results → global top-k per query ────────────
+// Pairs are stored in leaf-block order (d_pair_leaf_b, d_pair_qid_b).
+// We re-sort by qid to group per query, then do segmented topk.
+
+__global__ void fill_iota_kernel_v29(int* arr, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < n) arr[i] = i;
 }
 
-__global__ void segmented_exact_topk_kernel_v32(
-    const int*   __restrict__ d_perm,
-    const int*   __restrict__ d_query_offsets,
-    const int*   __restrict__ d_leaf_cnt,
-    const float* __restrict__ d_out_dists,
+// d_perm[j] = position pi in the leaf-sorted pair array for qid-sorted slot j.
+// d_query_offsets[qi] = start of query qi's segment (ExclusiveSum of d_leaf_cnt).
+// d_leaf_cnt[qi]      = number of pairs for query qi.
+__global__ void segmented_exact_topk_kernel_v29(
+    const int*   __restrict__ d_perm,          // [n_pairs] perm[j] = pi in leaf-sorted array
+    const int*   __restrict__ d_query_offsets, // [nq]
+    const int*   __restrict__ d_leaf_cnt,      // [nq]
+    const float* __restrict__ d_out_dists,     // [n_pairs × klocal]
     const int*   __restrict__ d_out_ids,
     float* d_final_dists, int* d_final_ids,
     int nq, int k, int klocal)
@@ -841,7 +690,7 @@ __global__ void segmented_exact_topk_kernel_v32(
     for (int i = 0; i < k; i++) { s_dist[i] = INF; s_id[i] = -1; }
 
     for (int p = seg_start + tid; p < seg_end; p += BLK) {
-        int pi = d_perm[p];
+        int pi = d_perm[p];  // position in leaf-sorted array → index into d_out_dists
         for (int r = 0; r < klocal; r++) {
             float dist = d_out_dists[(long long)pi * klocal + r];
             int   vid  = d_out_ids  [(long long)pi * klocal + r];
@@ -870,20 +719,29 @@ __global__ void segmented_exact_topk_kernel_v32(
     }
 }
 
-void launch_final_merge_v32(int nq, int n_pairs, int klocal, int k, SearchWorkspace& ws)
+void launch_final_merge_v29(int nq, int n_pairs, int klocal, int k, SearchWorkspace& ws)
 {
     cudaStream_t s = ws.stream;
-    fill_iota_kernel_v32<<<(n_pairs+255)/256, 256, 0, s>>>(ws.d_pair_leaf_a, n_pairs);
+    // Fill d_pair_leaf_a with iota: position pi in the leaf-sorted pair array.
+    fill_iota_kernel_v29<<<(n_pairs+255)/256, 256, 0, s>>>(ws.d_pair_leaf_a, n_pairs);
+    // Sort by qid: keys_in=d_pair_qid_b (leaf-sorted qids), values_in=d_pair_leaf_a (iota).
+    // After sort: d_pair_qid_a=sorted qids (monotone), d_pair_leaf_b=perm into leaf-sorted positions.
+    // d_query_offsets[qi] (from ExclusiveSum of d_leaf_cnt) still gives the start of
+    // query qi's segment in the qid-sorted result since queries appear in ascending order.
+    int end_bit = 1;
+    { int nq_ = nq; while ((1 << end_bit) < nq_) end_bit++; end_bit = std::min(end_bit+1, 32); }
     CUDA_CHECK(cub::DeviceRadixSort::SortPairs(
         ws.d_cub_tmp, ws.cub_bytes,
-        ws.d_pair_qid_b,  ws.d_pair_qid_a,
-        ws.d_pair_leaf_a, ws.d_pair_leaf_b,
-        n_pairs, 0, 32, s));
-    CUDA_CHECK(cub::DeviceScan::ExclusiveSum(
-        ws.d_cub_tmp, ws.cub_bytes, ws.d_leaf_cnt, ws.d_query_offsets, nq, s));
-    int smem = 2 * 32 * k * (int)sizeof(float);
-    segmented_exact_topk_kernel_v32<<<nq, 32, smem, s>>>(
-        ws.d_pair_leaf_b, ws.d_query_offsets, ws.d_leaf_cnt,
+        ws.d_pair_qid_b, ws.d_pair_qid_a,    // keys_in: qids, keys_out: sorted qids
+        ws.d_pair_leaf_a, ws.d_pair_leaf_b,  // values_in: iota, values_out: perm
+        n_pairs, 0, end_bit, s));
+
+    const int BLOCK = 32;
+    int smem = BLOCK * k * (int)(sizeof(float) + sizeof(int));
+    segmented_exact_topk_kernel_v29<<<nq, BLOCK, smem, s>>>(
+        ws.d_pair_leaf_b,       // perm: pi in leaf-sorted array
+        ws.d_query_offsets,     // segment starts (ExclusiveSum of d_leaf_cnt)
+        ws.d_leaf_cnt,          // segment lengths
         ws.d_out_dists, ws.d_out_ids,
         ws.d_final_dists, ws.d_final_ids,
         nq, k, klocal);

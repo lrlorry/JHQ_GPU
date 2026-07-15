@@ -175,7 +175,7 @@ target_link_libraries(demo_hblock_v30 PRIVATE jhq_hblock_v30)
 add_executable(demo_hblock_v31_diag examples/demo_hblock_v31_diag.cu)
 target_link_libraries(demo_hblock_v31_diag PRIVATE jhq_hblock_v30)
 
-# v32: single beam parameter — global top-ef routing + HNSW natural termination
+# v32: single ef parameter; v30 semantics internally (ef→depth=ef,beam=min(ef,128))
 add_library(jhq_hblock_v32 STATIC
     hblock_v32/search.cu
     hblock_v32/jhq_gpu_index.cu

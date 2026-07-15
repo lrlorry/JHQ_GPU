@@ -10,10 +10,10 @@ CSV=results/hblock_v32_${TS}.csv
 mkdir -p results
 
 {
-echo "=== HBlock v32: single beam parameter, build once + sweep ef ==="
+echo "=== HBlock v32: v30 semantics, single ef parameter (depth=ef, beam=min(ef,128)) ==="
 echo "date: $(date)"
 echo ""
-./build/demo_hblock_v32 $BASE $QUERY $GT 128 16 16 16 32 4 64 16 1024 $CSV
+./build/demo_hblock_v32 $BASE $QUERY $GT 256 16 16 16 32 4 64 16 1024 $CSV
 } 2>&1 | tee $OUT
 
 echo "Done: $OUT  CSV: $CSV"

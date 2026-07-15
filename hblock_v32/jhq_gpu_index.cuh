@@ -8,10 +8,9 @@
 
 namespace hblock_v32 {
 
-// HBlock v32: single beam parameter.
-// Global top-ef routing at each tree level (vs. per-parent local topk in v30).
-// Block graph search uses the same ef as itopk.
-// HNSW-style natural termination replaces fixed depth.
+// HBlock v32: same algorithm as v30, single ef parameter at search time.
+// ef maps internally to (graph_depth=ef, beam_size=min(ef,128)).
+// Routing fixed: ck1=2, ck2=2, ck3=4.
 class HBlockIndex {
 public:
     struct Params {
@@ -21,17 +20,21 @@ public:
         int Kr           = 16;
         int Br           = 4;
         int leaf_size    = 128;
-        int max_ef       = 128;  // max searchable ef (sets workspace buffer sizes)
+        int ck1          = 2;
+        int ck2          = 2;
+        int ck3          = 4;
         int d_proj       = 64;
         int per_block_r  = 16;
         int klocal       = 10;
         int km_iters     = 30;
         int batch_size   = 1024;
-        int graph_degree = 32;
+        int graph_degree   = 32;
+        int max_ef         = 256;  // sets workspace buffer sizes; must be >= any ef passed to search()
         int entry_per_cell = 4;
-        int n_c2_nbrs    = 4;
-        int n_c1_nbrs    = 2;
-        int mini_km_iters = 5;
+        int n_c2_nbrs      = 4;
+        int n_c1_nbrs      = 2;
+        int max_cand_blocks = 2048;
+        int mini_km_iters  = 5;
     };
 
     HBlockIndex(int d, Params p);
@@ -39,23 +42,27 @@ public:
 
     void train (const float* h_x, int n_train);
     void add   (const float* h_x, int n);
-    // ef_search: beam width at query time (1..max_ef). -1 uses max_ef.
+
+    // ef → depth=ef, beam=min(ef,128)
     void search(const float* h_q, int nq, int k,
-                float* h_dists, int* h_ids, int ef_search = -1) const;
+                float* h_dists, int* h_ids, int ef = 64) const;
 
     double oracle_recall(const float* h_q, int nq, int k,
                          const float* h_base, const int* h_gt, int gt_k) const;
+
+    void diagnose_missed_gt(const float* h_q, int nq, int k,
+                            const int* h_gt, int gt_k) const;
 
     int ntotal() const { return ntotal_; }
     int dim()    const { return d_; }
 
 private:
     int d_, d_proj_, Kr_, Br_, bpv_, leaf_size_;
-    int K1_, K2_, K3_;
+    int K1_, K2_, K3_, ck1_, ck2_, ck3_;
     int per_block_r_, klocal_, km_iters_, batch_size_;
-    int graph_degree_, entry_per_cell_;
-    int n_c2_nbrs_, n_c1_nbrs_;
-    int ef_, mini_km_iters_;
+    int graph_degree_, max_ef_, entry_per_cell_;
+    int n_c2_nbrs_, n_c1_nbrs_, max_cand_blocks_;
+    int mini_km_iters_;
     int ntotal_           = 0;
     int n_leaf_blocks_    = 0;
     int max_blk_per_cell_ = 1;

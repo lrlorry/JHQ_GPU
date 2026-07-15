@@ -1,11 +1,12 @@
 #include "hblock_v32/jhq_gpu_index.cuh"
 #include "hblock_v17/encode.cuh"
-#include "hblock_v27/search.cuh"
+#include "hblock_v27/search.cuh"   // for gpu_build_block_adj_v27
 #include "hblock_v32/search.cuh"
 #include "cpu/erfinv.h"
 #include "common/cuda_utils.cuh"
 
 #include <cub/cub.cuh>
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -38,12 +39,14 @@ HBlockIndex::HBlockIndex(int d, Params p)
       bpv_((d * p.Br + 7) / 8),
       leaf_size_(p.leaf_size),
       K1_(p.K1), K2_(p.K2), K3_(p.K3),
+      ck1_(p.ck1), ck2_(p.ck2), ck3_(p.ck3),
       per_block_r_(p.per_block_r), klocal_(p.klocal),
       km_iters_(p.km_iters), batch_size_(p.batch_size),
-      graph_degree_(p.graph_degree),
+      graph_degree_(p.graph_degree), max_ef_(p.max_ef),
       entry_per_cell_(p.entry_per_cell),
       n_c2_nbrs_(p.n_c2_nbrs), n_c1_nbrs_(p.n_c1_nbrs),
-      ef_(p.max_ef), mini_km_iters_(p.mini_km_iters)
+      max_cand_blocks_(p.max_cand_blocks),
+      mini_km_iters_(p.mini_km_iters)
 {
     if (d <= 0)                  throw std::invalid_argument("d must be positive");
     if (p.Br != 4 && p.Br != 8) throw std::invalid_argument("Br must be 4 or 8");
@@ -56,10 +59,9 @@ HBlockIndex::~HBlockIndex()
     auto FH = [](void* p){ if (p) cudaFreeHost(p); };
     auto FD = [](void* p){ if (p) cudaFree(p); };
     FH(ws_.h_q_pinned); FH(ws_.h_leaf_cnt); FH(ws_.h_final_dists); FH(ws_.h_final_ids);
+    FH(ws_.h_top1_ids); FH(ws_.h_top2_beam); FH(ws_.h_top3_beam); FH(ws_.h_block_sel);
     FD(ws_.d_q_batch);  FD(ws_.d_q_proj1);  FD(ws_.d_dots1);
-    FD(ws_.d_top1_ids); FD(ws_.d_r1_beam);
-    FD(ws_.d_dist2_all); FD(ws_.d_top2_localidx);
-    FD(ws_.d_dist3_all); FD(ws_.d_top3_localidx); FD(ws_.d_top3_cells);
+    FD(ws_.d_top1_ids); FD(ws_.d_r1_beam);  FD(ws_.d_top2_beam); FD(ws_.d_top3_beam);
     FD(ws_.d_q_r3);     FD(ws_.d_leaf_sel); FD(ws_.d_leaf_cnt);  FD(ws_.d_lut_fine);
     FD(ws_.d_query_offsets);
     FD(ws_.d_pair_leaf_a); FD(ws_.d_pair_qid_a);
@@ -156,9 +158,12 @@ void HBlockIndex::upload_cents(const std::vector<float>& h_proj, const std::vect
 }
 
 static __global__ void local_assign_kernel(
-    const float* __restrict__ r_proj, const float* __restrict__ C_proj,
-    const float* __restrict__ C_norms, const int* __restrict__ outer_id,
-    int* assign, int n, int d_proj, int K_inner)
+    const float* __restrict__ r_proj,
+    const float* __restrict__ C_proj,
+    const float* __restrict__ C_norms,
+    const int*   __restrict__ outer_id,
+    int* assign,
+    int n, int d_proj, int K_inner)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n) return;
@@ -182,9 +187,10 @@ void HBlockIndex::train(const float* h_x, int n_train)
     using Clock = std::chrono::high_resolution_clock;
     auto T0 = Clock::now();
     const int n_km = std::min(n_train, 200000);
-    printf("[v32 train] d=%d d_proj=%d K1=%d K2=%d K3=%d beam=%d"
-           " graph_degree=%d entry_per_cell=%d\n",
-           d_, d_proj_, K1_, K2_, K3_, ef_, graph_degree_, entry_per_cell_);
+    printf("[v32 train] d=%d d_proj=%d K1=%d K2=%d K3=%d ck1=%d ck2=%d ck3=%d"
+           " graph_degree=%d max_ef=%d entry_per_cell=%d\n",
+           d_, d_proj_, K1_, K2_, K3_, ck1_, ck2_, ck3_,
+           graph_degree_, max_ef_, entry_per_cell_);
 
     const float one=1.f, zero=0.f;
     CUBLAS_CHECK(cublasSetStream(cublas_, nullptr));
@@ -282,7 +288,7 @@ void HBlockIndex::train(const float* h_x, int n_train)
     CUDA_CHECK(cudaMemcpy(d_fine_c1d_,fine_c1d.data(),Kr_*sizeof(float),cudaMemcpyHostToDevice));
 
     cudaFree(d_x_km); cudaFree(d_y_proj);
-    printf("[v32 train] total=%.1f ms  sigma_r3=%.4f\n", Ms(Clock::now()-T0).count(), sigma);
+    printf("[v29 train] total=%.1f ms  sigma_r3=%.4f\n", Ms(Clock::now()-T0).count(), sigma);
 }
 
 void HBlockIndex::add(const float* h_x, int n)
@@ -291,7 +297,7 @@ void HBlockIndex::add(const float* h_x, int n)
     if (ntotal_ != 0) throw std::runtime_error("HBlock supports one add() call");
     using Clock = std::chrono::high_resolution_clock;
     auto T_add = Clock::now();
-    printf("[v32 add] n=%d  d=%d  max_ef=%d\n", n, d_, ef_);
+    printf("[v29 add] n=%d  d=%d  batch=%d  mini_km_iters=%d\n", n, d_, 8192, mini_km_iters_);
 
     const int BATCH=8192;
     const float one=1.f, zero=0.f;
@@ -376,6 +382,7 @@ void HBlockIndex::add(const float* h_x, int n)
     });
     printf("  [sort] %.1f ms\n", Ms(Clock::now()-T0).count());
 
+    // per_cell_blk_sizes[c123] = actual cluster sizes; empty → single block or not reordered
     std::vector<std::vector<int>> per_cell_blk_sizes((long long)K1_*K2_*K3_);
 
     if (mini_km_iters_ > 0) {
@@ -402,6 +409,7 @@ void HBlockIndex::add(const float* h_x, int n)
                             d_proj_ * sizeof(float));
             }
             std::vector<int> assign(N_cell, 0);
+            // Standard k-means to get good centroids
             for (int iter = 0; iter < mini_km_iters_; iter++) {
                 for (int vi = 0; vi < N_cell; vi++) {
                     const float* xi = cell_proj.data() + (long long)vi*d_proj_;
@@ -426,6 +434,8 @@ void HBlockIndex::add(const float* h_x, int n)
                     if (cnt[k] > 0)
                         for (int jp = 0; jp < d_proj_; jp++) cents[(long long)k*d_proj_+jp] /= cnt[k];
             }
+            // Balanced final assignment: each cluster ≤ leaf_size_ vectors.
+            // Sort all (dist, vi, k) pairs; greedily assign first-come with capacity.
             {
                 std::vector<std::tuple<float,int,int>> all_pairs;
                 all_pairs.reserve((size_t)N_cell * K);
@@ -449,6 +459,7 @@ void HBlockIndex::add(const float* h_x, int n)
                     }
                 }
             }
+            // Record actual cluster sizes for cluster-boundary-aware packing
             {
                 long long c123 = (long long)c1*K2_*K3_ + c2*K3_ + c3;
                 std::vector<int> cnt(K, 0);
@@ -509,11 +520,13 @@ void HBlockIndex::add(const float* h_x, int n)
             for(int dim=0;dim<d_;dim++) bc[dim]+=xv[dim];
         };
         if (blk_szs.empty()) {
+            // Single-block cell: fixed-128 cut (original behavior)
             for(int vi=i;vi<j;++vi){
                 int in_blk=vi-i;
                 pack_one(base_blk+in_blk/leaf_size_, in_blk%leaf_size_, order[vi]);
             }
         } else {
+            // Multi-block cell: cluster boundary = block boundary
             int vi = i;
             for (int k=0; k<(int)blk_szs.size(); k++)
                 for (int pos=0; pos<blk_szs[k]; pos++, vi++)
@@ -535,6 +548,7 @@ void HBlockIndex::add(const float* h_x, int n)
         CUDA_CHECK(cudaMalloc(&d_proj_buf, (long long)total_blocks*d_proj_*sizeof(float)));
         CUDA_CHECK(cudaMemcpy(d_cent, h_block_cent_.data(),
                               (long long)total_blocks*d_*sizeof(float), cudaMemcpyHostToDevice));
+        const float one=1.f, zero=0.f;
         CUBLAS_CHECK(cublasSgemm(cublas_,
             CUBLAS_OP_T, CUBLAS_OP_N, d_proj_, total_blocks, d_,
             &one, d_Pi1_, d_, d_cent, d_, &zero, d_proj_buf, d_proj_));
@@ -622,7 +636,7 @@ void HBlockIndex::add(const float* h_x, int n)
     alloc_workspace();
     printf("  [alloc workspace] %.1f ms\n", Ms(Clock::now()-T0).count());
 
-    printf("[v32 add total] %.1f ms  blocks=%d\n",
+    printf("[v29 add total] %.1f ms  blocks=%d\n",
            Ms(Clock::now()-T_add).count(), total_blocks);
 }
 
@@ -637,7 +651,6 @@ void HBlockIndex::build_block_graph(
     const std::vector<int>& h_pair_blk_start,
     const std::vector<int>& h_pair_blk_count)
 {
-    const int max_cand_blocks = 2048;
     int n_cells  = K1_*K2_*K3_;
     int n_blocks = n_leaf_blocks_;
     int deg      = graph_degree_;
@@ -729,7 +742,7 @@ void HBlockIndex::build_block_graph(
         std::sort(cand_blocks.begin(), cand_blocks.end());
         cand_blocks.erase(std::unique(cand_blocks.begin(), cand_blocks.end()),
                           cand_blocks.end());
-        if((int)cand_blocks.size() > max_cand_blocks){
+        if((int)cand_blocks.size() > max_cand_blocks_){
             const float* cell_proj=h_block_cent_proj_.data()+(long long)blk_base*d_proj_;
             float cell_norm=h_block_cent_norm_[blk_base];
             std::vector<std::pair<float,int>> ranked;
@@ -740,9 +753,9 @@ void HBlockIndex::build_block_graph(
                 for(int jp=0;jp<d_proj_;jp++) dot+=cell_proj[jp]*pbp[jp];
                 ranked.push_back({cell_norm+h_block_cent_norm_[bp]-2.f*dot, bp});
             }
-            std::partial_sort(ranked.begin(),ranked.begin()+max_cand_blocks,ranked.end());
-            cand_blocks.resize(max_cand_blocks);
-            for(int i=0;i<max_cand_blocks;i++) cand_blocks[i]=ranked[i].second;
+            std::partial_sort(ranked.begin(),ranked.begin()+max_cand_blocks_,ranked.end());
+            cand_blocks.resize(max_cand_blocks_);
+            for(int i=0;i<max_cand_blocks_;i++) cand_blocks[i]=ranked[i].second;
         }
 
         h_csr_start[c123+1] = h_csr_start[c123] + (int)cand_blocks.size();
@@ -776,17 +789,20 @@ void HBlockIndex::build_block_graph(
 
     cudaFree(d_csr_start); cudaFree(d_csr_list_g); cudaFree(d_cell_id_g);
 
+    // Keep CPU copy for BFS diagnostic
+    h_block_adj_.resize((long long)n_blocks * deg);
+    CUDA_CHECK(cudaMemcpy(h_block_adj_.data(), d_block_adj_gpu_,
+                          (long long)n_blocks * deg * sizeof(int),
+                          cudaMemcpyDeviceToHost));
+
     printf("    [graph total] %.1f ms  %d blocks x %d degree\n",
            Ms(Clock::now()-Tg).count(), n_blocks, deg);
 }
 
 void HBlockIndex::alloc_workspace()
 {
-    const int B  = batch_size_;
-    const int ef = ef_;
-    // max_ls: upper bound on graph iterations per query (natural termination kicks in earlier)
-    const int max_ls = std::max(256, ef * 16);
-    const int max_pairs = B * max_ls;
+    const int B=batch_size_, max_ls=max_ef_;
+    const int max_pairs=B*max_ls;
 
     if(ws_.stream){cublasSetStream(cublas_,nullptr);cudaStreamDestroy(ws_.stream);}
     CUDA_CHECK(cudaStreamCreate(&ws_.stream));
@@ -795,10 +811,15 @@ void HBlockIndex::alloc_workspace()
 #define FH(p) do{if(ws_.p){cudaFreeHost(ws_.p);ws_.p=nullptr;}}while(0)
 #define FD(p) do{if(ws_.p){cudaFree(ws_.p);ws_.p=nullptr;}}while(0)
     FH(h_q_pinned);FH(h_leaf_cnt);FH(h_final_dists);FH(h_final_ids);
+    FH(h_top1_ids);FH(h_top2_beam);FH(h_top3_beam);FH(h_block_sel);
     CUDA_CHECK(cudaMallocHost(&ws_.h_q_pinned,    (long long)B*d_*sizeof(float)));
     CUDA_CHECK(cudaMallocHost(&ws_.h_leaf_cnt,    (long long)B*sizeof(int)));
     CUDA_CHECK(cudaMallocHost(&ws_.h_final_dists, (long long)B*K_MAX*sizeof(float)));
     CUDA_CHECK(cudaMallocHost(&ws_.h_final_ids,   (long long)B*K_MAX*sizeof(int)));
+    CUDA_CHECK(cudaMallocHost(&ws_.h_top1_ids,    (long long)B*ck1_*sizeof(int)));
+    CUDA_CHECK(cudaMallocHost(&ws_.h_top2_beam,   (long long)B*ck1_*ck2_*sizeof(int)));
+    CUDA_CHECK(cudaMallocHost(&ws_.h_top3_beam,   (long long)B*ck1_*ck2_*ck3_*sizeof(int)));
+    CUDA_CHECK(cudaMallocHost(&ws_.h_block_sel,   (long long)B*max_ls*sizeof(int)));
     int bmap_wds  = (n_leaf_blocks_ + 31) / 32;
 
     FD(d_visited);
@@ -806,25 +827,19 @@ void HBlockIndex::alloc_workspace()
     ws_.bitmap_words = bmap_wds;
 
     FD(d_q_batch);FD(d_q_proj1);FD(d_dots1);FD(d_top1_ids);
-    FD(d_r1_beam);FD(d_dist2_all);FD(d_top2_localidx);
-    FD(d_dist3_all);FD(d_top3_localidx);FD(d_pq_best_cell);FD(d_top3_cells);
-    FD(d_q_r3);FD(d_leaf_sel);FD(d_leaf_cnt);FD(d_lut_fine);
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_batch,       (long long)B*d_      *sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_proj1,       (long long)B*d_proj_ *sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_dots1,         (long long)B*K1_     *sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_top1_ids,      (long long)B*ef      *sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_r1_beam,       (long long)B*ef*(long long)d_*sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_dist2_all,     (long long)B*ef*K2_  *sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_top2_localidx, (long long)B*ef      *sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_dist3_all,     (long long)B*ef*K3_  *sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_top3_localidx, (long long)B*ef      *sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_pq_best_cell,  (long long)B         *sizeof(int)));
-    // d_top3_cells: all ef*K3 expanded L3 cells (exhaustive expansion)
-    CUDA_CHECK(cudaMalloc(&ws_.d_top3_cells,    (long long)B*ef*K3_  *sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_q_r3,          (long long)B*d_      *sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_leaf_sel,      (long long)B*max_ls  *sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_leaf_cnt,      (long long)B         *sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_lut_fine,      (long long)B*d_*Kr_  *sizeof(float)));
+    FD(d_r1_beam);FD(d_top2_beam);FD(d_top3_beam);FD(d_q_r3);
+    FD(d_leaf_sel);FD(d_leaf_cnt);FD(d_lut_fine);
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_batch,   (long long)B*d_      *sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_proj1,   (long long)B*d_proj_ *sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_dots1,     (long long)B*K1_     *sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_top1_ids,  (long long)B*ck1_    *sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_r1_beam,   (long long)B*ck1_*d_ *sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_top2_beam, (long long)B*ck1_*ck2_*sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_top3_beam, (long long)B*ck1_*ck2_*ck3_*sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_r3,      (long long)B*d_      *sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_leaf_sel,  (long long)B*max_ls  *sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_leaf_cnt,  (long long)B         *sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_lut_fine,  (long long)B*d_*Kr_  *sizeof(float)));
 
     FD(d_query_offsets);FD(d_pair_leaf_a);FD(d_pair_qid_a);FD(d_pair_leaf_b);FD(d_pair_qid_b);
     CUDA_CHECK(cudaMalloc(&ws_.d_query_offsets,(long long)(B+1)*sizeof(int)));
@@ -833,6 +848,7 @@ void HBlockIndex::alloc_workspace()
     CUDA_CHECK(cudaMalloc(&ws_.d_pair_leaf_b,  (long long)max_pairs*sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_pair_qid_b,   (long long)max_pairs*sizeof(int)));
 
+    // Per-block exact results: [max_pairs × klocal_] (no global gather buffer needed)
     FD(d_out_dists);FD(d_out_ids);
     CUDA_CHECK(cudaMalloc(&ws_.d_out_dists,(long long)max_pairs*klocal_*sizeof(float)));
     CUDA_CHECK(cudaMalloc(&ws_.d_out_ids,  (long long)max_pairs*klocal_*sizeof(int)));
@@ -849,44 +865,50 @@ void HBlockIndex::alloc_workspace()
     FD(d_cub_tmp);
     CUDA_CHECK(cudaMalloc(&ws_.d_cub_tmp,ws_.cub_bytes));
 
-    ws_.batch_cap    = B;
-    ws_.max_pairs    = max_pairs;
-    ws_.max_leaf_sel = max_ls;
-    ws_.per_block_r  = per_block_r_;
-    ws_.klocal       = klocal_;
-    ws_.d_proj       = d_proj_;
-    ws_.ef           = ef;
+    ws_.batch_cap=B; ws_.max_pairs=max_pairs; ws_.max_leaf_sel=max_ls;
+    ws_.per_block_r=per_block_r_; ws_.klocal=klocal_;
+    ws_.d_proj=d_proj_;
+    ws_.ck1=ck1_; ws_.ck2=ck2_; ws_.ck3=ck3_;
+    ws_.beam_size=max_ef_;  // overwritten per-call in search()
 #undef FH
 #undef FD
 }
 
 void HBlockIndex::search(const float* h_q, int nq, int k,
-                          float* h_dists, int* h_ids, int ef_search) const
+                          float* h_dists, int* h_ids, int ef) const
 {
     if(ntotal_==0)  throw std::runtime_error("empty index");
     if(k>K_MAX)     throw std::runtime_error("k exceeds K_MAX");
     if(k>klocal_)   throw std::runtime_error("k must be <= klocal");
-    const int ef       = (ef_search > 0 && ef_search <= ef_) ? ef_search : ef_;
-    const int ef_cells = ef * K3_;   // exhaustive L3: all K3 children per selected L2 cell
-    const int max_ls   = ef * 8;     // graph expansion steps (entry coverage is ef*K3, fewer steps needed)
+    if(ef>max_ef_)  throw std::runtime_error("ef exceeds max_ef; rebuild with larger max_ef");
+    const int depth = ef;
+    const int beam  = std::min(ef, 128);
+    ws_.beam_size     = beam;
+    ws_.max_leaf_sel  = depth;  // d_leaf_sel stride; allocated for max_ef_, depth <= max_ef_
 
     using Clock=std::chrono::high_resolution_clock;
+    double ms_route=0,ms_trav=0,ms_pairs=0,ms_pq=0,ms_merge=0,ms_d2h=0;
+    long long stat_visited=0, stat_pairs=0;
     cudaStream_t s=ws_.stream;
 
     for(int qstart=0;qstart<nq;qstart+=batch_size_){
         int nb=std::min(batch_size_,nq-qstart);
         const float* h_qb=h_q+(long long)qstart*d_;
 
-        route_gpu_v32(cublas_,
+        auto t0=Clock::now();
+        route_gpu_v29(cublas_,
                       d_Pi1_,d_Pi2_,d_Pi3_,
                       d_route1_cents_proj_,d_route1_cents_full_,d_route1_norms_,
                       d_route2_cents_proj_,d_route2_cents_full_,d_route2_norms_,
                       d_route3_cents_proj_,d_route3_cents_full_,d_route3_norms_,
                       d_fine_c1d_,h_qb,nb,d_,d_proj_,
-                      K1_,K2_,K3_,Kr_,ef,batch_size_,ws_);
+                      K1_,K2_,K3_,Kr_,ck1_,ck2_,ck3_,batch_size_,ws_);
+        ms_route+=Ms(Clock::now()-t0).count();
 
-        gpu_block_search_v32(nb, n_leaf_blocks_, d_proj_,
-                             ef_cells, graph_degree_, max_ls,
+        auto t1=Clock::now();
+        gpu_block_search_v27(nb, n_leaf_blocks_, d_proj_,
+                             K2_, K3_, ck1_, ck2_, ck3_,
+                             graph_degree_, depth, depth,
                              entry_per_cell_,
                              d_block_adj_gpu_, d_blk_proj_gpu_, d_blk_norm_gpu_,
                              d_pair_blk_start_, d_pair_blk_count_, ws_);
@@ -894,13 +916,22 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
                                    (long long)nb*sizeof(int),
                                    cudaMemcpyDeviceToHost, s));
         CUDA_CHECK(cudaStreamSynchronize(s));
+        ms_trav+=Ms(Clock::now()-t1).count();
 
         int n_pairs=0;
-        for(int qi=0;qi<nb;qi++) n_pairs+=ws_.h_leaf_cnt[qi];
+        for(int qi=0;qi<nb;qi++){
+            n_pairs+=ws_.h_leaf_cnt[qi];
+            stat_visited+=ws_.h_leaf_cnt[qi];
+        }
+        stat_pairs+=n_pairs;
 
-        gpu_build_and_sort_pairs_v32(nb,n_pairs,n_leaf_blocks_,max_ls,ws_);
+        auto t3=Clock::now();
+        gpu_build_and_sort_pairs_v29(nb,n_pairs,n_leaf_blocks_,ws_.max_leaf_sel,ws_);
+        ms_pairs+=Ms(Clock::now()-t3).count();
 
-        launch_leaf_flat_v32(
+        // Per-block: PQ filter → exact L2 → klocal top candidates
+        auto t4=Clock::now();
+        launch_leaf_flat_v29(
             ws_.d_pair_leaf_b, ws_.d_pair_qid_b,
             d_leaf_codes_, d_leaf_ids_, d_leaf_sizes_,
             ws_.d_lut_fine,
@@ -908,18 +939,29 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
             ws_.d_out_dists, ws_.d_out_ids,
             n_pairs, d_, Kr_, Br_, bpv_, leaf_size_,
             per_block_r_, klocal_, s);
+        ms_pq+=Ms(Clock::now()-t4).count();
 
-        launch_final_merge_v32(nb, n_pairs, klocal_, k, ws_);
+        // Merge per-block exact results → global top-k
+        auto t5=Clock::now();
+        launch_final_merge_v29(nb, n_pairs, klocal_, k, ws_);
+        ms_merge+=Ms(Clock::now()-t5).count();
 
+        auto t8=Clock::now();
         CUDA_CHECK(cudaMemcpyAsync(ws_.h_final_dists,ws_.d_final_dists,
                                    (long long)nb*k*sizeof(float),cudaMemcpyDeviceToHost,s));
         CUDA_CHECK(cudaMemcpyAsync(ws_.h_final_ids,ws_.d_final_ids,
                                    (long long)nb*k*sizeof(int),cudaMemcpyDeviceToHost,s));
         CUDA_CHECK(cudaStreamSynchronize(s));
+        ms_d2h+=Ms(Clock::now()-t8).count();
 
         std::memcpy(h_dists+(long long)qstart*k,ws_.h_final_dists,(long long)nb*k*sizeof(float));
         std::memcpy(h_ids  +(long long)qstart*k,ws_.h_final_ids,  (long long)nb*k*sizeof(int));
     }
+
+    // printf("  [v29] Route=%.2f  Traverse=%.2f  Pairs=%.2f  PerBlkExact=%.2f  Merge=%.2f  D2H=%.2f ms\n",
+    //        ms_route,ms_trav,ms_pairs,ms_pq,ms_merge,ms_d2h);
+    // printf("  [v29 stats] avg_visited=%.1f  avg_pairs=%.1f  (over %d queries)\n",
+    //        (double)stat_visited/nq, (double)stat_pairs/nq, nq);
 }
 
 double HBlockIndex::oracle_recall(const float* h_q, int nq, int k,
@@ -931,58 +973,222 @@ double HBlockIndex::oracle_recall(const float* h_q, int nq, int k,
     using Clock = std::chrono::high_resolution_clock;
     cudaStream_t s = ws_.stream;
 
-    // Build vec→block map once for the whole oracle call
-    std::vector<int> vec_to_block(ntotal_, -1);
-    for (int b = 0; b < n_leaf_blocks_; b++) {
-        int sz = h_leaf_sizes_cpu_[b];
-        for (int s2 = 0; s2 < sz; s2++) {
-            int vid = h_leaf_ids_cpu_[(long long)b * leaf_size_ + s2];
-            if (vid >= 0) vec_to_block[vid] = b;
-        }
-    }
-
     long long hits = 0;
 
     for (int qstart = 0; qstart < nq; qstart += batch_size_) {
         int nb = std::min(batch_size_, nq - qstart);
         const float* h_qb = h_q + (long long)qstart * d_;
 
-        route_gpu_v32(cublas_,
+        route_gpu_v29(cublas_,
                       d_Pi1_, d_Pi2_, d_Pi3_,
                       d_route1_cents_proj_, d_route1_cents_full_, d_route1_norms_,
                       d_route2_cents_proj_, d_route2_cents_full_, d_route2_norms_,
                       d_route3_cents_proj_, d_route3_cents_full_, d_route3_norms_,
                       d_fine_c1d_, h_qb, nb, d_, d_proj_,
-                      K1_, K2_, K3_, Kr_, ef_, batch_size_, ws_);
+                      K1_, K2_, K3_, Kr_, ck1_, ck2_, ck3_, batch_size_, ws_);
 
-        // D2H the selected cells and scan for GT
-        std::vector<int> h_top3(nb * ef_);
-        CUDA_CHECK(cudaMemcpyAsync(h_top3.data(), ws_.d_top3_cells,
-                                   (long long)nb * ef_ * sizeof(int),
+        ws_.beam_size    = max_ef_;
+        ws_.max_leaf_sel = max_ef_;
+        gpu_block_search_v27(nb, n_leaf_blocks_, d_proj_,
+                             K2_, K3_, ck1_, ck2_, ck3_,
+                             graph_degree_, max_ef_, max_ef_,
+                             entry_per_cell_,
+                             d_block_adj_gpu_, d_blk_proj_gpu_, d_blk_norm_gpu_,
+                             d_pair_blk_start_, d_pair_blk_count_, ws_);
+
+        CUDA_CHECK(cudaMemcpyAsync(ws_.h_leaf_cnt, ws_.d_leaf_cnt,
+                                   (long long)nb * sizeof(int),
+                                   cudaMemcpyDeviceToHost, s));
+        CUDA_CHECK(cudaMemcpyAsync(ws_.h_block_sel, ws_.d_leaf_sel,
+                                   (long long)nb * ws_.max_leaf_sel * sizeof(int),
                                    cudaMemcpyDeviceToHost, s));
         CUDA_CHECK(cudaStreamSynchronize(s));
 
-        const int* h_gt_batch = h_gt + (long long)qstart * gt_k;
         for (int qi = 0; qi < nb; qi++) {
-            // Build set of selected blocks for this query
-            std::vector<bool> sel_block(n_leaf_blocks_, false);
-            for (int r = 0; r < ef_; r++) {
-                int c123 = h_top3[qi * ef_ + r];
-                if (c123 < 0) continue;
-                int bs = h_pair_blk_start_cpu_[c123];
-                int bc = h_pair_blk_count_cpu_[c123];
-                for (int bi = 0; bi < bc; bi++) sel_block[bs + bi] = true;
+            int cnt = ws_.h_leaf_cnt[qi];
+            const int* gt = h_gt + (long long)(qstart + qi) * gt_k;
+            const float* qv = h_qb + (long long)qi * d_;
+
+            // Best k by exact L2 over all visited blocks
+            std::priority_queue<std::pair<float,int>> pq;
+            for (int s = 0; s < cnt; s++) {
+                int blk = ws_.h_block_sel[(long long)qi * ws_.max_leaf_sel + s];
+                if (blk < 0 || blk >= n_leaf_blocks_) continue;
+                int sz = h_leaf_sizes_cpu_[blk];
+                for (int v = 0; v < sz; v++) {
+                    int vid = h_leaf_ids_cpu_[(long long)blk * leaf_size_ + v];
+                    if (vid < 0) continue;
+                    float dist = 0.f;
+                    const float* xv = h_base + (long long)vid * d_;
+                    for (int j = 0; j < d_; j++) { float dj = qv[j]-xv[j]; dist+=dj*dj; }
+                    pq.push({dist, vid});
+                    if ((int)pq.size() > k) pq.pop();
+                }
             }
-            for (int ki = 0; ki < k; ki++) {
-                int gt_id = h_gt_batch[qi * gt_k + ki];
-                if (gt_id < 0 || gt_id >= ntotal_) continue;
-                int b = vec_to_block[gt_id];
-                if (b >= 0 && sel_block[b]) hits++;
+            std::vector<int> topk;
+            while (!pq.empty()) { topk.push_back(pq.top().second); pq.pop(); }
+            for (int j = 0; j < k; j++) {
+                for (int g = 0; g < gt_k; g++) {
+                    if (topk[j] == gt[g]) { hits++; break; }
+                }
             }
         }
     }
 
-    return (double)hits / (double)((long long)nq * k);
+    return (double)hits / ((double)nq * k);
+}
+
+void HBlockIndex::diagnose_missed_gt(
+    const float* h_q, int nq, int k,
+    const int* h_gt, int gt_k) const
+{
+    if (ntotal_ == 0) throw std::runtime_error("empty index");
+    if (h_leaf_ids_cpu_.empty()) throw std::runtime_error("h_leaf_ids_cpu_ not built");
+    if (h_block_adj_.empty()) throw std::runtime_error("h_block_adj_ not built");
+
+    int n_blks = n_leaf_blocks_;
+    int deg    = graph_degree_;
+    int n_c3   = ck1_ * ck2_ * ck3_;
+    int max_ls = max_ef_;
+    ws_.beam_size    = max_ef_;
+    ws_.max_leaf_sel = max_ef_;
+
+    // vec_id → block_id
+    std::vector<int> vec_to_block(ntotal_, -1);
+    for (int b = 0; b < n_blks; b++) {
+        int sz = h_leaf_sizes_cpu_[b];
+        for (int p = 0; p < sz; p++) {
+            int vid = h_leaf_ids_cpu_[(long long)b * leaf_size_ + p];
+            if (vid >= 0) vec_to_block[vid] = b;
+        }
+    }
+
+    // BFS state reused across queries
+    std::vector<int> hop(n_blks);
+    std::vector<int> bfs_q(n_blks);
+
+    long long cnt_A=0, cnt_B=0, cnt_C=0, cnt_D=0, cnt_found=0, cnt_total=0;
+    constexpr int MAX_HOP = 512;
+    std::vector<int> hop_hist(MAX_HOP + 1, 0);
+
+    cudaStream_t s = ws_.stream;
+
+    for (int qstart = 0; qstart < nq; qstart += batch_size_) {
+        int nb = std::min(batch_size_, nq - qstart);
+        const float* h_qb = h_q + (long long)qstart * d_;
+
+        route_gpu_v29(cublas_,
+                      d_Pi1_, d_Pi2_, d_Pi3_,
+                      d_route1_cents_proj_, d_route1_cents_full_, d_route1_norms_,
+                      d_route2_cents_proj_, d_route2_cents_full_, d_route2_norms_,
+                      d_route3_cents_proj_, d_route3_cents_full_, d_route3_norms_,
+                      d_fine_c1d_, h_qb, nb, d_, d_proj_,
+                      K1_, K2_, K3_, Kr_, ck1_, ck2_, ck3_, batch_size_, ws_);
+
+        gpu_block_search_v27(nb, n_blks, d_proj_,
+                             K2_, K3_, ck1_, ck2_, ck3_,
+                             graph_degree_, max_ef_, max_ef_, entry_per_cell_,
+                             d_block_adj_gpu_, d_blk_proj_gpu_, d_blk_norm_gpu_,
+                             d_pair_blk_start_, d_pair_blk_count_, ws_);
+
+        CUDA_CHECK(cudaMemcpyAsync(ws_.h_leaf_cnt,  ws_.d_leaf_cnt,
+                                   (long long)nb * sizeof(int), cudaMemcpyDeviceToHost, s));
+        CUDA_CHECK(cudaMemcpyAsync(ws_.h_block_sel, ws_.d_leaf_sel,
+                                   (long long)nb * max_ls * sizeof(int), cudaMemcpyDeviceToHost, s));
+        CUDA_CHECK(cudaMemcpyAsync(ws_.h_top3_beam, ws_.d_top3_beam,
+                                   (long long)nb * n_c3 * sizeof(int), cudaMemcpyDeviceToHost, s));
+        CUDA_CHECK(cudaStreamSynchronize(s));
+
+        for (int qi = 0; qi < nb; qi++) {
+            // Selected L3 cells for this query
+            const int* top3 = ws_.h_top3_beam + (long long)qi * n_c3;
+            std::vector<bool> cell_sel(K1_ * K2_ * K3_, false);
+            for (int ci = 0; ci < n_c3; ci++)
+                if (top3[ci] >= 0) cell_sel[top3[ci]] = true;
+
+            // Visited blocks
+            int vcnt = ws_.h_leaf_cnt[qi];
+            std::vector<bool> visited(n_blks, false);
+            for (int s = 0; s < vcnt; s++) {
+                int blk = ws_.h_block_sel[(long long)qi * max_ls + s];
+                if (blk >= 0 && blk < n_blks) visited[blk] = true;
+            }
+
+            // BFS from entry blocks (all blocks in selected cells)
+            std::fill(hop.begin(), hop.end(), -1);
+            int bfs_head = 0, bfs_tail = 0;
+            for (int c = 0; c < K1_ * K2_ * K3_; c++) {
+                if (!cell_sel[c]) continue;
+                int bs = h_pair_blk_start_cpu_[c], bc = h_pair_blk_count_cpu_[c];
+                for (int i = bs; i < bs + bc; i++) {
+                    if (hop[i] < 0) { hop[i] = 0; bfs_q[bfs_tail++] = i; }
+                }
+            }
+            while (bfs_head < bfs_tail) {
+                int cur = bfs_q[bfs_head++];
+                if (hop[cur] >= MAX_HOP) continue;
+                for (int d = 0; d < deg; d++) {
+                    int nb2 = h_block_adj_[(long long)cur * deg + d];
+                    if (nb2 >= 0 && nb2 < n_blks && hop[nb2] < 0) {
+                        hop[nb2] = hop[cur] + 1;
+                        bfs_q[bfs_tail++] = nb2;
+                    }
+                }
+            }
+
+            // Classify each GT neighbor
+            const int* gt = h_gt + (long long)(qstart + qi) * gt_k;
+            for (int g = 0; g < k; g++) {
+                int gt_vid = gt[g];
+                if (gt_vid < 0 || gt_vid >= ntotal_) continue;
+                int gt_blk = vec_to_block[gt_vid];
+                if (gt_blk < 0) continue;
+                cnt_total++;
+
+                if (visited[gt_blk]) { cnt_found++; continue; }
+
+                int gt_c = h_block_cell_id_[gt_blk];
+                if (gt_c < 0 || gt_c >= K1_ * K2_ * K3_ || !cell_sel[gt_c]) {
+                    cnt_A++; continue;
+                }
+                if (hop[gt_blk] < 0) {
+                    cnt_B++; continue;
+                }
+                cnt_C++;
+                int h = std::min(hop[gt_blk], MAX_HOP);
+                hop_hist[h]++;
+            }
+        }
+    }
+
+    long long n_miss = cnt_A + cnt_B + cnt_C + cnt_D;
+    printf("\n=== Missed-GT Diagnostic (%d queries, k=%d) ===\n", nq, k);
+    printf("  Total (query,gt) pairs  : %lld\n", cnt_total);
+    printf("  Found (in visited blks) : %lld  (%.2f%%)\n",
+           cnt_found, 100.0 * cnt_found / cnt_total);
+    printf("  Missed total            : %lld  (%.2f%%)\n",
+           n_miss,   100.0 * n_miss   / cnt_total);
+    printf("\n  A  routing miss        : %lld  (%.2f%% of missed)\n",
+           cnt_A, n_miss ? 100.0*cnt_A/n_miss : 0.0);
+    printf("  B  graph unreachable   : %lld  (%.2f%% of missed)\n",
+           cnt_B, n_miss ? 100.0*cnt_B/n_miss : 0.0);
+    printf("  C  depth miss          : %lld  (%.2f%% of missed)\n",
+           cnt_C, n_miss ? 100.0*cnt_C/n_miss : 0.0);
+    printf("  D  rerank miss         : %lld\n", cnt_D);
+
+    if (cnt_C > 0) {
+        printf("\n  Hop-count histogram for depth-miss (C) cases:\n");
+        int bucket_edges[] = {1,2,3,4,5,8,12,20,32,64,128,256,MAX_HOP+1};
+        int prev = 0;
+        for (int edge : bucket_edges) {
+            long long cnt_bkt = 0;
+            for (int h = prev; h < edge && h <= MAX_HOP; h++) cnt_bkt += hop_hist[h];
+            if (cnt_bkt > 0)
+                printf("    hops %3d-%3d : %lld\n", prev, edge-1, cnt_bkt);
+            prev = edge;
+        }
+    }
+    printf("=================================================\n\n");
 }
 
 } // namespace hblock_v32
