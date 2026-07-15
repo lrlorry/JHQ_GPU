@@ -90,6 +90,9 @@ int main(int argc, char** argv)
     FILE* csv = csv_path ? fopen(csv_path, "w") : nullptr;
     if (csv) fprintf(csv, "ef,recall@10,qps,latency_ms\n");
 
+    // Warmup: first search() incurs CUDA/cuBLAS init overhead; keep it out of timing.
+    idx.search(query.data(), nq, k, h_dists.data(), h_ids.data(), efs.back());
+
     printf("\n%-8s %-12s %-10s\n", "ef", "recall@10", "QPS");
     printf("%-8s %-12s %-10s\n", "----", "---------", "---");
 
