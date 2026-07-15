@@ -259,25 +259,24 @@ __global__ void route_l3_global_kernel(
         my_dists[c3] = s_dist[c3];
 }
 
-// ── Convert top3 local indices → global c123 ─────────────────────────────────
-// top3_localidx[r] = l2_slot*K3 + c3_local
-// top2_localidx[l2_slot] = l1_slot*K2 + c2_local
+// ── Expand all K3 children of each selected L2 cell → global c123 ────────────
+// Outputs B*ef*K3 cells (exhaustive L3, same semantics as v30).
+// top3_cells[qi*ef*K3 + l2_slot*K3 + c3] = global c123
 
-__global__ void top3_to_cells_kernel(
-    const int* __restrict__ top1,         // [B*ef]
-    const int* __restrict__ top2_localidx,// [B*ef]
-    const int* __restrict__ top3_localidx,// [B*ef]
-    int* top3_cells,                       // [B*ef] global c123
+__global__ void expand_l3_all_kernel(
+    const int* __restrict__ top1,          // [B*ef]
+    const int* __restrict__ top2_localidx, // [B*ef]
+    int* top3_cells,                        // [B*ef*K3]
     int B, int K2, int K3, int ef)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= B * ef) return;
-    int qi  = idx / ef;
+    int total = B * ef * K3;
+    if (idx >= total) return;
 
-    int sel3 = top3_localidx[idx];
-    if (sel3 < 0) { top3_cells[idx] = -1; return; }
-    int l2_slot  = sel3 / K3;
-    int c3_local = sel3 % K3;
+    int qi      = idx / (ef * K3);
+    int rem     = idx % (ef * K3);
+    int l2_slot = rem / K3;
+    int c3      = rem % K3;
 
     int sel2 = top2_localidx[qi * ef + l2_slot];
     if (sel2 < 0) { top3_cells[idx] = -1; return; }
@@ -287,7 +286,30 @@ __global__ void top3_to_cells_kernel(
     int c1 = top1[qi * ef + l1_slot];
     if (c1 < 0) { top3_cells[idx] = -1; return; }
 
-    top3_cells[idx] = (c1 * K2 + c2_local) * K3 + c3_local;
+    top3_cells[idx] = (c1 * K2 + c2_local) * K3 + c3;
+}
+
+// ── Convert best top3 local index → global c123 (for PQ LUT only) ────────────
+__global__ void top3_best_to_cell_kernel(
+    const int* __restrict__ top1,          // [B*ef]
+    const int* __restrict__ top2_localidx, // [B*ef]
+    const int* __restrict__ top3_localidx, // [B*ef]  top-1 used
+    int* best_cell,                         // [B]
+    int B, int K2, int K3, int ef)
+{
+    int qi = blockIdx.x * blockDim.x + threadIdx.x;
+    if (qi >= B) return;
+    int sel3 = top3_localidx[qi * ef + 0];
+    if (sel3 < 0) { best_cell[qi] = -1; return; }
+    int l2_slot  = sel3 / K3;
+    int c3_local = sel3 % K3;
+    int sel2 = top2_localidx[qi * ef + l2_slot];
+    if (sel2 < 0) { best_cell[qi] = -1; return; }
+    int l1_slot  = sel2 / K2;
+    int c2_local = sel2 % K2;
+    int c1 = top1[qi * ef + l1_slot];
+    if (c1 < 0) { best_cell[qi] = -1; return; }
+    best_cell[qi] = (c1 * K2 + c2_local) * K3 + c3_local;
 }
 
 // ── Fine residual for PQ LUT (best L3 cell) ──────────────────────────────────
@@ -297,12 +319,12 @@ __global__ void extract_best_r3_v32_kernel(
     const float* __restrict__ C1_full,
     const float* __restrict__ C2_full,
     const float* __restrict__ C3_full,
-    const int*   __restrict__ top3_cells, // [B*ef]
+    const int*   __restrict__ best_cell, // [B] — nearest L3 cell per query
     float* d_q_r3,
     int B, int d, int K2, int K3, int ef)
 {
     int qi = blockIdx.x; if (qi >= B) return;
-    int c123 = top3_cells[qi * ef + 0];
+    int c123 = best_cell[qi];
 
     const float* q_ptr  = q + (long long)qi * d;
     float*       r3_ptr = d_q_r3 + (long long)qi * d;
@@ -403,17 +425,25 @@ void route_gpu_v32(
             B, d, d_proj, K2, K3, ef);
         CUDA_CHECK(cudaGetLastError());
     }
-    // L3: pick global top-ef from ef*K3 per query
+    // L3: pick top-1 from ef*K3 per query (for PQ LUT only)
     {
         int shm_pk = (ef * K3 + 2 * BLOCK) * (int)sizeof(float);
         pick_global_topk_kernel<<<B, BLOCK, shm_pk, s>>>(
-            ws.d_dist3_all, ws.d_top3_localidx, ef, K3);
+            ws.d_dist3_all, ws.d_top3_localidx, 1, ef * K3);
         CUDA_CHECK(cudaGetLastError());
     }
-    // Convert top3 local indices to global c123
+    // PQ LUT: convert best localidx to global c123
     {
-        top3_to_cells_kernel<<<(B*ef+255)/256, 256, 0, s>>>(
+        top3_best_to_cell_kernel<<<(B+255)/256, 256, 0, s>>>(
             ws.d_top1_ids, ws.d_top2_localidx, ws.d_top3_localidx,
+            ws.d_pq_best_cell, B, K2, K3, ef);
+        CUDA_CHECK(cudaGetLastError());
+    }
+    // Expand all K3 children of each selected L2 cell → ef*K3 entry cells
+    {
+        int total = B * ef * K3;
+        expand_l3_all_kernel<<<(total+255)/256, 256, 0, s>>>(
+            ws.d_top1_ids, ws.d_top2_localidx,
             ws.d_top3_cells, B, K2, K3, ef);
         CUDA_CHECK(cudaGetLastError());
     }
@@ -421,7 +451,7 @@ void route_gpu_v32(
     // Fine residual and PQ LUT
     extract_best_r3_v32_kernel<<<B, BLOCK, 0, s>>>(
         ws.d_q_batch, d_route1_cents_full, d_route2_cents_full, d_route3_cents_full,
-        ws.d_top3_cells, ws.d_q_r3, B, d, K2, K3, ef);
+        ws.d_pq_best_cell, ws.d_q_r3, B, d, K2, K3, ef);
     CUDA_CHECK(cudaGetLastError());
     {
         const int BLUT = 256;
@@ -499,7 +529,7 @@ try_visit_v32(int* __restrict__ vis, int b, int n_blks)
 
 template <int SPT>
 __global__ void block_search_fused_v32(
-    const int*   __restrict__ d_top3_cells,  // [B*ef] global c123 entry cells
+    const int*   __restrict__ d_top3_cells,  // [B*ef_cells] global c123 entry cells
     const int*   __restrict__ d_blk_start,
     const int*   __restrict__ d_blk_count,
     const int*   __restrict__ d_block_adj,
@@ -508,7 +538,7 @@ __global__ void block_search_fused_v32(
     const float* __restrict__ d_q_proj1,
     int* d_leaf_sel, int* d_leaf_cnt, int* d_visited,
     int n_blks, int d_proj,
-    int ef, int degree, int max_ls, int entry_per_cell, int bitmap_words)
+    int ef_cells, int degree, int max_ls, int entry_per_cell, int bitmap_words)
 {
     const int qi  = blockIdx.x;
     const int tid = threadIdx.x;
@@ -547,9 +577,9 @@ __global__ void block_search_fused_v32(
         if (tid == el) { my_dist[ls] = nd; my_id[ls] = ni; my_exp[ls] = false; }
     };
 
-    // Entry phase: flat list of ef global L3 cells
-    for (int r = 0; r < ef; r++) {
-        int c123 = d_top3_cells[(long long)qi * ef + r];
+    // Entry phase: all ef*K3 global L3 cells (exhaustive L3 expansion)
+    for (int r = 0; r < ef_cells; r++) {
+        int c123 = d_top3_cells[(long long)qi * ef_cells + r];
         if (c123 < 0) continue;
         int bs = d_blk_start[c123], bc = d_blk_count[c123];
         if (bc == 0) continue;
@@ -621,20 +651,20 @@ __global__ void block_search_fused_v32(
         d_block_adj, d_blk_proj, d_blk_norm, \
         ws.d_q_proj1, \
         ws.d_leaf_sel, ws.d_leaf_cnt, ws.d_visited, \
-        n_blks, d_proj, ef, degree, max_ls, entry_per_cell, ws.bitmap_words)
+        n_blks, d_proj, ef_cells, degree, max_ls, entry_per_cell, ws.bitmap_words)
 
 void gpu_block_search_v32(
     int B, int n_blks, int d_proj,
-    int ef, int degree, int max_ls, int entry_per_cell,
+    int ef_cells, int degree, int max_ls, int entry_per_cell,
     const int*   d_block_adj, const float* d_blk_proj, const float* d_blk_norm,
     const int*   d_pair_blk_start, const int* d_pair_blk_count,
     SearchWorkspace& ws)
 {
     if (degree > 32) throw std::runtime_error("gpu_block_search_v32: graph_degree must be <= 32");
     int smem = d_proj * (int)sizeof(float);
-    if      (ef <= 32) { LAUNCH_BEAM_V32(1); }
-    else if (ef <= 64) { LAUNCH_BEAM_V32(2); }
-    else               { LAUNCH_BEAM_V32(4); }
+    if      (ef_cells <= 32)  { LAUNCH_BEAM_V32(1); }
+    else if (ef_cells <= 64)  { LAUNCH_BEAM_V32(2); }
+    else                      { LAUNCH_BEAM_V32(4); }
     CUDA_CHECK(cudaGetLastError());
 }
 #undef LAUNCH_BEAM_V32

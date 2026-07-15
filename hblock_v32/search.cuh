@@ -11,7 +11,7 @@ static constexpr int K_MAX = 256;
 // v32: single beam parameter.
 // Routing uses global top-ef at each level (not per-parent local topk).
 // Block graph uses same ef as itopk.
-// d_top3_cells[B*ef] is a flat list of global c123 cell indices (entry blocks).
+// d_top3_cells[B*ef*K3] is the exhaustive L3 expansion (all K3 children per selected L2 cell).
 struct SearchWorkspace {
     int batch_cap    = 0;
     int max_pairs    = 0;
@@ -35,8 +35,9 @@ struct SearchWorkspace {
     float* d_dist2_all     = nullptr;  // [B*ef*K2] all L2 distances (temp)
     int*   d_top2_localidx = nullptr;  // [B*ef] l1slot*K2 + c2local
     float* d_dist3_all     = nullptr;  // [B*ef*K3] all L3 distances (temp)
-    int*   d_top3_localidx = nullptr;  // [B*ef] l2slot*K3 + c3local (temp)
-    int*   d_top3_cells    = nullptr;  // [B*ef] global c123 for entry blocks
+    int*   d_top3_localidx = nullptr;  // [B*1] top-1 L3 localidx per query (for PQ LUT)
+    int*   d_pq_best_cell  = nullptr;  // [B] global c123 of nearest L3 cell (for PQ LUT)
+    int*   d_top3_cells    = nullptr;  // [B*ef*K3] all expanded L3 cells for block entry
     float* d_q_r3          = nullptr;
     float* d_lut_fine      = nullptr;
 
@@ -80,7 +81,7 @@ void route_gpu_v32(
 
 void gpu_block_search_v32(
     int B, int n_blks, int d_proj,
-    int ef, int degree, int max_ls, int entry_per_cell,
+    int ef_cells, int degree, int max_ls, int entry_per_cell,
     const int*   d_block_adj,
     const float* d_blk_proj,
     const float* d_blk_norm,

@@ -807,7 +807,7 @@ void HBlockIndex::alloc_workspace()
 
     FD(d_q_batch);FD(d_q_proj1);FD(d_dots1);FD(d_top1_ids);
     FD(d_r1_beam);FD(d_dist2_all);FD(d_top2_localidx);
-    FD(d_dist3_all);FD(d_top3_localidx);FD(d_top3_cells);
+    FD(d_dist3_all);FD(d_top3_localidx);FD(d_pq_best_cell);FD(d_top3_cells);
     FD(d_q_r3);FD(d_leaf_sel);FD(d_leaf_cnt);FD(d_lut_fine);
     CUDA_CHECK(cudaMalloc(&ws_.d_q_batch,       (long long)B*d_      *sizeof(float)));
     CUDA_CHECK(cudaMalloc(&ws_.d_q_proj1,       (long long)B*d_proj_ *sizeof(float)));
@@ -818,7 +818,9 @@ void HBlockIndex::alloc_workspace()
     CUDA_CHECK(cudaMalloc(&ws_.d_top2_localidx, (long long)B*ef      *sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_dist3_all,     (long long)B*ef*K3_  *sizeof(float)));
     CUDA_CHECK(cudaMalloc(&ws_.d_top3_localidx, (long long)B*ef      *sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_top3_cells,    (long long)B*ef      *sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_pq_best_cell,  (long long)B         *sizeof(int)));
+    // d_top3_cells: all ef*K3 expanded L3 cells (exhaustive expansion)
+    CUDA_CHECK(cudaMalloc(&ws_.d_top3_cells,    (long long)B*ef*K3_  *sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_q_r3,          (long long)B*d_      *sizeof(float)));
     CUDA_CHECK(cudaMalloc(&ws_.d_leaf_sel,      (long long)B*max_ls  *sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_leaf_cnt,      (long long)B         *sizeof(int)));
@@ -864,8 +866,9 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
     if(ntotal_==0)  throw std::runtime_error("empty index");
     if(k>K_MAX)     throw std::runtime_error("k exceeds K_MAX");
     if(k>klocal_)   throw std::runtime_error("k must be <= klocal");
-    const int ef     = (ef_search > 0 && ef_search <= ef_) ? ef_search : ef_;
-    const int max_ls = ef * 16;
+    const int ef       = (ef_search > 0 && ef_search <= ef_) ? ef_search : ef_;
+    const int ef_cells = ef * K3_;   // exhaustive L3: all K3 children per selected L2 cell
+    const int max_ls   = ef * 8;     // graph expansion steps (entry coverage is ef*K3, fewer steps needed)
 
     using Clock=std::chrono::high_resolution_clock;
     cudaStream_t s=ws_.stream;
@@ -883,7 +886,7 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
                       K1_,K2_,K3_,Kr_,ef,batch_size_,ws_);
 
         gpu_block_search_v32(nb, n_leaf_blocks_, d_proj_,
-                             ef, graph_degree_, max_ls,
+                             ef_cells, graph_degree_, max_ls,
                              entry_per_cell_,
                              d_block_adj_gpu_, d_blk_proj_gpu_, d_blk_norm_gpu_,
                              d_pair_blk_start_, d_pair_blk_count_, ws_);
