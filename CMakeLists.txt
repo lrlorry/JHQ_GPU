@@ -209,6 +209,23 @@ target_compile_options(jhq_hblock_v33 PRIVATE
 add_executable(demo_hblock_v33 examples/demo_hblock_v33.cu)
 target_link_libraries(demo_hblock_v33 PRIVATE jhq_hblock_v33)
 
+# v34: W=4 batched expansion + HNSW early termination, beam=min(ef,128), expanded-block output
+add_library(jhq_hblock_v34 STATIC
+    hblock_v34/search.cu
+    hblock_v34/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v34 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v34 PUBLIC
+    jhq_hblock_v27
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v34 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --expt-extended-lambda --use_fast_math>)
+add_executable(demo_hblock_v34 examples/demo_hblock_v34.cu)
+target_link_libraries(demo_hblock_v34 PRIVATE jhq_hblock_v34)
+
 # v29: v28 + balanced k-means (each cluster ≤ 128 → cluster = block, clean centroid)
 add_library(jhq_hblock_v29 STATIC
     hblock_v29/search.cu
