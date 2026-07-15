@@ -895,7 +895,7 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
         int n_pairs=0;
         for(int qi=0;qi<nb;qi++) n_pairs+=ws_.h_leaf_cnt[qi];
 
-        gpu_build_and_sort_pairs_v32(nb,n_pairs,n_leaf_blocks_,ws_.max_leaf_sel,ws_);
+        gpu_build_and_sort_pairs_v32(nb,n_pairs,n_leaf_blocks_,max_ls,ws_);
 
         launch_leaf_flat_v32(
             ws_.d_pair_leaf_b, ws_.d_pair_qid_b,
