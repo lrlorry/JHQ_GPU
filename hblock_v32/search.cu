@@ -131,33 +131,52 @@ __global__ void route_l2_global_kernel(
 
 // ── Global top-ef selection ───────────────────────────────────────────────────
 // B blocks. Picks top-ef from ef*K distances per query.
-// Output d_sel[B*ef]: local index in [0, ef*K).
+// Shared mem layout: [n floats: s_dist | BLOCK floats: s_val | BLOCK ints: s_idx]
 
 __global__ void pick_global_topk_kernel(
     const float* __restrict__ d_dists,
     int* d_sel,
     int ef, int K)
 {
-    const float INF      = __int_as_float(0x7F800000);
-    const int   qi       = blockIdx.x;
-    const int   n        = ef * K;
-    const float* my_d    = d_dists + (long long)qi * n;
-    int*         my_sel  = d_sel   + qi * ef;
+    const float INF   = __int_as_float(0x7F800000);
+    const int   BLOCK = blockDim.x;
+    const int   qi    = blockIdx.x;
+    const int   n     = ef * K;
+    const float* my_d = d_dists + (long long)qi * n;
+    int*      my_sel  = d_sel   + qi * ef;
 
     extern __shared__ char shm_pk[];
     float* s_dist = (float*)shm_pk;
+    float* s_val  = s_dist + n;
+    int*   s_idx  = (int*)(s_val + BLOCK);
 
-    for (int i = threadIdx.x; i < n; i += blockDim.x) s_dist[i] = my_d[i];
+    for (int i = threadIdx.x; i < n; i += BLOCK) s_dist[i] = my_d[i];
     __syncthreads();
 
-    if (threadIdx.x == 0) {
-        for (int r = 0; r < ef; r++) {
-            float bv = INF; int bi = -1;
-            for (int i = 0; i < n; i++)
-                if (s_dist[i] < bv) { bv = s_dist[i]; bi = i; }
-            my_sel[r] = bi;
-            if (bi >= 0) s_dist[bi] = INF;
+    for (int r = 0; r < ef; r++) {
+        // Each thread finds local minimum over its stripe
+        float lv = INF; int li = -1;
+        for (int i = threadIdx.x; i < n; i += BLOCK)
+            if (s_dist[i] < lv) { lv = s_dist[i]; li = i; }
+        s_val[threadIdx.x] = lv;
+        s_idx[threadIdx.x] = li;
+        __syncthreads();
+
+        // Parallel reduction to find global minimum
+        for (int stride = BLOCK >> 1; stride > 0; stride >>= 1) {
+            if (threadIdx.x < stride && s_val[threadIdx.x + stride] < s_val[threadIdx.x]) {
+                s_val[threadIdx.x] = s_val[threadIdx.x + stride];
+                s_idx[threadIdx.x] = s_idx[threadIdx.x + stride];
+            }
+            __syncthreads();
         }
+
+        if (threadIdx.x == 0) {
+            int wi = s_idx[0];
+            my_sel[r] = wi;
+            if (wi >= 0) s_dist[wi] = INF;
+        }
+        __syncthreads();
     }
 }
 
@@ -368,7 +387,7 @@ void route_gpu_v32(
     }
     // L2: pick global top-ef from ef*K2 per query
     {
-        int shm_pk = ef * K2 * (int)sizeof(float);
+        int shm_pk = (ef * K2 + 2 * BLOCK) * (int)sizeof(float);
         pick_global_topk_kernel<<<B, BLOCK, shm_pk, s>>>(
             ws.d_dist2_all, ws.d_top2_localidx, ef, K2);
         CUDA_CHECK(cudaGetLastError());
@@ -386,7 +405,7 @@ void route_gpu_v32(
     }
     // L3: pick global top-ef from ef*K3 per query
     {
-        int shm_pk = ef * K3 * (int)sizeof(float);
+        int shm_pk = (ef * K3 + 2 * BLOCK) * (int)sizeof(float);
         pick_global_topk_kernel<<<B, BLOCK, shm_pk, s>>>(
             ws.d_dist3_all, ws.d_top3_localidx, ef, K3);
         CUDA_CHECK(cudaGetLastError());
