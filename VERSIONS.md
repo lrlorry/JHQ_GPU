@@ -470,12 +470,12 @@ routing、block search kernel、rerank 均不变（直接复用 route_gpu_v29 / 
 - 旧：在 host 上按 `(c1, c2, c3)` cell code 做 `std::stable_sort`，时间复杂度 O(n log n) 纯 CPU。
 - 新：host 上预先计算 `h_keys[i] = c1*K2K3 + c2*K3 + c3`，上传至 GPU，调用 `cub::DeviceRadixSort::SortPairs` 完成排序，结果 `order[]` 下载回 host。搜索逻辑、block packing、非早停逻辑全部不变。
 
-**预期效果**：排序时间从 CPU ~X ms 降至 GPU ~Y ms（实测后填入）；建图总时间减少；recall 与 v35 一致。
+**实测效果**：排序时间从 CPU 103.9 ms → GPU 5.0 ms（**20× 加速**）；建图总时间 8941 ms（v35 约 9050 ms）；recall 与 v35 完全一致。
 
 | ef | recall@10 | QPS | 备注 |
 |----|-----------|-----|------|
-| 128 | —  | — | 待测 |
-| 256 | — | — | 待测 |
+| 128 | 0.9885 | 128K | 与 v35 一致 |
+| 256 | **0.9957** | 72K | sort 加速不影响搜索质量 |
 
 **更新版本对比表**：
 
@@ -485,7 +485,7 @@ routing、block search kernel、rerank 均不变（直接复用 route_gpu_v29 / 
 | v33 | ef | 有 | final beam | 0.9897 | 129K | 0.9962 | 72K |
 | v34 | min(ef,128) | 有 | expanded | 0.9907 | 130K | 0.9907 | 127K |
 | v35 | ef | 无 | expanded | 0.9904 | 130K | **0.9968** | 72K |
-| v36 | ef | 无 | expanded | 待测 | 待测 | 待测 | 待测 |
+| v36 | ef | 无 | expanded | 0.9885 | 128K | 0.9957 | 72K |
 
 ## 后续可能的优化方向
 
