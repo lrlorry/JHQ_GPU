@@ -460,6 +460,33 @@ routing、block search kernel、rerank 均不变（直接复用 route_gpu_v29 / 
 
 **推荐**：速度优先用 v34（ef=128，0.991@130K）；精度优先用 v35（ef=256，0.997@72K）。
 
+---
+
+### hblock_v36 — GPU radix sort 替换 CPU stable_sort
+
+**设计**：完全基于 v35，只改一处：建图阶段的全局排序从 CPU `std::stable_sort` 改为 GPU CUB `DeviceRadixSort`。
+
+**改动位置**：`hblock_v36/jhq_gpu_index.cu`，`add()` 函数内 sort 段。
+- 旧：在 host 上按 `(c1, c2, c3)` cell code 做 `std::stable_sort`，时间复杂度 O(n log n) 纯 CPU。
+- 新：host 上预先计算 `h_keys[i] = c1*K2K3 + c2*K3 + c3`，上传至 GPU，调用 `cub::DeviceRadixSort::SortPairs` 完成排序，结果 `order[]` 下载回 host。搜索逻辑、block packing、非早停逻辑全部不变。
+
+**预期效果**：排序时间从 CPU ~X ms 降至 GPU ~Y ms（实测后填入）；建图总时间减少；recall 与 v35 一致。
+
+| ef | recall@10 | QPS | 备注 |
+|----|-----------|-----|------|
+| 128 | —  | — | 待测 |
+| 256 | — | — | 待测 |
+
+**更新版本对比表**：
+
+| 版本 | beam | 早终止 | 输出 | ef=128 recall | ef=128 QPS | ef=256 recall | ef=256 QPS |
+|------|------|--------|------|--------------|-----------|--------------|-----------|
+| v32 | min(ef,128) | 无 | expanded | 0.9895 | 126K | 0.9897 | 123K |
+| v33 | ef | 有 | final beam | 0.9897 | 129K | 0.9962 | 72K |
+| v34 | min(ef,128) | 有 | expanded | 0.9907 | 130K | 0.9907 | 127K |
+| v35 | ef | 无 | expanded | 0.9904 | 130K | **0.9968** | 72K |
+| v36 | ef | 无 | expanded | 待测 | 待测 | 待测 | 待测 |
+
 ## 后续可能的优化方向
 
 ### 0. Block-level graph + super-block 物理布局（1B 方向）
