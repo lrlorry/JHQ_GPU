@@ -1145,94 +1145,111 @@ __global__ void prr_exact_rerank_kernel(
     float* d_out_dists, int* d_out_ids,
     int d, int leaf_size, int per_block_r, int klocal)
 {
-    const float INF = 1e38f;
+    const float INF = __int_as_float(0x7F800000);
     constexpr unsigned FULL = 0xffffffff;
     const int pi   = blockIdx.x;
     const int tid  = threadIdx.x;
     const int lane = tid & 31, wid = tid >> 5;
+    const int n_warps = leaf_size >> 5;
 
     const int leaf_blk = d_pair_leaf_ids[pi];
     const int qid      = d_pair_qids[pi];
     const int n_vecs   = leaf_sizes[leaf_blk];
+    const float tau2   = d_prr_tau2[qid];
 
-    float tau2 = d_prr_tau2[qid];
+    // Rank candidates by L2 lower bound; tau2-pruned candidates drop to INF
+    // so they sort to the end and never enter the exact rerank.
+    float my_dist = INF; int my_id = -1;
+    if (tid < n_vecs) {
+        float l2 = d_prr_l2[(long long)pi * leaf_size + tid];
+        if (l2 <= tau2) {
+            my_dist = l2;
+            my_id   = leaf_ids_data[(long long)leaf_blk * leaf_size + tid];
+        }
+    }
+
+    for (int k = 2; k <= 32; k <<= 1) {
+        bool asc = ((lane & k) == 0);
+        for (int j = k >> 1; j > 0; j >>= 1) {
+            float od = __shfl_xor_sync(FULL, my_dist, j);
+            int   oi = __shfl_xor_sync(FULL, my_id,   j);
+            bool lower    = ((lane & j) == 0);
+            bool want_min = (asc == lower);
+            bool swap     = want_min ? (my_dist > od) : (my_dist < od);
+            if (swap) { my_dist = od; my_id = oi; }
+        }
+    }
 
     extern __shared__ char shm[];
-    float* s_query      = (float*)shm;
-    int*   s_surv       = (int*)(s_query + d);
-    int*   s_nsurv_ptr  = s_surv + per_block_r;
-    float* s_exact_dists = (float*)(s_nsurv_ptr + 1);
-    int*   s_exact_ids  = (int*)(s_exact_dists + per_block_r);
-    float* s_wsum       = (float*)(s_exact_ids + per_block_r);
+    float* s_dist  = (float*)shm;
+    int*   s_id    = (int*)(s_dist + leaf_size);
+    float* s_query = (float*)(s_id + leaf_size);
+    float* s_wsum  = s_query + d;
+    int*   s_sel   = (int*)(s_wsum + 4);
+    float* s_exact = (float*)(s_sel + per_block_r);
 
-    // Load query into shared
+    s_dist[tid] = my_dist;
+    s_id  [tid] = my_id;
+    __syncthreads();
+
     const float* q_ptr = d_q_batch + (long long)qid * d;
     for (int j = tid; j < d; j += blockDim.x)
         s_query[j] = q_ptr[j];
-
-    // Initialize survivor count
-    if (tid == 0) *s_nsurv_ptr = 0;
     __syncthreads();
 
-    // Identify survivors: L2 <= tau2 AND position is valid
-    bool i_survive = (tid < n_vecs) && (d_prr_l2[(long long)pi * leaf_size + tid] <= tau2);
-    if (i_survive) {
-        int vid = leaf_ids_data[(long long)leaf_blk * leaf_size + tid];
-        int slot = atomicAdd(s_nsurv_ptr, 1);
-        if (slot < per_block_r) s_surv[slot] = vid;
-    }
-    __syncthreads();
-
-    int n_exact = min(*s_nsurv_ptr, per_block_r);
-
-    // Initialize output
     if (tid == 0) {
-        long long out_base = (long long)pi * klocal;
-        for (int r = 0; r < klocal; r++) {
-            d_out_dists[out_base + r] = INF;
-            d_out_ids  [out_base + r] = -1;
+        int ptrs[4] = {0, 32, 64, 96};
+        int actual_r = (per_block_r < n_vecs) ? per_block_r : n_vecs;
+        for (int r = 0; r < actual_r; r++) {
+            float best_d = INF; int best_w = -1;
+            for (int w = 0; w < n_warps; w++) {
+                int p = ptrs[w];
+                if (p < (w+1)*32 && s_dist[p] < best_d) { best_d = s_dist[p]; best_w = w; }
+            }
+            s_sel[r] = (best_w >= 0 && best_d < INF) ? s_id[ptrs[best_w]] : -1;
+            if (best_w >= 0) ptrs[best_w]++;
         }
+        for (int r = actual_r; r < per_block_r; r++) s_sel[r] = -1;
     }
     __syncthreads();
 
-    // Exact L2 for each survivor (128 threads cooperate)
-    for (int r = 0; r < n_exact; r++) {
-        int cand_id = s_surv[r];
+    for (int r = 0; r < per_block_r; r++) {
+        int cand_id = s_sel[r];
         float partial = 0.f;
-        const float* vec = d_base_vecs + (long long)cand_id * d;
-        for (int j = tid; j < d; j += blockDim.x) {
-            float diff = s_query[j] - vec[j];
-            partial += diff * diff;
+        if (cand_id >= 0) {
+            const float* vec = d_base_vecs + (long long)cand_id * d;
+            for (int j = tid; j < d; j += blockDim.x) {
+                float diff = s_query[j] - vec[j];
+                partial += diff * diff;
+            }
         }
-        for (int mask = 16; mask > 0; mask >>= 1)
-            partial += __shfl_xor_sync(FULL, partial, mask);
+        for (int o = 16; o >= 1; o >>= 1)
+            partial += __shfl_xor_sync(FULL, partial, o);
         __syncthreads();
         if (lane == 0) s_wsum[wid] = partial;
         __syncthreads();
         if (tid == 0) {
             float total = s_wsum[0] + s_wsum[1] + s_wsum[2] + s_wsum[3];
-            s_exact_dists[r] = total;
-            s_exact_ids  [r] = cand_id;
+            s_exact[r] = (cand_id >= 0) ? total : INF;
         }
-        __syncthreads();
     }
+    __syncthreads();
 
-    // Write top klocal results (at tid==0)
     if (tid == 0) {
         long long out_base = (long long)pi * klocal;
-        for (int r = 0; r < n_exact; r++) {
-            float dist = s_exact_dists[r];
-            int   vid  = s_exact_ids  [r];
-            // Find max slot in output
-            float mx = d_out_dists[out_base]; int mi = 0;
-            for (int s2 = 1; s2 < klocal; s2++) {
-                if (d_out_dists[out_base + s2] > mx) {
-                    mx = d_out_dists[out_base + s2]; mi = s2;
+        for (int r = 0; r < klocal; r++) { d_out_dists[out_base+r] = INF; d_out_ids[out_base+r] = -1; }
+        bool used[32] = {};
+        for (int slot = 0; slot < klocal; slot++) {
+            float best = INF; int bi = -1;
+            for (int r = 0; r < per_block_r; r++) {
+                if (!used[r] && s_sel[r] >= 0 && s_exact[r] < best) {
+                    best = s_exact[r]; bi = r;
                 }
             }
-            if (dist < mx) {
-                d_out_dists[out_base + mi] = dist;
-                d_out_ids  [out_base + mi] = vid;
+            if (bi >= 0) {
+                d_out_dists[out_base + slot] = best;
+                d_out_ids  [out_base + slot] = s_sel[bi];
+                used[bi] = true;
             }
         }
     }
@@ -1248,14 +1265,10 @@ void launch_prr_exact_rerank(
     int per_block_r, int klocal,
     cudaStream_t stream)
 {
-    // smem: s_query[d] + s_surv[per_block_r] + s_nsurv[1]
-    //       + s_exact_dists[per_block_r] + s_exact_ids[per_block_r] + s_wsum[4]
-    int smem = d              * (int)sizeof(float)
-             + per_block_r   * (int)sizeof(int)
-             + 1             * (int)sizeof(int)
-             + per_block_r   * (int)sizeof(float)
-             + per_block_r   * (int)sizeof(int)
-             + 4             * (int)sizeof(float);
+    int smem = leaf_size * (int)(sizeof(float) + sizeof(int))
+             + d         * (int)sizeof(float)
+             + 4         * (int)sizeof(float)
+             + per_block_r * (int)(sizeof(int) + sizeof(float));
     prr_exact_rerank_kernel<<<n_pairs, leaf_size, smem, stream>>>(
         d_pair_leaf_ids, d_pair_qids,
         d_leaf_sizes, d_leaf_ids_data,
