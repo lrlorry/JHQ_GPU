@@ -1078,25 +1078,29 @@ void launch_leaf_prr_interval(
 // ══════════════════════════════════════════════════════════════════════════════
 
 __global__ void prr_tau2_kernel(
-    const int*   __restrict__ d_pair_qids,
     const float* __restrict__ d_prr_u2topk,
+    const int*   __restrict__ d_perm,           // qid-major → leaf-order pair index
+    const int*   __restrict__ d_query_offsets,
+    const int*   __restrict__ d_leaf_cnt,
     float*       d_prr_tau2,
-    int n_pairs, int k, int batch_size)
+    int k, int batch_size)
 {
     int qi = blockIdx.x * blockDim.x + threadIdx.x;
     if (qi >= batch_size) return;
+    int seg_start = d_query_offsets[qi];
+    int seg_end   = seg_start + d_leaf_cnt[qi];
 
     float topk_tau[16]; // k <= 16
     for (int r = 0; r < k; r++) topk_tau[r] = 1e38f;
 
-    for (int pi = 0; pi < n_pairs; pi++) {
-        if (d_pair_qids[pi] != qi) continue;
+    for (int p = seg_start; p < seg_end; p++) {
+        int pi = d_perm[p];
         for (int r = 0; r < k; r++) {
             float u = d_prr_u2topk[(long long)pi * k + r];
             // Update min-heap (max-of-topk = threshold)
             float mx = topk_tau[0]; int mi = 0;
-            for (int s = 1; s < k; s++) {
-                if (topk_tau[s] > mx) { mx = topk_tau[s]; mi = s; }
+            for (int s2 = 1; s2 < k; s2++) {
+                if (topk_tau[s2] > mx) { mx = topk_tau[s2]; mi = s2; }
             }
             if (u < mx) topk_tau[mi] = u;
         }
@@ -1109,16 +1113,28 @@ __global__ void prr_tau2_kernel(
 }
 
 void launch_prr_tau2(
-    const int* d_pair_qids,
     const float* d_prr_u2topk,
-    float* d_prr_tau2,
+    int*         d_prr_perm,
+    float*       d_prr_tau2,
     int n_pairs, int k, int batch_size,
-    cudaStream_t stream)
+    SearchWorkspace& ws)
 {
+    cudaStream_t s = ws.stream;
+    // qid-major permutation of pair indices — same trick as launch_final_merge_v29,
+    // but written to d_prr_perm so d_pair_leaf_b stays intact for the rerank pass
+    fill_iota_kernel_v29<<<(n_pairs+255)/256, 256, 0, s>>>(ws.d_pair_leaf_a, n_pairs);
+    int end_bit = 1;
+    while ((1 << end_bit) < batch_size) end_bit++;
+    end_bit = std::min(end_bit + 1, 32);
+    CUDA_CHECK(cub::DeviceRadixSort::SortPairs(
+        ws.d_cub_tmp, ws.cub_bytes,
+        ws.d_pair_qid_b, ws.d_pair_qid_a,
+        ws.d_pair_leaf_a, d_prr_perm,
+        n_pairs, 0, end_bit, s));
     int grid = (batch_size + 127) / 128;
-    prr_tau2_kernel<<<grid, 128, 0, stream>>>(
-        d_pair_qids, d_prr_u2topk, d_prr_tau2,
-        n_pairs, k, batch_size);
+    prr_tau2_kernel<<<grid, 128, 0, s>>>(
+        d_prr_u2topk, d_prr_perm, ws.d_query_offsets, ws.d_leaf_cnt,
+        d_prr_tau2, k, batch_size);
     CUDA_CHECK(cudaGetLastError());
 }
 
@@ -1143,6 +1159,7 @@ __global__ void prr_exact_rerank_kernel(
     const float* __restrict__ d_base_vecs,
     const float* __restrict__ d_q_batch,
     float* d_out_dists, int* d_out_ids,
+    unsigned long long* d_diag,
     int d, int leaf_size, int per_block_r, int klocal)
 {
     const float INF = __int_as_float(0x7F800000);
@@ -1166,6 +1183,13 @@ __global__ void prr_exact_rerank_kernel(
             my_dist = l2;
             my_id   = leaf_ids_data[(long long)leaf_blk * leaf_size + tid];
         }
+    }
+
+    int n_surv = __syncthreads_count(my_id >= 0);
+    if (d_diag && tid == 0) {
+        atomicAdd(&d_diag[0], (unsigned long long)n_surv);
+        if (n_surv > per_block_r) atomicAdd(&d_diag[1], 1ULL);
+        atomicAdd(&d_diag[2], 1ULL);
     }
 
     for (int k = 2; k <= 32; k <<= 1) {
@@ -1261,6 +1285,7 @@ void launch_prr_exact_rerank(
     const float* d_prr_l2, const float* d_prr_tau2,
     const float* d_base_vecs, const float* d_q_batch,
     float* d_out_dists, int* d_out_ids,
+    unsigned long long* d_diag,
     int n_pairs, int d, int leaf_size,
     int per_block_r, int klocal,
     cudaStream_t stream)
@@ -1275,6 +1300,7 @@ void launch_prr_exact_rerank(
         d_prr_l2, d_prr_tau2,
         d_base_vecs, d_q_batch,
         d_out_dists, d_out_ids,
+        d_diag,
         d, leaf_size, per_block_r, klocal);
     CUDA_CHECK(cudaGetLastError());
 }

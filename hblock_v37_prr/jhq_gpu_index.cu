@@ -89,6 +89,8 @@ HBlockIndex::~HBlockIndex()
     FD(d_prr_l2_);
     FD(d_prr_u2topk_);
     FD(d_prr_tau2_);
+    FD(d_prr_perm_);
+    FD(d_prr_diag_);
     cublasDestroy(cublas_);
 }
 
@@ -988,12 +990,17 @@ void HBlockIndex::alloc_workspace()
     if (d_prr_l2_)     { cudaFree(d_prr_l2_);     d_prr_l2_     = nullptr; }
     if (d_prr_u2topk_) { cudaFree(d_prr_u2topk_); d_prr_u2topk_ = nullptr; }
     if (d_prr_tau2_)   { cudaFree(d_prr_tau2_);   d_prr_tau2_   = nullptr; }
+    if (d_prr_perm_)   { cudaFree(d_prr_perm_);   d_prr_perm_   = nullptr; }
+    if (d_prr_diag_)   { cudaFree(d_prr_diag_);   d_prr_diag_   = nullptr; }
 
     if (p_.search_mode == Params::CERTIFIED_PRR) {
         long long mp = (long long)max_pairs;
         CUDA_CHECK(cudaMalloc(&d_prr_l2_,     mp * leaf_size_ * sizeof(float)));
         CUDA_CHECK(cudaMalloc(&d_prr_u2topk_, mp * klocal_    * sizeof(float)));
         CUDA_CHECK(cudaMalloc(&d_prr_tau2_,   (long long)B    * sizeof(float)));
+        CUDA_CHECK(cudaMalloc(&d_prr_perm_,   mp * sizeof(int)));
+        CUDA_CHECK(cudaMalloc(&d_prr_diag_,   3 * sizeof(unsigned long long)));
+        CUDA_CHECK(cudaMemset(d_prr_diag_, 0, 3 * sizeof(unsigned long long)));
         printf("  [PRR workspace] l2=%.1f MB  u2topk=%.1f MB  tau2=%.1f KB\n",
                (double)(mp * leaf_size_ * sizeof(float)) / 1e6,
                (double)(mp * klocal_    * sizeof(float)) / 1e6,
@@ -1108,10 +1115,10 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
                 n_pairs, d_, Kr_, Br_, bpv_, leaf_size_,
                 klocal_, s);
 
-            // Pass B: compute per-query tau2
+            // Pass B: compute per-query tau2 (query-major over its own segment)
             launch_prr_tau2(
-                ws_.d_pair_qid_b, d_prr_u2topk_, d_prr_tau2_,
-                n_pairs, klocal_, nb, s);
+                d_prr_u2topk_, d_prr_perm_, d_prr_tau2_,
+                n_pairs, klocal_, nb, ws_);
 
             // Pass C+D: exact rerank for survivors
             launch_prr_exact_rerank(
@@ -1120,6 +1127,7 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
                 d_prr_l2_, d_prr_tau2_,
                 d_base_vecs_, ws_.d_q_batch,
                 ws_.d_out_dists, ws_.d_out_ids,
+                d_prr_diag_,
                 n_pairs, d_, leaf_size_,
                 per_block_r_, klocal_, s);
         }
@@ -1139,6 +1147,17 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
 
         std::memcpy(h_dists+(long long)qstart*k,ws_.h_final_dists,(long long)nb*k*sizeof(float));
         std::memcpy(h_ids  +(long long)qstart*k,ws_.h_final_ids,  (long long)nb*k*sizeof(int));
+    }
+
+    if (p_.search_mode == Params::CERTIFIED_PRR && d_prr_diag_) {
+        unsigned long long h_diag[3];
+        CUDA_CHECK(cudaMemcpy(h_diag, d_prr_diag_, 3*sizeof(unsigned long long),
+                              cudaMemcpyDeviceToHost));
+        if (h_diag[2] > 0)
+            printf("[prr diag] surv/block avg=%.1f  blocks>r=%.1f%%  blocks=%llu\n",
+                   (double)h_diag[0]/(double)h_diag[2],
+                   100.0*(double)h_diag[1]/(double)h_diag[2], h_diag[2]);
+        CUDA_CHECK(cudaMemset(d_prr_diag_, 0, 3*sizeof(unsigned long long)));
     }
 }
 

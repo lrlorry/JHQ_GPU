@@ -129,6 +129,8 @@ private:
     float* d_prr_l2_     = nullptr;  // [max_pairs * leaf_size]
     float* d_prr_u2topk_ = nullptr;  // [max_pairs * klocal]
     float* d_prr_tau2_   = nullptr;  // [batch_size]
+    int*   d_prr_perm_   = nullptr;  // [max_pairs] qid-major pair permutation
+    unsigned long long* d_prr_diag_ = nullptr;  // [3] {survivors, blocks>r, blocks}
 
     // ── v37_prr: host codewords for epsilon computation ───────────────────────
     std::vector<float> h_fine_c1d_;  // [Kr] downloaded once during add()

@@ -166,12 +166,14 @@ void launch_leaf_prr_interval(
     cudaStream_t stream);
 
 // CERTIFIED_PRR Pass B: per-query tau2 = k-th smallest U2 across all candidate blocks
+// Builds a qid-major permutation of pair indices into d_prr_perm (same trick as
+// launch_final_merge_v29) so each query only scans its own ef*k upper bounds.
 void launch_prr_tau2(
-    const int*   d_pair_qids,
     const float* d_prr_u2topk,
+    int*         d_prr_perm,
     float*       d_prr_tau2,
     int n_pairs, int k, int batch_size,
-    cudaStream_t stream);
+    SearchWorkspace& ws);
 
 // CERTIFIED_PRR Pass C+D: exact rerank for survivors (L2 <= tau2)
 void launch_prr_exact_rerank(
@@ -185,6 +187,7 @@ void launch_prr_exact_rerank(
     const float*   d_q_batch,
     float*         d_out_dists,
     int*           d_out_ids,
+    unsigned long long* d_diag,   // optional [3]: {survivors, blocks>r, blocks}; nullptr = off
     int n_pairs,
     int d, int leaf_size,
     int per_block_r, int klocal,
