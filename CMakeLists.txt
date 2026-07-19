@@ -260,6 +260,23 @@ target_compile_options(jhq_hblock_v36 PRIVATE
 add_executable(demo_hblock_v36 examples/demo_hblock_v36.cu)
 target_link_libraries(demo_hblock_v36 PRIVATE jhq_hblock_v36)
 
+# v37_prr: v36 + certified PQ racing (PRR) — corrected PQ + L2/U2 epsilon bounds + pruned exact rerank
+add_library(jhq_hblock_v37_prr STATIC
+    hblock_v37_prr/search.cu
+    hblock_v37_prr/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v37_prr PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v37_prr PUBLIC
+    jhq_hblock_v27
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v37_prr PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --expt-extended-lambda --use_fast_math>)
+add_executable(demo_hblock_v37_prr examples/demo_hblock_v37_prr.cu)
+target_link_libraries(demo_hblock_v37_prr PRIVATE jhq_hblock_v37_prr)
+
 # v29: v28 + balanced k-means (each cluster ≤ 128 → cluster = block, clean centroid)
 add_library(jhq_hblock_v29 STATIC
     hblock_v29/search.cu
