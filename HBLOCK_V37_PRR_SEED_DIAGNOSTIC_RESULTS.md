@@ -1,118 +1,139 @@
-> **RETRACTED (2026-07-22).** The run below (`hblock_v37_prr_seed_diag_20260722_103525`)
-> is invalid. `h_query_offsets` (computed for the pre-sort, qid-major pair
-> layout) was used to slice `h_pair_leaf`/`h_diag_l2`/`h_seed_pos`, which are
-> actually sorted by **leaf block id** by `gpu_build_and_sort_pairs_v29`
-> (`search.cu`). The CPU diagnostic stats therefore read essentially
-> arbitrary blocks belonging to other queries, and Phase-4 validation
-> compared against the wrong candidate set. GPU-side `tau_U`/`tau_seed2`
-> were correct (they use the `d_prr_perm_` qid-major permutation); only the
-> CPU aggregation was broken — this also explains the low candidate-set
-> agreement (33–57%) below, which should be ~100% by construction. Fixed in
-> `hblock_v37_prr/jhq_gpu_index.cu` (`seed_diagnostic()` now downloads
-> `d_prr_perm_` and translates every pair index through it). Rerun pending;
-> everything below is kept only for the record of what the bug looked like.
-
 # HBlock v37_prr: Exact-Seed Threshold Diagnostic — Results
 
 Diagnostic spec: `HBLOCK_V37_PRR_EXACT_SEED_DIAGNOSTIC_PROMPT.md`
-Raw output: `results/hblock_v37_prr_seed_diag_20260722_103525.{csv,txt}`
+Raw output: `results/hblock_v37_prr_seed_diag_20260722_110423.{csv,txt}`
 Dataset: Vogue-768 (932,328 × 768, float), nq=1000, k=10, VECTOR_LEVEL epsilon,
 one index built once (no rebuild between ef/seed_per_block configurations).
 
+> **Superseded run.** An earlier run (`..._20260722_103525`) reported
+> NO-GO with `candidate_set_top10_agreement` of only 33–57%. That run was
+> invalid: the CPU-side diagnostic stats indexed the leaf-block-sorted pair
+> arrays (`d_pair_leaf_b`/`d_pair_qid_b`, reordered by
+> `gpu_build_and_sort_pairs_v29`) using offsets computed for the pre-sort,
+> query-major layout — it was reading essentially arbitrary other queries'
+> candidates. Fixed in `hblock_v37_prr/jhq_gpu_index.cu` by routing every
+> access through the `d_prr_perm_` qid-major permutation (the same one the
+> production `tau_U`/`tau_seed2` kernels already used correctly). This
+> document reflects the corrected rerun, which reaches
+> `candidate_set_top10_agreement = 100%` at every configuration.
+
 ## Decision: NO-GO
 
-Deterministic PRR (candidate-set-exact, via tightened seed-derived thresholds)
-does not work on the current Br=4 fine code for Vogue. Confirmed on two
-independent grounds; either alone is sufficient to stop.
+Deterministic PRR (candidate-set-exact, via seed-derived thresholds) does
+not clear the spec's bar on the current Br=4 fine code for Vogue —
+confirmed with valid data this time (100% candidate-set agreement
+throughout). The margin is narrower than the retracted run suggested, and
+the failure mode is more specific than "hopeless": roughly half of queries
+already need less exact work than the fixed top-16 baseline; a persistent
+tail of unprunable blocks drags the mean above the no-go line.
 
-## 1. Exact-work ratio fails even weak-go, at every configuration tested
+## 1. Exact-work ratio: best case still ~2.56×, never below baseline
 
-| ef  | spb | total_exact/query | baseline/query | ratio |
-|-----|-----|-------------------|-----------------|-------|
-| 32  | 8   | 2071.8             | 511.7           | 4.05× |
-| 64  | 8   | 3861.3             | 1023.4          | 3.77× |
-| 128 | 8   | 7174.0             | 2046.5          | 3.51× |
-| 256 | 8   | 13473.2            | 4092.1          | 3.29× |
+| ef  | spb | exact_ratio_mean | exact_ratio_p50 | exact_ratio_p90 | queries_better_than_baseline |
+|-----|-----|-------------------|-----------------|-------------------|-------------------------------|
+| 128 | 1   | 2.930              | 1.408           | 7.709             | 43.2% |
+| 128 | 2   | 2.803              | 1.177           | 7.707             | 46.6% |
+| 128 | 4   | 2.817              | 1.176           | 7.706             | 46.0% |
+| 128 | 8   | 2.939              | 1.316           | 7.706             | 41.8% |
+| 256 | 1   | 2.635              | 0.956           | 7.616             | 50.9% |
+| 256 | 2   | **2.563**          | **0.815**       | 7.607             | **53.8%** |
+| 256 | 4   | 2.604              | 0.854           | 7.606             | 53.7% |
+| 256 | 8   | 2.745              | 1.033           | 7.607             | 48.6% |
 
 Spec's no-go criterion is `mean total_exact_required >= baseline_exact`
-(ratio ≥ 1). Every (ef, seed_per_block) cell in the full sweep — ef ∈
-{32,64,128,256}, seed_per_block ∈ {1,2,4,8} — lands between 3.18× and 4.23×.
-The best cell (ef=256, spb=8: ratio 3.29×) is still ~6.6× worse than the
-strong-go bar (≤0.5×) and ~3.3× worse than weak-go (<1×).
+(ratio ≥ 1). The best cell in the full sweep (ef=256, spb=2: ratio 2.563×)
+is still ~5.1× worse than strong-go (≤0.5×) and ~2.6× worse than weak-go
+(<1×). Every one of the 16 (ef, spb) cells has `exact_ratio_mean` above 2.5.
 
-## 2. Seeds barely move survivor counts — the bottleneck is the L2 lower bound, not the threshold
+**spb=2 is the practical sweet spot, not spb=8.** Increasing seeds per
+block from 2 to 8 makes the mean ratio *worse* (2.563→2.745 at ef=256):
+each extra seed adds directly to the exact-work numerator (seeds themselves
+get exact-reranked), and beyond ~2 seeds the marginal pruning gain from a
+tighter `tau_seed2` no longer pays for that added cost.
 
-| ef  | spb=1 surv/blk | spb=8 surv/blk | tau_seed/tau_U |
-|-----|----------------|----------------|----------------|
-| 32  | 67.3           | 62.2           | 0.73–0.78      |
-| 256 | 51.8           | 49.0           | 0.72–0.75      |
+## 2. The median query already benefits — a tail of blocks does not
 
-Going from 1 seed/block to 8 seeds/block tightens the threshold
-(`tau_seed2`) by 25–28% relative to the production `tau_U`, but survivors
-per block drop by only 5–8%. p90 survivors/block is **128 — the entire
-block** — at every single configuration. Adding more seeds cannot fix this:
-the L2 lower bound itself (`max(0, sqrt(pq_dist) - eps)^2`) is too loose,
-because per-vector reconstruction error under Br=4 (mean ε ≈ 0.31, p50 ≈
-0.26) is comparable in magnitude to the residual norm itself (σ_r3 ≈
-0.0236/dim → ‖r3‖ ≈ 0.65 over d=768). No threshold refinement narrows an
-interval whose width is set by the code's own quantization error. This
-matches interpretation note #3 in the spec.
+At ef=256, spb=2: `exact_ratio_p50 = 0.815` — the median query needs *less*
+exact work than the fixed baseline, and 53.8% of queries do better than
+baseline overall (`queries_better_than_baseline_pct`). But
+`exact_ratio_p90 = 7.607` — a right tail of queries costs ~7.6× baseline,
+which is what pulls the mean above 1.
 
-## 3. Candidate-set correctness anomaly (separate issue, doesn't change the verdict)
+The cause is visible in `p90_survivors_block = 128` (the *entire* block) at
+**every single (ef, spb) configuration tested**, unmoved by seed count.
+This is not diffuse looseness across all blocks; a persistent subset of
+blocks (likely dense clusters where all member vectors sit at similar
+distance from the query, so PQ/exact distances barely separate them) simply
+cannot be pruned by any seed-derived threshold, however many seeds are
+spent. Median-block behavior is much better: `p50_survivors_block` drops to
+**10** (below the baseline's 16) at ef=256, spb∈{2,4,8} — for a typical
+block, the interval mechanism works as intended.
 
-Phase-4 validation agreement was 33–57%, far below the required 100%.
-Mathematically `tau_seed2` (k-th smallest *exact* distance among ≥k seeds)
-is a provably valid upper bound on the true candidate-set k-th distance —
-agreement should be 100% modulo ties. This gap indicates a bug in the
-diagnostic-only code (most likely seed/candidate ID mapping or a mismatch
-between the interval computation and the phase-4 exact-scan reference set),
-not a flaw in the PRR math. It does not affect the shipped `CERTIFIED_PRR`
-search mode, which uses a different mechanism (direct L2-sorted top-16, no
-seed-derived threshold) and was reconfirmed correct by the same run's
-control block:
+`tau_seed/tau_U ≈ 0.72–0.78` throughout (seeds tighten the production
+threshold by ~22–28%), consistent with the retracted run's number — this
+part of the earlier analysis was unaffected by the indexing bug, since
+`tau_U`/`tau_seed2` are computed entirely on the GPU via the (correct)
+`d_prr_perm_` permutation.
 
+## 3. Candidate-set correctness: 100% (bug fixed)
+
+`candidate_set_top10_agreement = 100.0` at all 16 (ef, spb) cells,
+confirming `tau_seed2`'s safety proof holds in practice once the CPU
+aggregation bug was fixed. `queries_with_insufficient_seeds = 0` throughout
+— every query had ≥k valid seeds at every ef tested.
+
+Controls on the same index, no rebuild:
 ```
-[control] CERTIFIED_PRR  ef=256  recall@10=0.9965  qps=54516
+FIXED_PER_BLOCK  ef=128  recall@10=0.9903   ef=256  recall@10=0.9967
+CORRECTED_FIXED  ef=128  recall@10=0.9906   ef=256  recall@10=0.9969
+CERTIFIED_PRR    ef=128  recall@10=0.9891   ef=256  recall@10=0.9965
 ```
-
-— consistent with the FIXED_PER_BLOCK (0.9967) and CORRECTED_FIXED (0.9969)
-controls run on the identical index, no rebuild. Since criterion #1 alone
-already forces NO-GO, this bug was not chased further; it is noted here for
-anyone revisiting seed-based thresholds later.
 
 ## Interpretation (per spec's required distinctions)
 
-1. **The current `tau_U` policy is too loose** — confirmed; seeds tighten it
-   by ~25%, but that is not enough.
+1. **The current `tau_U` policy is too loose** — confirmed; seeds tighten
+   it by ~22–28%, still not enough on its own.
 2. **Exact seeds do not provide a sufficiently tighter safe upper
-   threshold** on Br=4 Vogue codes — confirmed at every tested config.
-3. **The L2 lower bound remains too loose even after `tau_seed2`
-   improves** — confirmed; this is the actual bottleneck (see §2).
-4. This diagnostic did not reach the survivor-count gate, so no two-wave
-   GPU search was implemented or benchmarked.
+   threshold** to clear weak-go at any tested config — confirmed, though
+   the median query is much closer to viable than the mean suggests.
+3. **The L2 lower bound remains too loose for a specific tail of blocks**
+   even after `tau_seed2` improves — confirmed; `p90_survivors_block=128`
+   at every config identifies this as a persistent minority of "unprunable"
+   blocks, not uniform looseness.
+4. Candidate-set correctness (the actual survivor-count gate) is satisfied
+   (100% agreement) — the failure is purely on exact-work volume, not
+   safety.
 
 ## Root cause
 
-Structural, not a tuning problem: 4-bit scalar PQ (`Br=4`, `Kr=16`)
-reconstructs each dimension with error comparable to the residual signal
-itself. Any interval built from that reconstruction error — however the
-upper threshold is chosen — stays wide enough to keep the majority of a
-128-vector block "possibly in top-k." This is consistent with the earlier
-v37_prr three-mode result (`results/hblock_v37_prr_vogue.csv`): the
-production `CERTIFIED_PRR` mode already showed 59–90 survivors/block under
-the same eps regime.
+Structural, consistent with the per-vector reconstruction-error measurement
+from the three-mode experiment (`results/hblock_v37_prr_vogue.csv`): 4-bit
+scalar PQ (`Br=4`, `Kr=16`) reconstruction error (mean ε≈0.31, p50≈0.26) is
+comparable in magnitude to the residual norm itself (‖r3‖≈0.65 over
+d=768). For most blocks this still leaves enough separation for a
+seed-tightened threshold to prune productively (median block: 10
+survivors, below the 16-candidate baseline). But for a consistent ~10% tail
+of blocks the bound stays uninformative regardless of seed count — and
+because a single un-prunable block costs a full 128-candidate exact pass,
+this tail dominates the per-query mean.
 
 ## Recommended next action
 
-Stop deterministic PRR work on Br=4. Do not attempt further seed-policy or
-threshold tuning on this code — per spec, that would be moving the
-goalposts. Two options going forward, both out of scope for this
-diagnostic:
+Stop deterministic PRR work on Br=4 in its current uniform form — mean
+exact-work never clears even weak-go. Do not attempt further seed-count
+tuning; §1 shows that knob is already past its optimum (spb=2). Two
+directions are out of scope for this diagnostic and are not started here:
 
+- **Query-level triage**: since the median query already beats baseline
+  and the failure is concentrated in a tail of blocks (not diffuse), a
+  policy that runs PRR only when the visited block set looks "easy" (e.g.
+  cheap early signal correlated with `p90_survivors_block=128` blocks) and
+  falls back to fixed top-16 otherwise might clear weak-go on average —
+  untested, would need its own diagnostic.
 - **Br=8** (`Kr=256`) as a separate, explicitly scoped experiment — doubles
   fine-code storage and LUT-related work; expected to shrink reconstruction
-  error substantially, may bring survivor counts down enough to revisit.
-  Not started here per the spec's explicit exclusion.
+  error enough to also prune the current tail. Not started here per the
+  spec's explicit exclusion.
 - Return to the original v37 goal (SPACEV-100M, int8, full pipeline
   validation) — PRR's real payoff is at 1B scale (pruning a block saves an
   H2D transfer, not just an exact-distance computation), so this line of

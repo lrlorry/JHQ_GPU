@@ -511,13 +511,24 @@ recall 三者持平（差异在建图随机性噪声内），但 `CERTIFIED_PRR`
 **v38 种子诊断**（`HBLOCK_V37_PRR_EXACT_SEED_DIAGNOSTIC_PROMPT.md`，完整
 记录见 `HBLOCK_V37_PRR_SEED_DIAGNOSTIC_RESULTS.md`）：测试「每块选 1/2/4/8
 个 U² 最小的候选做精确重排，取其精确距离的第 k 小作为更紧的安全阈值
-`tau_seed2`」能否救场。**首次运行结论 NO-GO 已撤回**：诊断代码的 CPU 统计
-部分把「按 query 排序前」的 offset 用在了「按 leaf block 排序后」的数组
-上（`gpu_build_and_sort_pairs_v29` 会把 pair 重排为 block 序），导致读到
-别的 query 的候选，candidate-set agreement 只有 33–57%（本该 ≈100%）即
-是这个 bug 的直接证据。已修复（`jhq_gpu_index.cu` 的 `seed_diagnostic()`
-现在通过 `d_prr_perm_` 做正确的 query-major 转换），**结果待重新在服务器
-上跑出**，本条待更新。
+`tau_seed2`」能否救场。首次运行诊断代码有 bug（CPU 统计把 query-major 的
+offset 用在了 `gpu_build_and_sort_pairs_v29` 按 leaf block 重排后的数组
+上，读到别的 query 的候选），已修复并重跑，`candidate_set_top10_agreement`
+从 33–57% 恢复到 **100%**。
+
+**修复后结论仍是 NO-GO**，但画像更细：最佳配置（ef=256, seed=2——种子数
+再加到 8 反而更差，多余种子自身要精排，边际收益为负）下 `exact_ratio_mean
+=2.56`（no-go 红线是 ≥1），仍不达标；但中位数 query 已经优于基线
+（`exact_ratio_p50=0.81`，53.8% 的 query 好于基线），是约 10% 的
+「剪不动」block（`p90_survivors_block` 在所有配置下恒为 128,即整块无法
+剪枝）把均值拖高到基线的 2.5–3.8 倍。根因不变：Br=4 重构误差（p50≈0.26）
+与残差范数（≈0.65）同量级，对多数 block 够用，但对一小撮稠密簇 block 完
+全失效。
+
+**结论**：Br=4 均匀策略的确定性 PRR 结构性不可行，不再作种子数调优（已过
+最优点）。可能方向（均不在近期计划）：按 query 难度分流（中位数已经受
+益，只需处理尾部 block，需要新诊断）、Br=8（码存储翻倍，独立实验）、或
+1B 场景重新评估（剪 block 省的是 H2D 传输而非精排量，判据不同）。
 
 ## 后续可能的优化方向
 
