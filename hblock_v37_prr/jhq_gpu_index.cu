@@ -2,6 +2,7 @@
 #include "hblock_v17/encode.cuh"
 #include "hblock_v27/search.cuh"   // for gpu_build_block_adj_v27
 #include "hblock_v37_prr/search.cuh"
+#include "hblock_v37_prr/diag.cuh"  // exact-seed threshold diagnostic (additive)
 #include "cpu/erfinv.h"
 #include "common/cuda_utils.cuh"
 
@@ -1377,6 +1378,402 @@ void HBlockIndex::diagnose_missed_gt(
         }
     }
     printf("=================================================\n\n");
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Exact-seed threshold diagnostic (additive; see
+// HBLOCK_V37_PRR_EXACT_SEED_DIAGNOSTIC_PROMPT.md). Does not touch FIXED_PER_BLOCK,
+// CORRECTED_FIXED, or the production CERTIFIED_PRR result path in search().
+// ══════════════════════════════════════════════════════════════════════════════
+
+namespace {
+
+constexpr int SEED_DIAG_N_SPB = 4;
+constexpr int SEED_DIAG_SPB_VALUES[SEED_DIAG_N_SPB] = {1, 2, 4, 8};
+
+// Per-(ef,spb) running aggregates, accumulated across all batches of one
+// seed_diagnostic() call.
+struct SeedDiagAcc {
+    long long visited_blocks = 0, valid_cands = 0, seeds = 0;
+    double tau_u_sum = 0, tau_seed_sum = 0;
+    double tau_ratio_sum = 0; long long tau_ratio_cnt = 0;
+    std::vector<int> surv_per_block;
+    long long blocks_over16 = 0, blocks_total = 0;
+    long long nonseed_surv = 0, total_exact = 0;
+    double baseline_exact_sum = 0;
+    std::vector<double> exact_ratio_all;
+    long long better_than_baseline = 0;
+    long long n_queries = 0;
+    int insufficient_queries = 0;
+    long long agreement_hits = 0, agreement_total = 0;
+};
+
+// Phase-4 comparison: same set of ids (order-independent); a mismatch is still
+// counted as agreement if the k-th boundary distances match within a 1e-4
+// relative tolerance (documented tie exception — see spec Phase 4).
+bool seed_diag_topk_agree(std::vector<std::pair<float,int>> exact_top,
+                           std::vector<std::pair<float,int>> two_wave_top,
+                           int k)
+{
+    int ke = std::min((int)exact_top.size(), k);
+    int kt = std::min((int)two_wave_top.size(), k);
+    exact_top.resize(ke);
+    two_wave_top.resize(kt);
+    std::vector<int> ide, idt;
+    ide.reserve(ke); idt.reserve(kt);
+    for (auto& pr : exact_top)    ide.push_back(pr.second);
+    for (auto& pr : two_wave_top) idt.push_back(pr.second);
+    std::sort(ide.begin(), ide.end());
+    std::sort(idt.begin(), idt.end());
+    if (ide == idt) return true;
+    if (ke == 0 || kt == 0) return false;
+    float d_e = exact_top[ke - 1].first;
+    float d_t = two_wave_top[kt - 1].first;
+    float tol = 1e-4f * std::max(1.0f, std::fabs(d_e));
+    return std::fabs(d_e - d_t) <= tol;
+}
+
+} // anonymous namespace
+
+void HBlockIndex::seed_diagnostic(
+    const float* h_q, int nq, int k, int ef,
+    std::vector<SeedDiagRow>& out_rows,
+    int validate_nq,
+    const float* h_base,
+    double* out_agreement) const
+{
+    if (ntotal_ == 0) throw std::runtime_error("empty index");
+    if (p_.search_mode != Params::CERTIFIED_PRR)
+        throw std::runtime_error("seed_diagnostic requires the index to be built "
+                                  "(and currently set) to CERTIFIED_PRR — PRR "
+                                  "workspace buffers are only allocated for that mode");
+    if (ef > max_ef_) throw std::runtime_error("seed_diagnostic: ef exceeds max_ef");
+    if (k > 16)        throw std::runtime_error("seed_diagnostic: k must be <= 16");
+    if (k != klocal_)
+        throw std::runtime_error("seed_diagnostic: k must equal klocal_ so tau_U "
+                                  "(reusing launch_leaf_prr_interval/launch_prr_tau2) "
+                                  "is exact");
+
+    using Clock = std::chrono::high_resolution_clock;
+    auto T_diag = Clock::now();
+    constexpr int MAX_SEED = PRR_DIAG_MAX_SEED;
+    cudaStream_t s = ws_.stream;
+
+    printf("[seed_diag] ef=%d k=%d nq=%d validate_nq=%d eps_mode=%d\n",
+           ef, k, nq, validate_nq, (int)p_.eps_mode);
+
+    ws_.beam_size    = ef;
+    ws_.max_leaf_sel = ef;
+
+    // ── Diagnostic-only GPU buffers: allocate at entry, free at exit ──────────
+    const long long mp = ws_.max_pairs;
+    float *d_diag_l2 = nullptr, *d_diag_u2 = nullptr;
+    int   *d_seed_pos = nullptr, *d_seed_id = nullptr;
+    float *d_seed_u2 = nullptr, *d_seed_exact2 = nullptr;
+    float *d_tau_seed2_dev = nullptr;
+    int   *d_insufficient_dev = nullptr;
+    CUDA_CHECK(cudaMalloc(&d_diag_l2,     mp * leaf_size_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_diag_u2,     mp * leaf_size_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_seed_pos,    mp * MAX_SEED * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_seed_id,     mp * MAX_SEED * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_seed_u2,     mp * MAX_SEED * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_seed_exact2, mp * MAX_SEED * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_tau_seed2_dev,    (long long)ws_.batch_cap * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_insufficient_dev, (long long)ws_.batch_cap * sizeof(int)));
+
+    std::vector<SeedDiagAcc> acc(SEED_DIAG_N_SPB);
+
+    for (int qstart = 0; qstart < nq; qstart += batch_size_) {
+        int nb = std::min(batch_size_, nq - qstart);
+        const float* h_qb = h_q + (long long)qstart * d_;
+
+        // Identical routing + beam search + pair build as search() at this ef —
+        // guarantees identical visited blocks for every diagnostic derived below.
+        route_gpu_v29(cublas_,
+                      d_Pi1_, d_Pi2_, d_Pi3_,
+                      d_route1_cents_proj_, d_route1_cents_full_, d_route1_norms_,
+                      d_route2_cents_proj_, d_route2_cents_full_, d_route2_norms_,
+                      d_route3_cents_proj_, d_route3_cents_full_, d_route3_norms_,
+                      d_fine_c1d_, h_qb, nb, d_, d_proj_,
+                      K1_, K2_, K3_, Kr_, ck1_, ck2_, ck3_, batch_size_, ws_);
+
+        gpu_block_search_v35(nb, n_leaf_blocks_, d_proj_,
+                             K2_, K3_, ck1_, ck2_, ck3_,
+                             graph_degree_, ef, ef, entry_per_cell_,
+                             d_block_adj_gpu_, d_blk_proj_gpu_, d_blk_norm_gpu_,
+                             d_pair_blk_start_, d_pair_blk_count_, ws_);
+
+        CUDA_CHECK(cudaMemcpyAsync(ws_.h_leaf_cnt, ws_.d_leaf_cnt,
+                                   (long long)nb * sizeof(int),
+                                   cudaMemcpyDeviceToHost, s));
+        CUDA_CHECK(cudaStreamSynchronize(s));
+
+        int n_pairs = 0;
+        std::vector<int> h_query_offsets(nb + 1, 0);
+        for (int qi = 0; qi < nb; qi++) { h_query_offsets[qi] = n_pairs; n_pairs += ws_.h_leaf_cnt[qi]; }
+        h_query_offsets[nb] = n_pairs;
+
+        gpu_build_and_sort_pairs_v29(nb, n_pairs, n_leaf_blocks_, ws_.max_leaf_sel, ws_);
+
+        const float* d_eps_ptr; int eps_stride;
+        if (p_.eps_mode == Params::BLOCK_128) {
+            d_eps_ptr = d_block_eps_blk_; eps_stride = 1;
+        } else if (p_.eps_mode == Params::SUBBLOCK_32) {
+            d_eps_ptr = d_block_eps_sub_; eps_stride = 4;
+        } else {
+            d_eps_ptr = d_block_eps_vec_; eps_stride = leaf_size_;
+        }
+
+        // D1: full L2/U2 + top-MAX_SEED seeds by smallest U2 (bit-identical PQ
+        // correction/eps logic to leaf_prr_interval_kernel).
+        launch_prr_seed_select(
+            ws_.d_pair_leaf_b, ws_.d_pair_qid_b,
+            d_leaf_codes_, d_leaf_sizes_, d_leaf_ids_,
+            d_block_cell_id_prr_, d_abs_cents_prr_,
+            d_fine_c1d_, ws_.d_q_batch,
+            d_eps_ptr, eps_stride,
+            d_diag_l2, d_diag_u2, d_seed_pos, d_seed_id, d_seed_u2,
+            n_pairs, d_, Kr_, Br_, bpv_, leaf_size_, MAX_SEED, s);
+
+        // D2: exact L2 for each selected seed.
+        launch_prr_seed_exact(
+            ws_.d_pair_qid_b, d_seed_id,
+            d_base_vecs_, ws_.d_q_batch,
+            d_seed_exact2,
+            n_pairs, d_, MAX_SEED, s);
+
+        // tau_U: reuse the exact production kernels (klocal_-sized per-block U2
+        // top-k is provably equal to the true global k-th smallest here since
+        // klocal_ == k). This also builds the qid-major permutation into
+        // d_prr_perm_, which we reuse for D3 below (same trick as launch_prr_tau2
+        // itself reuses for launch_final_merge_v29) — no extra permutation build.
+        launch_leaf_prr_interval(
+            ws_.d_pair_leaf_b, ws_.d_pair_qid_b,
+            d_leaf_codes_, d_leaf_sizes_,
+            d_block_cell_id_prr_, d_abs_cents_prr_,
+            d_fine_c1d_, ws_.d_q_batch,
+            d_eps_ptr, eps_stride,
+            d_prr_l2_, d_prr_u2topk_,
+            n_pairs, d_, Kr_, Br_, bpv_, leaf_size_, klocal_, s);
+        launch_prr_tau2(d_prr_u2topk_, d_prr_perm_, d_prr_tau2_, n_pairs, klocal_, nb, ws_);
+
+        // ── Download shared per-batch host data ────────────────────────────
+        // (pair qids are not needed on the host: h_query_offsets already gives
+        //  each query's [seg_start,seg_end) segment into the leaf-sorted pair
+        //  arrays, computed with the identical exclusive-sum formula the GPU
+        //  side uses for ws_.d_query_offsets.)
+        std::vector<int> h_pair_leaf(n_pairs);
+        if (n_pairs > 0)
+            CUDA_CHECK(cudaMemcpy(h_pair_leaf.data(), ws_.d_pair_leaf_b,
+                                  (long long)n_pairs * sizeof(int), cudaMemcpyDeviceToHost));
+        std::vector<float> h_diag_l2((size_t)n_pairs * leaf_size_);
+        if (n_pairs > 0)
+            CUDA_CHECK(cudaMemcpy(h_diag_l2.data(), d_diag_l2,
+                                  (size_t)n_pairs * leaf_size_ * sizeof(float), cudaMemcpyDeviceToHost));
+        std::vector<int> h_seed_pos((size_t)n_pairs * MAX_SEED);
+        if (n_pairs > 0)
+            CUDA_CHECK(cudaMemcpy(h_seed_pos.data(), d_seed_pos,
+                                  (size_t)n_pairs * MAX_SEED * sizeof(int), cudaMemcpyDeviceToHost));
+        std::vector<float> h_tau_u(nb);
+        CUDA_CHECK(cudaMemcpy(h_tau_u.data(), d_prr_tau2_, (long long)nb * sizeof(float), cudaMemcpyDeviceToHost));
+
+        for (int si = 0; si < SEED_DIAG_N_SPB; si++) {
+            int spb = SEED_DIAG_SPB_VALUES[si];
+
+            // D3: query-major tau_seed2 for this spb, reusing d_prr_perm_ / d_query_offsets / d_leaf_cnt.
+            launch_prr_seed_tau(
+                d_seed_exact2, d_prr_perm_, ws_.d_query_offsets, ws_.d_leaf_cnt,
+                d_tau_seed2_dev, d_insufficient_dev,
+                k, spb, MAX_SEED, nb, s);
+
+            std::vector<float> h_tau_seed(nb);
+            std::vector<int>   h_insuff(nb);
+            CUDA_CHECK(cudaMemcpy(h_tau_seed.data(), d_tau_seed2_dev, (long long)nb * sizeof(float), cudaMemcpyDeviceToHost));
+            CUDA_CHECK(cudaMemcpy(h_insuff.data(), d_insufficient_dev, (long long)nb * sizeof(int), cudaMemcpyDeviceToHost));
+
+            SeedDiagAcc& A = acc[si];
+            std::vector<char> is_seed(leaf_size_, 0);
+
+            for (int qi = 0; qi < nb; qi++) {
+                int seg_start = h_query_offsets[qi];
+                int seg_end   = h_query_offsets[qi + 1];
+                int qi_global = qstart + qi;
+
+                double tauU = h_tau_u[qi];
+                double tauS = h_tau_seed[qi];
+                A.tau_u_sum    += tauU;
+                A.tau_seed_sum += tauS;
+                if (h_insuff[qi]) A.insufficient_queries++;
+                if (tauU > 0.0 && tauU < 1e37 && tauS < 1e37) {
+                    A.tau_ratio_sum += tauS / tauU;
+                    A.tau_ratio_cnt++;
+                }
+
+                long long q_visited_blocks = 0, q_valid_cands = 0, q_seeds = 0;
+                long long q_nonseed_surv = 0, q_union = 0;
+                double q_baseline = 0;
+
+                for (int p = seg_start; p < seg_end; p++) {
+                    int leaf_blk = h_pair_leaf[p];
+                    int n_vecs   = h_leaf_sizes_cpu_[leaf_blk];
+                    q_visited_blocks++;
+                    q_valid_cands += n_vecs;
+                    q_baseline += std::min(per_block_r_, n_vecs);
+
+                    std::fill(is_seed.begin(), is_seed.begin() + n_vecs, 0);
+                    int seeds_this_block = 0;
+                    for (int r = 0; r < spb; r++) {
+                        int pos = h_seed_pos[(size_t)p * MAX_SEED + r];
+                        if (pos < 0) continue;
+                        is_seed[pos] = 1;
+                        seeds_this_block++;
+                    }
+                    q_seeds += seeds_this_block;
+
+                    int block_surv = 0;
+                    long long block_union = 0;
+                    for (int pos = 0; pos < n_vecs; pos++) {
+                        float l2 = h_diag_l2[(size_t)p * leaf_size_ + pos];
+                        // Strict elimination L2 > tau_seed2; ties (L2 == tau) retained.
+                        // tauS == +INF (insufficient seeds) => every candidate survives
+                        // (we cannot safely prune with an invalid threshold).
+                        bool survivor = (l2 <= tauS);
+                        if (survivor) block_surv++;
+                        bool seed = is_seed[pos] != 0;
+                        if (seed || survivor) block_union++;
+                        if (survivor && !seed) q_nonseed_surv++;
+                    }
+                    A.surv_per_block.push_back(block_surv);
+                    A.blocks_total++;
+                    if (block_surv > per_block_r_) A.blocks_over16++;
+                    q_union += block_union;
+                }
+
+                A.visited_blocks += q_visited_blocks;
+                A.valid_cands    += q_valid_cands;
+                A.seeds          += q_seeds;
+                A.nonseed_surv   += q_nonseed_surv;
+                A.total_exact    += q_union;
+                A.baseline_exact_sum += q_baseline;
+                double ratio = (q_baseline > 0) ? ((double)q_union / q_baseline) : 0.0;
+                A.exact_ratio_all.push_back(ratio);
+                if ((double)q_union < q_baseline) A.better_than_baseline++;
+                A.n_queries++;
+
+                // ── Phase 4: candidate-set correctness validation ──────────
+                if (qi_global < validate_nq && h_base != nullptr) {
+                    const float* qv = h_qb + (long long)qi * d_;
+
+                    std::vector<std::pair<float,int>> all_exact;
+                    all_exact.reserve((size_t)q_valid_cands);
+                    for (int p = seg_start; p < seg_end; p++) {
+                        int leaf_blk = h_pair_leaf[p];
+                        int n_vecs   = h_leaf_sizes_cpu_[leaf_blk];
+                        for (int pos = 0; pos < n_vecs; pos++) {
+                            int vid = h_leaf_ids_cpu_[(long long)leaf_blk * leaf_size_ + pos];
+                            if (vid < 0) continue;
+                            all_exact.emplace_back(l2sq(qv, h_base + (long long)vid * d_, d_), vid);
+                        }
+                    }
+                    std::sort(all_exact.begin(), all_exact.end(),
+                             [](const auto& a, const auto& b){ return a.first < b.first; });
+
+                    std::vector<int> union_ids;
+                    for (int p = seg_start; p < seg_end; p++) {
+                        int leaf_blk = h_pair_leaf[p];
+                        int n_vecs   = h_leaf_sizes_cpu_[leaf_blk];
+                        std::fill(is_seed.begin(), is_seed.begin() + n_vecs, 0);
+                        for (int r = 0; r < spb; r++) {
+                            int pos = h_seed_pos[(size_t)p * MAX_SEED + r];
+                            if (pos >= 0) is_seed[pos] = 1;
+                        }
+                        for (int pos = 0; pos < n_vecs; pos++) {
+                            float l2 = h_diag_l2[(size_t)p * leaf_size_ + pos];
+                            bool survivor = (l2 <= tauS);
+                            if (is_seed[pos] || survivor) {
+                                int vid = h_leaf_ids_cpu_[(long long)leaf_blk * leaf_size_ + pos];
+                                if (vid >= 0) union_ids.push_back(vid);
+                            }
+                        }
+                    }
+                    std::vector<std::pair<float,int>> union_exact;
+                    union_exact.reserve(union_ids.size());
+                    for (int vid : union_ids)
+                        union_exact.emplace_back(l2sq(qv, h_base + (long long)vid * d_, d_), vid);
+                    std::sort(union_exact.begin(), union_exact.end(),
+                             [](const auto& a, const auto& b){ return a.first < b.first; });
+
+                    A.agreement_total++;
+                    if (seed_diag_topk_agree(all_exact, union_exact, k))
+                        A.agreement_hits++;
+                }
+            }
+        }
+    }
+
+    out_rows.clear();
+    out_rows.resize(SEED_DIAG_N_SPB);
+    for (int si = 0; si < SEED_DIAG_N_SPB; si++) {
+        const SeedDiagAcc& A = acc[si];
+        SeedDiagRow& row = out_rows[si];
+        row.ef  = ef;
+        row.spb = SEED_DIAG_SPB_VALUES[si];
+        double nqd = A.n_queries > 0 ? (double)A.n_queries : 1.0;
+
+        row.visited_blocks_q = A.visited_blocks / nqd;
+        row.valid_cands_q    = A.valid_cands    / nqd;
+        row.seeds_q          = A.seeds          / nqd;
+        row.tau_u_mean       = A.tau_u_sum      / nqd;
+        row.tau_seed_mean    = A.tau_seed_sum   / nqd;
+        row.tau_ratio_mean   = A.tau_ratio_cnt > 0 ? (A.tau_ratio_sum / A.tau_ratio_cnt) : 0.0;
+
+        std::vector<int> sb = A.surv_per_block;
+        std::sort(sb.begin(), sb.end());
+        auto pct_i = [&](double p) -> double {
+            if (sb.empty()) return 0.0;
+            size_t idx = (size_t)(p * (double)(sb.size() - 1));
+            return (double)sb[idx];
+        };
+        double surv_sum = 0.0; for (int v : sb) surv_sum += v;
+        row.surv_block_avg = sb.empty() ? 0.0 : (surv_sum / (double)sb.size());
+        row.surv_block_p50 = pct_i(0.50);
+        row.surv_block_p90 = pct_i(0.90);
+        row.surv_block_p99 = pct_i(0.99);
+        row.blocks_over16_pct = A.blocks_total > 0 ? 100.0 * (double)A.blocks_over16 / (double)A.blocks_total : 0.0;
+
+        row.nonseed_surv_q   = A.nonseed_surv / nqd;
+        row.total_exact_q    = A.total_exact  / nqd;
+        row.baseline_exact_q = A.baseline_exact_sum / nqd;
+
+        std::vector<double> er = A.exact_ratio_all;
+        std::sort(er.begin(), er.end());
+        auto pct_d = [&](double p) -> double {
+            if (er.empty()) return 0.0;
+            size_t idx = (size_t)(p * (double)(er.size() - 1));
+            return er[idx];
+        };
+        double er_sum = 0.0; for (double v : er) er_sum += v;
+        row.exact_ratio_mean = er.empty() ? 0.0 : (er_sum / (double)er.size());
+        row.exact_ratio_p50  = pct_d(0.50);
+        row.exact_ratio_p90  = pct_d(0.90);
+        row.better_than_baseline_pct = A.n_queries > 0 ? 100.0 * (double)A.better_than_baseline / (double)A.n_queries : 0.0;
+        row.insufficient_seed_queries = A.insufficient_queries;
+
+        out_agreement[si] = A.agreement_total > 0 ? (double)A.agreement_hits / (double)A.agreement_total : 0.0;
+
+        printf("[seed_diag] ef=%d spb=%d  tau_seed/tau_U=%.4f  surv/block=%.1f  "
+               "total_exact/q=%.1f  baseline/q=%.1f  ratio=%.3f  agree=%.1f%%  insuff=%d\n",
+               ef, out_rows[si].spb, out_rows[si].tau_ratio_mean,
+               out_rows[si].surv_block_avg, out_rows[si].total_exact_q,
+               out_rows[si].baseline_exact_q, out_rows[si].exact_ratio_mean,
+               100.0 * out_agreement[si], out_rows[si].insufficient_seed_queries);
+    }
+
+    printf("[seed_diag] ef=%d total %.1f ms\n", ef, Ms(Clock::now() - T_diag).count());
+
+    cudaFree(d_diag_l2); cudaFree(d_diag_u2);
+    cudaFree(d_seed_pos); cudaFree(d_seed_id); cudaFree(d_seed_u2); cudaFree(d_seed_exact2);
+    cudaFree(d_tau_seed2_dev); cudaFree(d_insufficient_dev);
 }
 
 } // namespace hblock_v37_prr

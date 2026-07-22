@@ -8,6 +8,19 @@
 
 namespace hblock_v37_prr {
 
+// ── Exact-seed threshold diagnostic (additive; see
+//    HBLOCK_V37_PRR_EXACT_SEED_DIAGNOSTIC_PROMPT.md) — one row per (ef, seed_per_block).
+struct SeedDiagRow {
+    int ef = 0, spb = 0;
+    double visited_blocks_q = 0, valid_cands_q = 0, seeds_q = 0;
+    double tau_u_mean = 0, tau_seed_mean = 0, tau_ratio_mean = 0;
+    double surv_block_avg = 0, surv_block_p50 = 0, surv_block_p90 = 0, surv_block_p99 = 0;
+    double blocks_over16_pct = 0, nonseed_surv_q = 0, total_exact_q = 0, baseline_exact_q = 0;
+    double exact_ratio_mean = 0, exact_ratio_p50 = 0, exact_ratio_p90 = 0;
+    double better_than_baseline_pct = 0;
+    int insufficient_seed_queries = 0;
+};
+
 // HBlock v37_prr: v36 + certified PQ racing (PRR).
 // Three search modes:
 //   FIXED_PER_BLOCK  — unchanged v36 LUT path
@@ -59,6 +72,38 @@ public:
 
     void diagnose_missed_gt(const float* h_q, int nq, int k,
                             const int* h_gt, int gt_k) const;
+
+    // Flip the search mode on an already-built index (no rebuild, no workspace
+    // realloc). PRR workspace buffers were allocated at build time iff the index
+    // was built with CERTIFIED_PRR; switching to FIXED_PER_BLOCK/CORRECTED_FIXED
+    // simply doesn't use them, and switching back to CERTIFIED_PRR is safe only
+    // if the index was originally built with that mode (see seed_diagnostic()).
+    void set_search_mode(Params::SearchMode m) { p_.search_mode = m; }
+    Params::SearchMode search_mode() const { return p_.search_mode; }
+
+    // ── Exact-seed threshold diagnostic ─────────────────────────────────────
+    // Reuses the current Tree+Graph visited blocks and corrected candidate-cell
+    // PQ distance unchanged (index must be built with CERTIFIED_PRR so the PRR
+    // workspace buffers exist). Does not alter FIXED_PER_BLOCK/CORRECTED_FIXED/
+    // CERTIFIED_PRR result paths — purely additive. See
+    // HBLOCK_V37_PRR_EXACT_SEED_DIAGNOSTIC_PROMPT.md for the full spec.
+    //
+    // For seed_per_block in {1,2,4,8} (all as PREFIXES of one max_seed_per_block=8
+    // seed list, sorted ascending by U2 — guarantees identical visited blocks and
+    // bounds across the sweep), appends one SeedDiagRow to out_rows and one
+    // agreement fraction to out_agreement[0..3].
+    //
+    // validate_nq (>=100 expected): number of leading queries on which phase-4
+    // exact candidate-set validation runs (CPU exact-scan of the visited
+    // candidate set vs. the two-wave union, top-k IDs compared with reordering
+    // allowed and a 1e-4 relative tie tolerance at the k-th boundary distance).
+    // h_base is the full host base-vector array (n x d_) used only for that
+    // validation and for ground truth is never used to pick seeds/thresholds.
+    void seed_diagnostic(const float* h_q, int nq, int k, int ef,
+                         std::vector<SeedDiagRow>& out_rows,
+                         int validate_nq,
+                         const float* h_base,
+                         double* out_agreement) const;
 
     int ntotal() const { return ntotal_; }
     int dim()    const { return d_; }
