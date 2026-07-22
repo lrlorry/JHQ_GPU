@@ -487,6 +487,38 @@ routing、block search kernel、rerank 均不变（直接复用 route_gpu_v29 / 
 | v35 | ef | 无 | expanded | 0.9904 | 130K | **0.9968** | 72K |
 | v36 | ef | 无 | expanded | 0.9885 | 128K | 0.9957 | 72K |
 
+### hblock_v37_prr — 确定性 PQ racing（PRR）实验，结论 NO-GO
+
+**目标**：验证「渐进式区间剪枝」（Progressive Residual Racing）能否在 Br=4
+细码上给出候选集精确保证的同时减少精排量。新增三种搜索模式：
+`FIXED_PER_BLOCK`（=v36 原路径）、`CORRECTED_FIXED`（用 block 自身 cell
+绝对质心算 PQ 距离，修正跨 cell LUT 误差）、`CERTIFIED_PRR`（区间下界
+L²/上界 U² + 全局 τ² 剪枝 + 幸存者精排）。
+
+**三模式对照**（同一索引，Vogue-768，ef=256，见
+`results/hblock_v37_prr_vogue.csv`）：
+
+| 模式 | recall@10 | QPS |
+|------|-----------|-----|
+| FIXED_PER_BLOCK（=v36） | 0.9968 | 72.0K |
+| CORRECTED_FIXED | 0.9956 | 64.5K |
+| CERTIFIED_PRR（VECTOR ε） | 0.9969 | 59.3K |
+
+recall 三者持平（差异在建图随机性噪声内），但 `CERTIFIED_PRR` 的 τ² 阈值
+剪不掉候选：VECTOR 粒度下每块仍有 59–90 个幸存者（远超基线的 16），QPS 反
+而比基线慢 18%。
+
+**v38 种子诊断**（`HBLOCK_V37_PRR_EXACT_SEED_DIAGNOSTIC_PROMPT.md`，完整
+结论见 `HBLOCK_V37_PRR_SEED_DIAGNOSTIC_RESULTS.md`）：测试「每块选 1/2/4/8
+个 U² 最小的候选做精确重排，取其精确距离的第 k 小作为更紧的安全阈值
+`tau_seed2`」能否救场。**结论 NO-GO**：最佳配置（ef=256, seed=8）下所需精
+排量仍是基线的 3.29 倍（no-go 红线是 ≥1 倍），且种子数从 1 加到 8 只让每
+块幸存者从 51.8 降到 49.0——瓶颈不在阈值,在 L² 下界本身：Br=4 的重构误差
+（p50≈0.26）已经和残差范数（≈0.65）同量级,区间天然剪不动。
+
+**结论**：Br=4 上确定性 PRR 结构性不可行，不再作调优（Br=8 或概率界是独
+立实验，1B 场景下剪 block 省的是 H2D 传输而非精排量，届时可重新评估）。
+
 ## 后续可能的优化方向
 
 ### 0. Block-level graph + super-block 物理布局（1B 方向）
