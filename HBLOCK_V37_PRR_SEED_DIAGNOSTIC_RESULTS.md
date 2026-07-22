@@ -1,3 +1,17 @@
+> **RETRACTED (2026-07-22).** The run below (`hblock_v37_prr_seed_diag_20260722_103525`)
+> is invalid. `h_query_offsets` (computed for the pre-sort, qid-major pair
+> layout) was used to slice `h_pair_leaf`/`h_diag_l2`/`h_seed_pos`, which are
+> actually sorted by **leaf block id** by `gpu_build_and_sort_pairs_v29`
+> (`search.cu`). The CPU diagnostic stats therefore read essentially
+> arbitrary blocks belonging to other queries, and Phase-4 validation
+> compared against the wrong candidate set. GPU-side `tau_U`/`tau_seed2`
+> were correct (they use the `d_prr_perm_` qid-major permutation); only the
+> CPU aggregation was broken — this also explains the low candidate-set
+> agreement (33–57%) below, which should be ~100% by construction. Fixed in
+> `hblock_v37_prr/jhq_gpu_index.cu` (`seed_diagnostic()` now downloads
+> `d_prr_perm_` and translates every pair index through it). Rerun pending;
+> everything below is kept only for the record of what the bug looked like.
+
 # HBlock v37_prr: Exact-Seed Threshold Diagnostic — Results
 
 Diagnostic spec: `HBLOCK_V37_PRR_EXACT_SEED_DIAGNOSTIC_PROMPT.md`

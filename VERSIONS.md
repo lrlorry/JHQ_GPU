@@ -509,15 +509,15 @@ recall 三者持平（差异在建图随机性噪声内），但 `CERTIFIED_PRR`
 而比基线慢 18%。
 
 **v38 种子诊断**（`HBLOCK_V37_PRR_EXACT_SEED_DIAGNOSTIC_PROMPT.md`，完整
-结论见 `HBLOCK_V37_PRR_SEED_DIAGNOSTIC_RESULTS.md`）：测试「每块选 1/2/4/8
+记录见 `HBLOCK_V37_PRR_SEED_DIAGNOSTIC_RESULTS.md`）：测试「每块选 1/2/4/8
 个 U² 最小的候选做精确重排，取其精确距离的第 k 小作为更紧的安全阈值
-`tau_seed2`」能否救场。**结论 NO-GO**：最佳配置（ef=256, seed=8）下所需精
-排量仍是基线的 3.29 倍（no-go 红线是 ≥1 倍），且种子数从 1 加到 8 只让每
-块幸存者从 51.8 降到 49.0——瓶颈不在阈值,在 L² 下界本身：Br=4 的重构误差
-（p50≈0.26）已经和残差范数（≈0.65）同量级,区间天然剪不动。
-
-**结论**：Br=4 上确定性 PRR 结构性不可行，不再作调优（Br=8 或概率界是独
-立实验，1B 场景下剪 block 省的是 H2D 传输而非精排量，届时可重新评估）。
+`tau_seed2`」能否救场。**首次运行结论 NO-GO 已撤回**：诊断代码的 CPU 统计
+部分把「按 query 排序前」的 offset 用在了「按 leaf block 排序后」的数组
+上（`gpu_build_and_sort_pairs_v29` 会把 pair 重排为 block 序），导致读到
+别的 query 的候选，candidate-set agreement 只有 33–57%（本该 ≈100%）即
+是这个 bug 的直接证据。已修复（`jhq_gpu_index.cu` 的 `seed_diagnostic()`
+现在通过 `d_prr_perm_` 做正确的 query-major 转换），**结果待重新在服务器
+上跑出**，本条待更新。
 
 ## 后续可能的优化方向
 

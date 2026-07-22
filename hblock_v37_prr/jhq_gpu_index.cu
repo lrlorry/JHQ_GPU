@@ -1558,10 +1558,6 @@ void HBlockIndex::seed_diagnostic(
         launch_prr_tau2(d_prr_u2topk_, d_prr_perm_, d_prr_tau2_, n_pairs, klocal_, nb, ws_);
 
         // ── Download shared per-batch host data ────────────────────────────
-        // (pair qids are not needed on the host: h_query_offsets already gives
-        //  each query's [seg_start,seg_end) segment into the leaf-sorted pair
-        //  arrays, computed with the identical exclusive-sum formula the GPU
-        //  side uses for ws_.d_query_offsets.)
         std::vector<int> h_pair_leaf(n_pairs);
         if (n_pairs > 0)
             CUDA_CHECK(cudaMemcpy(h_pair_leaf.data(), ws_.d_pair_leaf_b,
@@ -1576,6 +1572,18 @@ void HBlockIndex::seed_diagnostic(
                                   (size_t)n_pairs * MAX_SEED * sizeof(int), cudaMemcpyDeviceToHost));
         std::vector<float> h_tau_u(nb);
         CUDA_CHECK(cudaMemcpy(h_tau_u.data(), d_prr_tau2_, (long long)nb * sizeof(float), cudaMemcpyDeviceToHost));
+
+        // d_pair_leaf_b/d_pair_qid_b (and everything derived from them: h_pair_leaf,
+        // d_diag_l2, d_seed_pos, ...) are sorted by LEAF BLOCK ID by
+        // gpu_build_and_sort_pairs_v29, not by query. h_query_offsets describes
+        // segments in the pre-sort qid-major layout. d_prr_perm_ is the qid-major
+        // permutation of indices INTO the block-sorted "b" arrays (built by
+        // launch_prr_tau2 above, same mechanism launch_final_merge_v29 uses) —
+        // every access into the block-sorted host arrays below must go through it.
+        std::vector<int> h_perm(n_pairs);
+        if (n_pairs > 0)
+            CUDA_CHECK(cudaMemcpy(h_perm.data(), d_prr_perm_,
+                                  (long long)n_pairs * sizeof(int), cudaMemcpyDeviceToHost));
 
         for (int si = 0; si < SEED_DIAG_N_SPB; si++) {
             int spb = SEED_DIAG_SPB_VALUES[si];
@@ -1614,7 +1622,8 @@ void HBlockIndex::seed_diagnostic(
                 double q_baseline = 0;
 
                 for (int p = seg_start; p < seg_end; p++) {
-                    int leaf_blk = h_pair_leaf[p];
+                    int pi       = h_perm[p];
+                    int leaf_blk = h_pair_leaf[pi];
                     int n_vecs   = h_leaf_sizes_cpu_[leaf_blk];
                     q_visited_blocks++;
                     q_valid_cands += n_vecs;
@@ -1623,7 +1632,7 @@ void HBlockIndex::seed_diagnostic(
                     std::fill(is_seed.begin(), is_seed.begin() + n_vecs, 0);
                     int seeds_this_block = 0;
                     for (int r = 0; r < spb; r++) {
-                        int pos = h_seed_pos[(size_t)p * MAX_SEED + r];
+                        int pos = h_seed_pos[(size_t)pi * MAX_SEED + r];
                         if (pos < 0) continue;
                         is_seed[pos] = 1;
                         seeds_this_block++;
@@ -1633,7 +1642,7 @@ void HBlockIndex::seed_diagnostic(
                     int block_surv = 0;
                     long long block_union = 0;
                     for (int pos = 0; pos < n_vecs; pos++) {
-                        float l2 = h_diag_l2[(size_t)p * leaf_size_ + pos];
+                        float l2 = h_diag_l2[(size_t)pi * leaf_size_ + pos];
                         // Strict elimination L2 > tau_seed2; ties (L2 == tau) retained.
                         // tauS == +INF (insufficient seeds) => every candidate survives
                         // (we cannot safely prune with an invalid threshold).
@@ -1667,7 +1676,8 @@ void HBlockIndex::seed_diagnostic(
                     std::vector<std::pair<float,int>> all_exact;
                     all_exact.reserve((size_t)q_valid_cands);
                     for (int p = seg_start; p < seg_end; p++) {
-                        int leaf_blk = h_pair_leaf[p];
+                        int pi       = h_perm[p];
+                        int leaf_blk = h_pair_leaf[pi];
                         int n_vecs   = h_leaf_sizes_cpu_[leaf_blk];
                         for (int pos = 0; pos < n_vecs; pos++) {
                             int vid = h_leaf_ids_cpu_[(long long)leaf_blk * leaf_size_ + pos];
@@ -1680,15 +1690,16 @@ void HBlockIndex::seed_diagnostic(
 
                     std::vector<int> union_ids;
                     for (int p = seg_start; p < seg_end; p++) {
-                        int leaf_blk = h_pair_leaf[p];
+                        int pi       = h_perm[p];
+                        int leaf_blk = h_pair_leaf[pi];
                         int n_vecs   = h_leaf_sizes_cpu_[leaf_blk];
                         std::fill(is_seed.begin(), is_seed.begin() + n_vecs, 0);
                         for (int r = 0; r < spb; r++) {
-                            int pos = h_seed_pos[(size_t)p * MAX_SEED + r];
+                            int pos = h_seed_pos[(size_t)pi * MAX_SEED + r];
                             if (pos >= 0) is_seed[pos] = 1;
                         }
                         for (int pos = 0; pos < n_vecs; pos++) {
-                            float l2 = h_diag_l2[(size_t)p * leaf_size_ + pos];
+                            float l2 = h_diag_l2[(size_t)pi * leaf_size_ + pos];
                             bool survivor = (l2 <= tauS);
                             if (is_seed[pos] || survivor) {
                                 int vid = h_leaf_ids_cpu_[(long long)leaf_blk * leaf_size_ + pos];
