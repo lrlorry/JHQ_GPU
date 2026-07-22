@@ -1,0 +1,45 @@
+=== HBlock v37_prr: exact-seed threshold diagnostic ===
+base=932328 x 768  query=1000 x 768  k=10
+K1=16 K2=16 K3=16 graph_degree=32 entry_per_cell=4 d_proj=64 per_block_r=16 batch=1024 max_ef=256
+
+=== Controls (same index, no rebuild) ===
+  [control] FIXED_PER_BLOCK  ef=128  recall@10=0.9883  qps=72850  (13.73 ms)
+  [control] FIXED_PER_BLOCK  ef=256  recall@10=0.9951  qps=71607  (13.97 ms)
+  [control] CORRECTED_FIXED  ef=128  recall@10=0.9888  qps=116122  (8.61 ms)
+  [control] CORRECTED_FIXED  ef=256  recall@10=0.9953  qps=64441  (15.52 ms)
+  [control] CERTIFIED_PRR    ef=128  recall@10=0.9883  qps=103757  (9.64 ms)
+  [control] CERTIFIED_PRR    ef=256  recall@10=0.9952  qps=59143  (16.91 ms)
+
+=== Seed diagnostic sweep (validate_nq=100) ===
+ef     spb  tau_U     tau_seed  ratio     surv/blk   p90surv    exact/q   base/q   eratio   agree%    insuff  
+32     1    0.9       0.7       0.782     61.0       128.0      1955.0    511.8    3.820    100.0     0       
+32     2    0.9       0.6       0.751     56.1       128.0      1802.0    511.8    3.521    100.0     0       
+32     4    0.9       0.6       0.736     54.0       128.0      1754.1    511.8    3.427    100.0     0       
+32     8    0.9       0.6       0.731     53.4       128.0      1779.7    511.8    3.477    100.0     0       
+64     1    0.9       0.6       0.767     52.7       128.0      3379.8    1023.6   3.302    100.0     0       
+64     2    0.9       0.6       0.742     49.4       128.0      3191.6    1023.6   3.118    100.0     0       
+64     4    0.9       0.6       0.731     48.2       128.0      3163.2    1023.6   3.090    100.0     0       
+64     8    0.9       0.6       0.727     47.9       128.0      3257.7    1023.6   3.182    100.0     0       
+128    1    0.9       0.6       0.757     46.6       128.0      5998.4    2047.0   2.930    100.0     0       
+128    2    0.9       0.6       0.735     44.2       128.0      5739.4    2047.0   2.803    100.0     0       
+128    4    0.9       0.6       0.726     43.4       128.0      5767.7    2047.0   2.817    100.0     0       
+128    8    0.9       0.6       0.723     43.3       128.0      6017.1    2047.0   2.939    100.0     0       
+256    1    0.9       0.6       0.750     41.8       128.0      10787.7   4093.4   2.635    100.0     0       
+256    2    0.9       0.6       0.729     40.1       128.0      10495.3   4093.4   2.563    100.0     0       
+256    4    0.9       0.6       0.722     39.7       128.0      10660.7   4093.4   2.604    100.0     0       
+256    8    0.9       0.6       0.720     39.6       128.0      11237.8   4093.4   2.745    100.0     0       
+
+=== Go/no-go decision ===
+Decision: NO-GO (best seed policy still has mean total_exact_required >= baseline_exact)
+
+Interpretation notes:
+  1. tau_U (k-th smallest U2 over all visited candidates) is the current
+     production threshold; tau_seed_mean/tau_u_mean above is its ratio to
+     the exact-seed threshold tau_seed2 tested here.
+  2. Whether exact seeds give a sufficiently tighter safe upper threshold is
+     answered by total_exact_per_query vs baseline_exact_per_query above.
+  3. A tight tau_seed2 does not by itself prove the lower bound L2 is tight;
+     nonseed_survivors_per_query measures how many non-seed candidates still
+     cannot be eliminated by L2 <= tau_seed2.
+  4. Passing this survivor-count gate justifies implementing and benchmarking
+     a two-wave GPU search — it is not itself a QPS measurement.
