@@ -153,16 +153,15 @@ void HBlockIndex::gpu_kmeans(const float* h_x_proj, const float* h_x_full,
 }
 
 void HBlockIndex::gpu_recluster_proj(const float* h_x_proj, int n, int K, int n_iters,
+                                     float* d_x_proj, float* d_dots_km, int* d_assigns,
+                                     int* d_counts, float* d_cents, float* d_norms,
                                      std::vector<float>& h_dots_out,
                                      std::vector<float>& h_cent_norms_out)
 {
-    float *d_x_proj, *d_dots_km; int *d_assigns, *d_counts; float *d_cents, *d_norms;
-    CUDA_CHECK(cudaMalloc(&d_x_proj,  (long long)n * d_proj_ * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_dots_km, (long long)n * K * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_assigns, n * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&d_counts,  K * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&d_cents,   (long long)K * d_proj_ * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_norms,   K * sizeof(float)));
+    // d_x_proj/d_dots_km/d_assigns/d_counts/d_cents/d_norms are caller-
+    // allocated, sized for >= this n/K -- no cudaMalloc/cudaFree here (see
+    // header comment: allocating fresh per call was the actual bottleneck
+    // when called thousands of times, once per oversized cell).
     CUDA_CHECK(cudaMemcpy(d_x_proj, h_x_proj, (long long)n*d_proj_*sizeof(float), cudaMemcpyHostToDevice));
 
     // Evenly-spaced init (matches the CPU balanced-kmeans code this
@@ -205,8 +204,7 @@ void HBlockIndex::gpu_recluster_proj(const float* h_x_proj, int n, int K, int n_
                              K, n, d_proj_, &one, d_cents, d_proj_, d_x_proj, d_proj_, &zero, d_dots_km, K));
     h_dots_out.resize((long long)n*K);
     CUDA_CHECK(cudaMemcpy(h_dots_out.data(), d_dots_km, (long long)n*K*sizeof(float), cudaMemcpyDeviceToHost));
-
-    cudaFree(d_x_proj);cudaFree(d_dots_km);cudaFree(d_assigns);cudaFree(d_counts);cudaFree(d_cents);cudaFree(d_norms);
+    // No cudaFree here -- buffers are caller-owned (see header comment).
 }
 
 void HBlockIndex::upload_cents(const std::vector<float>& h_proj, const std::vector<float>& h_full,
@@ -522,14 +520,33 @@ void HBlockIndex::add(I8BinReader& reader, int n)
         // all until every oversized cell was done, which at 100M scale
         // looked indistinguishable from a hang for many minutes.
         int n_oversized_total = 0;
+        int max_N_cell = 0;
         for (int i = 0, j; i < n; i = j) {
             int c1=h_code1[order[i]], c2=h_code2[order[i]], c3=h_code3[order[i]];
             for (j=i; j<n && h_code1[order[j]]==c1 && h_code2[order[j]]==c2 && h_code3[order[j]]==c3; ++j) {}
-            if (j - i > leaf_size_) n_oversized_total++;
+            if (j - i > leaf_size_) { n_oversized_total++; max_N_cell = std::max(max_N_cell, j - i); }
         }
         int n_cells_total = K1_ * K2_ * K3_;
-        printf("  [balanced kmeans] %d/%d cells need reclustering (N_cell > %d)\n",
-               n_oversized_total, n_cells_total, leaf_size_);
+        printf("  [balanced kmeans] %d/%d cells need reclustering (N_cell > %d, largest=%d)\n",
+               n_oversized_total, n_cells_total, leaf_size_, max_N_cell);
+
+        // Scratch GPU buffers for gpu_recluster_proj(), sized for the
+        // largest oversized cell and allocated ONCE here -- reused across
+        // every cell in the loop below. See gpu_recluster_proj()'s header
+        // comment: allocating fresh per call (thousands of cells at 100M
+        // scale) made cudaMalloc/cudaFree overhead the actual bottleneck,
+        // not the GEMM it was meant to speed up.
+        int max_K = (max_N_cell + leaf_size_ - 1) / leaf_size_;
+        float *d_recl_x = nullptr, *d_recl_dots = nullptr, *d_recl_cents = nullptr, *d_recl_norms = nullptr;
+        int   *d_recl_assigns = nullptr, *d_recl_counts = nullptr;
+        if (n_oversized_total > 0) {
+            CUDA_CHECK(cudaMalloc(&d_recl_x,       (long long)max_N_cell * d_proj_ * sizeof(float)));
+            CUDA_CHECK(cudaMalloc(&d_recl_dots,     (long long)max_N_cell * max_K  * sizeof(float)));
+            CUDA_CHECK(cudaMalloc(&d_recl_assigns,  (long long)max_N_cell * sizeof(int)));
+            CUDA_CHECK(cudaMalloc(&d_recl_counts,   (long long)max_K * sizeof(int)));
+            CUDA_CHECK(cudaMalloc(&d_recl_cents,    (long long)max_K * d_proj_ * sizeof(float)));
+            CUDA_CHECK(cudaMalloc(&d_recl_norms,    (long long)max_K * sizeof(float)));
+        }
 
         int n_cells_reordered = 0;
         for (int i = 0, j; i < n; i = j) {
@@ -559,7 +576,9 @@ void HBlockIndex::add(I8BinReader& reader, int n)
                 point_norms[vi] = s;
             }
             std::vector<float> dots, cent_norms;  // dots[vi*K+k] = dot(point_vi, cent_k)
-            gpu_recluster_proj(cell_proj.data(), N_cell, K, mini_km_iters_, dots, cent_norms);
+            gpu_recluster_proj(cell_proj.data(), N_cell, K, mini_km_iters_,
+                               d_recl_x, d_recl_dots, d_recl_assigns, d_recl_counts,
+                               d_recl_cents, d_recl_norms, dots, cent_norms);
 
             std::vector<int> assign(N_cell, 0);
             {
@@ -606,6 +625,10 @@ void HBlockIndex::add(I8BinReader& reader, int n)
         }
         printf("  [balanced kmeans total] %d cells  %.1f ms\n",
                n_cells_reordered, Ms(Clock::now()-T0).count());
+        if (n_oversized_total > 0) {
+            cudaFree(d_recl_x); cudaFree(d_recl_dots); cudaFree(d_recl_assigns);
+            cudaFree(d_recl_counts); cudaFree(d_recl_cents); cudaFree(d_recl_norms);
+        }
     }
 
     T0 = Clock::now();

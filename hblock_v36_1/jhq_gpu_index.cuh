@@ -189,7 +189,19 @@ private:
     // reconstructs exact squared distances via
     // dist(i,k) = ||x_i||^2 + ||c_k||^2 - 2*dot(i,k) at O(n*K) cost
     // (cheap; the O(n*K*d_proj) work already happened on GPU via GEMM).
+    //
+    // d_x_proj/d_dots_km/d_assigns/d_counts/d_cents/d_norms are caller-
+    // owned scratch buffers, sized for the largest n/K this will ever be
+    // called with (see add()'s pre-scan) and allocated ONCE outside
+    // add()'s per-cell loop -- this is called once per oversized cell
+    // (thousands of times at 100M scale), and cudaMalloc/cudaFree that
+    // many times turned out to be a larger cost than the GEMM itself
+    // (first version of this function allocated internally; ~thousands of
+    // oversized cells x 6 buffers each way was the actual bottleneck, not
+    // the matrix multiply it was meant to fix).
     void gpu_recluster_proj(const float* h_x_proj, int n, int K, int n_iters,
+                            float* d_x_proj, float* d_dots_km, int* d_assigns,
+                            int* d_counts, float* d_cents, float* d_norms,
                             std::vector<float>& h_dots_out,
                             std::vector<float>& h_cent_norms_out);
 
