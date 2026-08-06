@@ -283,6 +283,25 @@ target_link_libraries(demo_hblock_v37_prr PRIVATE jhq_hblock_v37_prr)
 add_executable(demo_hblock_v37_prr_seed_diag examples/demo_hblock_v37_prr_seed_diag.cu)
 target_link_libraries(demo_hblock_v37_prr_seed_diag PRIVATE jhq_hblock_v37_prr)
 
+# v38: plain SPACEV int8, fully GPU-resident, no region partitioning. Exists
+# as the controlled comparison baseline for v39/v42/v43's region work --
+# same data/encoding/routing, no region_id -> pool-slot indirection.
+add_library(jhq_hblock_v38 STATIC
+    hblock_v38/search.cu
+    hblock_v38/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v38 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v38 PUBLIC
+    jhq_hblock_v27
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v38 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --expt-extended-lambda --use_fast_math>)
+add_executable(demo_hblock_v38 examples/demo_hblock_v38.cu)
+target_link_libraries(demo_hblock_v38 PRIVATE jhq_hblock_v38)
+
 # v39: SPACEV int8 streamed add() + logical region partitioning and a
 # bounded GPU region pool (leaf kernel resolves PQ codes/ids and raw
 # vectors through region_id -> pool-slot indirection instead of flat
