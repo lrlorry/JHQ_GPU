@@ -517,6 +517,20 @@ void HBlockIndex::add(I8BinReader& reader, int n)
 
     if (mini_km_iters_ > 0) {
         T0 = Clock::now();
+        // Cheap pre-scan (no reclustering work, just counting) so progress
+        // below has a denominator -- this loop used to print nothing at
+        // all until every oversized cell was done, which at 100M scale
+        // looked indistinguishable from a hang for many minutes.
+        int n_oversized_total = 0;
+        for (int i = 0, j; i < n; i = j) {
+            int c1=h_code1[order[i]], c2=h_code2[order[i]], c3=h_code3[order[i]];
+            for (j=i; j<n && h_code1[order[j]]==c1 && h_code2[order[j]]==c2 && h_code3[order[j]]==c3; ++j) {}
+            if (j - i > leaf_size_) n_oversized_total++;
+        }
+        int n_cells_total = K1_ * K2_ * K3_;
+        printf("  [balanced kmeans] %d/%d cells need reclustering (N_cell > %d)\n",
+               n_oversized_total, n_cells_total, leaf_size_);
+
         int n_cells_reordered = 0;
         for (int i = 0, j; i < n; i = j) {
             int c1=h_code1[order[i]], c2=h_code2[order[i]], c3=h_code3[order[i]];
@@ -586,8 +600,11 @@ void HBlockIndex::add(I8BinReader& reader, int n)
             for (int vi = 0; vi < N_cell; vi++) tmp[vi] = order[i + cell_local[vi]];
             for (int vi = 0; vi < N_cell; vi++) order[i + vi] = tmp[vi];
             n_cells_reordered++;
+            if (n_cells_reordered % 20 == 0 || n_cells_reordered == n_oversized_total)
+                printf("  [balanced kmeans] %d/%d cells  %.1f ms\n",
+                       n_cells_reordered, n_oversized_total, Ms(Clock::now()-T0).count());
         }
-        printf("  [balanced kmeans] %d cells  %.1f ms\n",
+        printf("  [balanced kmeans total] %d cells  %.1f ms\n",
                n_cells_reordered, Ms(Clock::now()-T0).count());
     }
 
