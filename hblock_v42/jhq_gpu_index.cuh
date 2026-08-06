@@ -71,8 +71,13 @@ public:
 
         // ── v39: logical region partitioning ────────────────────────────
         int region_bytes        = 1 << 20;  // 1 MiB logical region size (partition granularity)
-        int gpu_code_region_cap = 512;       // max resident code regions in the GPU pool
-        int gpu_raw_region_cap  = 512;       // max resident raw regions in the GPU pool
+        // <= 0 means "auto-size to fit the whole store" (resolved in
+        // build_region_layout() once n_code_regions_/n_raw_regions_ are
+        // known) -- the pool always works with zero tuning. Pass an
+        // explicit positive value only to deliberately test a genuinely
+        // bounded, smaller-than-the-dataset pool.
+        int gpu_code_region_cap = 0;
+        int gpu_raw_region_cap  = 0;
 
         // ── v42: file-backed region store ────────────────────────────────
         // Directory for the two mmap'd region files this index writes

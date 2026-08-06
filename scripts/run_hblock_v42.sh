@@ -1,13 +1,12 @@
 #!/bin/bash
 # Build and run hblock_v42 end-to-end on a SPACEV .i8bin subset: v39's
 # region pool, backed by real mmap'd files on disk (see
-# hblock_v42/jhq_gpu_index.cuh). One straightforward run, no sweep, no
-# configs picked to intentionally fail.
+# hblock_v42/jhq_gpu_index.cuh). One straightforward run.
 #
-# pool cap (300/550) is set comfortably above the region counts a 5M-vector
-# SPACEV subset actually produces (273 code / 508 raw regions, measured in
-# results/hblock_v39_findings.md), so this always succeeds regardless of
-# batch/ef. Adjust SPACEV_DIR / REGION_DIR to your actual paths.
+# Pool cap is 0/0 (auto-size to fit the whole store) -- no need to know
+# region counts ahead of time. Adjust SPACEV_DIR / REGION_DIR to your
+# actual paths. N_BASE defaults to a 5M-vector subset (fast); export
+# N_BASE=100000000 for the full corpus once this works.
 
 set -e
 ROOT_DIR="${JHQ_GPU_ROOT:-/root/JHQ_GPU}"
@@ -32,8 +31,8 @@ N_QUERY="${N_QUERY:-1000}"
 MAX_EF="${MAX_EF:-64}"
 BATCH="${BATCH:-64}"
 REGION_MIB=1
-CODE_CAP=300
-RAW_CAP=550
+CODE_CAP=0  # auto-size to fit the whole store
+RAW_CAP=0
 K1=16; K2=16; K3=16
 DEGREE=32; ENTRY=4
 D_PROJ=64; PER_BLOCK_R=16

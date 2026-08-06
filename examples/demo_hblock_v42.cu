@@ -45,13 +45,16 @@ int main(int argc, char** argv)
         fprintf(stderr,
             "Usage: %s <base.i8bin> <query.i8bin> <ids.NNNM.i32bin> <groundtruth.NNK.i32bin>\n"
             "         [n_base=-1] [n_query=-1] [max_ef=128] [batch=256]\n"
-            "         [region_bytes_mib=1] [gpu_code_region_cap=4096] [gpu_raw_region_cap=4096]\n"
+            "         [region_bytes_mib=1] [gpu_code_region_cap=0] [gpu_raw_region_cap=0]\n"
             "         [K1=16] [K2=16] [K3=16] [graph_degree=32] [entry_per_cell=4]\n"
             "         [d_proj=64] [per_block_r=16] [region_file_dir=/tmp] [csv=]\n"
             "\n"
-            "gpu_code_region_cap/gpu_raw_region_cap bound the GPU region pool; a single\n"
-            "search() batch fails loudly if it touches more distinct regions than that --\n"
-            "raise the cap, raise region_bytes_mib, or lower batch/max_ef if you hit it.\n"
+            "gpu_code_region_cap/gpu_raw_region_cap bound the GPU region pool. Default 0\n"
+            "means auto-size to fit the whole store -- works with no tuning. Pass a\n"
+            "positive value only to deliberately test a smaller, bounded pool; if you do,\n"
+            "a search() batch that touches more distinct regions than that fails loudly\n"
+            "instead of silently corrupting data -- raise the cap, raise region_bytes_mib,\n"
+            "or lower batch/max_ef if you hit it.\n"
             "\n"
             "region_file_dir is where the two real region files get written\n"
             "(hblock_v42_<pid>_codes.region / _raw.region) -- point it at fast local\n"
@@ -70,8 +73,8 @@ int main(int argc, char** argv)
     int max_ef      = (argc >  7) ? atoi(argv[7])  : 128;
     int batch       = (argc >  8) ? atoi(argv[8])  : 256;
     int region_mib  = (argc >  9) ? atoi(argv[9])  : 1;
-    int code_cap    = (argc > 10) ? atoi(argv[10]) : 4096;
-    int raw_cap     = (argc > 11) ? atoi(argv[11]) : 4096;
+    int code_cap    = (argc > 10) ? atoi(argv[10]) : 0;  // <=0 = auto-size to fit the whole store
+    int raw_cap     = (argc > 11) ? atoi(argv[11]) : 0;
     int K1          = (argc > 12) ? atoi(argv[12]) : 16;
     int K2          = (argc > 13) ? atoi(argv[13]) : 16;
     int K3          = (argc > 14) ? atoi(argv[14]) : 16;

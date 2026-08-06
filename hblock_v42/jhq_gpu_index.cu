@@ -860,6 +860,15 @@ void HBlockIndex::build_region_layout(
     up_i(d_block_raw_offset_,  h_block_raw_offset_);
     up_i(d_vec_local_pos_,     h_vec_local_pos_);
 
+    // cap <= 0 means "auto-size to fit the whole store" -- the index works
+    // out of the box with no manual tuning; pass a positive cap explicitly
+    // only to deliberately test a smaller, genuinely bounded pool.
+    if (gpu_code_region_cap_ <= 0) gpu_code_region_cap_ = std::max(n_code_regions_, 1);
+    if (gpu_raw_region_cap_  <= 0) gpu_raw_region_cap_  = std::max(n_raw_regions_, 1);
+    printf("  [region pool] gpu_code_region_cap=%d (%.2f GB), gpu_raw_region_cap=%d (%.2f GB)\n",
+           gpu_code_region_cap_, (double)gpu_code_region_cap_ * region_bytes_ / 1e9,
+           gpu_raw_region_cap_,  (double)gpu_raw_region_cap_  * region_bytes_ / 1e9);
+
     // Bounded GPU region pool + indirection, empty until search() stages
     // regions on demand.
     if (d_code_region_pool_) cudaFree(d_code_region_pool_);
@@ -886,16 +895,11 @@ void HBlockIndex::build_region_layout(
     CUDA_CHECK(cudaMemset(d_code_region_slot_, 0xFF, (long long)n_code_regions_ * sizeof(int))); // all -1
     CUDA_CHECK(cudaMemset(d_raw_region_slot_,  0xFF, (long long)n_raw_regions_  * sizeof(int)));
 
-    if (gpu_code_region_cap_ >= n_code_regions_)
-        fprintf(stderr, "[v39 add] warning: gpu_code_region_cap (%d) >= n_code_regions (%d) "
-                "-- the GPU pool can hold the whole code store; the out-of-core fetch/evict "
-                "path won't actually be exercised at this scale\n",
-                gpu_code_region_cap_, n_code_regions_);
-    if (gpu_raw_region_cap_ >= n_raw_regions_)
-        fprintf(stderr, "[v39 add] warning: gpu_raw_region_cap (%d) >= n_raw_regions (%d) "
-                "-- the GPU pool can hold the whole raw store; the out-of-core fetch/evict "
-                "path won't actually be exercised at this scale\n",
-                gpu_raw_region_cap_, n_raw_regions_);
+    // (No "pool covers the whole store" warning here -- with the cap<=0
+    // auto-size default above, that's the expected, normal case, not
+    // something to flag. It only becomes a meaningful signal if you pass
+    // an explicit cap intending it to be smaller than the store; in that
+    // case fetch_code_regions()/fetch_raw_regions() will actually evict.)
 }
 
 long long HBlockIndex::fetch_code_regions(const std::vector<int>& needed_region_ids) const
