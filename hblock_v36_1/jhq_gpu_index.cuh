@@ -10,31 +10,50 @@
 namespace hblock_v36_1 {
 
 // HBlock v36_1: hblock_v38 (plain SPACEV-100M int8, fully GPU-resident, no
-// region partitioning) with one change: the balanced-kmeans re-clustering
-// step inside add() -- splitting any routing cell with more than
-// leaf_size_ vectors into ~leaf_size_-sized blocks -- is GPU-accelerated
-// instead of pure single-threaded CPU. Named v36_1 because that CPU-only
-// code traces back unchanged to hblock_v36 and was never revisited for
-// scale; it went unnoticed at vogue-768/arxiv-768 scale (hundreds of ms)
-// and became the dominant cost at SPACEV-100M scale (double-digit minutes,
-// entirely GPU-idle, confirmed via `ps`/`nvidia-smi` while it ran).
+// region partitioning) with the balanced-kmeans re-clustering step inside
+// add() -- splitting any routing cell with more than leaf_size_ vectors
+// into ~leaf_size_-sized blocks -- replaced by a recursive bisection
+// algorithm. Named v36_1 because the original code traces back unchanged
+// to hblock_v36 and was never revisited for scale; it went unnoticed at
+// vogue-768/arxiv-768 scale (hundreds of ms) and became the dominant cost
+// at SPACEV-100M scale.
 //
-// The two O(N_cell * K * d_proj) hotspots -- the per-iteration nearest-
-// centroid distance computation, and the final full distance matrix used
-// for the capacity-constrained balanced assignment -- are both point-vs-
-// centroid dot products, i.e. exactly what gpu_kmeans() already computes
-// via a single cuBLAS SGEMM call for the *outer* K1/K2/K3 routing
-// clustering. gpu_recluster_proj() reuses that same GEMM + the existing
-// launch_kmeans_assign()/launch_kmeans_update() kernels (no new CUDA
-// kernels written) for this *inner* per-cell reclustering; only the final
-// greedy capacity-constrained assignment (inherently sequential, O(N*K)
-// not O(N*K*d_proj), i.e. not the bottleneck) stays on CPU.
+// History (see git log for the two intermediate, insufficient attempts):
+// the original flat K-way split (K = ceil(N_cell/leaf_size_) sub-
+// clusters via k-means, then a capacity-constrained greedy assignment
+// over ALL N_cell*K distance pairs) is fundamentally O(N_cell^2/leaf_size_)
+// -- K itself grows linearly with N_cell, so the "build all pairs, sort
+// them" step is quadratic in cell size. On the real 100M SPACEV run the
+// single largest oversized cell had N_cell=216310, i.e. ~365M pairs to
+// sort -- moving the distance computation to GPU (attempt 1) and hoisting
+// its allocations out of the per-cell loop (attempt 2) both left this
+// quadratic term untouched and barely changed the measured per-cell rate.
+//
+// recursive_bisect_cell() instead repeatedly splits a cell in half (exact
+// median split along a cheap "farthest-pair" direction estimate, so
+// balance is guaranteed regardless of data distribution, not just
+// approximate) until every piece is <= leaf_size_. Total cost is
+// O(N_cell * d_proj * log(N_cell/leaf_size_)) -- no K-dependence, no
+// pairwise sort -- which for the same 216310-vector outlier is ~150M
+// float ops, not ~365M sorted pairs. This is intentionally plain CPU code,
+// not GPU: once the algorithm is O(N log N) instead of O(N^2), the
+// absolute work per cell is small enough that GPU kernel-launch/sync
+// overhead (the actual lesson from the two earlier attempts) would cost
+// more than it saves; each cell's bisection is independent of every other
+// cell's, so cross-cell parallelism (not attempted here) is the more
+// promising lever if this still isn't fast enough.
+//
+// One correctness note this version had to fix: recursive halving does
+// NOT always produce exactly ceil(N_cell/leaf_size_) pieces (it can
+// produce more, e.g. N_cell=641 with leaf_size_=128 yields 8 pieces via
+// halving vs the ceil-formula's 6) -- add()'s downstream block-count
+// bookkeeping, which used to independently recompute the ceil formula and
+// relied on it exactly matching what balanced-kmeans produced, now reads
+// the actual per-cell piece count instead.
 //
 // Same tree routing + block graph + per-block fixed top-16 exact rerank as
-// v36/v38 -- this version changes how blocks get formed inside add(), not
-// recall semantics (same balanced-kmeans algorithm, same result up to
-// floating-point/iteration-order differences between the CPU and GPU
-// paths).
+// v36/v38 -- this version changes how blocks get formed inside add() (and
+// slightly how many, per the note above), not recall semantics.
 // ef maps internally to (graph_depth=ef, beam_size=ef, no cap).
 // Routing fixed: ck1=2, ck2=2, ck3=4.
 class HBlockIndex {
@@ -178,32 +197,17 @@ private:
                     std::vector<float>& h_cents_full,
                     std::vector<int>&   h_assigns);
 
-    // GPU-accelerated inner reclustering for add()'s balanced-kmeans step
-    // (see class comment). Runs n_iters of k-means in projected space only
-    // (no h_x_full/h_cents_full bookkeeping -- this step never needs
-    // full-dimension centroids, only the final capacity-constrained
-    // per-point assignment computed by the caller). Returns the final
-    // point-centroid dot-product matrix (h_dots_out, [n*K], row i =
-    // point i's K dot products, matching launch_kmeans_assign()'s layout)
-    // and centroid squared norms (h_cent_norms_out, [K]) -- the caller
-    // reconstructs exact squared distances via
-    // dist(i,k) = ||x_i||^2 + ||c_k||^2 - 2*dot(i,k) at O(n*K) cost
-    // (cheap; the O(n*K*d_proj) work already happened on GPU via GEMM).
-    //
-    // d_x_proj/d_dots_km/d_assigns/d_counts/d_cents/d_norms are caller-
-    // owned scratch buffers, sized for the largest n/K this will ever be
-    // called with (see add()'s pre-scan) and allocated ONCE outside
-    // add()'s per-cell loop -- this is called once per oversized cell
-    // (thousands of times at 100M scale), and cudaMalloc/cudaFree that
-    // many times turned out to be a larger cost than the GEMM itself
-    // (first version of this function allocated internally; ~thousands of
-    // oversized cells x 6 buffers each way was the actual bottleneck, not
-    // the matrix multiply it was meant to fix).
-    void gpu_recluster_proj(const float* h_x_proj, int n, int K, int n_iters,
-                            float* d_x_proj, float* d_dots_km, int* d_assigns,
-                            int* d_counts, float* d_cents, float* d_norms,
-                            std::vector<float>& h_dots_out,
-                            std::vector<float>& h_cent_norms_out);
+    // Recursively bisects one oversized cell's points (cell_proj, N rows
+    // of d_proj_ floats each, contiguous) into pieces of size <=
+    // leaf_size_, appending each resulting piece's size to out_sizes in
+    // left-to-right order. local_order (initially 0..N-1, indices into
+    // cell_proj) is reordered in place so consecutive ranges match
+    // consecutive out_sizes entries. See class comment for why this
+    // replaced the GPU-accelerated flat K-way approach entirely (the
+    // flat approach's complexity was the problem, not where it ran).
+    void recursive_bisect_cell(const float* cell_proj, int N,
+                               std::vector<int>& local_order, int lo, int hi,
+                               std::vector<int>& out_sizes);
 
     void upload_cents(const std::vector<float>& h_proj, const std::vector<float>& h_full,
                       const std::vector<bool>& h_valid, int K,

@@ -152,59 +152,69 @@ void HBlockIndex::gpu_kmeans(const float* h_x_proj, const float* h_x_full,
     cudaFree(d_x_proj);cudaFree(d_dots_km);cudaFree(d_assigns);cudaFree(d_counts);cudaFree(d_cents);cudaFree(d_norms);
 }
 
-void HBlockIndex::gpu_recluster_proj(const float* h_x_proj, int n, int K, int n_iters,
-                                     float* d_x_proj, float* d_dots_km, int* d_assigns,
-                                     int* d_counts, float* d_cents, float* d_norms,
-                                     std::vector<float>& h_dots_out,
-                                     std::vector<float>& h_cent_norms_out)
+void HBlockIndex::recursive_bisect_cell(const float* cell_proj, int N,
+                                        std::vector<int>& local_order, int lo, int hi,
+                                        std::vector<int>& out_sizes)
 {
-    // d_x_proj/d_dots_km/d_assigns/d_counts/d_cents/d_norms are caller-
-    // allocated, sized for >= this n/K -- no cudaMalloc/cudaFree here (see
-    // header comment: allocating fresh per call was the actual bottleneck
-    // when called thousands of times, once per oversized cell).
-    CUDA_CHECK(cudaMemcpy(d_x_proj, h_x_proj, (long long)n*d_proj_*sizeof(float), cudaMemcpyHostToDevice));
+    int len = hi - lo;
+    if (len <= leaf_size_) { out_sizes.push_back(len); return; }
 
-    // Evenly-spaced init (matches the CPU balanced-kmeans code this
-    // replaces -- not gpu_kmeans()'s random init) so behavior stays close
-    // to what add() already produced for oversized cells.
+    auto row = [&](int pos) -> const float* {
+        return cell_proj + (long long)local_order[pos] * d_proj_;
+    };
+
+    // Farthest-pair direction estimate: from an arbitrary start, find the
+    // point farthest from it (a), then the point farthest from a (b).
+    // (a,b) approximates the diameter of this point set -- good enough as
+    // a splitting axis without needing k-means convergence. Two O(len)
+    // passes, deterministic (no RNG), cheap relative to what it replaces.
+    int a = lo;
     {
-        std::vector<float> ic((long long)K*d_proj_);
-        for (int k = 0; k < K; k++) {
-            long long idx = (long long)k * n / K;
-            std::memcpy(ic.data()+(long long)k*d_proj_, h_x_proj+idx*(long long)d_proj_, d_proj_*sizeof(float));
+        const float* ra = row(lo);
+        float best = -1.f; int b = lo;
+        for (int p = lo; p < hi; p++) {
+            const float* r = row(p);
+            float dist = 0.f;
+            for (int j = 0; j < d_proj_; j++) { float v = r[j]-ra[j]; dist += v*v; }
+            if (dist > best) { best = dist; b = p; }
         }
-        CUDA_CHECK(cudaMemcpy(d_cents, ic.data(), (long long)K*d_proj_*sizeof(float), cudaMemcpyHostToDevice));
+        a = b;
+    }
+    int b = lo;
+    {
+        const float* ra = row(a);
+        float best = -1.f;
+        for (int p = lo; p < hi; p++) {
+            const float* r = row(p);
+            float dist = 0.f;
+            for (int j = 0; j < d_proj_; j++) { float v = r[j]-ra[j]; dist += v*v; }
+            if (dist > best) { best = dist; b = p; }
+        }
     }
 
-    const float one=1.f, zero=0.f;
-    std::vector<float> h_cents_tmp((long long)K*d_proj_);
-    std::vector<float> h_norms(K);
-    for (int iter = 0; iter < n_iters; iter++) {
-        CUDA_CHECK(cudaMemcpy(h_cents_tmp.data(), d_cents, (long long)K*d_proj_*sizeof(float), cudaMemcpyDeviceToHost));
-        for (int k=0;k<K;k++){float s=0.f;for(int j=0;j<d_proj_;j++){float v=h_cents_tmp[(long long)k*d_proj_+j];s+=v*v;}h_norms[k]=s;}
-        CUDA_CHECK(cudaMemcpy(d_norms, h_norms.data(), K*sizeof(float), cudaMemcpyHostToDevice));
-        CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
-                                 K, n, d_proj_, &one, d_cents, d_proj_, d_x_proj, d_proj_, &zero, d_dots_km, K));
-        hblock_v17::launch_kmeans_assign(d_dots_km, d_norms, d_assigns, K, n, nullptr);
-        CUDA_CHECK(cudaDeviceSynchronize());
-        CUDA_CHECK(cudaMemset(d_cents, 0, (long long)K*d_proj_*sizeof(float)));
-        CUDA_CHECK(cudaMemset(d_counts, 0, K*sizeof(int)));
-        hblock_v17::launch_kmeans_update(d_x_proj, d_assigns, d_cents, d_counts, n, d_proj_, K, nullptr);
-        CUDA_CHECK(cudaDeviceSynchronize());
+    std::vector<float> axis(d_proj_);
+    {
+        const float* ra = row(a); const float* rb = row(b);
+        for (int j = 0; j < d_proj_; j++) axis[j] = rb[j] - ra[j];
     }
 
-    // One more GEMM against the truly-final centroids (post-last-update)
-    // so the returned dot matrix/norms reflect where centroids actually
-    // ended up, not the previous iteration's positions.
-    CUDA_CHECK(cudaMemcpy(h_cents_tmp.data(), d_cents, (long long)K*d_proj_*sizeof(float), cudaMemcpyDeviceToHost));
-    h_cent_norms_out.resize(K);
-    for (int k=0;k<K;k++){float s=0.f;for(int j=0;j<d_proj_;j++){float v=h_cents_tmp[(long long)k*d_proj_+j];s+=v*v;}h_cent_norms_out[k]=s;}
-    CUDA_CHECK(cudaMemcpy(d_norms, h_cent_norms_out.data(), K*sizeof(float), cudaMemcpyHostToDevice));
-    CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
-                             K, n, d_proj_, &one, d_cents, d_proj_, d_x_proj, d_proj_, &zero, d_dots_km, K));
-    h_dots_out.resize((long long)n*K);
-    CUDA_CHECK(cudaMemcpy(h_dots_out.data(), d_dots_km, (long long)n*K*sizeof(float), cudaMemcpyDeviceToHost));
-    // No cudaFree here -- buffers are caller-owned (see header comment).
+    // Project every point in [lo,hi) onto axis, then split at the exact
+    // median -- this is what guarantees balance (and therefore bounds
+    // recursion depth to ceil(log2(len/leaf_size_))) regardless of how
+    // good the direction estimate is.
+    std::vector<std::pair<float,int>> proj(len);
+    for (int p = lo; p < hi; p++) {
+        const float* r = row(p);
+        float s = 0.f;
+        for (int j = 0; j < d_proj_; j++) s += r[j] * axis[j];
+        proj[p-lo] = {s, local_order[p]};
+    }
+    int mid = len / 2;
+    std::nth_element(proj.begin(), proj.begin()+mid, proj.end());
+    for (int p = 0; p < len; p++) local_order[lo+p] = proj[p].second;
+
+    recursive_bisect_cell(cell_proj, N, local_order, lo,     lo+mid, out_sizes);
+    recursive_bisect_cell(cell_proj, N, local_order, lo+mid, hi,     out_sizes);
 }
 
 void HBlockIndex::upload_cents(const std::vector<float>& h_proj, const std::vector<float>& h_full,
@@ -530,31 +540,12 @@ void HBlockIndex::add(I8BinReader& reader, int n)
         printf("  [balanced kmeans] %d/%d cells need reclustering (N_cell > %d, largest=%d)\n",
                n_oversized_total, n_cells_total, leaf_size_, max_N_cell);
 
-        // Scratch GPU buffers for gpu_recluster_proj(), sized for the
-        // largest oversized cell and allocated ONCE here -- reused across
-        // every cell in the loop below. See gpu_recluster_proj()'s header
-        // comment: allocating fresh per call (thousands of cells at 100M
-        // scale) made cudaMalloc/cudaFree overhead the actual bottleneck,
-        // not the GEMM it was meant to speed up.
-        int max_K = (max_N_cell + leaf_size_ - 1) / leaf_size_;
-        float *d_recl_x = nullptr, *d_recl_dots = nullptr, *d_recl_cents = nullptr, *d_recl_norms = nullptr;
-        int   *d_recl_assigns = nullptr, *d_recl_counts = nullptr;
-        if (n_oversized_total > 0) {
-            CUDA_CHECK(cudaMalloc(&d_recl_x,       (long long)max_N_cell * d_proj_ * sizeof(float)));
-            CUDA_CHECK(cudaMalloc(&d_recl_dots,     (long long)max_N_cell * max_K  * sizeof(float)));
-            CUDA_CHECK(cudaMalloc(&d_recl_assigns,  (long long)max_N_cell * sizeof(int)));
-            CUDA_CHECK(cudaMalloc(&d_recl_counts,   (long long)max_K * sizeof(int)));
-            CUDA_CHECK(cudaMalloc(&d_recl_cents,    (long long)max_K * d_proj_ * sizeof(float)));
-            CUDA_CHECK(cudaMalloc(&d_recl_norms,    (long long)max_K * sizeof(float)));
-        }
-
         int n_cells_reordered = 0;
         for (int i = 0, j; i < n; i = j) {
             int c1=h_code1[order[i]], c2=h_code2[order[i]], c3=h_code3[order[i]];
             for (j=i; j<n && h_code1[order[j]]==c1 && h_code2[order[j]]==c2 && h_code3[order[j]]==c3; ++j) {}
             int N_cell = j - i;
             if (N_cell <= leaf_size_) continue;
-            int K = (N_cell + leaf_size_ - 1) / leaf_size_;
             std::vector<float> cell_proj((long long)N_cell * d_proj_);
             for (int vi = 0; vi < N_cell; vi++) {
                 int oid = order[i + vi];
@@ -562,61 +553,24 @@ void HBlockIndex::add(I8BinReader& reader, int n)
                             h_proj1_all.data() + (long long)oid*d_proj_,
                             d_proj_ * sizeof(float));
             }
-            // GPU-accelerated: n_iters of k-means (cuBLAS GEMM + the same
-            // launch_kmeans_assign/update kernels gpu_kmeans() already
-            // uses), returning the final point-centroid dot matrix instead
-            // of raw assignments -- see gpu_recluster_proj()'s comment.
-            // Point norms are O(N_cell*d_proj), computed once, cheap
-            // relative to the O(N_cell*K*d_proj) work that used to run per
-            // iteration on CPU.
-            std::vector<float> point_norms(N_cell);
-            for (int vi = 0; vi < N_cell; vi++) {
-                const float* xi = cell_proj.data() + (long long)vi*d_proj_;
-                float s = 0.f; for (int jp = 0; jp < d_proj_; jp++) s += xi[jp]*xi[jp];
-                point_norms[vi] = s;
-            }
-            std::vector<float> dots, cent_norms;  // dots[vi*K+k] = dot(point_vi, cent_k)
-            gpu_recluster_proj(cell_proj.data(), N_cell, K, mini_km_iters_,
-                               d_recl_x, d_recl_dots, d_recl_assigns, d_recl_counts,
-                               d_recl_cents, d_recl_norms, dots, cent_norms);
 
-            std::vector<int> assign(N_cell, 0);
-            {
-                // dist(vi,k) = ||x_vi||^2 + ||c_k||^2 - 2*dot(vi,k) --
-                // O(N_cell*K), no d_proj factor: the expensive part already
-                // happened on GPU inside gpu_recluster_proj().
-                std::vector<std::tuple<float,int,int>> all_pairs;
-                all_pairs.reserve((size_t)N_cell * K);
-                for (int vi = 0; vi < N_cell; vi++) {
-                    for (int k = 0; k < K; k++) {
-                        float dist = point_norms[vi] + cent_norms[k]
-                                   - 2.f * dots[(long long)vi*K + k];
-                        all_pairs.emplace_back(dist, vi, k);
-                    }
-                }
-                std::sort(all_pairs.begin(), all_pairs.end());
-                std::vector<int>  cap(K, leaf_size_);
-                std::vector<bool> done(N_cell, false);
-                int n_done = 0;
-                for (auto& [dd, vi, k] : all_pairs) {
-                    if (!done[vi] && cap[k] > 0) {
-                        assign[vi] = k; done[vi] = true; cap[k]--;
-                        if (++n_done == N_cell) break;
-                    }
-                }
-            }
+            // Recursive bisection -- O(N_cell*d_proj*log(N_cell/leaf_size_)),
+            // see class comment. local_order is reordered in place by the
+            // call; out_sizes lists the resulting piece sizes in the same
+            // left-to-right order, both consumed directly below (no
+            // separate assignment-vector + stable_sort step needed, unlike
+            // the flat K-way approach this replaced).
+            std::vector<int> local_order(N_cell);
+            std::iota(local_order.begin(), local_order.end(), 0);
+            std::vector<int> out_sizes;
+            recursive_bisect_cell(cell_proj.data(), N_cell, local_order, 0, N_cell, out_sizes);
+
             {
                 long long c123 = (long long)c1*K2_*K3_ + c2*K3_ + c3;
-                std::vector<int> cnt(K, 0);
-                for (int vi = 0; vi < N_cell; vi++) cnt[assign[vi]]++;
-                per_cell_blk_sizes[c123] = cnt;
+                per_cell_blk_sizes[c123] = out_sizes;
             }
-            std::vector<int> cell_local(N_cell);
-            std::iota(cell_local.begin(), cell_local.end(), 0);
-            std::stable_sort(cell_local.begin(), cell_local.end(),
-                             [&](int a, int b){ return assign[a] < assign[b]; });
             std::vector<int> tmp(N_cell);
-            for (int vi = 0; vi < N_cell; vi++) tmp[vi] = order[i + cell_local[vi]];
+            for (int vi = 0; vi < N_cell; vi++) tmp[vi] = order[i + local_order[vi]];
             for (int vi = 0; vi < N_cell; vi++) order[i + vi] = tmp[vi];
             n_cells_reordered++;
             if (n_cells_reordered % 20 == 0 || n_cells_reordered == n_oversized_total)
@@ -625,10 +579,6 @@ void HBlockIndex::add(I8BinReader& reader, int n)
         }
         printf("  [balanced kmeans total] %d cells  %.1f ms\n",
                n_cells_reordered, Ms(Clock::now()-T0).count());
-        if (n_oversized_total > 0) {
-            cudaFree(d_recl_x); cudaFree(d_recl_dots); cudaFree(d_recl_assigns);
-            cudaFree(d_recl_counts); cudaFree(d_recl_cents); cudaFree(d_recl_norms);
-        }
     }
 
     T0 = Clock::now();
@@ -637,7 +587,15 @@ void HBlockIndex::add(I8BinReader& reader, int n)
     for(int i=0,j;i<n;i=j){
         int c1=h_code1[order[i]],c2=h_code2[order[i]],c3=h_code3[order[i]];
         for(j=i;j<n&&h_code1[order[j]]==c1&&h_code2[order[j]]==c2&&h_code3[order[j]]==c3;++j){}
-        pair_cnt[(long long)c1*K2K3+c2*K3_+c3]=(j-i+leaf_size_-1)/leaf_size_;
+        long long cidx=(long long)c1*K2K3+c2*K3_+c3;
+        // recursive_bisect_cell() does not always produce exactly
+        // ceil(N_cell/leaf_size_) pieces (see class comment) -- use the
+        // actual count it produced when this cell was split; the plain
+        // ceil formula only applies to cells that weren't (N_cell <=
+        // leaf_size_, exactly one block, per_cell_blk_sizes left empty).
+        pair_cnt[cidx] = per_cell_blk_sizes[cidx].empty()
+                       ? (j-i+leaf_size_-1)/leaf_size_
+                       : (int)per_cell_blk_sizes[cidx].size();
     }
     std::vector<int> pair_start(n_cells,0);
     int total_blocks=0;
