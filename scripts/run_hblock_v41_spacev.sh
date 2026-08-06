@@ -17,6 +17,7 @@ RAW_REGION_CAP="${RAW_REGION_CAP:-256}"
 BATCH="${BATCH:-1024}"
 
 cd "$ROOT_DIR"
+cmake -S . -B build
 cmake --build build --target demo_hblock_v41_spacev -j"${BUILD_JOBS:-8}"
 
 mkdir -p results
