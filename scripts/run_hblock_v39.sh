@@ -11,11 +11,11 @@
 set -e
 BIN=./build/demo_hblock_v39
 
-SPACEV_DIR="${SPACEV_DIR:-/root/data/spacev-100m}"
-BASE="${SPACEV_DIR}/base.i8bin"
-QUERY="${SPACEV_DIR}/query.i8bin"
+SPACEV_DIR="${SPACEV_DIR:-/root/autodl-tmp/spacev100m}"
+BASE="${SPACEV_DIR}/base.100M.i8bin"
+QUERY="${SPACEV_DIR}/query.30K.i8bin"
 IDS="${SPACEV_DIR}/ids.100M.i32bin"
-GT="${SPACEV_DIR}/groundtruth.100K.i32bin"
+GT="${SPACEV_DIR}/groundtruth.30K.i32bin"
 
 MAX_EF=128
 BATCH=256
