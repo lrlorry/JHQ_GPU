@@ -302,6 +302,25 @@ target_compile_options(jhq_hblock_v38 PRIVATE
 add_executable(demo_hblock_v38 examples/demo_hblock_v38.cu)
 target_link_libraries(demo_hblock_v38 PRIVATE jhq_hblock_v38)
 
+# v36_1: hblock_v38 with add()'s balanced-kmeans reclustering GPU-
+# accelerated (cuBLAS GEMM + existing kmeans kernels) instead of pure
+# single-threaded CPU -- see hblock_v36_1/jhq_gpu_index.cuh class comment.
+add_library(jhq_hblock_v36_1 STATIC
+    hblock_v36_1/search.cu
+    hblock_v36_1/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v36_1 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v36_1 PUBLIC
+    jhq_hblock_v27
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v36_1 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --expt-extended-lambda --use_fast_math>)
+add_executable(demo_hblock_v36_1 examples/demo_hblock_v36_1.cu)
+target_link_libraries(demo_hblock_v36_1 PRIVATE jhq_hblock_v36_1)
+
 # v39: SPACEV int8 streamed add() + logical region partitioning and a
 # bounded GPU region pool (leaf kernel resolves PQ codes/ids and raw
 # vectors through region_id -> pool-slot indirection instead of flat
