@@ -530,6 +530,30 @@ offset 用在了 `gpu_build_and_sort_pairs_v29` 按 leaf block 重排后的数�
 益，只需处理尾部 block，需要新诊断）、Br=8（码存储翻倍，独立实验）、或
 1B 场景重新评估（剪 block 省的是 H2D 传输而非精排量，判据不同）。
 
+## v41 - SIFT100M 分 wave region streaming
+
+基于 v40 的 `PQ top-r -> exact int8 L2 -> global merge` 语义，将 payload
+改为 block-major logical regions：
+
+```text
+resident tree + block graph
+-> sorted (query, block) pairs
+-> bounded code-region waves -> PQ top-r
+-> bounded raw-region waves -> exact L2
+-> global merge
+```
+
+- PQ codes/IDs 和 raw vectors 不再作为完整数组常驻 GPU；GPU payload
+  内存由 `region_bytes * (code_cap + raw_cap)` 控制。
+- batch 所需 regions 超过 pool 容量时自动拆成多个 wave，不再像 v39
+  一样要求整个 batch working set 同时驻留。
+- PQ kernel 同时输出 candidate ID 与 block 内 local position，避免在 GPU
+  保存 `O(N)` 的 vector-location 表。
+- 当前 region stores 仍在主机内存中，使用单 CUDA stream 顺序执行 waves；
+  `mmap` 文件后端、pinned 双缓冲和 copy/compute overlap 尚未实现。
+
+SIFT100M 入口：`scripts/run_hblock_v41_sift100m.sh`。
+
 ## 后续可能的优化方向
 
 ### 0. Block-level graph + super-block 物理布局（1B 方向）
