@@ -308,6 +308,25 @@ target_link_libraries(demo_hblock_v39 PRIVATE jhq_hblock_v39)
 add_executable(demo_hblock_v39_sift100m examples/demo_hblock_v39_sift100m.cu)
 target_link_libraries(demo_hblock_v39_sift100m PRIVATE jhq_hblock_v39)
 
+# v42: v39's region pool, backed by real mmap'd region files on disk
+# instead of an in-process host RAM buffer (see hblock_v42/jhq_gpu_index.cuh
+# class comment). Kernel-level logic is unchanged from v39.
+add_library(jhq_hblock_v42 STATIC
+    hblock_v42/search.cu
+    hblock_v42/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v42 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v42 PUBLIC
+    jhq_hblock_v27
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v42 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --expt-extended-lambda --use_fast_math>)
+add_executable(demo_hblock_v42 examples/demo_hblock_v42.cu)
+target_link_libraries(demo_hblock_v42 PRIVATE jhq_hblock_v42)
+
 # v40: SIFT bvecs baseline with split PQ selection and exact int8 rerank.
 # The explicit candidate-ID hand-off is the boundary used by later region I/O.
 add_library(jhq_hblock_v40 STATIC
