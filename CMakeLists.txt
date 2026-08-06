@@ -364,8 +364,8 @@ target_compile_options(jhq_hblock_v40 PRIVATE
 add_executable(demo_hblock_v40 examples/demo_hblock_v40.cu)
 target_link_libraries(demo_hblock_v40 PRIVATE jhq_hblock_v40)
 
-# v41: v40 candidate semantics with host-resident block regions, bounded GPU
-# code/raw pools, and region-fitting waves for SIFT100M.
+# v41: v38 fused leaf semantics with complete block records in host-resident
+# logical regions and a bounded GPU staging pool.
 add_library(jhq_hblock_v41 STATIC
     hblock_v41/search.cu
     hblock_v41/jhq_gpu_index.cu

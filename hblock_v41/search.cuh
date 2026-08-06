@@ -14,8 +14,8 @@ static constexpr int K_MAX = 256;
 // build_region_layout(), which must place records using the identical rule.
 __host__ __device__ __forceinline__ size_t align4(size_t x) { return (x + 3u) & ~size_t(3u); }
 
-// v41: v40 search semantics with code/raw payloads staged through bounded
-// GPU region pools. Routing and graph metadata remain resident.
+// v41: v38 search semantics with complete block records staged through a
+// bounded GPU region pool. Routing and graph metadata remain resident.
 // beam_size = ef (no cap, v35/v36 semantics).
 // Output: d_leaf_sel records EXPANDED blocks in expansion order (v30 semantics).
 //
@@ -25,10 +25,9 @@ __host__ __device__ __forceinline__ size_t align4(size_t x) { return (x + 3u) & 
 // only the exact-rerank stage reads int8 directly and
 // accumulates in int32.
 //
-// Sorted (query, block) pairs are processed in region-fitting waves. Kernel A
-// scans staged PQ code regions and records candidate ids/local positions;
-// Kernel B later stages only the corresponding raw regions and computes exact
-// int8 L2. This preserves v40's per-block top-r then global merge semantics.
+// Sorted (query, block) pairs are processed in region-fitting waves. Each
+// block record contains PQ codes, ids, and raw vectors; the fused leaf kernel
+// performs the same PQ top-r -> exact L2 operation as v38.
 struct SearchWorkspace {
     int batch_cap    = 0;
     int max_pairs    = 0;
@@ -86,12 +85,7 @@ struct SearchWorkspace {
     int*   d_pair_leaf_b   = nullptr;
     int*   d_pair_qid_b    = nullptr;
 
-    // Kernel A output [max_pairs × per_block_r]. local_pos avoids a
-    // ntotal-sized vector-id-to-block-position table at 100M/1B scale.
-    int* d_pq_candidate_ids = nullptr;
-    int* d_pq_candidate_pos = nullptr;
-
-    // Kernel B output: per-block exact L2 results [max_pairs × klocal].
+    // Per-block exact L2 results [max_pairs × klocal].
     float* d_out_dists = nullptr;
     int*   d_out_ids   = nullptr;
 
@@ -137,39 +131,23 @@ void gpu_build_and_sort_pairs_v29(
     int nq, int n_pairs, int n_leaf_blocks,
     int max_leaf_sel, SearchWorkspace& ws);
 
-// Kernel A: staged PQ region scan -> per-block top per_block_r candidates.
-void launch_leaf_pq_topk_v41(
+// Staged unified block record -> PQ top-r -> exact L2 -> block top-klocal.
+void launch_leaf_fused_v41(
     const int*     d_pair_leaf_ids,
     const int*     d_pair_qids,
-    const uint8_t* d_code_region_pool,
-    const int*     d_code_region_slot,
-    const int*     d_block_code_region,
-    const int*     d_block_code_offset,
+    const uint8_t* d_region_pool,
+    const int*     d_region_slot,
+    const int*     d_block_region,
+    const int*     d_block_offset,
     const int*     d_leaf_sizes,
     const float*   d_lut_fine,
-    int*           d_candidate_ids,
-    int*           d_candidate_pos,
-    int region_bytes,
-    int n_pairs,
-    int d, int Kr, int Br, int bpv, int leaf_size, int per_block_r,
-    cudaStream_t stream);
-
-// Kernel B: staged raw regions -> exact L2 -> per-block top klocal.
-void launch_leaf_exact_v41(
-    const int*     d_pair_leaf_ids,
-    const int*     d_pair_qids,
-    const int*     d_candidate_ids,
-    const int*     d_candidate_pos,
-    const uint8_t* d_raw_region_pool,
-    const int*     d_raw_region_slot,
-    const int*     d_block_raw_region,
-    const int*     d_block_raw_offset,
     const int8_t*  d_q_batch_i8,
     float*         d_out_dists,
     int*           d_out_ids,
     int region_bytes,
     int n_pairs,
-    int d, int leaf_size, int per_block_r, int klocal,
+    int d, int Kr, int Br, int bpv, int leaf_size,
+    int per_block_r, int klocal,
     cudaStream_t stream);
 
 // Merge per-block exact results → global top-k per query

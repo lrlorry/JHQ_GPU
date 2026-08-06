@@ -1,4 +1,4 @@
-// SPACEV .i8bin entry point for v41's bounded, wave-streamed region pools.
+// SPACEV .i8bin entry point for v41's bounded unified-region staging pool.
 #include "hblock_v41/jhq_gpu_index.cuh"
 #include "common/spacev_io.cuh"
 
@@ -38,8 +38,8 @@ int main(int argc, char** argv)
             "Usage: %s <base.i8bin> <query.i8bin> <ids.NNNM.i32bin> <groundtruth.NNK.i32bin>\n"
             "         [nbase=-1] [nquery=-1] [max_ef=256] [K1=16] [K2=16] [K3=16]\n"
             "         [graph_degree=32] [entry_per_cell=4] [d_proj=64]\n"
-            "         [per_block_r=16] [batch=1024] [reps=3]\n"
-            "         [region_bytes_mib=1] [gpu_code_region_cap=256] [gpu_raw_region_cap=256]\n"
+            "         [per_block_r=16] [batch=32768] [reps=1]\n"
+            "         [region_bytes_mib=1] [gpu_region_cap=512]\n"
             "         [csv=]\n",
             argv[0]);
         return 1;
@@ -75,12 +75,11 @@ int main(int argc, char** argv)
     const int entry_per_cell = (argc > 12) ? std::atoi(argv[12]) : 4;
     const int d_proj = (argc > 13) ? std::atoi(argv[13]) : 64;
     const int per_block_r = (argc > 14) ? std::atoi(argv[14]) : 16;
-    const int batch = (argc > 15) ? std::atoi(argv[15]) : 1024;
-    const int reps = (argc > 16) ? std::atoi(argv[16]) : 3;
+    const int batch = (argc > 15) ? std::atoi(argv[15]) : 32768;
+    const int reps = (argc > 16) ? std::atoi(argv[16]) : 1;
     const int region_mib = (argc > 17) ? std::atoi(argv[17]) : 1;
-    const int code_cap = (argc > 18) ? std::atoi(argv[18]) : 256;
-    const int raw_cap = (argc > 19) ? std::atoi(argv[19]) : 256;
-    const char* csv_path = (argc > 20) ? argv[20] : nullptr;
+    const int region_cap = (argc > 18) ? std::atoi(argv[18]) : 512;
+    const char* csv_path = (argc > 19) ? argv[19] : nullptr;
     const int k = 10;
 
     std::vector<int32_t> local_to_global = load_id_map(argv[3]);
@@ -115,9 +114,9 @@ int main(int argc, char** argv)
                 nbase, base_reader.dim, nq, query_reader.dim, gt.nq, gt.k);
     std::printf("max_ef=%d K1=%d K2=%d K3=%d degree=%d entry_per_cell=%d\n"
                 "  d_proj=%d per_block_r=%d batch=%d reps=%d\n"
-                "  region_bytes=%dMiB gpu_code_region_cap=%d gpu_raw_region_cap=%d\n",
+                "  region_bytes=%dMiB gpu_region_cap=%d\n",
                 max_ef, K1, K2, K3, degree, entry_per_cell,
-                d_proj, per_block_r, batch, reps, region_mib, code_cap, raw_cap);
+                d_proj, per_block_r, batch, reps, region_mib, region_cap);
 
     hblock_v41::HBlockIndex::Params p;
     p.K1 = K1; p.K2 = K2; p.K3 = K3;
@@ -128,8 +127,7 @@ int main(int argc, char** argv)
     p.per_block_r = per_block_r;
     p.batch_size = batch;
     p.region_bytes = region_mib * (1 << 20);
-    p.gpu_code_region_cap = code_cap;
-    p.gpu_raw_region_cap = raw_cap;
+    p.gpu_region_cap = region_cap;
 
     hblock_v41::HBlockIndex index(base_reader.dim, p);
 
@@ -151,7 +149,11 @@ int main(int argc, char** argv)
     for (int ef = 8; ef <= max_ef; ef *= 2) efs.push_back(ef);
     if (efs.empty() || efs.back() != max_ef) efs.push_back(max_ef);
 
-    index.search(query.data(), nq, k, distances.data(), ids.data(), efs.back());
+    // Warm only CUDA/cuBLAS and the staged path. A full-query warmup would
+    // stream the whole out-of-core working set before measurements begin.
+    const int warm_nq = std::min(nq, 1024);
+    index.search(query.data(), warm_nq, k,
+                 distances.data(), ids.data(), efs.back());
 
     FILE* csv = csv_path ? std::fopen(csv_path, "w") : nullptr;
     if (csv) std::fprintf(csv, "ef,recall@10,qps,latency_ms\n");

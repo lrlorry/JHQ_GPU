@@ -17,6 +17,7 @@
 #include <queue>
 #include <random>
 #include <stdexcept>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -51,8 +52,7 @@ HBlockIndex::HBlockIndex(int d, Params p)
       mini_km_max_cell_(p.mini_km_max_cell),
       add_batch_size_(p.add_batch_size),
       region_bytes_(p.region_bytes),
-      gpu_code_region_cap_(p.gpu_code_region_cap),
-      gpu_raw_region_cap_(p.gpu_raw_region_cap)
+      gpu_region_cap_(p.gpu_region_cap)
 {
     if (d <= 0)                  throw std::invalid_argument("d must be positive");
     if (p.Br != 4 && p.Br != 8) throw std::invalid_argument("Br must be 4 or 8");
@@ -61,9 +61,13 @@ HBlockIndex::HBlockIndex(int d, Params p)
         throw std::invalid_argument("per_block_r must be in [1, 32]");
     if (p.klocal <= 0 || p.klocal > p.per_block_r)
         throw std::invalid_argument("klocal must be in [1, per_block_r]");
+    if (p.mini_km_max_cell < p.leaf_size)
+        throw std::invalid_argument("mini_km_max_cell must be >= leaf_size");
+    if (p.add_batch_size <= 0)
+        throw std::invalid_argument("add_batch_size must be positive");
     if (p.region_bytes <= 0)     throw std::invalid_argument("region_bytes must be positive");
-    if (p.gpu_code_region_cap <= 0 || p.gpu_raw_region_cap <= 0)
-        throw std::invalid_argument("GPU region capacities must be positive");
+    if (p.gpu_region_cap <= 0)
+        throw std::invalid_argument("gpu_region_cap must be positive");
     CUBLAS_CHECK(cublasCreate(&cublas_));
 }
 
@@ -81,7 +85,6 @@ HBlockIndex::~HBlockIndex()
     FD(ws_.d_query_offsets);
     FD(ws_.d_pair_leaf_a); FD(ws_.d_pair_qid_a);
     FD(ws_.d_pair_leaf_b); FD(ws_.d_pair_qid_b);
-    FD(ws_.d_pq_candidate_ids); FD(ws_.d_pq_candidate_pos);
     FD(ws_.d_out_dists); FD(ws_.d_out_ids);
     FD(ws_.d_final_dists); FD(ws_.d_final_ids);
     FD(ws_.d_cub_tmp);
@@ -94,10 +97,9 @@ HBlockIndex::~HBlockIndex()
     FD(d_pair_blk_start_); FD(d_pair_blk_count_);
     FD(d_leaf_sizes_);
     FD(d_block_adj_gpu_); FD(d_blk_proj_gpu_); FD(d_blk_norm_gpu_);
-    FD(d_block_code_region_); FD(d_block_code_offset_);
-    FD(d_block_raw_region_);  FD(d_block_raw_offset_);
-    FD(d_code_region_pool_); FD(d_raw_region_pool_);
-    FD(d_code_region_slot_); FD(d_raw_region_slot_);
+    FD(d_block_region_); FD(d_block_offset_);
+    FD(d_region_pool_); FD(d_region_slot_);
+    FH(h_region_stage_);
     cublasDestroy(cublas_);
 }
 
@@ -208,8 +210,9 @@ static __global__ void local_assign_kernel(
 static __global__ void cast_i8_to_f32_kernel(
     const int8_t* __restrict__ in, float* __restrict__ out, long long n)
 {
-    long long i = (long long)blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < n) out[i] = (float)in[i];
+    for (long long i = (long long)blockIdx.x * blockDim.x + threadIdx.x;
+         i < n; i += (long long)gridDim.x * blockDim.x)
+        out[i] = (float)in[i];
 }
 
 void HBlockIndex::train(const float* h_x, int n_train)
@@ -746,8 +749,8 @@ void HBlockIndex::add_impl(Reader& reader, int n)
     alloc_workspace();
     printf("  [alloc workspace] %.1f ms\n", Ms(Clock::now()-T0).count());
 
-    printf("[v41 add total] %.1f ms  blocks=%d  code_regions=%d  raw_regions=%d\n",
-           Ms(Clock::now()-T_add).count(), total_blocks, n_code_regions_, n_raw_regions_);
+    printf("[v41 add total] %.1f ms  blocks=%d  regions=%d\n",
+           Ms(Clock::now()-T_add).count(), total_blocks, n_regions_);
 }
 
 void HBlockIndex::add(I8BinReader& reader, int n) { add_impl(reader, n); }
@@ -760,257 +763,104 @@ void HBlockIndex::build_region_layout(
     const std::vector<int8_t>& h_raw_all,
     int total_blocks)
 {
-    // ── Code regions: pack each block's (codes + vector ids) contiguously,
-    // filling regions up to region_bytes_ before starting a new one. v41
-    // uses physical block order (no graph-aware repacking yet -- matches
-    // the design-doc staging: get correctness + real reuse measurement
-    // first, layout locality is a later optimization on top of this).
-    const size_t code_rec_codes   = (size_t)bpv_ * leaf_size_;
-    const size_t code_rec_ids_off = align4(code_rec_codes);
-    const size_t code_rec_bytes   = code_rec_ids_off + (size_t)leaf_size_ * sizeof(int);
-    if (code_rec_bytes > (size_t)region_bytes_)
-        throw std::runtime_error("build_region_layout: region_bytes too small for one block's code record");
+    const size_t code_bytes = (size_t)bpv_ * leaf_size_;
+    block_ids_offset_ = (int)align4(code_bytes);
+    block_raw_offset_ = block_ids_offset_ + leaf_size_ * (int)sizeof(int);
+    block_record_bytes_ = block_raw_offset_ + leaf_size_ * d_;
+    if (block_record_bytes_ > region_bytes_)
+        throw std::runtime_error("region_bytes is smaller than one complete block record");
 
-    h_block_code_region_.assign(total_blocks, -1);
-    h_block_code_offset_.assign(total_blocks, -1);
-    {
-        const int blocks_per_region =
-            (int)((size_t)region_bytes_ / code_rec_bytes);
-        n_code_regions_ =
-            (total_blocks + blocks_per_region - 1) / blocks_per_region;
-        std::vector<uint8_t> code_store(
-            (size_t)n_code_regions_ * region_bytes_, 0);
-        for (int b = 0; b < total_blocks; b++) {
-            const int region = b / blocks_per_region;
-            const size_t offset =
-                (size_t)(b % blocks_per_region) * code_rec_bytes;
-            h_block_code_region_[b] = region;
-            h_block_code_offset_[b] = (int)offset;
-            uint8_t* rec = code_store.data() +
-                           (size_t)region * region_bytes_ + offset;
-            std::memcpy(rec, h_leaf_codes.data() + (size_t)b * code_rec_codes, code_rec_codes);
-            std::memcpy(rec + code_rec_ids_off, h_leaf_ids.data() + (size_t)b * leaf_size_,
-                        (size_t)leaf_size_ * sizeof(int));
-        }
-        h_code_region_store_ = std::move(code_store);
-    }
+    const int blocks_per_region = region_bytes_ / block_record_bytes_;
+    n_regions_ = (total_blocks + blocks_per_region - 1) / blocks_per_region;
+    gpu_region_cap_ = std::min(gpu_region_cap_, n_regions_);
+    h_block_region_.assign(total_blocks, -1);
+    h_block_offset_.assign(total_blocks, -1);
+    h_region_store_.assign((size_t)n_regions_ * region_bytes_, 0);
 
-    // ── Raw regions: one block's leaf_size_*d_ raw int8 bytes per record,
-    // same block-major grouping so the leaf kernel can locate a candidate's
-    // raw vector via (leaf_blk, local_pos) without a second id-indexed
-    // region table.
-    const size_t raw_rec_bytes = (size_t)leaf_size_ * d_;
-    if (raw_rec_bytes > (size_t)region_bytes_)
-        throw std::runtime_error("build_region_layout: region_bytes too small for one block's raw record");
-
-    h_block_raw_region_.assign(total_blocks, -1);
-    h_block_raw_offset_.assign(total_blocks, -1);
-    {
-        const int blocks_per_region =
-            (int)((size_t)region_bytes_ / raw_rec_bytes);
-        n_raw_regions_ =
-            (total_blocks + blocks_per_region - 1) / blocks_per_region;
-        std::vector<uint8_t> raw_store(
-            (size_t)n_raw_regions_ * region_bytes_, 0);
-        for (int b = 0; b < total_blocks; b++) {
-            const int region = b / blocks_per_region;
-            const size_t offset =
-                (size_t)(b % blocks_per_region) * raw_rec_bytes;
-            h_block_raw_region_[b] = region;
-            h_block_raw_offset_[b] = (int)offset;
-            uint8_t* rec = raw_store.data() +
-                           (size_t)region * region_bytes_ + offset;
-            int sz = h_leaf_sizes[b];
-            for (int pos = 0; pos < sz; pos++) {
-                int oid = h_leaf_ids[(size_t)b * leaf_size_ + pos];
-                if (oid < 0) continue;
-                std::memcpy(rec + (size_t)pos * d_, h_raw_all.data() + (size_t)oid * d_, d_);
+    for (int b = 0; b < total_blocks; ++b) {
+        const int region = b / blocks_per_region;
+        const int offset = (b % blocks_per_region) * block_record_bytes_;
+        h_block_region_[b] = region;
+        h_block_offset_[b] = offset;
+        uint8_t* rec = h_region_store_.data()
+                     + (size_t)region * region_bytes_ + offset;
+        std::memcpy(rec, h_leaf_codes.data() + (size_t)b * code_bytes, code_bytes);
+        std::memcpy(rec + block_ids_offset_,
+                    h_leaf_ids.data() + (size_t)b * leaf_size_,
+                    (size_t)leaf_size_ * sizeof(int));
+        const int sz = h_leaf_sizes[b];
+        for (int pos = 0; pos < sz; ++pos) {
+            const int oid = h_leaf_ids[(size_t)b * leaf_size_ + pos];
+            if (oid >= 0) {
+                std::memcpy(rec + block_raw_offset_ + (size_t)pos * d_,
+                            h_raw_all.data() + (size_t)oid * d_, d_);
             }
         }
-        h_raw_region_store_ = std::move(raw_store);
     }
 
-    printf("  [region layout] %d code regions (%.2f GB), %d raw regions (%.2f GB), region_bytes=%d\n",
-           n_code_regions_, (double)h_code_region_store_.size()/1e9,
-           n_raw_regions_,  (double)h_raw_region_store_.size()/1e9,
-           region_bytes_);
+    printf("  [region layout] %d unified regions (%.2f GB), %d blocks/region, "
+           "record_bytes=%d region_bytes=%d\n",
+           n_regions_, (double)h_region_store_.size()/1e9,
+           blocks_per_region, block_record_bytes_, region_bytes_);
 
     auto up_i = [](int*& d_ptr, const std::vector<int>& h) {
         if (d_ptr) cudaFree(d_ptr);
         CUDA_CHECK(cudaMalloc(&d_ptr, h.size() * sizeof(int)));
         CUDA_CHECK(cudaMemcpy(d_ptr, h.data(), h.size() * sizeof(int), cudaMemcpyHostToDevice));
     };
-    up_i(d_block_code_region_, h_block_code_region_);
-    up_i(d_block_code_offset_, h_block_code_offset_);
-    up_i(d_block_raw_region_,  h_block_raw_region_);
-    up_i(d_block_raw_offset_,  h_block_raw_offset_);
+    up_i(d_block_region_, h_block_region_);
+    up_i(d_block_offset_, h_block_offset_);
 
-    // Bounded GPU region pool + indirection, empty until search() stages
-    // regions on demand.
-    if (d_code_region_pool_) cudaFree(d_code_region_pool_);
-    if (d_raw_region_pool_)  cudaFree(d_raw_region_pool_);
-    CUDA_CHECK(cudaMalloc(&d_code_region_pool_, (long long)gpu_code_region_cap_ * region_bytes_));
-    CUDA_CHECK(cudaMalloc(&d_raw_region_pool_,  (long long)gpu_raw_region_cap_  * region_bytes_));
-    printf("  [GPU region pools] code=%.2f MB raw=%.2f MB\n",
-           (double)gpu_code_region_cap_ * region_bytes_ / 1e6,
-           (double)gpu_raw_region_cap_ * region_bytes_ / 1e6);
-
-    h_code_region_slot_.assign(n_code_regions_, -1);
-    h_raw_region_slot_.assign(n_raw_regions_, -1);
-    code_pool_region_of_slot_.assign(gpu_code_region_cap_, -1);
-    raw_pool_region_of_slot_.assign(gpu_raw_region_cap_, -1);
-    code_slot_values_.resize(gpu_code_region_cap_);
-    raw_slot_values_.resize(gpu_raw_region_cap_);
-    std::iota(code_slot_values_.begin(), code_slot_values_.end(), 0);
-    std::iota(raw_slot_values_.begin(), raw_slot_values_.end(), 0);
-    code_lru_.clear();
-    raw_lru_.clear();
-    code_lru_pos_.assign(n_code_regions_, code_lru_.end());
-    raw_lru_pos_.assign(n_raw_regions_, raw_lru_.end());
-
-    if (d_code_region_slot_) cudaFree(d_code_region_slot_);
-    if (d_raw_region_slot_)  cudaFree(d_raw_region_slot_);
-    CUDA_CHECK(cudaMalloc(&d_code_region_slot_, (long long)n_code_regions_ * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&d_raw_region_slot_,  (long long)n_raw_regions_  * sizeof(int)));
-    CUDA_CHECK(cudaMemset(d_code_region_slot_, 0xFF, (long long)n_code_regions_ * sizeof(int))); // all -1
-    CUDA_CHECK(cudaMemset(d_raw_region_slot_,  0xFF, (long long)n_raw_regions_  * sizeof(int)));
-
-    if (gpu_code_region_cap_ >= n_code_regions_)
-        fprintf(stderr, "[v41 add] warning: gpu_code_region_cap (%d) >= n_code_regions (%d) "
-                "-- the GPU pool can hold the whole code store; the out-of-core fetch/evict "
-                "path won't actually be exercised at this scale\n",
-                gpu_code_region_cap_, n_code_regions_);
-    if (gpu_raw_region_cap_ >= n_raw_regions_)
-        fprintf(stderr, "[v41 add] warning: gpu_raw_region_cap (%d) >= n_raw_regions (%d) "
-                "-- the GPU pool can hold the whole raw store; the out-of-core fetch/evict "
-                "path won't actually be exercised at this scale\n",
-                gpu_raw_region_cap_, n_raw_regions_);
+    if (d_region_pool_) cudaFree(d_region_pool_);
+    if (d_region_slot_) cudaFree(d_region_slot_);
+    if (h_region_stage_) cudaFreeHost(h_region_stage_);
+    CUDA_CHECK(cudaMalloc(&d_region_pool_,
+                          (long long)gpu_region_cap_ * region_bytes_));
+    CUDA_CHECK(cudaMalloc(&d_region_slot_,
+                          (long long)n_regions_ * sizeof(int)));
+    CUDA_CHECK(cudaMallocHost(&h_region_stage_,
+                              (long long)gpu_region_cap_ * region_bytes_));
+    h_region_slot_.assign(n_regions_, -1);
+    staged_regions_.clear();
+    CUDA_CHECK(cudaMemset(d_region_slot_, 0xFF,
+                          (long long)n_regions_ * sizeof(int)));
+    printf("  [GPU staging pool] %.2f MB (%d regions)\n",
+           (double)gpu_region_cap_ * region_bytes_ / 1e6, gpu_region_cap_);
 }
 
-long long HBlockIndex::fetch_code_regions(const std::vector<int>& needed_region_ids) const
+long long HBlockIndex::stage_regions(const std::vector<int>& region_ids) const
 {
-    stat_code_region_reqs_ += (long long)needed_region_ids.size();
-    std::vector<int> uniq = needed_region_ids;
-    std::sort(uniq.begin(), uniq.end());
-    uniq.erase(std::unique(uniq.begin(), uniq.end()), uniq.end());
-    stat_code_region_unique_ += (long long)uniq.size();
+    if (region_ids.empty()) return 0;
+    if ((int)region_ids.size() > gpu_region_cap_)
+        throw std::runtime_error("region wave exceeds gpu_region_cap");
 
-    // Correctness guard, not a soft warning: every region this batch's
-    // kernel launch will touch must stay resident for the *entire* launch.
-    // If the batch's distinct-region working set exceeds the pool, a later
-    // region in this same call would LRU-evict one still needed by an
-    // earlier-loaded (but not yet consumed) pair -- silent wrong-data
-    // corruption, not a crash, since the kernel only trusts the slot table.
-    // v41's caller splits the pair list into region-fitting waves, so this
-    // guard catches planner/addressing bugs rather than normal large batches.
-    if ((int)uniq.size() > gpu_code_region_cap_)
-        throw std::runtime_error(
-            "fetch_code_regions: batch needs " + std::to_string(uniq.size()) +
-            " distinct code regions but gpu_code_region_cap is " +
-            std::to_string(gpu_code_region_cap_) + " -- increase gpu_code_region_cap, "
-            "raise region_bytes (fewer, bigger regions), or shrink batch_size_/ef");
+    // h_region_stage_ is one reusable pinned buffer. The previous wave's H2D
+    // copy and fused kernel must finish before the CPU overwrites it or the
+    // GPU reuses the same pool slots for this wave.
+    CUDA_CHECK(cudaStreamSynchronize(ws_.stream));
 
-    long long bytes_moved = 0;
-    cudaStream_t s = ws_.stream;
-    for (int region : uniq) {
-        if (region < 0 || region >= n_code_regions_) continue;
-
-        if (h_code_region_slot_[region] >= 0) {
-            code_lru_.erase(code_lru_pos_[region]);
-            code_lru_.push_front(region);
-            code_lru_pos_[region] = code_lru_.begin();
-            continue;
-        }
-
-        int slot;
-        if ((int)code_lru_.size() < gpu_code_region_cap_) {
-            slot = (int)code_lru_.size();
-        } else {
-            int victim = code_lru_.back();
-            code_lru_.pop_back();
-            slot = h_code_region_slot_[victim];
-            h_code_region_slot_[victim] = -1;
-            code_pool_region_of_slot_[slot] = -1;
-            CUDA_CHECK(cudaMemsetAsync(d_code_region_slot_ + victim, 0xFF,
-                                       sizeof(int), s));
-        }
-
-        CUDA_CHECK(cudaMemcpyAsync(
-            d_code_region_pool_ + (long long)slot * region_bytes_,
-            h_code_region_store_.data() + (long long)region * region_bytes_,
-            region_bytes_, cudaMemcpyHostToDevice, s));
-        bytes_moved += region_bytes_;
-
-        h_code_region_slot_[region] = slot;
-        code_pool_region_of_slot_[slot] = region;
-        code_lru_.push_front(region);
-        code_lru_pos_[region] = code_lru_.begin();
-        CUDA_CHECK(cudaMemcpyAsync(d_code_region_slot_ + region,
-                                   code_slot_values_.data() + slot, sizeof(int),
-                                   cudaMemcpyHostToDevice, s));
+    for (int region : staged_regions_) h_region_slot_[region] = -1;
+    for (int slot = 0; slot < (int)region_ids.size(); ++slot) {
+        const int region = region_ids[slot];
+        if (region < 0 || region >= n_regions_)
+            throw std::runtime_error("invalid region id in wave");
+        std::memcpy(h_region_stage_ + (long long)slot * region_bytes_,
+                    h_region_store_.data() + (long long)region * region_bytes_,
+                    region_bytes_);
+        h_region_slot_[region] = slot;
     }
-    stat_code_bytes_h2d_ += bytes_moved;
-    return bytes_moved;
-}
+    staged_regions_ = region_ids;
 
-long long HBlockIndex::fetch_raw_regions(const std::vector<int>& needed_region_ids) const
-{
-    stat_raw_region_reqs_ += (long long)needed_region_ids.size();
-    std::vector<int> uniq = needed_region_ids;
-    std::sort(uniq.begin(), uniq.end());
-    uniq.erase(std::unique(uniq.begin(), uniq.end()), uniq.end());
-    stat_raw_region_unique_ += (long long)uniq.size();
-
-    // See the identical guard in fetch_code_regions() -- same correctness
-    // argument, applied to the raw-vector pool.
-    if ((int)uniq.size() > gpu_raw_region_cap_)
-        throw std::runtime_error(
-            "fetch_raw_regions: batch needs " + std::to_string(uniq.size()) +
-            " distinct raw regions but gpu_raw_region_cap is " +
-            std::to_string(gpu_raw_region_cap_) + " -- increase gpu_raw_region_cap, "
-            "raise region_bytes (fewer, bigger regions), or shrink batch_size_/ef");
-
-    long long bytes_moved = 0;
+    const long long bytes = (long long)region_ids.size() * region_bytes_;
     cudaStream_t s = ws_.stream;
-    for (int region : uniq) {
-        if (region < 0 || region >= n_raw_regions_) continue;
-
-        if (h_raw_region_slot_[region] >= 0) {
-            raw_lru_.erase(raw_lru_pos_[region]);
-            raw_lru_.push_front(region);
-            raw_lru_pos_[region] = raw_lru_.begin();
-            continue;
-        }
-
-        int slot;
-        if ((int)raw_lru_.size() < gpu_raw_region_cap_) {
-            slot = (int)raw_lru_.size();
-        } else {
-            int victim = raw_lru_.back();
-            raw_lru_.pop_back();
-            slot = h_raw_region_slot_[victim];
-            h_raw_region_slot_[victim] = -1;
-            raw_pool_region_of_slot_[slot] = -1;
-            CUDA_CHECK(cudaMemsetAsync(d_raw_region_slot_ + victim, 0xFF,
-                                       sizeof(int), s));
-        }
-
-        CUDA_CHECK(cudaMemcpyAsync(
-            d_raw_region_pool_ + (long long)slot * region_bytes_,
-            h_raw_region_store_.data() + (long long)region * region_bytes_,
-            region_bytes_, cudaMemcpyHostToDevice, s));
-        bytes_moved += region_bytes_;
-
-        h_raw_region_slot_[region] = slot;
-        raw_pool_region_of_slot_[slot] = region;
-        raw_lru_.push_front(region);
-        raw_lru_pos_[region] = raw_lru_.begin();
-        CUDA_CHECK(cudaMemcpyAsync(d_raw_region_slot_ + region,
-                                   raw_slot_values_.data() + slot, sizeof(int),
-                                   cudaMemcpyHostToDevice, s));
-    }
-    stat_raw_bytes_h2d_ += bytes_moved;
-    return bytes_moved;
+    CUDA_CHECK(cudaMemcpyAsync(d_region_pool_, h_region_stage_, bytes,
+                               cudaMemcpyHostToDevice, s));
+    CUDA_CHECK(cudaMemcpyAsync(d_region_slot_, h_region_slot_.data(),
+                               (long long)n_regions_ * sizeof(int),
+                               cudaMemcpyHostToDevice, s));
+    stat_region_reqs_ += region_ids.size();
+    stat_bytes_h2d_ += bytes;
+    return bytes;
 }
 
 static inline float l2sq(const float* a, const float* b, int d)
@@ -1227,13 +1077,9 @@ void HBlockIndex::alloc_workspace()
     // between pair sorting and the region-wave planner.
     CUDA_CHECK(cudaMallocHost(&ws_.h_pair_leaf_sorted, (long long)max_pairs*sizeof(int)));
 
-    // Per-block exact results: [max_pairs × klocal_] (no global gather buffer needed)
-    FD(d_pq_candidate_ids);FD(d_pq_candidate_pos);
+    // Per-block exact results: [max_pairs × klocal_]. The fused staged
+    // kernel keeps PQ candidates inside one block and emits only exact top-k.
     FD(d_out_dists);FD(d_out_ids);
-    CUDA_CHECK(cudaMalloc(&ws_.d_pq_candidate_ids,
-                          (long long)max_pairs*per_block_r_*sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&ws_.d_pq_candidate_pos,
-                          (long long)max_pairs*per_block_r_*sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_out_dists,(long long)max_pairs*klocal_*sizeof(float)));
     CUDA_CHECK(cudaMalloc(&ws_.d_out_ids,  (long long)max_pairs*klocal_*sizeof(int)));
 
@@ -1317,14 +1163,13 @@ void HBlockIndex::search(const int8_t* h_q, int nq, int k,
 
     using Clock=std::chrono::high_resolution_clock;
     double ms_route=0,ms_trav=0,ms_pairs=0,ms_plan=0;
-    double ms_pq_submit=0,ms_exact_submit=0,ms_merge=0,ms_d2h=0;
+    double ms_leaf_submit=0,ms_merge=0,ms_d2h=0;
     long long stat_visited=0, stat_pairs=0;
-    long long stat_code_waves=0, stat_raw_waves=0;
+    long long stat_waves=0;
     cudaStream_t s=ws_.stream;
 
-    stat_code_bytes_h2d_ = 0; stat_raw_bytes_h2d_ = 0;
-    stat_code_region_reqs_ = 0; stat_code_region_unique_ = 0;
-    stat_raw_region_reqs_ = 0; stat_raw_region_unique_ = 0;
+    stat_bytes_h2d_ = 0;
+    stat_region_reqs_ = 0;
 
     std::vector<float> h_q_cast((long long)batch_size_ * d_);   // reused int8->float scratch for routing
 
@@ -1388,56 +1233,32 @@ void HBlockIndex::search(const int8_t* h_q, int nq, int k,
                                    (long long)n_pairs*sizeof(int),
                                    cudaMemcpyDeviceToHost, s));
         CUDA_CHECK(cudaStreamSynchronize(s));
-        const auto code_waves = build_region_waves(
+        const auto waves = build_region_waves(
             ws_.h_pair_leaf_sorted, n_pairs,
-            h_block_code_region_, gpu_code_region_cap_);
-        const auto raw_waves = build_region_waves(
-            ws_.h_pair_leaf_sorted, n_pairs,
-            h_block_raw_region_, gpu_raw_region_cap_);
-        stat_code_waves += code_waves.size();
-        stat_raw_waves += raw_waves.size();
+            h_block_region_, gpu_region_cap_);
+        stat_waves += waves.size();
         ms_plan+=Ms(Clock::now()-t3b).count();
 
-        // Phase A: each code wave fits in the bounded code pool. Outputs are
-        // written at their original sorted-pair offsets.
+        // Every wave runs the same fused per-block operation as v38. Region
+        // capacity changes only how many launches are needed; all outputs are
+        // written to their original sorted-pair slots for one final merge.
         auto t4=Clock::now();
-        for (const RegionWave& wave : code_waves) {
-            fetch_code_regions(wave.regions);
+        for (const RegionWave& wave : waves) {
+            stage_regions(wave.regions);
             const int begin = wave.pair_begin;
             const int count = wave.pair_end - begin;
-            launch_leaf_pq_topk_v41(
+            launch_leaf_fused_v41(
                 ws_.d_pair_leaf_b + begin, ws_.d_pair_qid_b + begin,
-                d_code_region_pool_, d_code_region_slot_,
-                d_block_code_region_, d_block_code_offset_,
+                d_region_pool_, d_region_slot_,
+                d_block_region_, d_block_offset_,
                 d_leaf_sizes_, ws_.d_lut_fine,
-                ws_.d_pq_candidate_ids + (long long)begin*per_block_r_,
-                ws_.d_pq_candidate_pos + (long long)begin*per_block_r_,
-                region_bytes_, count,
-                d_, Kr_, Br_, bpv_, leaf_size_, per_block_r_, s);
-        }
-        ms_pq_submit+=Ms(Clock::now()-t4).count();
-
-        // Phase B: only blocks that produced PQ candidates need raw payload.
-        // A candidate's local position was emitted by Phase A, so no
-        // ntotal-sized id-to-position table is resident on the GPU.
-        auto t4b=Clock::now();
-        for (const RegionWave& wave : raw_waves) {
-            fetch_raw_regions(wave.regions);
-            const int begin = wave.pair_begin;
-            const int count = wave.pair_end - begin;
-            launch_leaf_exact_v41(
-                ws_.d_pair_leaf_b + begin, ws_.d_pair_qid_b + begin,
-                ws_.d_pq_candidate_ids + (long long)begin*per_block_r_,
-                ws_.d_pq_candidate_pos + (long long)begin*per_block_r_,
-                d_raw_region_pool_, d_raw_region_slot_,
-                d_block_raw_region_, d_block_raw_offset_,
                 ws_.d_q_batch_i8,
                 ws_.d_out_dists + (long long)begin*klocal_,
                 ws_.d_out_ids + (long long)begin*klocal_,
                 region_bytes_, count,
-                d_, leaf_size_, per_block_r_, klocal_, s);
+                d_, Kr_, Br_, bpv_, leaf_size_, per_block_r_, klocal_, s);
         }
-        ms_exact_submit+=Ms(Clock::now()-t4b).count();
+        ms_leaf_submit+=Ms(Clock::now()-t4).count();
 
         // Merge per-block exact results -> global top-k
         auto t5=Clock::now();
@@ -1457,17 +1278,15 @@ void HBlockIndex::search(const int8_t* h_q, int nq, int k,
     }
 
     printf("  [v41] Route=%.2f Traverse=%.2f Pairs=%.2f RegionPlan=%.2f "
-           "PQSubmit=%.2f ExactSubmit=%.2f Merge=%.2f D2H+Sync=%.2f ms\n",
-           ms_route,ms_trav,ms_pairs,ms_plan,ms_pq_submit,ms_exact_submit,
-           ms_merge,ms_d2h);
+           "FusedLeafSubmit=%.2f Merge=%.2f D2H+Sync=%.2f ms\n",
+           ms_route,ms_trav,ms_pairs,ms_plan,ms_leaf_submit,ms_merge,ms_d2h);
     printf("  [v41 stats] avg_visited=%.1f  avg_pairs=%.1f  (over %d queries)\n",
            (double)stat_visited/nq, (double)stat_pairs/nq, nq);
-    printf("  [v41 region] code: %lld waves, %lld req -> %lld uniq, %.2f MB H2D | "
-           "raw: %lld waves, %lld req -> %lld uniq, %.2f MB H2D\n",
-           stat_code_waves,
-           stat_code_region_reqs_, stat_code_region_unique_, (double)stat_code_bytes_h2d_/1e6,
-           stat_raw_waves,
-           stat_raw_region_reqs_,  stat_raw_region_unique_,  (double)stat_raw_bytes_h2d_/1e6);
+    printf("  [v41 region] %lld waves, %lld staged regions, %.2f MB H2D, "
+           "%.1f pairs/region, %.1f KB/query\n",
+           stat_waves, stat_region_reqs_, (double)stat_bytes_h2d_/1e6,
+           stat_region_reqs_ ? (double)stat_pairs/stat_region_reqs_ : 0.0,
+           (double)stat_bytes_h2d_/nq/1e3);
 }
 
 HBlockIndex::RoutingDiag HBlockIndex::diagnose_missed_gt(

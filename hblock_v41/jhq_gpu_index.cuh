@@ -2,7 +2,6 @@
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include <cstdint>
-#include <list>
 #include <vector>
 
 #include "hblock_v41/search.cuh"
@@ -11,9 +10,8 @@
 
 namespace hblock_v41 {
 
-// HBlock v41: v40's split PQ/exact search with block-major logical regions,
-// bounded GPU pools, and region-fitting waves. Tree/graph metadata remains
-// resident; code and raw payload sizes no longer determine GPU residency.
+// HBlock v41: v38 search semantics with block-major logical regions and a
+// bounded GPU staging pool. Region waves change addresses, not candidates.
 // ef maps internally to (graph_depth=ef, beam_size=ef, no cap).
 // Routing fixed: ck1=2, ck2=2, ck3=4.
 class HBlockIndex {
@@ -45,8 +43,7 @@ public:
 
         // ── v41: logical region partitioning ────────────────────────────
         int region_bytes        = 1 << 20;  // 1 MiB logical region size (partition granularity)
-        int gpu_code_region_cap = 512;       // max resident code regions in the GPU pool
-        int gpu_raw_region_cap  = 512;       // max resident raw regions in the GPU pool
+        int gpu_region_cap      = 512;       // maximum regions staged in one wave
     };
 
     // Diagnostics returned by diagnose_missed_gt(): routing-level metrics
@@ -153,70 +150,37 @@ private:
     float* d_blk_proj_gpu_   = nullptr;
     float* d_blk_norm_gpu_   = nullptr;
 
-    // ── v41: logical region partitioning + bounded GPU region pool ───────
-    // Design invariant: navigation metadata above stays permanently
-    // GPU-resident; PQ codes + vector ids ("code" payload) and raw int8
-    // vectors ("raw" payload) do not. add() packs both into block-major
-    // logical regions of ~region_bytes_ each; search() plans + stages only
-    // the regions a batch actually needs into a capacity-bounded GPU pool.
-    int region_bytes_        = 0;
-    int gpu_code_region_cap_ = 0;
-    int gpu_raw_region_cap_  = 0;
-    int n_code_regions_      = 0;
-    int n_raw_regions_       = 0;
+    // ── v41: complete block records in logical regions ──────────────────
+    // Record layout: [PQ codes | vector ids | raw int8 vectors].
+    int region_bytes_       = 0;
+    int gpu_region_cap_     = 0;
+    int n_regions_          = 0;
+    int block_record_bytes_ = 0;
+    int block_ids_offset_   = 0;
+    int block_raw_offset_   = 0;
 
     // block_id -> region placement (built once in build_region_layout(),
     // called from add() after leaf packing). Host copies drive fetch
     // planning; device copies let the leaf kernel resolve addresses through
     // the pool without any host round-trip per query.
-    std::vector<int> h_block_code_region_;   // [n_leaf_blocks_]
-    std::vector<int> h_block_code_offset_;   // [n_leaf_blocks_] byte offset of (codes+ids) within its region
-    std::vector<int> h_block_raw_region_;    // [n_leaf_blocks_]
-    std::vector<int> h_block_raw_offset_;    // [n_leaf_blocks_] byte offset of raw vectors within its region
-    int* d_block_code_region_ = nullptr;
-    int* d_block_code_offset_ = nullptr;
-    int* d_block_raw_region_  = nullptr;
-    int* d_block_raw_offset_  = nullptr;
+    std::vector<int> h_block_region_;
+    std::vector<int> h_block_offset_;
+    int* d_block_region_ = nullptr;
+    int* d_block_offset_ = nullptr;
 
     // Host-resident region stores. They bound GPU memory, but are not yet
     // mmap-backed; a later version can replace these vectors without changing
     // device addressing or the wave planner.
-    std::vector<uint8_t> h_code_region_store_;  // n_code_regions_ * region_bytes_
-    std::vector<uint8_t> h_raw_region_store_;   // n_raw_regions_  * region_bytes_
+    std::vector<uint8_t> h_region_store_;
 
-    // Bounded GPU region pool + indirection (region_id -> pool slot,
-    // -1 = not resident). Capacity is deliberately bounded below what would
-    // fit the whole store, so the fetch/evict path is always exercised
-    // rather than degenerating into "everything is resident anyway".
-    uint8_t* d_code_region_pool_ = nullptr;   // [gpu_code_region_cap_ * region_bytes_]
-    uint8_t* d_raw_region_pool_  = nullptr;   // [gpu_raw_region_cap_  * region_bytes_]
-    // Mutable: fetch_code_regions()/fetch_raw_regions() update this
-    // bookkeeping from search() (const, matching the existing public
-    // interface) — same rationale as ws_ below, this is cache state, not
-    // index identity.
-    mutable std::vector<int> h_code_region_slot_;     // [n_code_regions_], -1 or pool slot idx
-    mutable std::vector<int> h_raw_region_slot_;      // [n_raw_regions_]
-    int* d_code_region_slot_ = nullptr;
-    int* d_raw_region_slot_  = nullptr;
-    mutable std::vector<int> code_pool_region_of_slot_;  // [gpu_code_region_cap_], -1 or resident region id
-    mutable std::vector<int> raw_pool_region_of_slot_;   // [gpu_raw_region_cap_]
-    std::vector<int> code_slot_values_;                  // immutable [0, cap)
-    std::vector<int> raw_slot_values_;                   // immutable [0, cap)
-    // std::list (not vector) so move-to-front / evict-tail are O(1) once
-    // the node is found; find is a linear scan but capacity is small
-    // (hundreds of regions), not the 1B-scale block/region count.
-    mutable std::list<int> code_lru_;               // resident code region ids, most-recently-used first
-    mutable std::list<int> raw_lru_;                // resident raw region ids, most-recently-used first
-    // region_id -> iterator into code_lru_/raw_lru_, for O(1) erase on hit
-    // instead of a linear std::find over the LRU list.
-    mutable std::vector<std::list<int>::iterator> code_lru_pos_;  // [n_code_regions_]
-    mutable std::vector<std::list<int>::iterator> raw_lru_pos_;   // [n_raw_regions_]
+    uint8_t* d_region_pool_ = nullptr;
+    int* d_region_slot_ = nullptr;
+    uint8_t* h_region_stage_ = nullptr;
+    mutable std::vector<int> h_region_slot_;
+    mutable std::vector<int> staged_regions_;
 
-    // Running transfer counters (reset per search() call) for reporting.
-    mutable long long stat_code_bytes_h2d_ = 0;
-    mutable long long stat_raw_bytes_h2d_  = 0;
-    mutable long long stat_code_region_reqs_ = 0, stat_code_region_unique_ = 0;
-    mutable long long stat_raw_region_reqs_  = 0, stat_raw_region_unique_  = 0;
+    mutable long long stat_bytes_h2d_ = 0;
+    mutable long long stat_region_reqs_ = 0;
 
     // Packs PQ codes+ids and raw vectors into block-major logical regions
     // (host-resident stores) and allocates the bounded GPU pool + slot
@@ -229,12 +193,8 @@ private:
                               const std::vector<int8_t>& h_raw_all,
                               int total_blocks);
 
-    // Ensures every region in `needed` is resident in the GPU pool
-    // (LRU-evicting as needed) and up to date in the slot indirection
-    // table. Returns bytes actually copied H2D (0 if already resident) —
-    // an real transfer count, not an estimate.
-    long long fetch_code_regions(const std::vector<int>& needed_region_ids) const;
-    long long fetch_raw_regions (const std::vector<int>& needed_region_ids) const;
+    // Replaces the staging pool contents with one immutable region wave.
+    long long stage_regions(const std::vector<int>& region_ids) const;
 
     mutable SearchWorkspace ws_;
     mutable cublasHandle_t  cublas_;

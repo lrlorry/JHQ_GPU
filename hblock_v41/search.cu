@@ -1,7 +1,6 @@
 // hblock_v41/search.cu
-// v41 keeps v40 routing and candidate semantics, but separates the
-// region-indirected PQ and exact-L2 stages so each payload can be streamed in
-// independent bounded waves. No PRR or certified bounds are used.
+// v41 keeps v38 routing and fused leaf semantics while resolving complete
+// block records through a bounded, wave-streamed region pool.
 #include "hblock_v41/search.cuh"
 #include "hblock_v27/search.cuh"   // for gpu_build_block_adj_v27
 #include "common/cuda_utils.cuh"
@@ -517,149 +516,21 @@ void gpu_build_and_sort_pairs_v29(
         n_pairs, 0, end_bit, s));
 }
 
-// ── v41 split region kernels ─────────────────────────────────────────────────────────────
+// ── v41 fused region kernel: v38 semantics with region-indirected records ────
 
-__global__ void leaf_pq_topk_kernel_v41(
+__global__ void leaf_fused_kernel_v41(
     const int*     __restrict__ d_pair_leaf_ids,
     const int*     __restrict__ d_pair_qids,
-    const uint8_t* __restrict__ d_code_region_pool,
-    const int*     __restrict__ d_code_region_slot,
-    const int*     __restrict__ d_block_code_region,
-    const int*     __restrict__ d_block_code_offset,
+    const uint8_t* __restrict__ d_region_pool,
+    const int*     __restrict__ d_region_slot,
+    const int*     __restrict__ d_block_region,
+    const int*     __restrict__ d_block_offset,
     const int*     __restrict__ leaf_sizes,
     const float*   __restrict__ lut_fine,
-    int* d_candidate_ids, int* d_candidate_pos,
-    int region_bytes,
-    int d, int Kr, int Br, int bpv, int leaf_size, int per_block_r)
-{
-    const float INF = __int_as_float(0x7F800000);
-    constexpr unsigned FULL = 0xffffffff;
-    const int pi   = blockIdx.x;
-    const int tid  = threadIdx.x;
-    const int lane = tid & 31;
-    const int n_warps = leaf_size >> 5;
-
-    const int leaf_blk = d_pair_leaf_ids[pi];
-    const int qid      = d_pair_qids[pi];
-    const int n_vecs   = leaf_sizes[leaf_blk];
-
-    const int code_region = d_block_code_region[leaf_blk];
-    const int code_slot   = d_code_region_slot[code_region];
-    if (code_slot < 0) {
-        if (tid < per_block_r) {
-            d_candidate_ids[(long long)pi * per_block_r + tid] = -1;
-            d_candidate_pos[(long long)pi * per_block_r + tid] = -1;
-        }
-        return;
-    }
-    const uint8_t* leaf_base = d_code_region_pool
-        + (long long)code_slot * region_bytes
-        + d_block_code_offset[leaf_blk];
-    const int* leaf_ids_data = (const int*)(leaf_base + align4((size_t)bpv * leaf_size));
-
-    const float* my_lut = lut_fine + (long long)qid * d * Kr;
-
-    float my_dist = INF;
-    int my_id = -1, my_pos = -1;
-    if (tid < n_vecs) {
-        my_dist = 0.f;
-        if (Br == 4) {
-            for (int b = 0; b < bpv; ++b) {
-                uint8_t c = __ldg(&leaf_base[b * leaf_size + tid]);
-                int j0 = b * 2;
-                my_dist += __ldg(&my_lut[ j0      * Kr + (c & 0x0F)]);
-                my_dist += __ldg(&my_lut[(j0 + 1) * Kr + (c >> 4  )]);
-            }
-        } else {
-            for (int b = 0; b < bpv; ++b) {
-                uint8_t c = __ldg(&leaf_base[b * leaf_size + tid]);
-                my_dist += __ldg(&my_lut[b * Kr + c]);
-            }
-        }
-        my_id = __ldg(&leaf_ids_data[tid]);
-        my_pos = tid;
-    }
-
-    for (int k = 2; k <= 32; k <<= 1) {
-        bool asc = ((lane & k) == 0);
-        for (int j = k >> 1; j > 0; j >>= 1) {
-            float od = __shfl_xor_sync(FULL, my_dist, j);
-            int   oi = __shfl_xor_sync(FULL, my_id,   j);
-            int   op = __shfl_xor_sync(FULL, my_pos,  j);
-            bool lower    = ((lane & j) == 0);
-            bool want_min = (asc == lower);
-            bool swap     = want_min ? (my_dist > od) : (my_dist < od);
-            if (swap) { my_dist = od; my_id = oi; my_pos = op; }
-        }
-    }
-
-    extern __shared__ char shm[];
-    float* s_dist = reinterpret_cast<float*>(shm);
-    int* s_id = reinterpret_cast<int*>(s_dist + leaf_size);
-    int* s_pos = s_id + leaf_size;
-
-    s_dist[tid] = my_dist;
-    s_id  [tid] = my_id;
-    s_pos [tid] = my_pos;
-    __syncthreads();
-
-    if (tid == 0) {
-        int ptrs[4] = {0, 32, 64, 96};
-        int actual_r = (per_block_r < n_vecs) ? per_block_r : n_vecs;
-        for (int r = 0; r < actual_r; r++) {
-            float best_d = INF; int best_w = -1;
-            for (int w = 0; w < n_warps; w++) {
-                int p = ptrs[w];
-                if (p < (w+1)*32 && s_dist[p] < best_d) { best_d = s_dist[p]; best_w = w; }
-            }
-            const int src = best_w >= 0 ? ptrs[best_w] : -1;
-            d_candidate_ids[(long long)pi * per_block_r + r] =
-                (src >= 0 && best_d < INF) ? s_id[src] : -1;
-            d_candidate_pos[(long long)pi * per_block_r + r] =
-                (src >= 0 && best_d < INF) ? s_pos[src] : -1;
-            if (best_w >= 0) ptrs[best_w]++;
-        }
-        for (int r = actual_r; r < per_block_r; r++) {
-            d_candidate_ids[(long long)pi * per_block_r + r] = -1;
-            d_candidate_pos[(long long)pi * per_block_r + r] = -1;
-        }
-    }
-}
-
-void launch_leaf_pq_topk_v41(
-    const int* d_pair_leaf_ids, const int* d_pair_qids,
-    const uint8_t* d_code_region_pool, const int* d_code_region_slot,
-    const int* d_block_code_region, const int* d_block_code_offset,
-    const int* d_leaf_sizes, const float* d_lut_fine,
-    int* d_candidate_ids, int* d_candidate_pos,
-    int region_bytes, int n_pairs,
-    int d, int Kr, int Br, int bpv, int leaf_size, int per_block_r,
-    cudaStream_t stream)
-{
-    const size_t smem = (size_t)leaf_size *
-                        (sizeof(float) + 2 * sizeof(int));
-    leaf_pq_topk_kernel_v41<<<n_pairs, leaf_size, (int)smem, stream>>>(
-        d_pair_leaf_ids, d_pair_qids,
-        d_code_region_pool, d_code_region_slot,
-        d_block_code_region, d_block_code_offset,
-        d_leaf_sizes, d_lut_fine,
-        d_candidate_ids, d_candidate_pos,
-        region_bytes, d, Kr, Br, bpv, leaf_size, per_block_r);
-    CUDA_CHECK(cudaGetLastError());
-}
-
-__global__ void leaf_exact_kernel_v41(
-    const int*     __restrict__ d_pair_leaf_ids,
-    const int*     __restrict__ d_pair_qids,
-    const int*     __restrict__ d_candidate_ids,
-    const int*     __restrict__ d_candidate_pos,
-    const uint8_t* __restrict__ d_raw_region_pool,
-    const int*     __restrict__ d_raw_region_slot,
-    const int*     __restrict__ d_block_raw_region,
-    const int*     __restrict__ d_block_raw_offset,
     const int8_t*  __restrict__ d_q_batch_i8,
     float* d_out_dists, int* d_out_ids,
-    int region_bytes, int d, int per_block_r, int klocal)
+    int region_bytes, int d, int Kr, int Br, int bpv,
+    int leaf_size, int per_block_r, int klocal)
 {
     const float INF = __int_as_float(0x7F800000);
     constexpr unsigned FULL = 0xffffffff;
@@ -667,12 +538,14 @@ __global__ void leaf_exact_kernel_v41(
     const int tid = threadIdx.x;
     const int lane = tid & 31;
     const int wid = tid >> 5;
+    const int n_warps = leaf_size >> 5;
+
     const int leaf_blk = d_pair_leaf_ids[pi];
     const int qid = d_pair_qids[pi];
-    const int raw_region = d_block_raw_region[leaf_blk];
-    const int raw_slot = d_raw_region_slot[raw_region];
-
-    if (raw_slot < 0) {
+    const int n_vecs = leaf_sizes[leaf_blk];
+    const int region = d_block_region[leaf_blk];
+    const int region_slot = d_region_slot[region];
+    if (region_slot < 0) {
         if (tid < klocal) {
             d_out_dists[(long long)pi * klocal + tid] = INF;
             d_out_ids[(long long)pi * klocal + tid] = -1;
@@ -680,29 +553,106 @@ __global__ void leaf_exact_kernel_v41(
         return;
     }
 
-    const int8_t* raw_blk_base = reinterpret_cast<const int8_t*>(
-        d_raw_region_pool + (long long)raw_slot * region_bytes +
-        d_block_raw_offset[leaf_blk]);
+    const uint8_t* record = d_region_pool
+        + (long long)region_slot * region_bytes + d_block_offset[leaf_blk];
+    const size_t code_bytes = (size_t)bpv * leaf_size;
+    const size_t ids_offset = align4(code_bytes);
+    const size_t raw_offset = ids_offset + (size_t)leaf_size * sizeof(int);
+    const int* leaf_ids = reinterpret_cast<const int*>(record + ids_offset);
+    const int8_t* raw_base = reinterpret_cast<const int8_t*>(record + raw_offset);
+    const float* my_lut = lut_fine + (long long)qid * d * Kr;
+
+    float my_dist = INF;
+    int my_id = -1;
+    int my_pos = -1;
+    if (tid < n_vecs) {
+        my_dist = 0.f;
+        if (Br == 4) {
+            for (int b = 0; b < bpv; ++b) {
+                const uint8_t c = __ldg(&record[b * leaf_size + tid]);
+                const int j0 = b * 2;
+                my_dist += __ldg(&my_lut[j0 * Kr + (c & 0x0F)]);
+                my_dist += __ldg(&my_lut[(j0 + 1) * Kr + (c >> 4)]);
+            }
+        } else {
+            for (int b = 0; b < bpv; ++b) {
+                const uint8_t c = __ldg(&record[b * leaf_size + tid]);
+                my_dist += __ldg(&my_lut[b * Kr + c]);
+            }
+        }
+        my_id = __ldg(&leaf_ids[tid]);
+        my_pos = tid;
+    }
+
+    for (int k = 2; k <= 32; k <<= 1) {
+        const bool asc = ((lane & k) == 0);
+        for (int j = k >> 1; j > 0; j >>= 1) {
+            const float od = __shfl_xor_sync(FULL, my_dist, j);
+            const int oi = __shfl_xor_sync(FULL, my_id, j);
+            const int op = __shfl_xor_sync(FULL, my_pos, j);
+            const bool lower = ((lane & j) == 0);
+            const bool want_min = (asc == lower);
+            const bool swap = want_min ? (my_dist > od) : (my_dist < od);
+            if (swap) { my_dist = od; my_id = oi; my_pos = op; }
+        }
+    }
 
     extern __shared__ char shm[];
     size_t off = 0;
+    float* s_dist = reinterpret_cast<float*>(shm + off);
+    off += (size_t)leaf_size * sizeof(float);
+    int* s_id = reinterpret_cast<int*>(shm + off);
+    off += (size_t)leaf_size * sizeof(int);
+    int* s_pos = reinterpret_cast<int*>(shm + off);
+    off += (size_t)leaf_size * sizeof(int);
     int8_t* s_query = reinterpret_cast<int8_t*>(shm + off);
-    off += (size_t)d * sizeof(int8_t);
+    off += (size_t)d;
     off = align4(off);
     int* s_wsum = reinterpret_cast<int*>(shm + off);
     off += 4 * sizeof(int);
+    int* s_sel_id = reinterpret_cast<int*>(shm + off);
+    off += (size_t)per_block_r * sizeof(int);
+    int* s_sel_pos = reinterpret_cast<int*>(shm + off);
+    off += (size_t)per_block_r * sizeof(int);
     float* s_exact = reinterpret_cast<float*>(shm + off);
 
+    s_dist[tid] = my_dist;
+    s_id[tid] = my_id;
+    s_pos[tid] = my_pos;
     const int8_t* q_ptr = d_q_batch_i8 + (long long)qid * d;
     for (int j = tid; j < d; j += blockDim.x) s_query[j] = q_ptr[j];
     __syncthreads();
 
+    if (tid == 0) {
+        int ptrs[4] = {0, 32, 64, 96};
+        const int actual_r = min(per_block_r, n_vecs);
+        for (int r = 0; r < actual_r; ++r) {
+            float best_d = INF;
+            int best_w = -1;
+            for (int w = 0; w < n_warps; ++w) {
+                const int p = ptrs[w];
+                if (p < (w + 1) * 32 && s_dist[p] < best_d) {
+                    best_d = s_dist[p]; best_w = w;
+                }
+            }
+            const int src = best_w >= 0 ? ptrs[best_w] : -1;
+            s_sel_id[r] = src >= 0 ? s_id[src] : -1;
+            s_sel_pos[r] = src >= 0 ? s_pos[src] : -1;
+            if (best_w >= 0) ++ptrs[best_w];
+        }
+        for (int r = actual_r; r < per_block_r; ++r) {
+            s_sel_id[r] = -1;
+            s_sel_pos[r] = -1;
+        }
+    }
+    __syncthreads();
+
     for (int r = 0; r < per_block_r; ++r) {
-        const int cand_id = d_candidate_ids[(long long)pi * per_block_r + r];
-        const int local_pos = d_candidate_pos[(long long)pi * per_block_r + r];
+        const int cand_id = s_sel_id[r];
+        const int local_pos = s_sel_pos[r];
         int partial = 0;
         if (cand_id >= 0 && local_pos >= 0) {
-            const int8_t* vec = raw_blk_base + (long long)local_pos * d;
+            const int8_t* vec = raw_base + (long long)local_pos * d;
             for (int j = tid; j < d; j += blockDim.x) {
                 const int diff = (int)s_query[j] - (int)vec[j];
                 partial += diff * diff;
@@ -714,58 +664,58 @@ __global__ void leaf_exact_kernel_v41(
         if (lane == 0) s_wsum[wid] = partial;
         __syncthreads();
         if (tid == 0) {
-            const int total = s_wsum[0] + s_wsum[1] +
-                              s_wsum[2] + s_wsum[3];
-            s_exact[r] = (cand_id >= 0 && local_pos >= 0) ?
-                         (float)total : INF;
+            const int total = s_wsum[0] + s_wsum[1] + s_wsum[2] + s_wsum[3];
+            s_exact[r] = cand_id >= 0 ? (float)total : INF;
         }
     }
     __syncthreads();
 
     if (tid == 0) {
-        long long out_base = (long long)pi * klocal;
-        for (int r = 0; r < klocal; r++) { d_out_dists[out_base+r] = INF; d_out_ids[out_base+r] = -1; }
+        const long long out_base = (long long)pi * klocal;
+        for (int r = 0; r < klocal; ++r) {
+            d_out_dists[out_base + r] = INF;
+            d_out_ids[out_base + r] = -1;
+        }
         bool used[32] = {};
-        for (int slot = 0; slot < klocal; slot++) {
-            float best = INF; int bi = -1;
-            for (int r = 0; r < per_block_r; r++) {
-                const int cand_id =
-                    d_candidate_ids[(long long)pi * per_block_r + r];
-                if (!used[r] && cand_id >= 0 && s_exact[r] < best) {
-                    best = s_exact[r]; bi = r;
+        for (int out = 0; out < klocal; ++out) {
+            float best = INF;
+            int best_r = -1;
+            for (int r = 0; r < per_block_r; ++r) {
+                if (!used[r] && s_sel_id[r] >= 0 && s_exact[r] < best) {
+                    best = s_exact[r]; best_r = r;
                 }
             }
-            if (bi >= 0) {
-                d_out_dists[out_base + slot] = best;
-                d_out_ids[out_base + slot] =
-                    d_candidate_ids[(long long)pi * per_block_r + bi];
-                used[bi] = true;
+            if (best_r >= 0) {
+                d_out_dists[out_base + out] = best;
+                d_out_ids[out_base + out] = s_sel_id[best_r];
+                used[best_r] = true;
             }
         }
     }
 }
 
-void launch_leaf_exact_v41(
+void launch_leaf_fused_v41(
     const int* d_pair_leaf_ids, const int* d_pair_qids,
-    const int* d_candidate_ids, const int* d_candidate_pos,
-    const uint8_t* d_raw_region_pool, const int* d_raw_region_slot,
-    const int* d_block_raw_region, const int* d_block_raw_offset,
+    const uint8_t* d_region_pool, const int* d_region_slot,
+    const int* d_block_region, const int* d_block_offset,
+    const int* d_leaf_sizes, const float* d_lut_fine,
     const int8_t* d_q_batch_i8,
     float* d_out_dists, int* d_out_ids,
     int region_bytes, int n_pairs,
-    int d, int leaf_size, int per_block_r, int klocal,
-    cudaStream_t stream)
+    int d, int Kr, int Br, int bpv, int leaf_size,
+    int per_block_r, int klocal, cudaStream_t stream)
 {
-    size_t smem = (size_t)d * sizeof(int8_t);
+    size_t smem = (size_t)leaf_size * (sizeof(float) + 2 * sizeof(int))
+                + (size_t)d;
     smem = align4(smem);
-    smem += 4 * sizeof(int) + (size_t)per_block_r * sizeof(float);
-    leaf_exact_kernel_v41<<<n_pairs, leaf_size, (int)smem, stream>>>(
+    smem += 4 * sizeof(int)
+          + (size_t)per_block_r * (2 * sizeof(int) + sizeof(float));
+    leaf_fused_kernel_v41<<<n_pairs, leaf_size, (int)smem, stream>>>(
         d_pair_leaf_ids, d_pair_qids,
-        d_candidate_ids, d_candidate_pos,
-        d_raw_region_pool, d_raw_region_slot, d_block_raw_region, d_block_raw_offset,
-        d_q_batch_i8,
+        d_region_pool, d_region_slot, d_block_region, d_block_offset,
+        d_leaf_sizes, d_lut_fine, d_q_batch_i8,
         d_out_dists, d_out_ids,
-        region_bytes, d, per_block_r, klocal);
+        region_bytes, d, Kr, Br, bpv, leaf_size, per_block_r, klocal);
     CUDA_CHECK(cudaGetLastError());
 }
 

@@ -1,4 +1,4 @@
-// SIFT/BIGANN entry point for v41's bounded, wave-based code/raw region pools.
+// SIFT/BIGANN entry point for v41's bounded unified-region staging pool.
 #include "hblock_v41/jhq_gpu_index.cuh"
 #include "common/fvecs_io.cuh"
 
@@ -35,8 +35,8 @@ int main(int argc, char** argv)
             "Usage: %s <base.bvecs> <query.bvecs> <gt.ivecs>\n"
             "         [nbase=-1] [max_ef=256] [K1=16] [K2=16] [K3=16]\n"
             "         [graph_degree=32] [entry_per_cell=4] [d_proj=64]\n"
-            "         [per_block_r=16] [batch=1024] [reps=3]\n"
-            "         [region_bytes_mib=1] [gpu_code_region_cap=256] [gpu_raw_region_cap=256]\n"
+            "         [per_block_r=16] [batch=10000] [reps=1]\n"
+            "         [region_bytes_mib=1] [gpu_region_cap=512]\n"
             "         [csv=]\n"
             "\n"
             "The capacities bound GPU payload memory. Larger working sets are split into\n"
@@ -72,12 +72,11 @@ int main(int argc, char** argv)
     const int entry_per_cell = (argc > 10) ? std::atoi(argv[10]) : 4;
     const int d_proj = (argc > 11) ? std::atoi(argv[11]) : 64;
     const int per_block_r = (argc > 12) ? std::atoi(argv[12]) : 16;
-    const int batch = (argc > 13) ? std::atoi(argv[13]) : 1024;
-    const int reps = (argc > 14) ? std::atoi(argv[14]) : 3;
+    const int batch = (argc > 13) ? std::atoi(argv[13]) : 10000;
+    const int reps = (argc > 14) ? std::atoi(argv[14]) : 1;
     const int region_mib = (argc > 15) ? std::atoi(argv[15]) : 1;
-    const int code_cap   = (argc > 16) ? std::atoi(argv[16]) : 256;
-    const int raw_cap    = (argc > 17) ? std::atoi(argv[17]) : 256;
-    const char* csv_path = (argc > 18) ? argv[18] : nullptr;
+    const int region_cap = (argc > 16) ? std::atoi(argv[16]) : 512;
+    const char* csv_path = (argc > 17) ? argv[17] : nullptr;
     const int k = 10;
 
     std::vector<int> gt;
@@ -106,10 +105,10 @@ int main(int argc, char** argv)
                 nbase, base_reader.dim, nq, query_reader.dim, ngt, gt_k);
     std::printf("max_ef=%d K1=%d K2=%d K3=%d degree=%d entry_per_cell=%d\n"
                 "  d_proj=%d per_block_r=%d batch=%d reps=%d\n"
-                "  region_bytes=%dMiB gpu_code_region_cap=%d gpu_raw_region_cap=%d\n",
+                "  region_bytes=%dMiB gpu_region_cap=%d\n",
                 max_ef, K1, K2, K3, degree, entry_per_cell,
                 d_proj, per_block_r, batch, reps,
-                region_mib, code_cap, raw_cap);
+                region_mib, region_cap);
 
     hblock_v41::HBlockIndex::Params p;
     p.K1=K1; p.K2=K2; p.K3=K3;
@@ -120,8 +119,7 @@ int main(int argc, char** argv)
     p.per_block_r=per_block_r;
     p.batch_size=batch;
     p.region_bytes = region_mib * (1 << 20);
-    p.gpu_code_region_cap = code_cap;
-    p.gpu_raw_region_cap  = raw_cap;
+    p.gpu_region_cap = region_cap;
 
     hblock_v41::HBlockIndex index(base_reader.dim, p);
 
@@ -145,7 +143,9 @@ int main(int argc, char** argv)
 
     // Warmup: first search() incurs CUDA/cuBLAS init + first-touch region
     // fetch overhead; keep it out of timing.
-    index.search(query.data(), nq, k, distances.data(), ids.data(), efs.back());
+    const int warm_nq = std::min(nq, 1024);
+    index.search(query.data(), warm_nq, k,
+                 distances.data(), ids.data(), efs.back());
 
     FILE* csv = csv_path ? std::fopen(csv_path, "w") : nullptr;
     if (csv) std::fprintf(csv, "ef,recall@10,qps,latency_ms\n");
