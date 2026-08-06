@@ -283,6 +283,49 @@ target_link_libraries(demo_hblock_v37_prr PRIVATE jhq_hblock_v37_prr)
 add_executable(demo_hblock_v37_prr_seed_diag examples/demo_hblock_v37_prr_seed_diag.cu)
 target_link_libraries(demo_hblock_v37_prr_seed_diag PRIVATE jhq_hblock_v37_prr)
 
+# v39: SPACEV int8 streamed add() + logical region partitioning and a
+# bounded GPU region pool (leaf kernel resolves PQ codes/ids and raw
+# vectors through region_id -> pool-slot indirection instead of flat
+# resident arrays; fetch planning stages only the regions a batch touches).
+add_library(jhq_hblock_v39 STATIC
+    hblock_v39/search.cu
+    hblock_v39/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v39 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v39 PUBLIC
+    jhq_hblock_v27   # for gpu_build_block_adj_v27 and encode kernels
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v39 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --expt-extended-lambda --use_fast_math>)
+add_executable(demo_hblock_v39 examples/demo_hblock_v39.cu)
+target_link_libraries(demo_hblock_v39 PRIVATE jhq_hblock_v39)
+
+# Same jhq_hblock_v39 library, SIFT100M .bvecs entry point (add(BVecsReader&,
+# int) overload) -- for direct comparison against hblock_v40 on the same data.
+add_executable(demo_hblock_v39_sift100m examples/demo_hblock_v39_sift100m.cu)
+target_link_libraries(demo_hblock_v39_sift100m PRIVATE jhq_hblock_v39)
+
+# v40: SIFT bvecs baseline with split PQ selection and exact int8 rerank.
+# The explicit candidate-ID hand-off is the boundary used by later region I/O.
+add_library(jhq_hblock_v40 STATIC
+    hblock_v40/search.cu
+    hblock_v40/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v40 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v40 PUBLIC
+    jhq_hblock_v27
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v40 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --expt-extended-lambda --use_fast_math>)
+add_executable(demo_hblock_v40 examples/demo_hblock_v40.cu)
+target_link_libraries(demo_hblock_v40 PRIVATE jhq_hblock_v40)
+
 # v29: v28 + balanced k-means (each cluster ≤ 128 → cluster = block, clean centroid)
 add_library(jhq_hblock_v29 STATIC
     hblock_v29/search.cu
