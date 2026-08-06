@@ -362,6 +362,8 @@ target_compile_options(jhq_hblock_v41 PRIVATE
     $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --expt-extended-lambda --use_fast_math>)
 add_executable(demo_hblock_v41_sift100m examples/demo_hblock_v41_sift100m.cu)
 target_link_libraries(demo_hblock_v41_sift100m PRIVATE jhq_hblock_v41)
+add_executable(demo_hblock_v41_spacev examples/demo_hblock_v41_spacev.cu)
+target_link_libraries(demo_hblock_v41_spacev PRIVATE jhq_hblock_v41)
 
 # v29: v28 + balanced k-means (each cluster ≤ 128 → cluster = block, clean centroid)
 add_library(jhq_hblock_v29 STATIC
