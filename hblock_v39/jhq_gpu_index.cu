@@ -820,6 +820,9 @@ void HBlockIndex::build_region_layout(
 
     h_code_region_slot_.assign(n_code_regions_, -1);
     h_raw_region_slot_.assign(n_raw_regions_, -1);
+    code_region_last_call_.assign(n_code_regions_, -1);
+    raw_region_last_call_.assign(n_raw_regions_, -1);
+    call_id_ = 0;
     code_pool_region_of_slot_.assign(gpu_code_region_cap_, -1);
     raw_pool_region_of_slot_.assign(gpu_raw_region_cap_, -1);
     code_lru_.clear();
@@ -874,6 +877,11 @@ long long HBlockIndex::fetch_code_regions(const std::vector<int>& needed_region_
     cudaStream_t s = ws_.stream;
     for (int region : uniq) {
         if (region < 0 || region >= n_code_regions_) continue;
+
+        if (code_region_last_call_[region] != call_id_) {
+            code_region_last_call_[region] = call_id_;
+            stat_code_region_true_unique_++;
+        }
 
         if (h_code_region_slot_[region] >= 0) {
             code_lru_.erase(code_lru_pos_[region]);
@@ -934,6 +942,11 @@ long long HBlockIndex::fetch_raw_regions(const std::vector<int>& needed_region_i
     cudaStream_t s = ws_.stream;
     for (int region : uniq) {
         if (region < 0 || region >= n_raw_regions_) continue;
+
+        if (raw_region_last_call_[region] != call_id_) {
+            raw_region_last_call_[region] = call_id_;
+            stat_raw_region_true_unique_++;
+        }
 
         if (h_raw_region_slot_[region] >= 0) {
             raw_lru_.erase(raw_lru_pos_[region]);
@@ -1228,9 +1241,11 @@ void HBlockIndex::search(const int8_t* h_q, int nq, int k,
     long long stat_visited=0, stat_pairs=0;
     cudaStream_t s=ws_.stream;
 
+    call_id_++;
     stat_code_bytes_h2d_ = 0; stat_raw_bytes_h2d_ = 0;
     stat_code_region_reqs_ = 0; stat_code_region_unique_ = 0;
     stat_raw_region_reqs_ = 0; stat_raw_region_unique_ = 0;
+    stat_code_region_true_unique_ = 0; stat_raw_region_true_unique_ = 0;
 
     std::vector<float> h_q_cast((long long)batch_size_ * d_);   // reused int8->float scratch for routing
 
@@ -1349,10 +1364,16 @@ void HBlockIndex::search(const int8_t* h_q, int nq, int k,
            ms_route,ms_trav,ms_pairs,ms_plan,ms_pq,ms_merge,ms_d2h);
     printf("  [v39 stats] avg_visited=%.1f  avg_pairs=%.1f  (over %d queries)\n",
            (double)stat_visited/nq, (double)stat_pairs/nq, nq);
-    printf("  [v39 region] code: %lld req -> %lld uniq, %.2f MB H2D | "
-           "raw: %lld req -> %lld uniq, %.2f MB H2D\n",
-           stat_code_region_reqs_, stat_code_region_unique_, (double)stat_code_bytes_h2d_/1e6,
-           stat_raw_region_reqs_,  stat_raw_region_unique_,  (double)stat_raw_bytes_h2d_/1e6);
+    printf("  [v39 region] code: %lld req -> %lld uniq_per_batch_sum -> %lld uniq_this_call, "
+           "%.2f MB H2D (region_reuse=%.2f) | "
+           "raw: %lld req -> %lld uniq_per_batch_sum -> %lld uniq_this_call, "
+           "%.2f MB H2D (region_reuse=%.2f)\n",
+           stat_code_region_reqs_, stat_code_region_unique_, stat_code_region_true_unique_,
+           (double)stat_code_bytes_h2d_/1e6,
+           stat_code_region_true_unique_ ? (double)stat_code_region_reqs_/stat_code_region_true_unique_ : 0.0,
+           stat_raw_region_reqs_,  stat_raw_region_unique_,  stat_raw_region_true_unique_,
+           (double)stat_raw_bytes_h2d_/1e6,
+           stat_raw_region_true_unique_ ? (double)stat_raw_region_reqs_/stat_raw_region_true_unique_ : 0.0);
 }
 
 HBlockIndex::RoutingDiag HBlockIndex::diagnose_missed_gt(

@@ -229,10 +229,25 @@ private:
     mutable std::vector<std::list<int>::iterator> raw_lru_pos_;   // [n_raw_regions_]
 
     // Running transfer counters (reset per search() call) for reporting.
+    // stat_*_unique_ sums each *internal* qstart-batch's own within-batch
+    // dedup count -- the same region touched by two different internal
+    // batches (batch_size_ queries each) is counted twice. That is the
+    // right denominator for "how many (batch, region) touch events did
+    // fetch planning have to resolve", but it is NOT "how many distinct
+    // regions this whole search() call needed" -- see stat_*_true_unique_.
     mutable long long stat_code_bytes_h2d_ = 0;
     mutable long long stat_raw_bytes_h2d_  = 0;
     mutable long long stat_code_region_reqs_ = 0, stat_code_region_unique_ = 0;
     mutable long long stat_raw_region_reqs_  = 0, stat_raw_region_unique_  = 0;
+    // True cross-internal-batch-deduped counts for this search() call --
+    // the number actually comparable to the plan docs' region_reuse metric
+    // (total_query_block_tasks / unique_regions, "unique" meaning across
+    // the whole batch, not per sub-batch).
+    mutable long long stat_code_region_true_unique_ = 0;
+    mutable long long stat_raw_region_true_unique_  = 0;
+    mutable long long call_id_ = 0;
+    mutable std::vector<long long> code_region_last_call_;  // [n_code_regions_], -1 or call_id_ last seen
+    mutable std::vector<long long> raw_region_last_call_;   // [n_raw_regions_]
 
     // Packs PQ codes+ids and raw vectors into block-major logical regions
     // (host-resident stores) and allocates the bounded GPU pool + slot
