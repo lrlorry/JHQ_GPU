@@ -1060,14 +1060,32 @@ void HBlockIndex::search(const int8_t* h_q, int nq, int k,
 // the same built index can be diagnosed at different beam widths without a rebuild.
 //
 // Classifies every (query, gt-neighbor) pair that search() would miss into:
-//   A  routing miss       -- the gt vector's block's cell was never in the
-//                             selected top-(ck1*ck2*ck3) L3 cells at all.
-//   B  graph unreachable  -- cell WAS selected, but the block isn't reachable
-//                             from any entry block via the block-adjacency graph
-//                             within MAX_HOP hops (graph_degree_ too sparse).
-//   C  depth miss         -- cell selected, block graph-reachable, but beam
-//                             search didn't actually visit it within budget ef
-//                             (the one category that more ef alone can fix).
+//   A  unreachable   -- no path exists at all through the block-adjacency graph
+//                        from ANY selected-cell entry block, within MAX_HOP hops
+//                        (regardless of whether the gt block's own cell was
+//                        selected). This is the only category more ef cannot fix --
+//                        it needs either wider routing (more/different entry cells)
+//                        or a better-connected graph.
+//   B  beam missed, cell not selected -- a graph path DOES exist (via some other
+//                        selected cell), but the real search's beam/ef budget
+//                        didn't traverse it. Graph connectivity is not the
+//                        bottleneck here; ef, entry_per_cell, or traversal
+//                        priority might be.
+//   C  beam missed, cell selected -- the gt block's own cell was selected (so
+//                        it's a trivial hop=0 BFS entry), but the real search
+//                        still didn't visit it within budget ef (classic depth
+//                        miss -- the one category most directly fixed by ef alone).
+//
+// IMPORTANT: an earlier version of this classifier checked cell-selection BEFORE
+// graph reachability, which silently forced B to always be 0 (any block in a
+// selected cell is trivially a hop=0 BFS seed) and folded "path exists via
+// graph, real search just didn't take it" into A alongside genuine "no path
+// exists at all" -- overstating how much of the miss rate was really a routing/
+// graph-topology problem vs. a beam-budget/traversal-priority one. Confirmed on
+// real SPACEV-100M data: A's absolute count dropped substantially from ef=8 to
+// ef=256 even though cell selection itself is ef-independent, which is only
+// possible if some of what was being counted as "A" was actually graph-hop
+// rescues showing up via visited[] before the old classifier ever got there.
 HBlockIndex::RoutingDiag HBlockIndex::diagnose_missed_gt(
     const int8_t* h_q, int nq, int k,
     const int32_t* h_gt, int gt_k, int ef,
@@ -1098,6 +1116,9 @@ HBlockIndex::RoutingDiag HBlockIndex::diagnose_missed_gt(
     std::vector<int> bfs_q(n_blks);
 
     long long cnt_A = 0, cnt_B = 0, cnt_C = 0, cnt_found = 0, cnt_total = 0;
+    long long cnt_cell_missed = 0;  // designated cell not in top ck1*ck2*ck3 (routing_recall input) --
+                                     // tracked independently of A/B/C, which now classify by graph
+                                     // reachability first (see below)
     double graph_coverage_sum = 0.0;
     int n_eval = 0;
     constexpr int MAX_HOP = 512;
@@ -1177,10 +1198,28 @@ HBlockIndex::RoutingDiag HBlockIndex::diagnose_missed_gt(
 
                 if (visited[gt_blk]) { cnt_found++; n_hit++; continue; }
 
+                // Check graph reachability (hop[]) BEFORE looking at cell_sel: the old
+                // ordering short-circuited on "cell not selected" and never consulted
+                // hop[] in that case, which silently forced cnt_B to 0 (any block in a
+                // selected cell is trivially a hop=0 BFS seed, so cnt_B could only ever
+                // fire from the cell-selected branch, which itself always has hop>=0) --
+                // conflating "no graph path exists at all" with "a path exists via some
+                // other selected cell, but real search's beam/ef budget didn't reach it"
+                // into the single A bucket. Confirmed by real data: cnt_A's absolute count
+                // dropped substantially from ef=8 to ef=256 even though cell_sel is
+                // ef-independent -- that drop can only be explained by visited[] (which IS
+                // ef-dependent, via real graph-hop traversal) rescuing cases that this
+                // classifier was mislabeling as pure routing failures.
                 int gt_c = h_block_cell_id_[gt_blk];
-                if (gt_c < 0 || gt_c >= K1_ * K2_ * K3_ || !cell_sel[gt_c]) { cnt_A++; continue; }
-                if (hop[gt_blk] < 0) { cnt_B++; continue; }
-                cnt_C++;
+                bool sel = (gt_c >= 0 && gt_c < K1_ * K2_ * K3_ && cell_sel[gt_c]);
+                if (!sel) cnt_cell_missed++;
+                if (hop[gt_blk] < 0)      { cnt_A++; continue; }  // no graph path at all
+                else if (!sel)            { cnt_B++; continue; }  // path exists (via another
+                                                                    // selected cell), real
+                                                                    // search still missed it
+                else                      { cnt_C++; continue; }  // own cell selected (trivial
+                                                                    // hop=0), real search still
+                                                                    // missed it
             }
             if (n_valid > 0) {
                 graph_coverage_sum += (double)n_hit / (double)n_valid;
@@ -1196,7 +1235,10 @@ HBlockIndex::RoutingDiag HBlockIndex::diagnose_missed_gt(
     diag.cnt_B = cnt_B;
     diag.cnt_C = cnt_C;
     diag.n_eval = n_eval;
-    diag.routing_recall = cnt_total > 0 ? (double)(cnt_total - cnt_A) / (double)cnt_total : 0.0;
+    // routing_recall: fraction of (query,gt) pairs whose designated cell WAS selected --
+    // tracked via cnt_cell_missed independently of the A/B/C reachability split above, so
+    // this stays a pure routing-tree metric (unaffected by graph traversal outcomes).
+    diag.routing_recall = cnt_total > 0 ? (double)(cnt_total - cnt_cell_missed) / (double)cnt_total : 0.0;
     diag.graph_coverage = n_eval > 0 ? graph_coverage_sum / n_eval : 0.0;
 
     if (verbose) {
@@ -1207,11 +1249,16 @@ HBlockIndex::RoutingDiag HBlockIndex::diagnose_missed_gt(
                cnt_found, cnt_total ? 100.0 * cnt_found / cnt_total : 0.0);
         printf("  Missed total            : %lld  (%.2f%%)\n",
                n_miss, cnt_total ? 100.0 * n_miss / cnt_total : 0.0);
-        printf("\n  A  routing miss (cell not in top ck1*ck2*ck3) : %lld  (%.2f%% of missed)\n",
+        printf("  (of which, designated cell not selected: %lld = %.2f%% of total)\n",
+               cnt_cell_missed, cnt_total ? 100.0 * cnt_cell_missed / cnt_total : 0.0);
+        printf("\n  A  no graph path at all (BFS unreachable from any    : %lld  (%.2f%% of missed)\n"
+               "     selected-cell entry)                                \n",
                cnt_A, n_miss ? 100.0*cnt_A/n_miss : 0.0);
-        printf("  B  graph unreachable (block-graph BFS)         : %lld  (%.2f%% of missed)\n",
+        printf("  B  path exists via graph (through a different         : %lld  (%.2f%% of missed)\n"
+               "     selected cell), but real search's beam/ef missed it\n",
                cnt_B, n_miss ? 100.0*cnt_B/n_miss : 0.0);
-        printf("  C  depth miss (reachable, beam budget too small): %lld  (%.2f%% of missed)\n",
+        printf("  C  own cell selected (trivially reachable), but       : %lld  (%.2f%% of missed)\n"
+               "     real search's beam/ef missed it (depth miss)       \n",
                cnt_C, n_miss ? 100.0*cnt_C/n_miss : 0.0);
         printf("\n  routing_recall = %.4f   graph_coverage = %.4f  (n_eval=%d queries)\n",
                diag.routing_recall, diag.graph_coverage, n_eval);

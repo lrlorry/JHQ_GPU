@@ -88,11 +88,21 @@ public:
     // no raw-vector access required.
     struct RoutingDiag {
         double routing_recall = 0.0;  // fraction of (query,gt) pairs whose designated
-                                       // routing cell WAS selected by L1/L2/L3 routing
-                                       // (i.e. NOT a pure routing miss == cnt_A)
+                                       // routing cell WAS selected by L1/L2/L3 routing.
+                                       // Tracked independently of cnt_A/B/C (which
+                                       // classify by graph reachability, not cell
+                                       // selection) -- see diagnose_missed_gt()'s
+                                       // implementation comment for why those two
+                                       // must not be conflated.
         double graph_coverage = 0.0;  // fraction of restricted-GT ids present among the
                                        // union of vector-ids across all blocks visited by
                                        // beam search, averaged over evaluated queries
+        // cnt_A: no graph path exists at all from any selected-cell entry (real
+        //   routing/graph-topology failure -- more ef can't fix this).
+        // cnt_B: graph path exists (via a different selected cell), but the real
+        //   search's beam/ef missed it -- graph is fine, traversal/budget isn't.
+        // cnt_C: gt block's own cell was selected (trivial hop=0), but real search's
+        //   beam/ef still missed it -- classic depth miss.
         long long cnt_total = 0, cnt_found = 0, cnt_A = 0, cnt_B = 0, cnt_C = 0;
         int n_eval = 0;                // queries actually contributing to graph_coverage
                                         // (num_survivors > 0)
