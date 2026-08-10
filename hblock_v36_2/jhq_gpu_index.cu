@@ -1,7 +1,7 @@
-#include "hblock_v36_1/jhq_gpu_index.cuh"
+#include "hblock_v36_2/jhq_gpu_index.cuh"
 #include "hblock_v17/encode.cuh"
 #include "hblock_v27/search.cuh"   // for gpu_build_block_adj_v27
-#include "hblock_v36_1/search.cuh"
+#include "hblock_v36_2/search.cuh"
 #include "cpu/erfinv.h"
 #include "common/cuda_utils.cuh"
 
@@ -21,7 +21,7 @@
 
 using Ms = std::chrono::duration<double, std::milli>;
 
-namespace hblock_v36_1 {
+namespace hblock_v36_2 {
 
 // This is the plain, fully GPU-resident SPACEV int8 baseline v38 was always
 // meant to be (per this file's own class-comment promise in
@@ -276,7 +276,7 @@ void HBlockIndex::train(const float* h_x, int n_train)
     using Clock = std::chrono::high_resolution_clock;
     auto T0 = Clock::now();
     const int n_km = std::min(n_train, 200000);
-    printf("[v36_1 train] d=%d d_proj=%d K1=%d K2=%d K3=%d ck1=%d ck2=%d ck3=%d"
+    printf("[v36_2 train] d=%d d_proj=%d K1=%d K2=%d K3=%d ck1=%d ck2=%d ck3=%d"
            " graph_degree=%d max_ef=%d entry_per_cell=%d\n",
            d_, d_proj_, K1_, K2_, K3_, ck1_, ck2_, ck3_,
            graph_degree_, max_ef_, entry_per_cell_);
@@ -377,7 +377,7 @@ void HBlockIndex::train(const float* h_x, int n_train)
     CUDA_CHECK(cudaMemcpy(d_fine_c1d_,fine_c1d.data(),Kr_*sizeof(float),cudaMemcpyHostToDevice));
 
     cudaFree(d_x_km); cudaFree(d_y_proj);
-    printf("[v36_1 train] total=%.1f ms  sigma_r3=%.4f\n", Ms(Clock::now()-T0).count(), sigma);
+    printf("[v36_2 train] total=%.1f ms  sigma_r3=%.4f\n", Ms(Clock::now()-T0).count(), sigma);
 }
 
 void HBlockIndex::add(I8BinReader& reader, int n)
@@ -391,7 +391,7 @@ void HBlockIndex::add(I8BinReader& reader, int n)
 
     using Clock = std::chrono::high_resolution_clock;
     auto T_add = Clock::now();
-    printf("[v36_1 add] n=%d  d=%d  add_batch_size=%d  mini_km_iters=%d\n",
+    printf("[v36_2 add] n=%d  d=%d  add_batch_size=%d  mini_km_iters=%d\n",
            n, d_, add_batch_size_, mini_km_iters_);
 
     const int BATCH = 8192;
@@ -746,7 +746,7 @@ void HBlockIndex::add(I8BinReader& reader, int n)
     alloc_workspace();
     printf("  [alloc workspace] %.1f ms\n", Ms(Clock::now()-T0).count());
 
-    printf("[v36_1 add total] %.1f ms  blocks=%d\n",
+    printf("[v36_2 add total] %.1f ms  blocks=%d\n",
            Ms(Clock::now()-T_add).count(), total_blocks);
 }
 
@@ -1221,4 +1221,4 @@ HBlockIndex::RoutingDiag HBlockIndex::diagnose_missed_gt(
     return diag;
 }
 
-} // namespace hblock_v36_1
+} // namespace hblock_v36_2

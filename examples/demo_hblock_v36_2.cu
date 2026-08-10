@@ -1,9 +1,9 @@
-// demo_hblock_v36_1: SPACEV .i8bin subset evaluation for hblock_v38 with
+// demo_hblock_v36_2: SPACEV .i8bin subset evaluation for hblock_v38 with
 // add()'s balanced-kmeans reclustering GPU-accelerated (see
-// hblock_v36_1/jhq_gpu_index.cuh class comment) -- same fully-GPU-resident,
+// hblock_v36_2/jhq_gpu_index.cuh class comment) -- same fully-GPU-resident,
 // no-region-partitioning baseline as demo_hblock_v38.cu, just faster to
 // build at large n_base.
-#include "hblock_v36_1/jhq_gpu_index.cuh"
+#include "hblock_v36_2/jhq_gpu_index.cuh"
 #include "common/spacev_io.cuh"
 
 #include <cstdio>
@@ -102,14 +102,14 @@ int main(int argc, char** argv)
     if ((int)local_to_global.size() > nb) local_to_global.resize(nb);
     RestrictedGT gt = build_restricted_gt(gt_path, local_to_global, k, nq);
 
-    hblock_v36_1::HBlockIndex::Params p;
+    hblock_v36_2::HBlockIndex::Params p;
     p.K1 = K1; p.K2 = K2; p.K3 = K3;
     p.max_ef = max_ef;
     p.d_proj = dprj; p.per_block_r = pbr;
     p.graph_degree = deg; p.entry_per_cell = epc;
     p.batch_size = batch;
 
-    hblock_v36_1::HBlockIndex idx(d, p);
+    hblock_v36_2::HBlockIndex idx(d, p);
 
     // train() still takes a float subsample directly (small: <=200K vectors,
     // never worth streaming) -- read it from the same base file and cast.

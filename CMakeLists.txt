@@ -321,6 +321,28 @@ target_compile_options(jhq_hblock_v36_1 PRIVATE
 add_executable(demo_hblock_v36_1 examples/demo_hblock_v36_1.cu)
 target_link_libraries(demo_hblock_v36_1 PRIVATE jhq_hblock_v36_1)
 
+# v36_2: straight fork of v36_1, no algorithm change -- diagnose_missed_gt()
+# (routing/graph miss classification: A=routing miss, B=graph unreachable,
+# C=depth miss) ported in from hblock_v36 and wired into the demo, purely so
+# it can be run on a clean, dedicated version to get a real A/B/C breakdown
+# before deciding which recall lever (routing breadth, graph connectivity,
+# beam cap, or a structural block-graph redesign) to pull next.
+add_library(jhq_hblock_v36_2 STATIC
+    hblock_v36_2/search.cu
+    hblock_v36_2/jhq_gpu_index.cu
+)
+target_include_directories(jhq_hblock_v36_2 PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_hblock_v36_2 PUBLIC
+    jhq_hblock_v27
+    jhq_cpu
+    CUDA::cublas
+    CUDA::cudart
+)
+target_compile_options(jhq_hblock_v36_2 PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --expt-extended-lambda --use_fast_math>)
+add_executable(demo_hblock_v36_2 examples/demo_hblock_v36_2.cu)
+target_link_libraries(demo_hblock_v36_2 PRIVATE jhq_hblock_v36_2)
+
 # v39: SPACEV int8 streamed add() + logical region partitioning and a
 # bounded GPU region pool (leaf kernel resolves PQ codes/ids and raw
 # vectors through region_id -> pool-slot indirection instead of flat
