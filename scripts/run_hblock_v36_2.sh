@@ -17,6 +17,12 @@ set -e
 ROOT_DIR="${JHQ_GPU_ROOT:-/root/JHQ_GPU}"
 cd "$ROOT_DIR"
 
+# New targets (jhq_hblock_v36_2/demo_hblock_v36_2) were added to
+# CMakeLists.txt after build/ was originally configured -- reconfigure
+# explicitly (reuses the existing cache: generator, CUDA arch, build type)
+# so `cmake --build` doesn't fail with "No rule to make target" against a
+# stale Makefile.
+cmake -S . -B build
 cmake --build build --target demo_hblock_v36_2 -j"${BUILD_JOBS:-8}"
 BIN=./build/demo_hblock_v36_2
 
