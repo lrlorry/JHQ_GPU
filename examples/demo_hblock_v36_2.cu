@@ -173,13 +173,24 @@ int main(int argc, char** argv)
     if (csv) fclose(csv);
 
     // Routing/graph diagnostic: classifies every ground-truth neighbor search()
-    // misses into routing-miss (A, cell never selected) / graph-unreachable
-    // (B, block graph too sparse) / depth-miss (C, reachable but beam budget
-    // too small) -- run at max_ef (where depth-miss should be smallest) and at
-    // a low ef for contrast, on a 5000-query subsample for speed.
+    // misses into A (no graph path at all) / B (path exists, real search's
+    // beam/ef missed it, cell not selected) / C (same, but cell was selected --
+    // depth miss). Run at a low ef and at max_ef, on a 5000-query subsample.
+    //
+    // The ef=8-vs-ef=256 comparison on a prior run showed cnt_A's absolute count
+    // dropping substantially with ef, which shouldn't happen if cell selection
+    // (and therefore hop[]/A's membership) is truly ef-independent as the code
+    // suggests (route_gpu_v29 never reads ef/beam_size/max_leaf_sel). Repeating
+    // the SAME ef (8) twice isolates whether this is real ef-dependence or
+    // run-to-run floating-point/cuBLAS non-determinism in routing: identical
+    // repeat runs would point to the latter (benign, near-tie noise); a
+    // mismatch even at fixed ef would mean the non-determinism is unrelated to
+    // ef and just as real, deserving its own follow-up.
     int diag_nq = std::min(nq, 5000);
-    printf("\n[diagnose_missed_gt] running on %d queries (subsample) at ef=%d and ef=%d ...\n",
-           diag_nq, efs.front(), efs.back());
+    printf("\n[diagnose_missed_gt] running on %d queries (subsample): ef=%d (run 1), "
+           "ef=%d (run 2, repeat -- determinism check), ef=%d ...\n",
+           diag_nq, efs.front(), efs.front(), efs.back());
+    idx.diagnose_missed_gt(h_query.data(), diag_nq, k, gt.ids.data(), gt.k, efs.front(), true);
     idx.diagnose_missed_gt(h_query.data(), diag_nq, k, gt.ids.data(), gt.k, efs.front(), true);
     idx.diagnose_missed_gt(h_query.data(), diag_nq, k, gt.ids.data(), gt.k, efs.back(),  true);
 
