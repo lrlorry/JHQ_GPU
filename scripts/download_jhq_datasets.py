@@ -199,5 +199,26 @@ if __name__ == "__main__":
     targets = list(DATASETS) if sys.argv[1] == "all" else [sys.argv[1]]
     # ascending size order so a failure on the big ones doesn't waste time
     targets.sort(key=lambda n: DATASETS[n]["target_rows"])
+
+    # One dataset's failure (e.g. an unverified column name on stella-trec24)
+    # must not stop the others from running -- catch per-dataset, print a
+    # loud, unambiguous FAILED marker with the full traceback (so the log
+    # alone is enough to see which dataset broke and why), and keep going.
+    results = {}
     for name in targets:
-        download(name)
+        print(f"\n{'='*70}\n[{name}] starting\n{'='*70}")
+        try:
+            download(name)
+            results[name] = "OK"
+        except Exception:
+            import traceback
+            print(f"\n!!!!! [{name}] FAILED !!!!!")
+            traceback.print_exc()
+            print(f"!!!!! [{name}] FAILED -- see traceback above !!!!!\n")
+            results[name] = "FAILED"
+
+    print(f"\n{'='*70}\nSUMMARY\n{'='*70}")
+    for name in targets:
+        print(f"  {name:20s} {results.get(name, 'SKIPPED')}")
+    if any(v == "FAILED" for v in results.values()):
+        sys.exit(1)
