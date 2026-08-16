@@ -4,9 +4,9 @@ OpenAI3-3072, BGE-M3-1024, Stella-TREC24) into the same
 /root/autodl-tmp/<name>/{base.fvecs,query.fvecs,groundtruth.ivecs} layout
 already used for arxiv-abstracts-768 in the hblock run scripts.
 
-Run ON the AutoDL server (needs `datasets` and `numpy` --
-pip install datasets numpy). No FAISS dependency -- ground truth is
-computed via a plain-numpy tiled brute-force scan, see below.
+Run ON the AutoDL server (needs `numpy`, `huggingface_hub`, `pyarrow` --
+pip install numpy huggingface_hub pyarrow). No FAISS dependency -- ground
+truth is computed via a plain-numpy tiled brute-force scan, see below.
 
 Usage:
     python3 download_jhq_datasets.py openai3-1536
@@ -16,9 +16,22 @@ Usage:
     python3 download_jhq_datasets.py all          # do all four, in ascending size order
 
 Each dataset is capped at TARGET_ROWS (matching the JHQ paper's reported
-dataset sizes) via streaming iteration -- avoids materializing the full
-upstream dataset (BGE-M3's English config alone is ~42.5M rows) before
-subsampling.
+dataset sizes) via lazy iteration over parquet shards -- avoids
+materializing the full upstream dataset (BGE-M3's English config alone is
+~47M rows) before subsampling, and stops fetching shards entirely once
+TARGET_ROWS is reached (see iter_shard_rows).
+
+Download mechanism (v4): switched from `datasets.load_dataset(...,
+streaming=True)` to `huggingface_hub.hf_hub_download()` per parquet shard
++ local `pyarrow` reads. The `datasets` streaming path reads parquet over
+HTTP range requests via `aiohttp`, and `aiohttp.ClientSession` does NOT
+read `http_proxy`/`https_proxy` env vars by default (unlike `requests` or
+plain `curl`) -- this reproduced even with a confirmed-working proxy
+(AutoDL's network_turbo, independently verified reachable via curl) still
+timing out inside the Python process. `hf_hub_download` is `requests`-
+backed and respects those env vars normally, matching curl's behavior.
+It also caches shards to disk, so re-running after a partial/failed
+attempt doesn't re-download shards already fetched.
 
 Memory note (v2): rows are written straight to base.fvecs/query.fvecs as
 they stream in -- never held as one big (target_rows, dim) array. The
@@ -171,16 +184,61 @@ def compute_ground_truth_tiled(base_path, dim, n_base, query_vecs, k,
     return np.take_along_axis(best_idx, order, axis=1)
 
 
-def download(name):
-    from datasets import load_dataset
+def find_parquet_shards(repo_id, config, split):
+    """List this dataset repo's parquet shard filenames matching config/split,
+    via the HfApi (requests-backed, respects http_proxy/https_proxy) --
+    HF's auto-converted parquet export layout varies (some repos nest shards
+    under a <config>/ directory, some don't), so filter defensively instead
+    of assuming one exact path pattern."""
+    from huggingface_hub import HfApi
+    all_files = HfApi().list_repo_files(repo_id, repo_type="dataset")
 
+    def matches(f):
+        if not f.endswith(".parquet"):
+            return False
+        if config and f"/{config}/" not in f"/{f}" and not f.startswith(f"{config}/"):
+            return False
+        if split not in f:
+            return False
+        return True
+
+    shards = sorted(f for f in all_files if matches(f))
+    if not shards:
+        raise RuntimeError(
+            f"no parquet files matched config={config} split={split} among "
+            f"{len(all_files)} files in {repo_id} -- inspect "
+            f"huggingface.co/datasets/{repo_id}/tree/main and hardcode the shard list."
+        )
+    return shards
+
+
+def iter_shard_rows(repo_id, shards):
+    """Yield row dicts across all parquet shards, lazily: hf_hub_download()
+    for shard N+1 only happens once the caller actually asks for it, so a
+    consumer that stops early (got >= need) never fetches shards it doesn't
+    need. hf_hub_download caches to disk, so re-running the whole script
+    doesn't re-download shards already on disk from a prior attempt."""
+    from huggingface_hub import hf_hub_download
+    import pyarrow.parquet as pq
+
+    for shard in shards:
+        print(f"  downloading shard {shard} ...")
+        local_path = hf_hub_download(repo_id, shard, repo_type="dataset")
+        pf = pq.ParquetFile(local_path)
+        for batch in pf.iter_batches(batch_size=4096):
+            yield from batch.to_pylist()
+
+
+def download(name):
     cfg = DATASETS[name]
     dim = cfg["dim"]
     need = cfg["target_rows"]
-    print(f"[{name}] streaming {cfg['hf_path']} (config={cfg['config']}), "
-          f"target={need:,} rows, dim={dim}")
-
-    ds = load_dataset(cfg["hf_path"], cfg["config"], split=cfg["split"], streaming=True)
+    repo_id = cfg["hf_path"]
+    print(f"[{name}] listing parquet shards for {repo_id} "
+          f"(config={cfg['config']}, split={cfg['split']}), target={need:,} rows, dim={dim}")
+    shards = find_parquet_shards(repo_id, cfg["config"], cfg["split"])
+    print(f"[{name}] {len(shards)} shard(s): {shards[0]}"
+          + (f" .. {shards[-1]}" if len(shards) > 1 else ""))
 
     # Pick query row-positions up front (only needs the target count, not the
     # data itself) so we can route each streamed row to base or query as it
@@ -197,7 +255,11 @@ def download(name):
     emb_col = None
     got = n_base = n_query = 0
     with open(base_path, "wb") as fb, open(query_path, "wb") as fq:
-        for ex in ds:
+        for ex in iter_shard_rows(repo_id, shards):
+            if got >= need:
+                break   # generator is lazy -- breaking here means any shard
+                        # not yet fetched never gets downloaded at all
+
             if emb_col is None:
                 for k, v in ex.items():
                     try:
@@ -210,7 +272,7 @@ def download(name):
                     raise RuntimeError(
                         f"[{name}] couldn't find a {dim}-dim embedding column "
                         f"among fields {list(ex.keys())} -- inspect the dataset schema "
-                        f"manually (huggingface.co/datasets/{cfg['hf_path']}) and hardcode emb_col."
+                        f"manually (huggingface.co/datasets/{repo_id}) and hardcode emb_col."
                     )
                 print(f"[{name}] using column '{emb_col}'")
 
@@ -228,8 +290,6 @@ def download(name):
             got += 1
             if got % 200_000 == 0:
                 print(f"  {got:,}/{need:,}")
-            if got >= need:
-                break
 
     if got < need:
         print(f"[{name}] WARNING: only found {got:,} rows, wanted {need:,} "
