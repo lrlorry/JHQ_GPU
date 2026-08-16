@@ -218,7 +218,12 @@ def find_parquet_shards(repo_id, shard_prefix):
 
 
 MIRROR_BASE = os.environ["HF_ENDPOINT"].rstrip("/")
-SHARD_CACHE_DIR = "/root/.cache/jhq_shard_dl"
+SHARD_CACHE_DIR = f"{OUT_ROOT}/.jhq_shard_dl"  # OUT_ROOT is the big data
+# volume (/root/autodl-tmp), not /root/.cache -- /root itself sits on
+# AutoDL's small system disk (confirmed 30GB total on this box) and a
+# real run filled it to 100% with just two datasets' worth of raw parquet
+# shard cache. bge-m3 (10M rows) and stella-trec24 (17.8M rows) would
+# need far more than that.
 
 
 def curl_download(repo_id, filename, repo_type="datasets", revision="main"):
