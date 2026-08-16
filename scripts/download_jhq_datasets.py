@@ -256,23 +256,37 @@ def curl_download(repo_id, filename, repo_type="datasets", revision="main"):
         return local_path
 
     url = f"{MIRROR_BASE}/{repo_type}/{repo_id}/resolve/{revision}/{filename}"
-    print(f"  curl: {url}", flush=True)
-    subprocess.run(
-        ["curl", "-fSL",
-         "--http1.1",  # exit 92 (CURLE_HTTP2_STREAM) seen repeatedly against
-                        # hf-mirror.com -- an HTTP/2 framing-layer stream
-                        # reset, not a data-content problem. Forcing HTTP/1.1
-                        # sidesteps it; -C - resume still works over HTTP/1.1.
-         "--connect-timeout", "15",
-         "--speed-limit", "1000", "--speed-time", "30",
-         "--retry", "5", "--retry-delay", "5",
-         "-C", "-",
-         "-o", local_path,
-         url],
-        check=True,
-    )
-    open(done_marker, "w").close()
-    return local_path
+    cmd = ["curl", "-fSL",
+           "--http1.1",  # exit 92 (CURLE_HTTP2_STREAM) seen repeatedly against
+                          # hf-mirror.com -- an HTTP/2 framing-layer stream
+                          # reset, not a data-content problem. Forcing HTTP/1.1
+                          # sidesteps it; -C - resume still works over HTTP/1.1.
+           "--connect-timeout", "15",
+           "--speed-limit", "1000", "--speed-time", "30",
+           "--retry", "5", "--retry-delay", "5",
+           "-C", "-",
+           "-o", local_path,
+           url]
+
+    # curl's own --retry only covers a narrow set of "transient" errors
+    # (connect timeouts, HTTP 5xx) -- it does NOT cover exit 18
+    # (CURLE_PARTIAL_FILE, server closed the connection mid-transfer),
+    # which showed up on a real run and killed an entire dataset at 57%
+    # done over one bad shard. Wrap the whole curl invocation in our own
+    # retry loop; -C - means each attempt resumes from the partial file
+    # curl already wrote, not a cold restart.
+    last_err = None
+    for attempt in range(1, 4):
+        print(f"  curl (attempt {attempt}/3): {url}", flush=True)
+        try:
+            subprocess.run(cmd, check=True)
+            open(done_marker, "w").close()
+            return local_path
+        except subprocess.CalledProcessError as e:
+            last_err = e
+            print(f"  curl attempt {attempt}/3 failed (exit {e.returncode}), "
+                  f"retrying with resume...", flush=True)
+    raise last_err
 
 
 def iter_shard_batches(repo_id, shards, embedding_col):
