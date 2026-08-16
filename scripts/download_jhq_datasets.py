@@ -92,7 +92,10 @@ OUT_ROOT = "/root/autodl-tmp"
 QUERY_SIZE = 1000   # held out from TARGET_ROWS, matching JHQ_official README's default
 GT_K = 20
 SEED = 42
-BASE_CHUNK = 200_000   # rows per tiled ground-truth scan step
+BASE_CHUNK = 20_000   # rows per tiled ground-truth scan step -- kept small
+# (not 200_000) because this box's system disk filled at just ~1.6GB RSS
+# during an earlier crash, suggesting available RAM here is tight; smaller
+# chunks trade a bit of GEMM efficiency for a ~10x lower peak per step.
 PARQUET_BATCH_ROWS = 4096
 
 DATASETS = {
