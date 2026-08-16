@@ -16,12 +16,13 @@ Usage:
     python3 download_jhq_datasets.py bge-m3
     python3 download_jhq_datasets.py stella-trec24
     python3 download_jhq_datasets.py all          # do all four, in ascending size order
+    python3 download_jhq_datasets.py openai3-1536 --prepare-only
 
 Each dataset is capped at TARGET_ROWS (matching the JHQ paper's reported
 dataset sizes) via lazy iteration over parquet shards -- avoids
 materializing the full upstream dataset (BGE-M3's English config alone is
 ~47M rows) before subsampling, and stops fetching shards entirely once
-TARGET_ROWS is reached (see iter_shard_rows).
+TARGET_ROWS is reached (see iter_shard_batches).
 
 Download mechanism (v5, see curl_download()): two Python HTTP paths were
 tried and both failed on this network in ways that don't self-recover.
@@ -74,57 +75,64 @@ test_query's embeddings are directly comparable to corpus's (same model,
 same normalization). Worth revisiting before this dataset's numbers go
 in the paper; flagging rather than silently deciding.
 """
-import ast
+import argparse
 import os
 import struct
 import sys
 
 import numpy as np
 
+# AutoDL frequently has poor direct connectivity to huggingface.co.  Users can
+# still select the official endpoint explicitly with HF_ENDPOINT.
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+os.environ.setdefault("HF_HUB_ETAG_TIMEOUT", "30")
+os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "300")
+
 OUT_ROOT = "/root/autodl-tmp"
 QUERY_SIZE = 1000   # held out from TARGET_ROWS, matching JHQ_official README's default
 GT_K = 20
 SEED = 42
 BASE_CHUNK = 200_000   # rows per tiled ground-truth scan step
+PARQUET_BATCH_ROWS = 4096
 
 DATASETS = {
     "openai3-1536": dict(
         hf_path="Qdrant/dbpedia-entities-openai3-text-embedding-3-large-1536-1M",
-        config=None, split="train", dim=1536, target_rows=1_000_000,
+        config=None, split="train", shard_prefix="data/train-",
+        embedding_col="embedding", dim=1536, target_rows=1_000_000,
     ),
     "openai3-3072": dict(
         hf_path="Qdrant/dbpedia-entities-openai3-text-embedding-3-large-3072-1M",
-        config=None, split="train", dim=3072, target_rows=1_000_000,
+        config=None, split="train", shard_prefix="data/train-",
+        embedding_col="embedding", dim=3072, target_rows=1_000_000,
     ),
     "bge-m3": dict(
         # JHQ's "BGE-M3-1024, 10M" is the Italian config, not English --
         # confirmed against the dataset's own README: en=47,018,430,
         # it=10,092,524.
         hf_path="Upstash/wikipedia-2024-06-bge-m3",
-        config="it", split="train", dim=1024, target_rows=10_092_524,
+        config="it", split="train", shard_prefix="data/it/",
+        embedding_col="embedding", dim=1024, target_rows=10_092_524,
     ),
     "stella-trec24": dict(
         # "train" doesn't exist on this dataset; real splits are
         # corpus (17.8M) and test_query (65) -- see module docstring.
         hf_path="ielabgroup/stella_trec24_biogen_embedding",
-        config=None, split="corpus", dim=1024, target_rows=17_800_000,
+        config=None, split="corpus", shard_prefix="data/corpus-",
+        embedding_col="embedding", dim=1024, target_rows=17_800_000,
     ),
 }
 
 
-def parse_embedding(val):
-    if isinstance(val, str):
-        try:
-            return [float(x) for x in ast.literal_eval(val)]
-        except (ValueError, SyntaxError):
-            s = val.strip("[]")
-            return [float(x.strip().strip('"').strip("'")) for x in s.split(",") if x.strip()]
-    return [float(x) for x in val]
-
-
-def write_vec(f, vec_f32):
-    f.write(struct.pack("<i", vec_f32.shape[0]))
-    f.write(vec_f32.tobytes())
+def write_fvecs_batch(f, vecs):
+    """Write a full batch without one Python file write per vector."""
+    vecs = np.ascontiguousarray(vecs, dtype=np.float32)
+    dim = vecs.shape[1]
+    dtype = np.dtype([("dim", "<i4"), ("vec", "<f4", (dim,))])
+    records = np.empty(vecs.shape[0], dtype=dtype)
+    records["dim"] = dim
+    records["vec"] = vecs
+    f.write(records.tobytes())
 
 
 def write_ivecs(path, arr):
@@ -140,19 +148,18 @@ def iter_fvecs_chunks(path, dim, chunk_rows):
     (chunk_rows_actual, dim) float32 array) without ever holding the whole
     file in memory at once."""
     rec_bytes = 4 + dim * 4
+    dtype = np.dtype([("dim", "<i4"), ("vec", "<f4", (dim,))])
     with open(path, "rb") as f:
         while True:
             buf = f.read(rec_bytes * chunk_rows)
             if not buf:
                 return
-            n = len(buf) // rec_bytes
-            arr = np.empty((n, dim), dtype=np.float32)
-            for i in range(n):
-                off = i * rec_bytes
-                # skip the 4-byte length prefix, read dim float32s
-                arr[i] = np.frombuffer(buf, dtype=np.float32, count=dim,
-                                        offset=off + 4)
-            yield arr
+            if len(buf) % rec_bytes:
+                raise RuntimeError(f"truncated fvecs record in {path}")
+            records = np.frombuffer(buf, dtype=dtype)
+            if not np.all(records["dim"] == dim):
+                raise RuntimeError(f"invalid vector dimension in {path}")
+            yield np.ascontiguousarray(records["vec"])
 
 
 def compute_ground_truth_tiled(base_path, dim, n_base, query_vecs, k,
@@ -193,35 +200,24 @@ def compute_ground_truth_tiled(base_path, dim, n_base, query_vecs, k,
     return np.take_along_axis(best_idx, order, axis=1)
 
 
-def find_parquet_shards(repo_id, config, split):
-    """List this dataset repo's parquet shard filenames matching config/split,
-    via the HfApi (requests-backed, respects http_proxy/https_proxy) --
-    HF's auto-converted parquet export layout varies (some repos nest shards
-    under a <config>/ directory, some don't), so filter defensively instead
-    of assuming one exact path pattern."""
+def find_parquet_shards(repo_id, shard_prefix):
+    """List parquet shards under the dataset's known upstream directory."""
     from huggingface_hub import HfApi
     all_files = HfApi().list_repo_files(repo_id, repo_type="dataset")
-
-    def matches(f):
-        if not f.endswith(".parquet"):
-            return False
-        if config and f"/{config}/" not in f"/{f}" and not f.startswith(f"{config}/"):
-            return False
-        if split not in f:
-            return False
-        return True
-
-    shards = sorted(f for f in all_files if matches(f))
+    shards = sorted(
+        f for f in all_files
+        if f.startswith(shard_prefix) and f.endswith(".parquet")
+    )
     if not shards:
         raise RuntimeError(
-            f"no parquet files matched config={config} split={split} among "
+            f"no parquet files matched prefix={shard_prefix!r} among "
             f"{len(all_files)} files in {repo_id} -- inspect "
             f"huggingface.co/datasets/{repo_id}/tree/main and hardcode the shard list."
         )
     return shards
 
 
-MIRROR_BASE = "https://hf-mirror.com"
+MIRROR_BASE = os.environ["HF_ENDPOINT"].rstrip("/")
 SHARD_CACHE_DIR = "/root/.cache/jhq_shard_dl"
 
 
@@ -252,7 +248,7 @@ def curl_download(repo_id, filename, repo_type="datasets", revision="main"):
         return local_path
 
     url = f"{MIRROR_BASE}/{repo_type}/{repo_id}/resolve/{revision}/{filename}"
-    print(f"  curl: {url}")
+    print(f"  curl: {url}", flush=True)
     subprocess.run(
         ["curl", "-fSL",
          "--connect-timeout", "15",
@@ -267,29 +263,55 @@ def curl_download(repo_id, filename, repo_type="datasets", revision="main"):
     return local_path
 
 
-def iter_shard_rows(repo_id, shards):
-    """Yield row dicts across all parquet shards, lazily: curl_download()
+def iter_shard_batches(repo_id, shards, embedding_col):
+    """Yield embedding-only Arrow batches, downloading one shard at a time.
+
+    curl_download()
     for shard N+1 only happens once the caller actually asks for it, so a
     consumer that stops early (got >= need) never fetches shards it doesn't
     need. curl_download() marks each shard done on disk, so re-running the
-    whole script doesn't re-download shards already fetched."""
+    whole script doesn't re-download shards already fetched. Reading only the
+    embedding column avoids converting text metadata into Python objects.
+    """
     import pyarrow.parquet as pq
 
-    for shard in shards:
+    for shard_no, shard in enumerate(shards, 1):
+        print(f"  [shard {shard_no}/{len(shards)}] {shard}", flush=True)
         local_path = curl_download(repo_id, shard, repo_type="datasets")
+        size_mib = os.path.getsize(local_path) / (1024 * 1024)
+        print(f"  [ready] {size_mib:.1f} MiB: {local_path}", flush=True)
         pf = pq.ParquetFile(local_path)
-        for batch in pf.iter_batches(batch_size=4096):
-            yield from batch.to_pylist()
+        for batch in pf.iter_batches(
+            batch_size=PARQUET_BATCH_ROWS,
+            columns=[embedding_col],
+        ):
+            yield batch.column(0)
 
 
-def download(name):
+def arrow_embeddings_to_numpy(column, dim):
+    """Convert a regular Arrow list column to a dense float32 matrix."""
+    values = column.values.to_numpy(zero_copy_only=False)
+    if hasattr(column, "offsets"):
+        offsets = column.offsets.to_numpy(zero_copy_only=False)
+        if offsets.size != len(column) + 1 or not np.all(np.diff(offsets) == dim):
+            raise ValueError("embedding lists do not all have the expected dimension")
+        values = values[int(offsets[0]):int(offsets[-1])]
+    if values.size != len(column) * dim:
+        raise ValueError(
+            f"expected {len(column)} x {dim} embedding values, got {values.size}"
+        )
+    return np.asarray(values, dtype=np.float32).reshape(len(column), dim)
+
+
+def download(name, prepare_only=False):
     cfg = DATASETS[name]
     dim = cfg["dim"]
     need = cfg["target_rows"]
     repo_id = cfg["hf_path"]
     print(f"[{name}] listing parquet shards for {repo_id} "
           f"(config={cfg['config']}, split={cfg['split']}), target={need:,} rows, dim={dim}")
-    shards = find_parquet_shards(repo_id, cfg["config"], cfg["split"])
+    print(f"[{name}] endpoint: {MIRROR_BASE}")
+    shards = find_parquet_shards(repo_id, cfg["shard_prefix"])
     print(f"[{name}] {len(shards)} shard(s): {shards[0]}"
           + (f" .. {shards[-1]}" if len(shards) > 1 else ""))
 
@@ -305,44 +327,35 @@ def download(name):
     os.makedirs(out_dir, exist_ok=True)
     base_path, query_path = f"{out_dir}/base.fvecs", f"{out_dir}/query.fvecs"
 
-    emb_col = None
     got = n_base = n_query = 0
+    query_positions = np.fromiter(query_idx, dtype=np.int64)
+    next_report = 200_000
     with open(base_path, "wb") as fb, open(query_path, "wb") as fq:
-        for ex in iter_shard_rows(repo_id, shards):
+        for column in iter_shard_batches(repo_id, shards, cfg["embedding_col"]):
             if got >= need:
                 break   # generator is lazy -- breaking here means any shard
                         # not yet fetched never gets downloaded at all
 
-            if emb_col is None:
-                for k, v in ex.items():
-                    try:
-                        if len(parse_embedding(v)) == dim:
-                            emb_col = k
-                            break
-                    except Exception:
-                        continue
-                if emb_col is None:
-                    raise RuntimeError(
-                        f"[{name}] couldn't find a {dim}-dim embedding column "
-                        f"among fields {list(ex.keys())} -- inspect the dataset schema "
-                        f"manually (huggingface.co/datasets/{repo_id}) and hardcode emb_col."
-                    )
-                print(f"[{name}] using column '{emb_col}'")
+            vecs = arrow_embeddings_to_numpy(column, dim)
+            take = min(vecs.shape[0], need - got)
+            vecs = np.ascontiguousarray(vecs[:take])
+            norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+            np.divide(vecs, norms, out=vecs, where=norms > 1e-12)
 
-            vec = np.asarray(parse_embedding(ex[emb_col]), dtype=np.float32)
-            norm = np.linalg.norm(vec)
-            if norm > 1e-12:
-                vec = vec / norm
-            if got in query_idx:
-                write_vec(fq, vec)
-                query_vecs[n_query] = vec
-                n_query += 1
-            else:
-                write_vec(fb, vec)
-                n_base += 1
-            got += 1
-            if got % 200_000 == 0:
-                print(f"  {got:,}/{need:,}")
+            positions = np.arange(got, got + take, dtype=np.int64)
+            query_mask = np.isin(positions, query_positions, assume_unique=True)
+            base_vecs = vecs[~query_mask]
+            batch_queries = vecs[query_mask]
+            write_fvecs_batch(fb, base_vecs)
+            write_fvecs_batch(fq, batch_queries)
+            query_vecs[n_query:n_query + batch_queries.shape[0]] = batch_queries
+
+            n_base += base_vecs.shape[0]
+            n_query += batch_queries.shape[0]
+            got += take
+            if got >= next_report:
+                print(f"  [converted] {got:,}/{need:,}", flush=True)
+                next_report = ((got // 200_000) + 1) * 200_000
 
     if got < need:
         print(f"[{name}] WARNING: only found {got:,} rows, wanted {need:,} "
@@ -352,16 +365,26 @@ def download(name):
     print(f"[{name}] base={n_base:,} query={n_query:,} written -> {out_dir}/ "
           f"(streamed straight to disk, no full-array buffering)")
 
+    if prepare_only:
+        print(f"[{name}] prepare-only requested; ground truth was not computed.")
+        return
+
     gt = compute_ground_truth_tiled(base_path, dim, n_base, query_vecs, GT_K)
     write_ivecs(f"{out_dir}/groundtruth.ivecs", gt.astype(np.int32))
     print(f"[{name}] groundtruth {gt.shape} -> {out_dir}/groundtruth.ivecs  done.")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2 or sys.argv[1] not in list(DATASETS) + ["all"]:
-        print(f"usage: {sys.argv[0]} <{'|'.join(DATASETS)}|all>")
-        sys.exit(1)
-    targets = list(DATASETS) if sys.argv[1] == "all" else [sys.argv[1]]
+    sys.stdout.reconfigure(line_buffering=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("dataset", choices=list(DATASETS) + ["all"])
+    parser.add_argument(
+        "--prepare-only",
+        action="store_true",
+        help="download and convert vectors, but do not compute ground truth",
+    )
+    args = parser.parse_args()
+    targets = list(DATASETS) if args.dataset == "all" else [args.dataset]
     # ascending size order so a failure on the big ones doesn't waste time
     targets.sort(key=lambda n: DATASETS[n]["target_rows"])
 
@@ -373,7 +396,7 @@ if __name__ == "__main__":
     for name in targets:
         print(f"\n{'='*70}\n[{name}] starting\n{'='*70}")
         try:
-            download(name)
+            download(name, prepare_only=args.prepare_only)
             results[name] = "OK"
         except Exception:
             import traceback
