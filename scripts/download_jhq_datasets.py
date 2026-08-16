@@ -4,9 +4,11 @@ OpenAI3-3072, BGE-M3-1024, Stella-TREC24) into the same
 /root/autodl-tmp/<name>/{base.fvecs,query.fvecs,groundtruth.ivecs} layout
 already used for arxiv-abstracts-768 in the hblock run scripts.
 
-Run ON the AutoDL server (needs `numpy`, `huggingface_hub`, `pyarrow` --
-pip install numpy huggingface_hub pyarrow). No FAISS dependency -- ground
-truth is computed via a plain-numpy tiled brute-force scan, see below.
+Run ON the AutoDL server (needs `numpy`, `huggingface_hub`, `pyarrow`,
+and a `curl` binary -- pip install numpy huggingface_hub pyarrow; curl
+is already present on basically every Linux box). No FAISS dependency --
+ground truth is computed via a plain-numpy tiled brute-force scan, see
+below.
 
 Usage:
     python3 download_jhq_datasets.py openai3-1536
@@ -21,17 +23,24 @@ materializing the full upstream dataset (BGE-M3's English config alone is
 ~47M rows) before subsampling, and stops fetching shards entirely once
 TARGET_ROWS is reached (see iter_shard_rows).
 
-Download mechanism (v4): switched from `datasets.load_dataset(...,
-streaming=True)` to `huggingface_hub.hf_hub_download()` per parquet shard
-+ local `pyarrow` reads. The `datasets` streaming path reads parquet over
-HTTP range requests via `aiohttp`, and `aiohttp.ClientSession` does NOT
-read `http_proxy`/`https_proxy` env vars by default (unlike `requests` or
-plain `curl`) -- this reproduced even with a confirmed-working proxy
-(AutoDL's network_turbo, independently verified reachable via curl) still
-timing out inside the Python process. `hf_hub_download` is `requests`-
-backed and respects those env vars normally, matching curl's behavior.
-It also caches shards to disk, so re-running after a partial/failed
-attempt doesn't re-download shards already fetched.
+Download mechanism (v5, see curl_download()): two Python HTTP paths were
+tried and both failed on this network in ways that don't self-recover.
+(1) `datasets.load_dataset(..., streaming=True)` reads parquet over HTTP
+range requests via `aiohttp`, and `aiohttp.ClientSession` does NOT read
+`http_proxy`/`https_proxy` env vars by default -- timed out even with a
+proxy independently confirmed reachable via curl (AutoDL's
+network_turbo). (2) Switching to `huggingface_hub.hf_hub_download()`
+(`requests`-backed, does respect those env vars) got further -- it
+started downloading -- but then stalled dead at a fixed byte count with
+zero throughput for 30+ seconds and no exception, confirmed by comparing
+`du -sb` before/after rather than guessing. Now uses a `curl` subprocess
+straight to hf-mirror.com (independently confirmed reachable and fast --
+0.57s round trip, no proxy needed for that domain) with
+`--speed-limit 1000 --speed-time 30` (abort a stall instead of hanging
+forever) and `--retry 5 -C -` (auto-retry with resume from wherever the
+partial file left off). Each shard's local path gets a sibling `.done`
+marker file once fully fetched, so re-running the whole script after a
+partial/failed attempt doesn't re-download shards already complete.
 
 Memory note (v2): rows are written straight to base.fvecs/query.fvecs as
 they stream in -- never held as one big (target_rows, dim) array. The
@@ -212,18 +221,62 @@ def find_parquet_shards(repo_id, config, split):
     return shards
 
 
+MIRROR_BASE = "https://hf-mirror.com"
+SHARD_CACHE_DIR = "/root/.cache/jhq_shard_dl"
+
+
+def curl_download(repo_id, filename, repo_type="datasets", revision="main"):
+    """Fetch one repo file via a `curl` subprocess against hf-mirror.com --
+    NOT hf_hub_download()/requests, NOT datasets/aiohttp. Both Python HTTP
+    paths were tried first and both failed on this network in ways that
+    don't self-recover: aiohttp silently ignores http_proxy/https_proxy
+    entirely, and a requests-based hf_hub_download() download stalled dead
+    at a fixed byte count with zero throughput for 30+s and no exception --
+    confirmed via repeated `du -sb` before/after checks, not a guess.
+
+    curl, independently confirmed reachable and fast against hf-mirror.com
+    (0.57s round trip, tested directly, no proxy needed for the mirror
+    domain), has two things neither Python path gave us for free:
+      --speed-limit/--speed-time: abort if throughput drops below 1000B/s
+        for 30s straight -- turns a silent stall into a real error.
+      --retry/--retry-delay + -C -: automatic retry with resume from
+        wherever the partial file left off, instead of restarting cold.
+    """
+    import subprocess
+
+    cache_dir = f"{SHARD_CACHE_DIR}/{repo_id.replace('/', '--')}"
+    os.makedirs(cache_dir, exist_ok=True)
+    local_path = f"{cache_dir}/{filename.replace('/', '--')}"
+    done_marker = local_path + ".done"
+    if os.path.exists(done_marker):
+        return local_path
+
+    url = f"{MIRROR_BASE}/{repo_type}/{repo_id}/resolve/{revision}/{filename}"
+    print(f"  curl: {url}")
+    subprocess.run(
+        ["curl", "-fSL",
+         "--connect-timeout", "15",
+         "--speed-limit", "1000", "--speed-time", "30",
+         "--retry", "5", "--retry-delay", "5",
+         "-C", "-",
+         "-o", local_path,
+         url],
+        check=True,
+    )
+    open(done_marker, "w").close()
+    return local_path
+
+
 def iter_shard_rows(repo_id, shards):
-    """Yield row dicts across all parquet shards, lazily: hf_hub_download()
+    """Yield row dicts across all parquet shards, lazily: curl_download()
     for shard N+1 only happens once the caller actually asks for it, so a
     consumer that stops early (got >= need) never fetches shards it doesn't
-    need. hf_hub_download caches to disk, so re-running the whole script
-    doesn't re-download shards already on disk from a prior attempt."""
-    from huggingface_hub import hf_hub_download
+    need. curl_download() marks each shard done on disk, so re-running the
+    whole script doesn't re-download shards already fetched."""
     import pyarrow.parquet as pq
 
     for shard in shards:
-        print(f"  downloading shard {shard} ...")
-        local_path = hf_hub_download(repo_id, shard, repo_type="dataset")
+        local_path = curl_download(repo_id, shard, repo_type="datasets")
         pf = pq.ParquetFile(local_path)
         for batch in pf.iter_batches(batch_size=4096):
             yield from batch.to_pylist()
