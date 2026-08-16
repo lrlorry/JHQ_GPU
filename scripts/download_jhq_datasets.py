@@ -256,6 +256,10 @@ def curl_download(repo_id, filename, repo_type="datasets", revision="main"):
     print(f"  curl: {url}", flush=True)
     subprocess.run(
         ["curl", "-fSL",
+         "--http1.1",  # exit 92 (CURLE_HTTP2_STREAM) seen repeatedly against
+                        # hf-mirror.com -- an HTTP/2 framing-layer stream
+                        # reset, not a data-content problem. Forcing HTTP/1.1
+                        # sidesteps it; -C - resume still works over HTTP/1.1.
          "--connect-timeout", "15",
          "--speed-limit", "1000", "--speed-time", "30",
          "--retry", "5", "--retry-delay", "5",
