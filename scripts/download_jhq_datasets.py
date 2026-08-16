@@ -18,8 +18,23 @@ Each dataset is capped at TARGET_ROWS (matching the JHQ paper's reported
 dataset sizes) via streaming iteration -- avoids materializing the full
 upstream dataset (BGE-M3's English config alone is ~42.5M rows) before
 subsampling.
+
+Memory note (v2): rows are written straight to base.fvecs/query.fvecs as
+they stream in -- never held as one big (target_rows, dim) array. The
+first version of this script pre-allocated that array up front (e.g.
+~6GB for openai3-1536, ~70GB for stella-trec24) and got silently SIGKILLed
+by the OOM killer on openai3-1536 before it even finished downloading.
+The ground-truth FAISS index is still built from the full base set (a
+flat/exact index inherently holds everything -- no way around that for
+an exact ground truth), but it's added in chunks read back off disk
+instead of coexisting with a second full in-RAM copy during download.
+For stella-trec24 (17M x 1024 floats, ~70GB for the flat index alone)
+this may still be too much for a single machine's RAM/VRAM -- if that
+step OOMs, tell me and we'll switch that one dataset to an IVF-based
+approximate ground truth instead of exact flat search.
 """
 import ast
+import os
 import struct
 import sys
 
@@ -29,6 +44,7 @@ OUT_ROOT = "/root/autodl-tmp"
 QUERY_SIZE = 1000   # held out from TARGET_ROWS, matching JHQ_official README's default
 GT_K = 20
 SEED = 42
+GT_ADD_CHUNK = 200_000  # rows per FAISS index.add() call when building ground truth
 
 DATASETS = {
     "openai3-1536": dict(
@@ -60,12 +76,9 @@ def parse_embedding(val):
     return [float(x) for x in val]
 
 
-def write_fvecs(path, arr):
-    arr = arr.astype(np.float32)
-    with open(path, "wb") as f:
-        for v in arr:
-            f.write(struct.pack("<i", len(v)))
-            f.write(v.tobytes())
+def write_vec(f, vec_f32):
+    f.write(struct.pack("<i", vec_f32.shape[0]))
+    f.write(vec_f32.tobytes())
 
 
 def write_ivecs(path, arr):
@@ -76,72 +89,105 @@ def write_ivecs(path, arr):
             f.write(v.tobytes())
 
 
+def iter_fvecs_chunks(path, dim, chunk_rows):
+    """Read a .fvecs file back in chunks of `chunk_rows` (each yielded as a
+    (chunk_rows_actual, dim) float32 array) without ever holding the whole
+    file in memory at once."""
+    rec_bytes = 4 + dim * 4
+    with open(path, "rb") as f:
+        while True:
+            buf = f.read(rec_bytes * chunk_rows)
+            if not buf:
+                return
+            n = len(buf) // rec_bytes
+            arr = np.empty((n, dim), dtype=np.float32)
+            for i in range(n):
+                off = i * rec_bytes
+                # skip the 4-byte length prefix, read dim float32s
+                arr[i] = np.frombuffer(buf, dtype=np.float32, count=dim,
+                                        offset=off + 4)
+            yield arr
+
+
 def download(name):
     from datasets import load_dataset
 
     cfg = DATASETS[name]
+    dim = cfg["dim"]
+    need = cfg["target_rows"]
     print(f"[{name}] streaming {cfg['hf_path']} (config={cfg['config']}), "
-          f"target={cfg['target_rows']:,} rows, dim={cfg['dim']}")
+          f"target={need:,} rows, dim={dim}")
 
     ds = load_dataset(cfg["hf_path"], cfg["config"], split=cfg["split"], streaming=True)
 
-    need = cfg["target_rows"]
-    rows = np.empty((need, cfg["dim"]), dtype=np.float32)
-    got = 0
-    # find the embedding column name on the fly (usually "embedding"; fall back to
-    # any field whose value looks like a dim-length float sequence)
+    # Pick query row-positions up front (only needs the target count, not the
+    # data itself) so we can route each streamed row to base or query as it
+    # arrives, instead of buffering everything then splitting.
+    query_size = min(QUERY_SIZE, need // 10)
+    rng = np.random.default_rng(SEED)
+    query_idx = set(rng.choice(need, query_size, replace=False).tolist())
+    query_vecs = np.empty((query_size, dim), dtype=np.float32)
+
+    out_dir = f"{OUT_ROOT}/{name}"
+    os.makedirs(out_dir, exist_ok=True)
+    base_path, query_path = f"{out_dir}/base.fvecs", f"{out_dir}/query.fvecs"
+
     emb_col = None
-    for ex in ds:
-        if emb_col is None:
-            for k, v in ex.items():
-                try:
-                    if len(parse_embedding(v)) == cfg["dim"]:
-                        emb_col = k
-                        break
-                except Exception:
-                    continue
+    got = n_base = n_query = 0
+    with open(base_path, "wb") as fb, open(query_path, "wb") as fq:
+        for ex in ds:
             if emb_col is None:
-                raise RuntimeError(
-                    f"[{name}] couldn't find a {cfg['dim']}-dim embedding column "
-                    f"among fields {list(ex.keys())} -- inspect the dataset schema "
-                    f"manually (huggingface.co/datasets/{cfg['hf_path']}) and hardcode emb_col."
-                )
-            print(f"[{name}] using column '{emb_col}'")
-        rows[got] = parse_embedding(ex[emb_col])
-        got += 1
-        if got % 200_000 == 0:
-            print(f"  {got:,}/{need:,}")
-        if got >= need:
-            break
+                for k, v in ex.items():
+                    try:
+                        if len(parse_embedding(v)) == dim:
+                            emb_col = k
+                            break
+                    except Exception:
+                        continue
+                if emb_col is None:
+                    raise RuntimeError(
+                        f"[{name}] couldn't find a {dim}-dim embedding column "
+                        f"among fields {list(ex.keys())} -- inspect the dataset schema "
+                        f"manually (huggingface.co/datasets/{cfg['hf_path']}) and hardcode emb_col."
+                    )
+                print(f"[{name}] using column '{emb_col}'")
+
+            vec = np.asarray(parse_embedding(ex[emb_col]), dtype=np.float32)
+            norm = np.linalg.norm(vec)
+            if norm > 1e-12:
+                vec = vec / norm
+            if got in query_idx:
+                write_vec(fq, vec)
+                query_vecs[n_query] = vec
+                n_query += 1
+            else:
+                write_vec(fb, vec)
+                n_base += 1
+            got += 1
+            if got % 200_000 == 0:
+                print(f"  {got:,}/{need:,}")
+            if got >= need:
+                break
+
     if got < need:
         print(f"[{name}] WARNING: only found {got:,} rows, wanted {need:,} "
               f"(upstream dataset smaller than expected)")
-        rows = rows[:got]
-
-    rows = rows / np.linalg.norm(rows, axis=1, keepdims=True).clip(min=1e-12)
-
-    rng = np.random.default_rng(SEED)
-    n = rows.shape[0]
-    q_idx = rng.choice(n, min(QUERY_SIZE, n // 10), replace=False)
-    mask = np.ones(n, dtype=bool)
-    mask[q_idx] = False
-    base, query = rows[mask], rows[q_idx]
-
-    out_dir = f"{OUT_ROOT}/{name}"
-    import os
-    os.makedirs(out_dir, exist_ok=True)
-    write_fvecs(f"{out_dir}/base.fvecs", base)
-    write_fvecs(f"{out_dir}/query.fvecs", query)
-    print(f"[{name}] base={base.shape} query={query.shape} -> {out_dir}/")
+    if n_query < query_size:
+        query_vecs = query_vecs[:n_query]
+    print(f"[{name}] base={n_base:,} query={n_query:,} written -> {out_dir}/ "
+          f"(streamed straight to disk, no full-array buffering)")
 
     import faiss
-    d = base.shape[1]
     if faiss.get_num_gpus() > 0:
-        index = faiss.GpuIndexFlatL2(faiss.StandardGpuResources(), d)
+        index = faiss.GpuIndexFlatL2(faiss.StandardGpuResources(), dim)
     else:
-        index = faiss.IndexFlatL2(d)
-    index.add(base.astype(np.float32))
-    _, gt = index.search(query.astype(np.float32), GT_K)
+        index = faiss.IndexFlatL2(dim)
+    added = 0
+    for chunk in iter_fvecs_chunks(base_path, dim, GT_ADD_CHUNK):
+        index.add(chunk)
+        added += chunk.shape[0]
+        print(f"  [ground truth] indexed {added:,}/{n_base:,} base vectors")
+    _, gt = index.search(query_vecs.astype(np.float32), GT_K)
     write_ivecs(f"{out_dir}/groundtruth.ivecs", gt.astype(np.int32))
     print(f"[{name}] groundtruth {gt.shape} -> {out_dir}/groundtruth.ivecs  done.")
 
