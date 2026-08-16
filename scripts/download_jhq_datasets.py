@@ -100,14 +100,24 @@ PARQUET_BATCH_ROWS = 4096
 
 DATASETS = {
     "openai3-1536": dict(
+        # embedding_col confirmed by inspecting a downloaded shard's real
+        # parquet schema directly -- these Qdrant exports name the column
+        # after the embedding model, not just "embedding" (and some shards
+        # carry an older ada-002 embedding column alongside the one we want,
+        # so guessing "the embedding-shaped column" isn't safe either).
         hf_path="Qdrant/dbpedia-entities-openai3-text-embedding-3-large-1536-1M",
         config=None, split="train", shard_prefix="data/train-",
-        embedding_col="embedding", dim=1536, target_rows=1_000_000,
+        embedding_col="text-embedding-3-large-1536-embedding",
+        dim=1536, target_rows=1_000_000,
     ),
     "openai3-3072": dict(
+        # Same file family as openai3-1536 also contains an unrelated
+        # text-embedding-ada-002-1536-embedding column -- must name the
+        # 3072 one explicitly, "embedding" matches neither.
         hf_path="Qdrant/dbpedia-entities-openai3-text-embedding-3-large-3072-1M",
         config=None, split="train", shard_prefix="data/train-",
-        embedding_col="embedding", dim=3072, target_rows=1_000_000,
+        embedding_col="text-embedding-3-large-3072-embedding",
+        dim=3072, target_rows=1_000_000,
     ),
     "bge-m3": dict(
         # JHQ's "BGE-M3-1024, 10M" is the Italian config, not English --
