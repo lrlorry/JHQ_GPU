@@ -24,7 +24,15 @@ import pandas as pd
 RESULTS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results")
 
 GPU_COLOR = "#e6194b"
-CPU_COLOR = "#3cb44b"
+# demo_jhq_ivf now reports two CPU methods per dataset: full JHQ (primary +
+# residual refine) and a JQ-only ablation (primary code alone, no residual
+# stage) -- give them distinct colors so the two dashed lines aren't
+# indistinguishable at a glance.
+CPU_METHOD_COLORS = {
+    "JHQ-CPU-IVF": "#3cb44b",  # green
+    "JQ-CPU-IVF": "#4363d8",   # blue
+}
+CPU_COLOR_FALLBACK = "#808000"
 
 # (display title, gpu csv, cpu csv) -- discovered dynamically below instead
 # of hardcoded, so this script doesn't need editing as more datasets land.
@@ -55,8 +63,9 @@ def plot_one(ax, gpu_csv, cpu_csv, title):
 
     cpu_df = pd.read_csv(cpu_csv).sort_values("recall")
     for method, grp in cpu_df.groupby("method"):
+        color = CPU_METHOD_COLORS.get(method, CPU_COLOR_FALLBACK)
         ax.plot(grp["recall"], grp["qps"] / 1000, "s--",
-                color=CPU_COLOR, linewidth=1.8, markersize=6,
+                color=color, linewidth=1.8, markersize=6,
                 label=f"{method} (CPU)")
 
     ax.set_title(title, fontsize=13, fontweight="bold")

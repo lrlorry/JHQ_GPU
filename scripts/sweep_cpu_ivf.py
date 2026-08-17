@@ -9,6 +9,12 @@ loops nprobe in-process) and prints a table -- this script just runs it
 once and parses that table, it does not re-invoke per nprobe like
 sweep_gpu.py has to (the GPU demo doesn't sweep internally).
 
+demo_jhq_ivf builds the index once, then runs TWO sweeps against it:
+full JHQ (primary + residual refine) and JQ-only (primary-code ablation,
+no residual stage) -- each preceded by a "=== <label> ===" marker line
+that this script uses to tag the rows that follow it, so one CSV ends up
+with two "method" values and plot_v12_vs_cpu_all.py plots both lines.
+
 Resumable: if --output already exists and looks complete (has at least one
 data row), skips the run entirely. Delete the file to force a rerun.
 
@@ -26,6 +32,7 @@ import sys
 
 ROW_RE = re.compile(r"^\s*(\d+)\s+([\d.]+)\s+([\d.]+)\s*$")
 BUILD_RE = re.compile(r"Index build:\s*([\d.]+)\s*s")
+METHOD_RE = re.compile(r"^===\s*(\S+)\s*===$")
 
 
 def fvecs_dim(path):
@@ -42,7 +49,10 @@ def main():
     ap.add_argument("--output", required=True)
     ap.add_argument("--demo", default=os.path.expanduser(
         "~/JHQ_repro/build/examples/demo_jhq_ivf"))
-    ap.add_argument("--method-name", default="JHQ-CPU-IVF")
+    ap.add_argument("--method-name", default="JHQ-CPU-IVF",
+                     help="fallback method label for rows printed before any "
+                          "'=== label ===' marker (current demo_jhq_ivf always "
+                          "prints one, so this is effectively unused)")
     ap.add_argument("--M", type=int, default=None,
                      help="defaults to d/B (same rule the binary itself uses,"
                           " computed here explicitly so the wrapper doesn't"
@@ -80,11 +90,16 @@ def main():
     build_time = float(bt_m.group(1))
 
     rows = []
+    current_method = args.method_name
     for line in out.splitlines():
+        mm = METHOD_RE.match(line.strip())
+        if mm:
+            current_method = mm.group(1)
+            continue
         m = ROW_RE.match(line)
         if m:
             nprobe, recall, qps = m.groups()
-            rows.append((args.method_name, int(nprobe), float(recall), float(qps), build_time))
+            rows.append((current_method, int(nprobe), float(recall), float(qps), build_time))
 
     if not rows:
         raise RuntimeError("parsed 0 result rows from demo_jhq_ivf output -- "
