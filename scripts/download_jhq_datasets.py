@@ -387,7 +387,7 @@ def download(name, prepare_only=False):
     os.makedirs(out_dir, exist_ok=True)
     base_path, query_path = f"{out_dir}/base.fvecs", f"{out_dir}/query.fvecs"
 
-    got = n_base = n_query = 0
+    got = n_base = n_query = n_bad = 0
     query_positions = np.fromiter(query_idx, dtype=np.int64)
     next_report = 200_000
     with open(base_path, "wb") as fb, open(query_path, "wb") as fq:
@@ -397,6 +397,19 @@ def download(name, prepare_only=False):
                         # not yet fetched never gets downloaded at all
 
             vecs = arrow_embeddings_to_numpy(column, dim)
+            # Some upstream rows carry NaN/Inf in their embedding (found on
+            # stella-trec24: a steady ~0.13% of rows, not a fluke -- FAISS's
+            # k-means training aborts hard the first time it sees one, no
+            # matter how far downstream). Drop them here, before they're
+            # ever counted towards `need` or matched against the
+            # pre-selected query positions, so a dropped row is invisible
+            # to the rest of the pipeline rather than shifting who "row N"
+            # refers to.
+            finite_mask = np.all(np.isfinite(vecs), axis=1)
+            if not finite_mask.all():
+                n_bad += int((~finite_mask).sum())
+                vecs = vecs[finite_mask]
+
             take = min(vecs.shape[0], need - got)
             vecs = np.ascontiguousarray(vecs[:take])
             norms = np.linalg.norm(vecs, axis=1, keepdims=True)
@@ -420,6 +433,9 @@ def download(name, prepare_only=False):
     if got < need:
         print(f"[{name}] WARNING: only found {got:,} rows, wanted {need:,} "
               f"(upstream dataset smaller than expected)")
+    if n_bad:
+        print(f"[{name}] dropped {n_bad:,} row(s) with non-finite (NaN/Inf) "
+              f"embedding values -- not written to base or query")
     if n_query < query_size:
         query_vecs = query_vecs[:n_query]
     print(f"[{name}] base={n_base:,} query={n_query:,} written -> {out_dir}/ "
