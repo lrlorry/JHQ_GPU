@@ -65,7 +65,15 @@ __global__ void gather_list_storage_kernel(
 
 // ── Transpose kernel: [N, M] → [M, N] with shared-memory tiling ──────────────
 // TILE=32 avoids bank conflicts (padding +1 on shared dim).
-// Grid: (ceil(M/TILE), ceil(N/TILE))
+// Grid: (ceil(N/TILE), ceil(M/TILE)) -- N (millions of vectors) MUST be the
+// grid.x axis, not grid.y: CUDA caps grid.y/grid.z at 65535 regardless of
+// compute capability, while grid.x goes up to 2^31-1. The original version
+// put N on grid.y (ceil(N/TILE) with TILE=32 exceeds 65535 once N exceeds
+// ~2.1M), which failed with "invalid argument" at the kernel launch on
+// arxiv-abstracts-768 (2,253,000 vectors) -- never caught before since every
+// dataset this was tested against until now (Vogue-768, openai3-1536) had
+// fewer than ~2.1M vectors. M (subspace count, order 100s) safely stays
+// under 65535 either way, so it's the one that belongs on grid.y.
 // Each block transposes a TILE×TILE sub-block.
 template <int TILE>
 __global__ void transpose_uint8_kernel(
@@ -76,15 +84,15 @@ __global__ void transpose_uint8_kernel(
     __shared__ uint8_t tile[TILE][TILE + 1];  // +1 avoids bank conflicts
 
     // Read: block reads tile[threadIdx.y][threadIdx.x] from src[row_src, col_src]
-    long long col_src = (long long)blockIdx.x * TILE + threadIdx.x;  // m-axis
-    long long row_src = (long long)blockIdx.y * TILE + threadIdx.y;  // n-axis
+    long long col_src = (long long)blockIdx.y * TILE + threadIdx.x;  // m-axis
+    long long row_src = (long long)blockIdx.x * TILE + threadIdx.y;  // n-axis
     if (col_src < M && row_src < N)
         tile[threadIdx.y][threadIdx.x] = src[row_src * M + col_src];
     __syncthreads();
 
     // Write: transposed — dst[row_dst, col_dst] where row is m-axis, col is n-axis
-    long long col_dst = (long long)blockIdx.y * TILE + threadIdx.x;  // n-axis
-    long long row_dst = (long long)blockIdx.x * TILE + threadIdx.y;  // m-axis
+    long long col_dst = (long long)blockIdx.x * TILE + threadIdx.x;  // n-axis
+    long long row_dst = (long long)blockIdx.y * TILE + threadIdx.y;  // m-axis
     if (col_dst < N && row_dst < M)
         dst[row_dst * N + col_dst] = tile[threadIdx.x][threadIdx.y];
 }
@@ -448,9 +456,12 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     CUDA_CHECK(cudaDeviceSynchronize());
 
     // Transpose [N, M] → [M, N] for coalesced scan access.
+    // grid.x = N-tiles, grid.y = M-tiles -- see transpose_uint8_kernel's
+    // comment for why N (which can be in the millions) must be on grid.x,
+    // not grid.y (CUDA's 65535 cap on grid.y/z).
     constexpr int TILE = 32;
     CUDA_CHECK(cudaMalloc(&d_list_primary_t_, (long long)M_ * n * sizeof(uint8_t)));
-    dim3 grid((M_ + TILE - 1) / TILE, ((long long)n + TILE - 1) / TILE);
+    dim3 grid(((long long)n + TILE - 1) / TILE, (M_ + TILE - 1) / TILE);
     dim3 block(TILE, TILE);
     transpose_uint8_kernel<TILE><<<grid, block>>>(d_list_primary_nm, d_list_primary_t_,
                                                    (long long)n, M_);
