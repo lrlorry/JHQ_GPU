@@ -110,7 +110,15 @@ inline MmapFloatMatrix load_fvecs_mmap(const char* fvecs_path,
                     throw std::runtime_error("truncated fvecs record in " +
                                               std::string(fvecs_path));
             }
-            fwrite(buf.data(), sizeof(float), (size_t)take * d, out);
+            size_t written = fwrite(buf.data(), sizeof(float), (size_t)take * d, out);
+            if (written != (size_t)take * d) {
+                fclose(out);
+                throw std::runtime_error(
+                    "short write converting " + std::string(fvecs_path) + " -> " +
+                    raw_path + " (wrote " + std::to_string(written) + "/" +
+                    std::to_string((size_t)take * d) + " floats for this chunk) "
+                    "-- likely disk full, check `df -h`");
+            }
             done += take;
         }
         fclose(out);
