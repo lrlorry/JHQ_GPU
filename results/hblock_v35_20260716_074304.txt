@@ -1,0 +1,53 @@
+=== HBlock v35: W=4 batched expansion + HNSW early termination, beam=ef (no cap), no early termination, ceiling test ===
+date: Thu Jul 16 07:43:04 CST 2026
+
+base=932328×768  query=1000×768  gt=1000×100
+max_ef=256  K1=16 K2=16 K3=16  graph_degree=32  entry_per_cell=4
+  d_proj=64  per_block_r=16  batch=1024
+
+Training on 200000 vectors...
+[v35 train] d=768 d_proj=64 K1=16 K2=16 K3=16 ck1=2 ck2=2 ck3=4 graph_degree=32 max_ef=256 entry_per_cell=4
+[v29 train] total=2558.4 ms  sigma_r3=0.0236
+  train: 2605.5 ms
+Adding 932328 vectors...
+[v34 add] n=932328  d=768  batch=8192  mini_km_iters=5
+  [encode] 11/114 batches  583.0 ms
+  [encode] 22/114 batches  626.2 ms
+  [encode] 33/114 batches  674.2 ms
+  [encode] 44/114 batches  722.1 ms
+  [encode] 55/114 batches  769.9 ms
+  [encode] 66/114 batches  819.7 ms
+  [encode] 77/114 batches  867.5 ms
+  [encode] 88/114 batches  931.7 ms
+  [encode] 99/114 batches  1044.2 ms
+  [encode] 110/114 batches  1159.0 ms
+  [encode] 114/114 batches  1201.4 ms
+  [encode total] 1202.3 ms
+  [sort] 103.9 ms
+  [balanced kmeans] 2839 cells  2262.1 ms
+  [leaf layout] 9418 blocks  max_per_cell=131  5.5 ms
+  [pack+centroids] 1865.8 ms
+  [proj GEMM + norms] 5.5 ms
+  [upload leaf GPU] 117.7 ms
+  [abs centroids] 12.9 ms
+  [upload proj/norm GPU] 0.4 ms
+  [graph build] n_blocks=9418 degree=32 n_c2_nbrs=4 n_c1_nbrs=2 ...
+    [graph/csr_build] 85.5 ms  cells=4096  total_cands=1485824  avg_cands/block=158
+    [graph/upload_csr] 0.9 ms
+    [graph/GPU_kernel] 6.6 ms
+    [graph total] 93.8 ms  9418 blocks x 32 degree
+  [graph build total] 95.8 ms
+  [upload base vecs] 2.86 GB ...
+  [upload base vecs] 429.8 ms
+  [alloc workspace] 4.0 ms
+[v34 add total] 6105.7 ms  blocks=9418
+  add: 6145.8 ms
+
+ef       recall@10    QPS       
+----     ---------    ---       
+8        0.7067       494627      (2.02 ms)
+16       0.8402       418067      (2.39 ms)
+32       0.9254       309364      (3.23 ms)
+64       0.9699       210386      (4.75 ms)
+128      0.9904       129826      (7.70 ms)
+256      0.9968       72033       (13.88 ms)

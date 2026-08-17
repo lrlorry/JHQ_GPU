@@ -1,0 +1,117 @@
+=== HBlock v41: wave-streamed region pools, SPACEV ===
+date: Thu Aug  6 18:22:36 CST 2026
+base: /root/autodl-tmp/spacev100m/base.100M.i8bin
+query: /root/autodl-tmp/spacev100m/query.30K.i8bin
+ids: /root/autodl-tmp/spacev100m/ids.100M.i32bin
+gt: /root/autodl-tmp/spacev100m/groundtruth.30K.i32bin
+nbase: -1  nquery: -1
+region_bytes_mib=1 code_region_cap=256 raw_region_cap=256
+
+base=100000000 x 100  query=29316 x 100  gt=29316 x 10
+max_ef=256 K1=16 K2=16 K3=16 degree=32 entry_per_cell=4
+  d_proj=64 per_block_r=16 batch=1024 reps=3
+  region_bytes=1MiB gpu_code_region_cap=256 gpu_raw_region_cap=256
+Training on 200000 vectors...
+[v41 train] d=100 d_proj=64 K1=16 K2=16 K3=16 ck1=2 ck2=2 ck3=4 graph_degree=32 max_ef=256 entry_per_cell=4
+[v41 train] total=1110.4 ms  sigma_r3=9.5098
+  train: 1120.0 ms
+Adding 100000000 SPACEV vectors (streamed)...
+[v41 add] n=100000000  d=100  add_batch_size=262144  mini_km_iters=5
+  [encode] 38/382 batches  18165.2 ms
+  [encode] 76/382 batches  20496.8 ms
+  [encode] 114/382 batches  22452.2 ms
+  [encode] 152/382 batches  24024.1 ms
+  [encode] 190/382 batches  25639.2 ms
+  [encode] 228/382 batches  27205.5 ms
+  [encode] 266/382 batches  28771.5 ms
+  [encode] 304/382 batches  30470.8 ms
+  [encode] 342/382 batches  32105.1 ms
+  [encode] 380/382 batches  33664.7 ms
+  [encode] 382/382 batches  33723.0 ms
+  [encode total] 33725.3 ms
+  [sort GPU radix] 7026.4 ms
+  [block packing] balanced_kmeans=109  radix_large_cells=3972  3758.1 ms
+  [leaf layout] 783268 blocks  max_per_cell=280975  2531.3 ms
+  [pack+centroids] 42271.8 ms
+  [proj GEMM + norms] 163.1 ms
+  [upload block metadata] 0.7 ms
+  [abs centroids] 1.8 ms
+  [upload proj/norm GPU] 22.3 ms
+  [graph build] n_blocks=783268 degree=32 n_c2_nbrs=4 n_c1_nbrs=2 ...
+    [graph/csr_build] 29201.4 ms  cells=4096  total_cands=8380416  avg_cands/block=11
+    [graph/upload_csr] 26.5 ms
+    [graph/GPU_kernel] 274.2 ms
+    [graph total] 29553.4 ms  783268 blocks x 32 degree
+  [graph build total] 29555.4 ms
+  [region layout] 5188 code regions (5.44 GB), 9670 raw regions (10.14 GB), region_bytes=1048576
+  [GPU region pools] code=268.44 MB raw=268.44 MB
+  [region layout total] 24643.7 ms
+  [alloc workspace] 4.2 ms
+[v41 add total] 145216.0 ms  blocks=783268  code_regions=5188  raw_regions=9670
+  add: 145217.3 ms
+  [v41] Route=1486.62 Traverse=1485.26 Pairs=1.87 RegionPlan=51.01 PQSubmit=24152.00 ExactSubmit=48162.22 Merge=2.20 D2H+Sync=5.55 ms
+  [v41 stats] avg_visited=256.0  avg_pairs=256.0  (over 29316 queries)
+  [v41 region] code: 411 waves, 101380 req -> 101380 uniq, 106304.63 MB H2D | raw: 642 waves, 160489 req -> 160489 uniq, 168284.91 MB H2D
+
+ef       recall@10    QPS       
+----     ---------    ---       
+  [v41] Route=6.87 Traverse=1441.72 Pairs=1.45 RegionPlan=6.89 PQSubmit=7389.69 ExactSubmit=8379.89 Merge=1.30 D2H+Sync=1.63 ms
+  [v41 stats] avg_visited=8.0  avg_pairs=8.0  (over 29316 queries)
+  [v41 region] code: 174 waves, 42543 req -> 42543 uniq, 44609.57 MB H2D | raw: 230 waves, 54900 req -> 54900 uniq, 57566.82 MB H2D
+  [v41] Route=7.24 Traverse=1440.43 Pairs=1.63 RegionPlan=7.23 PQSubmit=5961.74 ExactSubmit=8278.05 Merge=1.36 D2H+Sync=1.59 ms
+  [v41 stats] avg_visited=8.0  avg_pairs=8.0  (over 29316 queries)
+  [v41 region] code: 174 waves, 42543 req -> 42543 uniq, 44609.57 MB H2D | raw: 230 waves, 54900 req -> 54900 uniq, 57566.82 MB H2D
+  [v41] Route=7.31 Traverse=1444.45 Pairs=1.56 RegionPlan=8.00 PQSubmit=6400.37 ExactSubmit=9569.37 Merge=1.39 D2H+Sync=1.58 ms
+  [v41 stats] avg_visited=8.0  avg_pairs=8.0  (over 29316 queries)
+  [v41 region] code: 174 waves, 42543 req -> 42543 uniq, 44609.57 MB H2D | raw: 230 waves, 54900 req -> 54900 uniq, 57566.82 MB H2D
+8        0.1119       1746        (16788.95 ms)
+  [v41] Route=7.09 Traverse=1443.26 Pairs=1.56 RegionPlan=10.21 PQSubmit=7330.06 ExactSubmit=9897.44 Merge=1.38 D2H+Sync=2.20 ms
+  [v41 stats] avg_visited=16.0  avg_pairs=16.0  (over 29316 queries)
+  [v41 region] code: 203 waves, 49995 req -> 49995 uniq, 52423.56 MB H2D | raw: 284 waves, 67632 req -> 67632 uniq, 70917.29 MB H2D
+  [v41] Route=6.51 Traverse=1441.25 Pairs=1.41 RegionPlan=9.09 PQSubmit=6733.93 ExactSubmit=9468.39 Merge=1.29 D2H+Sync=2.28 ms
+  [v41 stats] avg_visited=16.0  avg_pairs=16.0  (over 29316 queries)
+  [v41 region] code: 203 waves, 49995 req -> 49995 uniq, 52423.56 MB H2D | raw: 284 waves, 67632 req -> 67632 uniq, 70917.29 MB H2D
+  [v41] Route=6.22 Traverse=1441.19 Pairs=1.39 RegionPlan=8.34 PQSubmit=6373.87 ExactSubmit=9386.29 Merge=1.25 D2H+Sync=2.36 ms
+  [v41 stats] avg_visited=16.0  avg_pairs=16.0  (over 29316 queries)
+  [v41 region] code: 203 waves, 49995 req -> 49995 uniq, 52423.56 MB H2D | raw: 284 waves, 67632 req -> 67632 uniq, 70917.29 MB H2D
+16       0.1349       1641        (17860.67 ms)
+  [v41] Route=6.89 Traverse=1442.35 Pairs=1.57 RegionPlan=11.76 PQSubmit=7507.44 ExactSubmit=11550.18 Merge=1.45 D2H+Sync=3.49 ms
+  [v41 stats] avg_visited=32.0  avg_pairs=32.0  (over 29316 queries)
+  [v41 region] code: 240 waves, 58614 req -> 58614 uniq, 61461.23 MB H2D | raw: 344 waves, 82786 req -> 82786 uniq, 86807.41 MB H2D
+  [v41] Route=6.41 Traverse=1442.40 Pairs=1.48 RegionPlan=11.54 PQSubmit=7712.69 ExactSubmit=10289.44 Merge=1.41 D2H+Sync=3.52 ms
+  [v41 stats] avg_visited=32.0  avg_pairs=32.0  (over 29316 queries)
+  [v41 region] code: 240 waves, 58614 req -> 58614 uniq, 61461.23 MB H2D | raw: 344 waves, 82786 req -> 82786 uniq, 86807.41 MB H2D
+  [v41] Route=6.37 Traverse=1442.38 Pairs=1.45 RegionPlan=10.82 PQSubmit=7030.87 ExactSubmit=11003.44 Merge=1.36 D2H+Sync=3.55 ms
+  [v41 stats] avg_visited=32.0  avg_pairs=32.0  (over 29316 queries)
+  [v41 region] code: 240 waves, 58614 req -> 58614 uniq, 61461.23 MB H2D | raw: 344 waves, 82786 req -> 82786 uniq, 86807.41 MB H2D
+32       0.1645       1478        (19832.51 ms)
+  [v41] Route=6.50 Traverse=1436.87 Pairs=1.56 RegionPlan=15.36 PQSubmit=9217.17 ExactSubmit=13106.00 Merge=1.46 D2H+Sync=3.93 ms
+  [v41 stats] avg_visited=64.0  avg_pairs=64.0  (over 29316 queries)
+  [v41 region] code: 287 waves, 68870 req -> 68870 uniq, 72215.43 MB H2D | raw: 411 waves, 102224 req -> 102224 uniq, 107189.63 MB H2D
+  [v41] Route=6.51 Traverse=1436.54 Pairs=1.47 RegionPlan=14.00 PQSubmit=8305.12 ExactSubmit=13123.30 Merge=1.39 D2H+Sync=3.99 ms
+  [v41 stats] avg_visited=64.0  avg_pairs=64.0  (over 29316 queries)
+  [v41 region] code: 287 waves, 68870 req -> 68870 uniq, 72215.43 MB H2D | raw: 411 waves, 102224 req -> 102224 uniq, 107189.63 MB H2D
+  [v41] Route=6.58 Traverse=1436.64 Pairs=1.48 RegionPlan=15.08 PQSubmit=9081.18 ExactSubmit=12535.45 Merge=1.42 D2H+Sync=3.99 ms
+  [v41 stats] avg_visited=64.0  avg_pairs=64.0  (over 29316 queries)
+  [v41 region] code: 287 waves, 68870 req -> 68870 uniq, 72215.43 MB H2D | raw: 411 waves, 102224 req -> 102224 uniq, 107189.63 MB H2D
+64       0.2002       1261        (23255.24 ms)
+  [v41] Route=7.06 Traverse=1453.73 Pairs=1.62 RegionPlan=20.69 PQSubmit=10156.15 ExactSubmit=17199.61 Merge=1.49 D2H+Sync=4.58 ms
+  [v41 stats] avg_visited=128.0  avg_pairs=128.0  (over 29316 queries)
+  [v41 region] code: 338 waves, 82398 req -> 82398 uniq, 86400.57 MB H2D | raw: 514 waves, 128163 req -> 128163 uniq, 134388.65 MB H2D
+  [v41] Route=6.55 Traverse=1453.44 Pairs=1.53 RegionPlan=20.86 PQSubmit=10797.25 ExactSubmit=15849.72 Merge=1.48 D2H+Sync=4.57 ms
+  [v41 stats] avg_visited=128.0  avg_pairs=128.0  (over 29316 queries)
+  [v41 region] code: 338 waves, 82398 req -> 82398 uniq, 86400.57 MB H2D | raw: 514 waves, 128163 req -> 128163 uniq, 134388.65 MB H2D
+  [v41] Route=6.97 Traverse=1453.50 Pairs=1.47 RegionPlan=19.78 PQSubmit=10006.67 ExactSubmit=16767.73 Merge=1.52 D2H+Sync=4.55 ms
+  [v41 stats] avg_visited=128.0  avg_pairs=128.0  (over 29316 queries)
+  [v41 region] code: 338 waves, 82398 req -> 82398 uniq, 86400.57 MB H2D | raw: 514 waves, 128163 req -> 128163 uniq, 134388.65 MB H2D
+128      0.2442       1032        (28415.18 ms)
+  [v41] Route=6.57 Traverse=1482.63 Pairs=1.48 RegionPlan=31.67 PQSubmit=13082.31 ExactSubmit=19982.10 Merge=1.51 D2H+Sync=5.99 ms
+  [v41 stats] avg_visited=256.0  avg_pairs=256.0  (over 29316 queries)
+  [v41 region] code: 411 waves, 101380 req -> 101380 uniq, 106304.63 MB H2D | raw: 642 waves, 160489 req -> 160489 uniq, 168284.91 MB H2D
+  [v41] Route=7.00 Traverse=1483.58 Pairs=1.53 RegionPlan=31.56 PQSubmit=12431.20 ExactSubmit=20945.76 Merge=1.45 D2H+Sync=6.01 ms
+  [v41 stats] avg_visited=256.0  avg_pairs=256.0  (over 29316 queries)
+  [v41 region] code: 411 waves, 101380 req -> 101380 uniq, 106304.63 MB H2D | raw: 642 waves, 160489 req -> 160489 uniq, 168284.91 MB H2D
+  [v41] Route=7.22 Traverse=1482.23 Pairs=1.51 RegionPlan=32.60 PQSubmit=13027.71 ExactSubmit=20425.49 Merge=1.49 D2H+Sync=5.98 ms
+  [v41 stats] avg_visited=256.0  avg_pairs=256.0  (over 29316 queries)
+  [v41 region] code: 411 waves, 101380 req -> 101380 uniq, 106304.63 MB H2D | raw: 642 waves, 160489 req -> 160489 uniq, 168284.91 MB H2D
+256      0.2928       842         (34829.92 ms)

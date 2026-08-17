@@ -1,0 +1,52 @@
+=== HBlock v32: single beam parameter, build once + sweep ef ===
+date: Thu Jul 16 04:56:29 CST 2026
+
+base=932328×768  query=1000×768  gt=1000×100
+max_ef=128  K1=16 K2=16 K3=16  graph_degree=32  entry_per_cell=4
+  d_proj=64  per_block_r=16  batch=1024
+
+Training on 200000 vectors...
+[v32 train] d=768 d_proj=64 K1=16 K2=16 K3=16 beam=128 graph_degree=32 entry_per_cell=4
+[v32 train] total=2643.2 ms  sigma_r3=0.0236
+  train: 2707.0 ms
+Adding 932328 vectors...
+[v32 add] n=932328  d=768  max_ef=128
+  [encode] 11/114 batches  288.1 ms
+  [encode] 22/114 batches  333.5 ms
+  [encode] 33/114 batches  377.3 ms
+  [encode] 44/114 batches  421.4 ms
+  [encode] 55/114 batches  465.3 ms
+  [encode] 66/114 batches  509.2 ms
+  [encode] 77/114 batches  571.1 ms
+  [encode] 88/114 batches  631.8 ms
+  [encode] 99/114 batches  742.6 ms
+  [encode] 110/114 batches  857.4 ms
+  [encode] 114/114 batches  905.0 ms
+  [encode total] 906.0 ms
+  [sort] 108.7 ms
+  [balanced kmeans] 2811 cells  1928.0 ms
+  [leaf layout] 9439 blocks  max_per_cell=73  5.8 ms
+  [pack+centroids] 1688.2 ms
+  [proj GEMM + norms] 4.6 ms
+  [upload leaf GPU] 52.1 ms
+  [abs centroids] 13.3 ms
+  [upload proj/norm GPU] 0.5 ms
+  [graph build] n_blocks=9439 degree=32 n_c2_nbrs=4 n_c1_nbrs=2 ...
+    [graph/csr_build] 86.4 ms  cells=4096  total_cands=1412208  avg_cands/block=150
+    [graph/upload_csr] 1.0 ms
+    [graph/GPU_kernel] 6.9 ms
+    [graph total] 94.4 ms  9439 blocks x 32 degree
+  [graph build total] 96.4 ms
+  [upload base vecs] 2.86 GB ...
+  [upload base vecs] 498.5 ms
+  [alloc workspace] 4.6 ms
+[v32 add total] 5306.8 ms  blocks=9439
+  add: 5340.0 ms
+
+ef       recall@10    QPS       
+----     ---------    ---       
+8        0.6710       6394        (156.39 ms)
+16       0.6730       153641      (6.51 ms)
+32       0.6790       118588      (8.43 ms)
+64       0.8070       69411       (14.41 ms)
+128      0.8960       37237       (26.86 ms)

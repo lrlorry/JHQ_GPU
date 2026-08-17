@@ -1,0 +1,9 @@
+=== HBlock v39: region-partitioned GPU pool, SIFT100M ===
+date: Thu Aug  6 13:19:04 CST 2026
+base: /root/data/sift100m/bigann_base.bvecs
+query: /root/data/sift100m/bigann_query.bvecs
+gt: /root/data/sift100m/gnd/idx_100M.ivecs
+nbase: 100000000
+region_bytes_mib=4 gpu_code_region_cap=100000 gpu_raw_region_cap=100000
+
+Cannot open bvecs base: /root/data/sift100m/bigann_base.bvecs

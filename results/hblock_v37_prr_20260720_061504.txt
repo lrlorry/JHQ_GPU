@@ -1,0 +1,57 @@
+=== HBlock v37_prr: certified PQ racing (PRR) ===
+date: Mon Jul 20 06:15:04 CST 2026
+search_mode=0  eps_mode=0
+
+base=932328 x 768  query=1000 x 768  gt=1000 x 100
+max_ef=256  K1=16 K2=16 K3=16  graph_degree=32  entry_per_cell=4
+  d_proj=64  per_block_r=16  batch=1024
+  search_mode=FIXED_PER_BLOCK  eps_mode=BLOCK_128
+
+Training on 200000 vectors...
+[v37_prr train] d=768 d_proj=64 K1=16 K2=16 K3=16 ck1=2 ck2=2 ck3=4 graph_degree=32 max_ef=256 entry_per_cell=4
+[v37_prr train] total=3383.9 ms  sigma_r3=0.0236
+  train: 3429.9 ms
+Adding 932328 vectors...
+[v37_prr add] n=932328  d=768  batch=8192  mini_km_iters=5  search_mode=0
+  [encode] 11/114 batches  568.6 ms
+  [encode] 22/114 batches  894.9 ms
+  [encode] 33/114 batches  1218.6 ms
+  [encode] 44/114 batches  1544.7 ms
+  [encode] 55/114 batches  1866.8 ms
+  [encode] 66/114 batches  2197.2 ms
+  [encode] 77/114 batches  2528.2 ms
+  [encode] 88/114 batches  2856.1 ms
+  [encode] 99/114 batches  3180.5 ms
+  [encode] 110/114 batches  3509.1 ms
+  [encode] 114/114 batches  3621.3 ms
+  [encode total] 3622.3 ms
+  [sort GPU radix] 9.0 ms
+  [balanced kmeans] 2839 cells  3326.9 ms
+  [leaf layout] 9429 blocks  max_per_cell=228  8.7 ms
+  [pack+centroids] 2077.9 ms
+  [proj GEMM + norms] 5.5 ms
+  [upload leaf GPU] 57.9 ms
+  [abs centroids] 17.0 ms
+  [upload proj/norm GPU] 0.5 ms
+[v37_prr eps] block: mean=0.3137 p50=0.2600 p90=0.5219 max=0.6869
+  [PRR eps arrays] 7.2 ms
+  [graph build] n_blocks=9429 degree=32 n_c2_nbrs=4 n_c1_nbrs=2 ...
+    [graph/csr_build] 83.9 ms  cells=4096  total_cands=1396176  avg_cands/block=148
+    [graph/upload_csr] 0.9 ms
+    [graph/GPU_kernel] 7.1 ms
+    [graph total] 92.3 ms  9429 blocks x 32 degree
+  [graph build total] 94.3 ms
+  [upload base vecs] 2.86 GB ...
+  [upload base vecs] 420.5 ms
+  [alloc workspace] 4.3 ms
+[v37_prr add total] 9652.3 ms  blocks=9429
+  add: 9678.2 ms
+
+ef       recall@10    QPS       
+----     ---------    ---       
+8        0.7088       490234      (2.04 ms)
+16       0.8363       411708      (2.43 ms)
+32       0.9271       307028      (3.26 ms)
+64       0.9733       209999      (4.76 ms)
+128      0.9905       128939      (7.76 ms)
+256      0.9968       71952       (13.90 ms)

@@ -1,0 +1,89 @@
+=== HBlock v37_prr: certified PQ racing (PRR) ===
+date: Mon Jul 20 06:15:33 CST 2026
+search_mode=2  eps_mode=2
+
+base=932328 x 768  query=1000 x 768  gt=1000 x 100
+max_ef=256  K1=16 K2=16 K3=16  graph_degree=32  entry_per_cell=4
+  d_proj=64  per_block_r=16  batch=1024
+  search_mode=CERTIFIED_PRR  eps_mode=VECTOR_LEVEL
+
+Training on 200000 vectors...
+[v37_prr train] d=768 d_proj=64 K1=16 K2=16 K3=16 ck1=2 ck2=2 ck3=4 graph_degree=32 max_ef=256 entry_per_cell=4
+[v37_prr train] total=2831.9 ms  sigma_r3=0.0236
+  train: 2878.9 ms
+Adding 932328 vectors...
+[v37_prr add] n=932328  d=768  batch=8192  mini_km_iters=5  search_mode=2
+  [encode] 11/114 batches  570.9 ms
+  [encode] 22/114 batches  889.7 ms
+  [encode] 33/114 batches  1210.0 ms
+  [encode] 44/114 batches  1528.2 ms
+  [encode] 55/114 batches  1855.7 ms
+  [encode] 66/114 batches  2176.2 ms
+  [encode] 77/114 batches  2499.0 ms
+  [encode] 88/114 batches  2818.0 ms
+  [encode] 99/114 batches  3134.9 ms
+  [encode] 110/114 batches  3444.2 ms
+  [encode] 114/114 batches  3559.2 ms
+  [encode total] 3560.3 ms
+  [sort GPU radix] 10.1 ms
+  [balanced kmeans] 2838 cells  2252.4 ms
+  [leaf layout] 9469 blocks  max_per_cell=95  6.9 ms
+  [pack+centroids] 2101.7 ms
+  [proj GEMM + norms] 5.4 ms
+  [upload leaf GPU] 58.7 ms
+  [abs centroids] 15.8 ms
+  [upload proj/norm GPU] 0.5 ms
+[v37_prr eps] block: mean=0.3142 p50=0.2617 p90=0.5175 max=0.6734
+  [PRR eps arrays] 7.1 ms
+  [graph build] n_blocks=9469 degree=32 n_c2_nbrs=4 n_c1_nbrs=2 ...
+    [graph/csr_build] 83.9 ms  cells=4096  total_cands=1380800  avg_cands/block=146
+    [graph/upload_csr] 0.9 ms
+    [graph/GPU_kernel] 6.8 ms
+    [graph total] 92.0 ms  9469 blocks x 32 degree
+  [graph build total] 94.0 ms
+  [upload base vecs] 2.86 GB ...
+  [upload base vecs] 418.8 ms
+  [PRR workspace] l2=134.2 MB  u2topk=10.5 MB  tau2=4.1 KB
+  [alloc workspace] 4.3 ms
+[v37_prr add total] 8536.3 ms  blocks=9469
+  add: 8565.1 ms
+[prr diag] surv/block avg=59.1  blocks>r=70.4%  blocks=256000
+
+ef       recall@10    QPS       
+----     ---------    ---       
+[prr diag] surv/block avg=90.3  blocks>r=97.3%  blocks=8000
+[prr diag] surv/block avg=90.3  blocks>r=97.3%  blocks=8000
+[prr diag] surv/block avg=90.3  blocks>r=97.3%  blocks=8000
+[prr diag] surv/block avg=90.3  blocks>r=97.3%  blocks=8000
+[prr diag] surv/block avg=90.3  blocks>r=97.3%  blocks=8000
+8        0.6928       457478      (2.19 ms)
+[prr diag] surv/block avg=83.8  blocks>r=94.5%  blocks=16000
+[prr diag] surv/block avg=83.8  blocks>r=94.5%  blocks=16000
+[prr diag] surv/block avg=83.8  blocks>r=94.5%  blocks=16000
+[prr diag] surv/block avg=83.8  blocks>r=94.5%  blocks=16000
+[prr diag] surv/block avg=83.8  blocks>r=94.5%  blocks=16000
+16       0.8243       364057      (2.75 ms)
+[prr diag] surv/block avg=77.3  blocks>r=89.8%  blocks=32000
+[prr diag] surv/block avg=77.3  blocks>r=89.8%  blocks=32000
+[prr diag] surv/block avg=77.3  blocks>r=89.8%  blocks=32000
+[prr diag] surv/block avg=77.3  blocks>r=89.8%  blocks=32000
+[prr diag] surv/block avg=77.3  blocks>r=89.8%  blocks=32000
+32       0.9217       260806      (3.83 ms)
+[prr diag] surv/block avg=71.1  blocks>r=84.2%  blocks=64000
+[prr diag] surv/block avg=71.1  blocks>r=84.2%  blocks=64000
+[prr diag] surv/block avg=71.1  blocks>r=84.2%  blocks=64000
+[prr diag] surv/block avg=71.1  blocks>r=84.2%  blocks=64000
+[prr diag] surv/block avg=71.1  blocks>r=84.2%  blocks=64000
+64       0.9690       172793      (5.79 ms)
+[prr diag] surv/block avg=65.0  blocks>r=77.4%  blocks=128000
+[prr diag] surv/block avg=65.0  blocks>r=77.4%  blocks=128000
+[prr diag] surv/block avg=65.0  blocks>r=77.4%  blocks=128000
+[prr diag] surv/block avg=65.0  blocks>r=77.4%  blocks=128000
+[prr diag] surv/block avg=65.0  blocks>r=77.4%  blocks=128000
+128      0.9905       105109      (9.51 ms)
+[prr diag] surv/block avg=59.1  blocks>r=70.4%  blocks=256000
+[prr diag] surv/block avg=59.1  blocks>r=70.4%  blocks=256000
+[prr diag] surv/block avg=59.1  blocks>r=70.4%  blocks=256000
+[prr diag] surv/block avg=59.1  blocks>r=70.4%  blocks=256000
+[prr diag] surv/block avg=59.1  blocks>r=70.4%  blocks=256000
+256      0.9969       59295       (16.86 ms)

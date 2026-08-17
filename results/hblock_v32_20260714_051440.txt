@@ -1,0 +1,4 @@
+=== HBlock v32: single beam parameter, build once + sweep ef ===
+date: Tue Jul 14 05:14:40 CST 2026
+
+Cannot open /root/data/vogue-768/base.fvecs

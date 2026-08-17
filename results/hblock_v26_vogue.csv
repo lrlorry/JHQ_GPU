@@ -1,0 +1,2 @@
+budget,beam_size,rerank_r,oracle_recall@10,recall@10,latency_ms,qps
+16,32,128,0.8218,0.7985,15.43,64792
