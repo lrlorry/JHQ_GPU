@@ -118,9 +118,42 @@ def main():
                     if args.version in ALL_IVF_VERSIONS
                     else parse_list(args.alphas, float))
 
+    out_dir = os.path.dirname(output)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+
+    # Resume support: each nprobe/alpha value redoes a full train+add from
+    # scratch (the GPU demo doesn't sweep internally the way the CPU one
+    # does), so an interrupted run losing that work is expensive to redo.
+    # If `output` already has rows for some of `sweep_values` (matched on
+    # the x-axis value: nprobe or alpha), skip re-running those and reuse
+    # what's on disk; write the CSV after every point, not just at the end,
+    # so a kill mid-sweep only loses the point in flight.
     rows = []
+    done_x = set()
     build_time = None
+    if os.path.exists(output):
+        with open(output, newline="") as f:
+            for row in csv.DictReader(f):
+                x = int(row["nprobe"]) if args.version in ALL_IVF_VERSIONS else float(row["nprobe"])
+                rows.append((row["method"], x, float(row["recall"]),
+                             float(row["qps"]), float(row["build_time"])))
+                done_x.add(x)
+                build_time = float(row["build_time"])
+        if done_x:
+            print(f"[resume] {output} already has {len(done_x)} point(s): "
+                  f"{sorted(done_x)} -- skipping those", flush=True)
+
+    def save():
+        with open(output, "w", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(["method", "nprobe", "recall", "qps", "build_time"])
+            w.writerows(rows)
+
     for val in sweep_values:
+        x_probe = int(val) if args.version in ALL_IVF_VERSIONS else float(val)
+        if x_probe in done_x:
+            continue
         if args.version in ALL_IVF_VERSIONS:
             nprobe = int(val)
             if args.version in HBLOCK_VERSIONS:
@@ -158,17 +191,11 @@ def main():
                 build_time = bt
             rows.append((method, x_value, recall, qps, build_time))
             print(f"  recall={recall:.4f}  qps={qps:.0f}  build={build_time:.1f}s", flush=True)
+            save()  # persist after every point, not just at the end -- a
+                     # kill mid-sweep should only lose the point in flight
         except Exception as exc:
             print(f"  ERROR: {exc}", file=sys.stderr, flush=True)
             raise
-
-    out_dir = os.path.dirname(output)
-    if out_dir:
-        os.makedirs(out_dir, exist_ok=True)
-    with open(output, "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["method", "nprobe", "recall", "qps", "build_time"])
-        w.writerows(rows)
 
     print(f"\nSaved -> {output}", flush=True)
 
