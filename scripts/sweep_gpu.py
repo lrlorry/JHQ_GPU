@@ -39,6 +39,7 @@ METHOD_NAME = {
     "jhq_v10_bytelut":     "JHQ-GPU-v10-ByteLUT",
     "jhq_v11_outerlut":    "JHQ-GPU-v11-OuterLUT",
     "jhq_v12_transposed":  "JHQ-GPU-v12-Transposed",
+    "jhq_v14_streaming_add": "JHQ-GPU-v14-StreamingAdd",
     "hblock_v1":           "HBlock-v1",
 }
 
@@ -46,11 +47,13 @@ JHQ_IVF_VERSIONS = {
     "jhq_v3_ivf", "jhq_v4_batched_query", "jhq_v5_cuda_graph",
     "jhq_v6_async_h2d", "jhq_v7_spin_sync", "jhq_v8_timing",
     "jhq_v10_bytelut", "jhq_v11_outerlut", "jhq_v12_transposed",
+    "jhq_v14_streaming_add",
 }
 JHQ_BATCHED_VERSIONS = {
     "jhq_v4_batched_query", "jhq_v5_cuda_graph", "jhq_v6_async_h2d",
     "jhq_v7_spin_sync", "jhq_v8_timing",
     "jhq_v10_bytelut", "jhq_v11_outerlut", "jhq_v12_transposed",
+    "jhq_v14_streaming_add",
 }
 HBLOCK_VERSIONS = {"hblock_v1"}
 ALL_IVF_VERSIONS = JHQ_IVF_VERSIONS | HBLOCK_VERSIONS
