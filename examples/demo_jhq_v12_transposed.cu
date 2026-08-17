@@ -1,5 +1,6 @@
 #include "jhq_v12_transposed/jhq_gpu_index.cuh"
 #include "common/fvecs_io.cuh"
+#include "common/fvecs_mmap_io.cuh"
 
 #include <cstdio>
 #include <cmath>
@@ -47,11 +48,16 @@ int main(int argc, char** argv) {
     int   ivf_iters  = (argc > 11) ? atoi(argv[11]) : 8;
     int   batch_size = (argc > 12) ? atoi(argv[12]) : 256;
 
-    std::vector<float> base, query;
+    std::vector<float> query;
     std::vector<int>   gt;
-    int d_base, d_query, d_gt;
+    int d_query, d_gt;
 
-    int nb = read_fvecs(base_path,  base,  d_base);
+    // Base is by far the largest of the three (query/gt are a few thousand
+    // rows at most) -- loaded via mmap, not read_fvecs(), so it isn't fully
+    // materialized in host RAM. See common/fvecs_mmap_io.cuh for why.
+    MmapFloatMatrix base = load_fvecs_mmap(base_path);
+    int nb     = base.n;
+    int d_base = base.d;
     int nq = read_fvecs(query_path, query, d_query);
     int ng = read_ivecs(gt_path,    gt,    d_gt);
 
@@ -72,12 +78,12 @@ int main(int argc, char** argv) {
     int n_train = std::min(nb, 100000);
     printf("Training on %d vectors...\n", n_train);
     auto t0 = Clock::now();
-    idx.train(base.data(), n_train);
+    idx.train(base.data, n_train);
     printf("  train: %.1f ms\n", Ms(Clock::now() - t0).count());
 
     printf("Adding %d vectors...\n", nb);
     t0 = Clock::now();
-    idx.add(base.data(), nb);
+    idx.add(base.data, nb);
     printf("  add:   %.1f ms\n", Ms(Clock::now() - t0).count());
 
     std::vector<float> out_dists((long long)nq * k);
