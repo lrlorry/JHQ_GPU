@@ -92,10 +92,14 @@ OUT_ROOT = "/root/autodl-tmp"
 QUERY_SIZE = 1000   # held out from TARGET_ROWS, matching JHQ_official README's default
 GT_K = 20
 SEED = 42
-BASE_CHUNK = 20_000   # rows per tiled ground-truth scan step -- kept small
-# (not 200_000) because this box's system disk filled at just ~1.6GB RSS
-# during an earlier crash, suggesting available RAM here is tight; smaller
-# chunks trade a bit of GEMM efficiency for a ~10x lower peak per step.
+BASE_CHUNK = 5_000   # rows per tiled ground-truth scan step. Confirmed (not
+# guessed) via this container's cgroup: memory.max = 2147483648 (exactly
+# 2GB), and memory.events showed 4.7M near-limit hits even at
+# base_chunk=20_000 with the old (wasteful, double-allocating) version of
+# this function -- the process was getting silently killed with no
+# traceback. Lowered further as a safety margin on top of the algorithm
+# fix in compute_ground_truth_tiled (which removed two (nq, base_chunk)
+# -scale temporaries the old version didn't need).
 PARQUET_BATCH_ROWS = 4096
 
 DATASETS = {
@@ -195,19 +199,33 @@ def compute_ground_truth_tiled(base_path, dim, n_base, query_vecs, k,
     for base in iter_fvecs_chunks(base_path, dim, base_chunk):
         bc = base.shape[0]
         b_norm = (base ** 2).sum(axis=1)
-        dots = query_vecs @ base.T                       # [nq, bc]
-        d2 = q_norm[:, None] + b_norm[None, :] - 2.0 * dots
-        cand_idx = np.arange(scanned, scanned + bc)
+        d2 = query_vecs @ base.T                          # [nq, bc]
+        np.multiply(d2, -2.0, out=d2)
+        d2 += q_norm[:, None]
+        d2 += b_norm[None, :]
 
-        cat_dist = np.concatenate([best_dist, d2], axis=1)
-        cat_idx = np.concatenate(
-            [best_idx, np.broadcast_to(cand_idx, (nq, bc))], axis=1)
+        # Reduce this chunk down to ITS OWN top-k first (nq x bc -> nq x k)
+        # before touching the running best -- avoids ever concatenating a
+        # second (nq, bc)-sized array (the old version built a (nq, bc+k)
+        # distance array AND a (nq, bc+k) int64 index array every chunk,
+        # ~2x the peak this needs). This container's memory.max is 2GB
+        # (confirmed via cgroup, not a guess) and memory.events showed 4.7M
+        # near-limit hits with the old version even at base_chunk=20_000 --
+        # the redundant (nq, bc)-scale temporaries were real, not padding.
+        k_eff = min(k, bc)
+        local_part = np.argpartition(d2, k_eff - 1, axis=1)[:, :k_eff]
+        local_dist = np.take_along_axis(d2, local_part, axis=1)
+        local_idx = scanned + local_part
+        del d2, local_part
+
+        cat_dist = np.concatenate([best_dist, local_dist], axis=1)   # nq x (k+k_eff), tiny
+        cat_idx = np.concatenate([best_idx, local_idx], axis=1)
         keep = np.argpartition(cat_dist, k - 1, axis=1)[:, :k]
         best_dist = np.take_along_axis(cat_dist, keep, axis=1)
         best_idx = np.take_along_axis(cat_idx, keep, axis=1)
 
         scanned += bc
-        print(f"  [ground truth, tiled scan] {scanned:,}/{n_base:,} base vectors")
+        print(f"  [ground truth, tiled scan] {scanned:,}/{n_base:,} base vectors", flush=True)
 
     order = np.argsort(best_dist, axis=1)
     return np.take_along_axis(best_idx, order, axis=1)
