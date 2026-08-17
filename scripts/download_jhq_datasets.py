@@ -336,7 +336,13 @@ def arrow_embeddings_to_numpy(column, dim):
         raise ValueError(
             f"expected {len(column)} x {dim} embedding values, got {values.size}"
         )
-    return np.asarray(values, dtype=np.float32).reshape(len(column), dim)
+    # copy=True, not np.asarray(): PyArrow's zero-copy to_numpy() hands back
+    # a read-only view when the dtype already matches (e.g. bge-m3's column
+    # is stored as float32 already) -- np.asarray only copies when a dtype
+    # conversion forces it to (as it happens to for the double-typed openai3
+    # columns), so it silently returned a read-only array here for bge-m3
+    # specifically, and the later in-place np.divide(out=vecs) blew up on it.
+    return np.array(values, dtype=np.float32, copy=True).reshape(len(column), dim)
 
 
 def download(name, prepare_only=False):
