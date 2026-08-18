@@ -81,7 +81,11 @@ def plot_one(ax, gpu_csv, cpu_csv, title):
     ax.set_title(title, fontsize=13, fontweight="bold")
     ax.set_xlabel("Recall@10", fontsize=11)
     ax.set_ylabel("QPS (thousands)", fontsize=11)
-    ax.set_xlim(min(0.3, gpu_df["recall"].min(), cpu_df["recall"].min()) - 0.02, 1.01)
+    # Size the x-axis to the actual data range instead of a fixed 0.3 floor --
+    # the JQ-only ablation line's recall never even gets close to 0.3, so a
+    # hardcoded floor just wastes the left third of every panel as blank space.
+    xmin = min(gpu_df["recall"].min(), cpu_df["recall"].min())
+    ax.set_xlim(xmin - 0.02, 1.01)
     ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f"{x:.0f}K"))
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=9, loc="upper right")
