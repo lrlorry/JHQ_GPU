@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Generate one JHQ-GPU-v12 vs JHQ-CPU-IVF recall/QPS figure per dataset,
+Generate one JHQ-GPU vs JHQ-CPU-IVF recall/QPS figure per dataset,
 matching the style of the existing results/jhq_v12_vs_cpu.png (which only
 covers Vogue-768), for every dataset that has both a GPU and a CPU CSV
-under results/.
+under results/. GPU source is jhq_v12_* where present, else jhq_v14_*
+(bge-m3/stella-trec24) -- see discover_datasets().
 
-Silently skips a dataset if either its GPU or CPU CSV is missing (e.g.
-bge-m3/stella-trec24, whose GPU side isn't ready yet) -- rerun this after
-adding more datasets' results, no need to list them here.
+Silently skips a dataset if either its GPU or CPU CSV is missing -- rerun
+this after adding more datasets' results, no need to list them here.
 
 Usage: python3 scripts/plot_v12_vs_cpu_all.py
 """
@@ -36,15 +36,24 @@ CPU_COLOR_FALLBACK = "#808000"
 
 # (display title, gpu csv, cpu csv) -- discovered dynamically below instead
 # of hardcoded, so this script doesn't need editing as more datasets land.
-GPU_PREFIX = "jhq_v12_"
+# v12_transposed is the original/validated GPU line for the first 4
+# datasets; v14_streaming_add exists only because v12's add() can't fit
+# bge-m3/stella-trec24 in VRAM (see jhq_v14_streaming_add/jhq_gpu_index.cu),
+# so it's the GPU source for those two specifically. Where both exist for
+# the same dataset (arxiv/vogue got a v14 run too, just to cross-validate
+# it against v12 -- see the recall-match check before trusting v14 on the
+# big datasets), v12 wins: it's the one with the longer track record.
+GPU_PREFIXES = ["jhq_v12_", "jhq_v14_"]
 CPU_PREFIX = "jhq_cpu_ivf_"
 
 
 def discover_datasets():
     found = {}
-    for path in glob.glob(os.path.join(RESULTS, f"{GPU_PREFIX}*.csv")):
-        name = os.path.basename(path)[len(GPU_PREFIX):-len(".csv")]
-        found.setdefault(name, {})["gpu"] = path
+    for prefix in GPU_PREFIXES:
+        for path in glob.glob(os.path.join(RESULTS, f"{prefix}*.csv")):
+            name = os.path.basename(path)[len(prefix):-len(".csv")]
+            entry = found.setdefault(name, {})
+            entry.setdefault("gpu", path)  # first prefix wins -- v12 before v14
     for path in glob.glob(os.path.join(RESULTS, f"{CPU_PREFIX}*.csv")):
         name = os.path.basename(path)[len(CPU_PREFIX):-len(".csv")]
         found.setdefault(name, {})["cpu"] = path
@@ -57,9 +66,10 @@ def discover_datasets():
 
 def plot_one(ax, gpu_csv, cpu_csv, title):
     gpu_df = pd.read_csv(gpu_csv).sort_values("recall")
+    gpu_method = gpu_df["method"].iloc[0]
     ax.plot(gpu_df["recall"], gpu_df["qps"] / 1000, "o-",
             color=GPU_COLOR, linewidth=2.5, markersize=7,
-            label="JHQ-GPU-v12 (RTX 5090)", zorder=5)
+            label=f"{gpu_method} (RTX 5090)", zorder=5)
 
     cpu_df = pd.read_csv(cpu_csv).sort_values("recall")
     for method, grp in cpu_df.groupby("method"):
@@ -114,7 +124,7 @@ def main():
         plot_one(axes[i], datasets[name]["gpu"], datasets[name]["cpu"], pretty_title(name))
     for j in range(len(names), len(axes)):
         axes[j].axis("off")
-    fig.suptitle("JHQ-GPU-v12 vs JHQ-CPU-IVF", fontsize=15, fontweight="bold")
+    fig.suptitle("JHQ-GPU vs JHQ-CPU-IVF", fontsize=15, fontweight="bold")
     plt.tight_layout()
     out = os.path.join(RESULTS, "jhq_v12_vs_cpu_all.png")
     plt.savefig(out, dpi=150, bbox_inches="tight")
