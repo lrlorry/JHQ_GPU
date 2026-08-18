@@ -1,0 +1,9 @@
+method,nprobe,recall,qps,build_time
+JHQ-GPU-v14-StreamingAdd,1,0.8371,30221.0,48.5128
+JHQ-GPU-v14-StreamingAdd,2,0.9462,18111.0,48.5128
+JHQ-GPU-v14-StreamingAdd,4,0.9866,11774.0,48.5128
+JHQ-GPU-v14-StreamingAdd,8,0.997,7303.0,48.5128
+JHQ-GPU-v14-StreamingAdd,16,0.9991,4512.0,48.5128
+JHQ-GPU-v14-StreamingAdd,32,0.9995,2706.0,48.5128
+JHQ-GPU-v14-StreamingAdd,64,0.9995,1521.0,48.5128
+JHQ-GPU-v14-StreamingAdd,128,0.9995,795.0,48.5128
