@@ -40,6 +40,7 @@ METHOD_NAME = {
     "jhq_v11_outerlut":    "JHQ-GPU-v11-OuterLUT",
     "jhq_v12_transposed":  "JHQ-GPU-v12-Transposed",
     "jhq_v14_streaming_add": "JHQ-GPU-v14-StreamingAdd",
+    "jhq_v15_eval_fix":      "JHQ-GPU-v15-EvalFix",
     "hblock_v1":           "HBlock-v1",
 }
 
@@ -47,13 +48,13 @@ JHQ_IVF_VERSIONS = {
     "jhq_v3_ivf", "jhq_v4_batched_query", "jhq_v5_cuda_graph",
     "jhq_v6_async_h2d", "jhq_v7_spin_sync", "jhq_v8_timing",
     "jhq_v10_bytelut", "jhq_v11_outerlut", "jhq_v12_transposed",
-    "jhq_v14_streaming_add",
+    "jhq_v14_streaming_add", "jhq_v15_eval_fix",
 }
 JHQ_BATCHED_VERSIONS = {
     "jhq_v4_batched_query", "jhq_v5_cuda_graph", "jhq_v6_async_h2d",
     "jhq_v7_spin_sync", "jhq_v8_timing",
     "jhq_v10_bytelut", "jhq_v11_outerlut", "jhq_v12_transposed",
-    "jhq_v14_streaming_add",
+    "jhq_v14_streaming_add", "jhq_v15_eval_fix",
 }
 HBLOCK_VERSIONS = {"hblock_v1"}
 ALL_IVF_VERSIONS = JHQ_IVF_VERSIONS | HBLOCK_VERSIONS
@@ -80,7 +81,12 @@ def run_one(cmd):
     qps = parse_metric(r"QPS\s*:\s*([\d.]+)", out, "qps")
     train_ms = parse_metric(r"train:\s*([\d.]+)", out, "train time")
     add_ms = parse_metric(r"add:\s*([\d.]+)", out, "add time")
-    return recall, qps, (train_ms + add_ms) / 1000.0
+    # Post-v15 demos also print the score the old evaluator produced. Carrying
+    # it in the CSV is what lets a re-run be checked against the pre-v15 files
+    # in results/ instead of just replacing them.
+    m = re.search(r"Pre-v15 score\s*:\s*([\d.]+)", out)
+    legacy = float(m.group(1)) if m else float("nan")
+    return recall, qps, (train_ms + add_ms) / 1000.0, legacy
 
 
 def main():
@@ -105,6 +111,8 @@ def main():
     ap.add_argument("--nprobes", default=",".join(str(x) for x in DEFAULT_NPROBES))
     ap.add_argument("--ivf-iters", type=int, default=8)
     ap.add_argument("--batch-size", type=int, default=256)
+    ap.add_argument("--dump-prefix", default=None,
+                    help="v15 only: write <prefix>_np<N>.{ivecs,json} per point")
     # hblock_v1-specific
     ap.add_argument("--hblock-K1", type=int, default=64, dest="hblock_K1")
     ap.add_argument("--hblock-K2", type=int, default=128, dest="hblock_K2")
@@ -140,7 +148,8 @@ def main():
             for row in csv.DictReader(f):
                 x = int(row["nprobe"]) if args.version in ALL_IVF_VERSIONS else float(row["nprobe"])
                 rows.append((row["method"], x, float(row["recall"]),
-                             float(row["qps"]), float(row["build_time"])))
+                             float(row["qps"]), float(row["build_time"]),
+                             float(row.get("pre_v15_score") or "nan")))
                 done_x.add(x)
                 build_time = float(row["build_time"])
         if done_x:
@@ -150,7 +159,8 @@ def main():
     def save():
         with open(output, "w", newline="") as f:
             w = csv.writer(f)
-            w.writerow(["method", "nprobe", "recall", "qps", "build_time"])
+            w.writerow(["method", "nprobe", "recall", "qps", "build_time",
+                        "pre_v15_score"])
             w.writerows(rows)
 
     for val in sweep_values:
@@ -176,6 +186,10 @@ def main():
                 ]
                 if args.version in JHQ_BATCHED_VERSIONS:
                     cmd.append(str(args.batch_size))
+                # v15 takes a 13th arg: dump returned ids + a run record
+                # (params, gt_width, both metrics) next to the CSV.
+                if args.dump_prefix:
+                    cmd.append(f"{args.dump_prefix}_np{nprobe}")
             x_value = nprobe
             print(f"\nversion={args.version} nlist={args.nlist} nprobe={nprobe} alpha={args.alpha}",
                   flush=True)
@@ -189,11 +203,12 @@ def main():
             print(f"\nversion={args.version} alpha={alpha}", flush=True)
 
         try:
-            recall, qps, bt = run_one(cmd)
+            recall, qps, bt, legacy = run_one(cmd)
             if build_time is None:
                 build_time = bt
-            rows.append((method, x_value, recall, qps, build_time))
-            print(f"  recall={recall:.4f}  qps={qps:.0f}  build={build_time:.1f}s", flush=True)
+            rows.append((method, x_value, recall, qps, build_time, legacy))
+            print(f"  recall={recall:.4f}  pre_v15={legacy:.4f}  "
+                  f"qps={qps:.0f}  build={build_time:.1f}s", flush=True)
             save()  # persist after every point, not just at the end -- a
                      # kill mid-sweep should only lose the point in flight
         except Exception as exc:
