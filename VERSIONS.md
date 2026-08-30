@@ -20,6 +20,8 @@
 | v10_bytelut | Byte LUT [B,M,256]，消除 16-way bank conflict | ~26,229 | 24.5× |
 | v11_outerlut | 外层 m 循环 + 共享子表（失败） | ~19,364 | 18.1× |
 | **v12_transposed** | **list_primary [M,N] 转置，32× 访问合并** | **~44,890** | **42×** |
+| v14_streaming_add | add() 流式旋转+编码，避免 FP32 峰值 | — | — |
+| v15_eval_fix | 索引与 v14 逐字节相同；只修 Recall 评估 | — | — |
 
 ---
 
@@ -104,6 +106,27 @@ scan kernel 中访问 `list_primary_t[m * N + abs_pos]`：32 个线程的 `abs_p
 | JHQ-GPU v12 | ~44,890 | **8.3×** |
 
 ---
+
+### v15_eval_fix — 修正 Recall 评估（索引代码未变）
+
+六个索引源文件与 `v14_streaming_add` 逐字节相同（仅 include 前缀不同），
+所以 v15 与 v14 的 QPS 差异只可能是噪声，不可能是代码改动 —— 这让
+「修评估有没有动到性能」变成一个可以直接查证的问题。
+
+**改的是什么：** v1–v14 的每个 demo 各自带一份 `recall_at_k()`，内层循环写的是
+`for (g = 0; g < gt_k; g++)`，其中 `gt_k` 是 `.ivecs` 文件的行宽。
+本仓库的 GT 有两种宽度：`scripts/download_jhq_datasets.py` 里 `GT_K = 20`，
+`scripts/preprocess.py` 默认 `--k 100`。所以旧代码算的是
+`|top-k ∩ 真实 top-gt_k| / k`：恒 ≥ Recall@k，会在搜索远未精确时就饱和到
+1.0000，而且两种宽度之间不可比。另外它按「每命中一个 GT 槽计一次」计分，
+重复 ID 会被重复计。
+
+**现在：** 统一走 `common/recall.cuh`，标准集合交、只比 GT 行的前 k 项
+（行 stride 仍是 gt_k）、每个 GT 槽最多消费一次、`gt_k < k` 直接报错而不静默截断。
+旧分数仍然打印为 `Pre-v15 score`，用于和 `results/` 里既有 CSV 对齐。
+
+**影响面：** `results/` 下所有 v1–v14 的 recall 列都是旧分数，需要重跑。
+QPS 列不受影响（recall 在 search 之后计算）。
 
 ## HBlock 系列
 
@@ -508,8 +531,8 @@ recall 三者持平（差异在建图随机性噪声内），但 `CERTIFIED_PRR`
 剪不掉候选：VECTOR 粒度下每块仍有 59–90 个幸存者（远超基线的 16），QPS 反
 而比基线慢 18%。
 
-**v38 种子诊断**（`HBLOCK_V37_PRR_EXACT_SEED_DIAGNOSTIC_PROMPT.md`，完整
-记录见 `HBLOCK_V37_PRR_SEED_DIAGNOSTIC_RESULTS.md`）：测试「每块选 1/2/4/8
+**v38 种子诊断**（当前结论汇总见 `HBLOCK_CURRENT_DESIGN.md` 第 7 节）：
+测试「每块选 1/2/4/8
 个 U² 最小的候选做精确重排，取其精确距离的第 k 小作为更紧的安全阈值
 `tau_seed2`」能否救场。首次运行诊断代码有 bug（CPU 统计把 query-major 的
 offset 用在了 `gpu_build_and_sort_pairs_v29` 按 leaf block 重排后的数组

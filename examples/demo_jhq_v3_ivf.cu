@@ -1,5 +1,6 @@
 #include "jhq_v3_ivf/jhq_gpu_index.cuh"
 #include "common/fvecs_io.cuh"
+#include "common/recall.cuh"
 
 #include <cstdio>
 #include <cmath>
@@ -10,20 +11,6 @@
 
 using Clock = std::chrono::high_resolution_clock;
 using Ms    = std::chrono::duration<double, std::milli>;
-
-static double recall_at_k(const int* labels, const int* gt,
-                           int nq, int k, int gt_k) {
-    int hits = 0;
-    for (int i = 0; i < nq; i++) {
-        for (int j = 0; j < k; j++) {
-            int found = labels[i * k + j];
-            for (int g = 0; g < gt_k; g++) {
-                if (gt[i * gt_k + g] == found) { hits++; break; }
-            }
-        }
-    }
-    return (double)hits / (double)(nq * k);
-}
 
 int main(int argc, char** argv) {
     if (argc < 8) {
@@ -87,10 +74,16 @@ int main(int argc, char** argv) {
         idx.search(query.data(), nq, k, out_dists.data(), out_ids.data());
     double ms = Ms(Clock::now() - t0).count() / REPS;
 
-    double rec = recall_at_k(out_ids.data(), gt.data(), nq, k, d_gt);
+    RecallResult rec = evaluate_recall(out_ids.data(), gt.data(), nq, k, d_gt);
     double qps = nq / (ms / 1000.0);
 
-    printf("\nRecall@%d : %.4f\n", k, rec);
+    printf("\nRecall@%d : %.4f     (standard: vs true top-%d)\n",
+           k, rec.recall, k);
+    printf("Pre-v15 score : %.4f  (old metric: vs true top-%d)\n",
+           rec.legacy, rec.gt_width);
+    if (rec.dup_queries)
+        printf("WARNING   : %lld / %d queries returned a duplicate id\n",
+               rec.dup_queries, nq);
     printf("Latency   : %.2f ms  (%d queries)\n", ms, nq);
     printf("QPS       : %.0f\n", qps);
 

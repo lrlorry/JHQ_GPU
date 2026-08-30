@@ -65,6 +65,7 @@ add_jhq_version(jhq_v11_outerlut)
 add_jhq_version(jhq_v12_transposed)
 add_jhq_version(jhq_v13_step_timing)
 add_jhq_version(jhq_v14_streaming_add)
+add_jhq_version(jhq_v15_eval_fix)
 add_jhq_version(hblock_v1)
 add_jhq_version(hblock_v2)
 add_jhq_version(hblock_v3)
@@ -588,3 +589,12 @@ target_compile_options(jhq_hblock_v22 PRIVATE
 )
 add_executable(demo_hblock_v22 examples/demo_hblock_v22.cu)
 target_link_libraries(demo_hblock_v22 PRIVATE jhq_hblock_v22)
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+# Pure C++ (common/recall.cuh has no CUDA in it), so no CUDA toolchain needed
+# to run these.  ctest, or: ./build/test_recall
+enable_testing()
+add_executable(test_recall tests/test_recall.cpp)
+target_include_directories(test_recall PRIVATE ${CMAKE_SOURCE_DIR})
+target_compile_options(test_recall PRIVATE -O2)
+add_test(NAME recall COMMAND test_recall)

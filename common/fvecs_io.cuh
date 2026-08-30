@@ -55,3 +55,18 @@ inline int read_ivecs(const char* path, std::vector<int>& out, int& dim) {
     fclose(f);
     return n;
 }
+
+// Write a flat int vector as .ivecs -- same layout read_ivecs expects, so a
+// dumped neighbour list can be fed back through the normal readers.
+// Used by demo_jhq_v15_eval_fix to persist returned ids alongside each run:
+// with the ids on disk, changing the evaluation metric never costs a re-search
+// again (see common/recall.cuh for why that mattered).
+inline void write_ivecs(const char* path, const int* data, int n, int dim) {
+    FILE* f = fopen(path, "wb");
+    if (!f) { fprintf(stderr, "Cannot write %s\n", path); exit(1); }
+    for (int i = 0; i < n; i++) {
+        fwrite(&dim, sizeof(int), 1, f);
+        fwrite(data + (size_t)i * dim, sizeof(int), dim, f);
+    }
+    fclose(f);
+}

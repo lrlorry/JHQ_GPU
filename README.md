@@ -31,6 +31,10 @@ common/              shared utilities (never versioned)
   cuda_utils.cuh
   fvecs_io.cuh
 
+common/recall.cuh    Recall@k evaluator -- shared, never versioned.
+                     Replaces the per-demo copy that scanned the whole
+                     ground-truth row instead of its first k entries.
+
 cpu/                 shared CPU train code (never versioned)
   erfinv.h
   codebook.h/.cpp    Lloyd-Max analytical codebook + 1D k-means
@@ -45,6 +49,40 @@ v1_plain/            version 1 — correctness baseline
 examples/
   demo_v1_plain.cu   → binary: build/demo_v1_plain
 ```
+
+## Evaluation
+
+`Recall@k` comes from `common/recall.cuh` for every `demo_jhq_v*`. It is the
+standard set intersection against the true top-k:
+
+```
+Recall@k = |{returned top-k} ∩ {true top-k}| / k
+```
+
+Before `v15_eval_fix` each demo carried its own copy that looped over the full
+`.ivecs` row width (20 or 100 here, depending on which generator built the
+dataset) rather than the first k, so it reported
+`|top-k ∩ true top-gt_k| / k` -- always at least Recall@k, saturating at 1.0000
+well before the search is exact, and not comparable across datasets whose
+ground truth was generated at different widths. Every number in `results/`
+predating v15 is that old score. The demos still print it, labelled
+`Pre-v15 score`, so a re-run can be lined up against those CSVs.
+
+```bash
+./build/test_recall     # unit tests for the evaluator
+```
+
+`demo_jhq_v15_eval_fix` additionally takes an `out_prefix` and writes the
+returned ids (`<prefix>.ivecs`) plus a full run record (`<prefix>.json`,
+including `gt_width` and `eval_gt_k`), so changing the metric again costs a
+re-parse rather than a re-search.
+
+## Design documentation
+
+- `HBLOCK_CURRENT_DESIGN.md`: current architecture, evidence, open problems,
+  1B design, and execution roadmap.
+- `VERSIONS.md`: historical version-by-version implementation record.
+- Version-local `README.md` files: build, run, and implementation boundaries.
 
 ## Adding a new version
 
