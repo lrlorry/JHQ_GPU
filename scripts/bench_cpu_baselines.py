@@ -130,12 +130,19 @@ def bench_dataset(ds_name, ds):
         if m2 and build_time is None: build_time = float(m2.group(2)) / 1000.0
         for line in out.splitlines():
             parts = line.split()
-            if len(parts) == 3:
+            # 4 columns since the evaluator fix: nprobe | Recall@10 | Pre-fix | QPS.
+            # 3 columns is the pre-fix format, kept so old logs still parse --
+            # but note those rows carry the inflated metric, unlike the FAISS
+            # rows above which were always computed correctly here in Python.
+            if len(parts) in (3, 4):
                 try:
-                    np_, rec, qps = int(parts[0]), float(parts[1]), float(parts[2])
+                    np_, rec = int(parts[0]), float(parts[1])
+                    legacy, qps = ((float(parts[2]), float(parts[3])) if len(parts) == 4
+                                   else (float("nan"), float(parts[2])))
                     results.append({"method": label, "ck": np_, "probed": np_,
                                     "rerank_r": 0, "recall": rec, "qps": qps,
-                                    "build_time": build_time or 0})
+                                    "build_time": build_time or 0,
+                                    "pre_fix_score": legacy})
                     print(f"  nprobe={np_:<4}  recall={rec:.4f}  qps={qps:.0f}")
                 except ValueError:
                     pass
@@ -147,7 +154,9 @@ def bench_dataset(ds_name, ds):
 
     os.makedirs(os.path.dirname(os.path.abspath(ds["out"])), exist_ok=True)
     with open(ds["out"], "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["method","ck","probed","rerank_r","recall","qps","build_time"])
+        w = csv.DictWriter(f, fieldnames=["method","ck","probed","rerank_r","recall","qps",
+                                          "build_time","pre_fix_score"],
+                           extrasaction="ignore")
         w.writeheader()
         w.writerows(results)
     print(f"\nSaved → {ds['out']}")

@@ -30,7 +30,10 @@ import struct
 import subprocess
 import sys
 
-ROW_RE = re.compile(r"^\s*(\d+)\s+([\d.]+)\s+([\d.]+)\s*$")
+# demo_*_ivf now prints 4 columns: nprobe | Recall@10 | Pre-fix | QPS.
+# The 3-column form is what those demos printed before the evaluator fix;
+# accept both so old logs still parse.
+ROW_RE = re.compile(r"^\s*(\d+)\s+([\d.]+)\s+([\d.]+)(?:\s+([\d.]+))?\s*$")
 BUILD_RE = re.compile(r"Index build:\s*([\d.]+)\s*s")
 METHOD_RE = re.compile(r"^===\s*(\S+)\s*===$")
 
@@ -98,8 +101,11 @@ def main():
             continue
         m = ROW_RE.match(line)
         if m:
-            nprobe, recall, qps = m.groups()
-            rows.append((current_method, int(nprobe), float(recall), float(qps), build_time))
+            nprobe, recall, third, fourth = m.groups()
+            # 4 columns -> (recall, pre_fix, qps); 3 -> (recall, qps), pre_fix unknown
+            legacy, qps = (third, fourth) if fourth else ("nan", third)
+            rows.append((current_method, int(nprobe), float(recall),
+                         float(qps), build_time, float(legacy)))
 
     if not rows:
         raise RuntimeError("parsed 0 result rows from demo_jhq_ivf output -- "
@@ -111,7 +117,8 @@ def main():
         os.makedirs(out_dir, exist_ok=True)
     with open(args.output, "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["method", "nprobe", "recall", "qps", "build_time"])
+        w.writerow(["method", "nprobe", "recall", "qps", "build_time",
+                    "pre_fix_score"])
         w.writerows(rows)
     print(f"\nSaved -> {args.output} ({len(rows)} rows)", flush=True)
 
