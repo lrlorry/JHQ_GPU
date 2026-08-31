@@ -590,6 +590,28 @@ target_compile_options(jhq_hblock_v22 PRIVATE
 add_executable(demo_hblock_v22 examples/demo_hblock_v22.cu)
 target_link_libraries(demo_hblock_v22 PRIVATE jhq_hblock_v22)
 
+# ── K_LOCAL ablation variants ────────────────────────────────────────────────
+# Same sources as jhq_v15_eval_fix; only JHQ_K_LOCAL differs.
+# scan_ivf_coalesced_kernel keeps K_LOCAL candidates per thread and drops the
+# rest before the block-wide selection, so this measures what that truncation
+# costs in recall. 32 would need the shared-memory opt-in (66KB > 48KB default)
+# -- search.cu checks and throws rather than failing silently.
+foreach(KL 8 16)
+    add_library(jhq_v15_kl${KL} STATIC
+        jhq_v15_eval_fix/encode.cu
+        jhq_v15_eval_fix/search.cu
+        jhq_v15_eval_fix/jhq_gpu_index.cu
+    )
+    target_include_directories(jhq_v15_kl${KL} PUBLIC ${CMAKE_SOURCE_DIR})
+    target_link_libraries(jhq_v15_kl${KL} PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+    target_compile_definitions(jhq_v15_kl${KL} PRIVATE JHQ_K_LOCAL=${KL})
+    target_compile_options(jhq_v15_kl${KL} PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    )
+    add_executable(demo_jhq_v15_kl${KL} examples/demo_jhq_v15_eval_fix.cu)
+    target_link_libraries(demo_jhq_v15_kl${KL} PRIVATE jhq_v15_kl${KL})
+endforeach()
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
 # Pure C++ (common/recall.cuh has no CUDA in it), so no CUDA toolchain needed
 # to run these.  ctest, or: ./build/test_recall

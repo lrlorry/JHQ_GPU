@@ -1,4 +1,18 @@
 #include "jhq_v15_eval_fix/search.cuh"
+
+// Per-thread candidate slots kept by scan_ivf_coalesced_kernel. Compile-time
+// so ld[]/lp[] stay in registers.
+//
+// This is a lossy step: each thread keeps only its own best K_LOCAL, so if
+// more than K_LOCAL of the true top-ck land in one thread's stride class, the
+// rest are dropped before the block-wide selection ever sees them. Raise it to
+// measure what that costs:  -DJHQ_K_LOCAL=8
+//
+// Shared memory is (2*K_LOCAL + 2) * BLOCK floats -- 10KB at 4, 34KB at 16,
+// past the 48KB default at 32. capture_graph() checks before launching.
+#ifndef JHQ_K_LOCAL
+#define JHQ_K_LOCAL 4
+#endif
 #include "common/cuda_utils.cuh"
 
 #include <algorithm>
@@ -113,7 +127,7 @@ __global__ void scan_ivf_coalesced_kernel(
     int*                        topck_pos,
     int nprobe, int M, int N, int ck)
 {
-    constexpr int K_LOCAL = 4;
+    constexpr int K_LOCAL = JHQ_K_LOCAL;
     const float   INF     = __int_as_float(0x7F800000);
     const int     BLOCK   = blockDim.x;
     int bqi = blockIdx.x;
@@ -329,8 +343,23 @@ static void capture_graph(
 
     const float one = 1.0f, zero = 0.0f;
     const int   BLOCK = 256;
-    const int   scan_smem = (2 * 4 * BLOCK + 2 * BLOCK) * (int)sizeof(float); // 10240
+    // Must track JHQ_K_LOCAL exactly -- the kernel indexes s_cdist/s_cpos as
+    // K_LOCAL*BLOCK each, so a stale literal here silently corrupts memory
+    // rather than failing to build.
+    const int   scan_smem = (2 * JHQ_K_LOCAL * BLOCK + 2 * BLOCK) * (int)sizeof(float);
     const int   topk_smem = (2 * ck + 2 * BLOCK) * (int)sizeof(float);
+
+    {
+        int smem_max = 0;
+        CUDA_CHECK(cudaDeviceGetAttribute(&smem_max,
+                       cudaDevAttrMaxSharedMemoryPerBlock, 0));
+        if (scan_smem > smem_max)
+            throw std::runtime_error(
+                "scan_ivf_coalesced_kernel needs " + std::to_string(scan_smem) +
+                " B of shared memory (JHQ_K_LOCAL=" + std::to_string(JHQ_K_LOCAL) +
+                ") but the device allows " + std::to_string(smem_max) +
+                " B per block without opt-in.");
+    }
 
     CUDA_CHECK(cudaStreamBeginCapture(ws.stream, cudaStreamCaptureModeGlobal));
 
