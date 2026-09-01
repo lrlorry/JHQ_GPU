@@ -70,6 +70,7 @@ add_jhq_version(jhq_v15_eval_fix)
 add_jhq_version(jhq_v16_pq_primary)
 add_jhq_version(jhq_v17_parallel_scan)
 add_jhq_version(jhq_v18_shared_lut)
+add_jhq_version(jhq_v19_tiled_scan)
 add_jhq_version(hblock_v1)
 add_jhq_version(hblock_v2)
 add_jhq_version(hblock_v3)
@@ -686,6 +687,20 @@ target_compile_options(jhq_v18_ab_f32lut PRIVATE
 )
 add_executable(demo_jhq_v18_ab_f32lut examples/demo_jhq_v18_shared_lut.cu)
 target_link_libraries(demo_jhq_v18_ab_f32lut PRIVATE jhq_v18_ab_f32lut)
+
+add_library(jhq_v19_timed STATIC
+    jhq_v19_tiled_scan/encode.cu
+    jhq_v19_tiled_scan/search.cu
+    jhq_v19_tiled_scan/jhq_gpu_index.cu
+)
+target_include_directories(jhq_v19_timed PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_v19_timed PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+target_compile_definitions(jhq_v19_timed PRIVATE JHQ_STEP_TIMING=1)
+target_compile_options(jhq_v19_timed PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+)
+add_executable(demo_jhq_v19_timed examples/demo_jhq_v19_tiled_scan.cu)
+target_link_libraries(demo_jhq_v19_timed PRIVATE jhq_v19_timed)
 
 # ── Residual-codebook layout ablation ────────────────────────────────────────
 # Same sources as jhq_v16_pq_primary with the residual codebook forced global
