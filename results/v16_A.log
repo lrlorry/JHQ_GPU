@@ -1,0 +1,16 @@
+##### A1. v16 vs v15 on the remaining two datasets #####
+v15_eval_fix         oai3072 v15    M=384  a=4.0   np=128  Recall@10 : 0.9568 (standard: vs true top-10) QPS : 4168 
+v16_pq_primary       oai3072 v16    M=384  a=4.0   np=128  Recall@10 : 0.9614 (standard: vs true top-10) QPS : 4060 
+v15_eval_fix         bgem3 v15      M=128  a=4.0   np=128  Recall@10 : 0.9327 (standard: vs true top-10) QPS : 498 
+v16_pq_primary       bgem3 v16      M=128  a=4.0   np=128  Recall@10 : 0.9492 (standard: vs true top-10) QPS : 494 
+
+##### A3. arXiv alpha sweep at M=48 and M=96 #####
+v16_pq_primary       arxiv          M=48   a=8.0   np=128  Recall@10 : 0.8505 (standard: vs true top-10) QPS : 18815 
+v16_pq_primary       arxiv          M=48   a=16.0  np=128  Recall@10 : 0.9038 (standard: vs true top-10) QPS : 18731 
+v16_pq_primary       arxiv          M=48   a=32.0  np=128  Recall@10 : 0.9323 (standard: vs true top-10) QPS : 18469 
+v16_pq_primary       arxiv          M=48   a=100.0 np=128  Recall@10 : 0.9460 (standard: vs true top-10) QPS : 17336 
+v16_pq_primary       arxiv          M=96   a=8.0   np=128  Recall@10 : 0.9473 (standard: vs true top-10) QPS : 9333 
+v16_pq_primary       arxiv          M=96   a=16.0  np=128  Recall@10 : 0.9554 (standard: vs true top-10) QPS : 9315 
+v16_pq_primary       arxiv          M=96   a=32.0  np=128  Recall@10 : 0.9572 (standard: vs true top-10) QPS : 9256 
+
+=========== A DONE 21:39:24 ===========
