@@ -120,12 +120,20 @@ void PQCodebook::analytical_init(const float* sub, int n, float* out, int seed) 
 void PQCodebook::train(const float* y, int n, int kmeans_iters, int seed) {
     if (n <= 0) throw std::invalid_argument("PQCodebook::train: n must be positive");
 
-    std::vector<float> sub((size_t)n * Ds_);
-    std::vector<int>   assign(n);
-    std::vector<float> sums((size_t)K_ * Ds_);
-    std::vector<int>   counts(K_);
-
+    // The subspaces are independent: each owns its slice of cent_, and
+    // analytical_init seeds its own generator from seed + m, so nothing is
+    // shared across m but the read-only training set. Training was ~26 s of the
+    // 27 s index build against cuVS's 4.5 s, and all of it was this loop on one
+    // core. The scratch moves inside so each thread has its own.
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
     for (int m = 0; m < M_; ++m) {
+        std::vector<float> sub((size_t)n * Ds_);
+        std::vector<int>   assign(n);
+        std::vector<float> sums((size_t)K_ * Ds_);
+        std::vector<int>   counts(K_);
+
         for (int i = 0; i < n; ++i)
             std::memcpy(sub.data() + (size_t)i * Ds_,
                         y + (size_t)i * d_ + (size_t)m * Ds_,

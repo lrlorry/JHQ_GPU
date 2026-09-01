@@ -16,11 +16,18 @@ find_package(LAPACK REQUIRED)
 
 # ── Shared CPU library ────────────────────────────────────────────────────────
 # All versions link this. Never duplicated.
+# Codebook training is a loop over independent subspaces and was the whole of
+# the index build's 27 s. Optional so a toolchain without it still builds.
+find_package(OpenMP)
 add_library(jhq_cpu STATIC
     cpu/codebook.cpp
     cpu/pq_codebook.cpp
     cpu/jl_transform.cpp
 )
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(jhq_cpu PUBLIC OpenMP::OpenMP_CXX)
+endif()
+
 target_include_directories(jhq_cpu PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(jhq_cpu PUBLIC ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 target_compile_options(jhq_cpu PRIVATE -O3 -march=native)
