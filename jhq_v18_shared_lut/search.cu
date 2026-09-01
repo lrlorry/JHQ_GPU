@@ -36,6 +36,23 @@
 #define JHQ_ABLATE_INSERT 0
 #endif
 
+// Ablating the table lookup alone cut the scan 47% (16.54 -> 8.87 ms at
+// nprobe=8, 28.41 -> 14.95 at 128) while also dropping the accumulate saved
+// only 2% more, so the cost is the indirect access, not the dependent chain.
+// The table is already in shared memory at M=96, which leaves bank conflicts:
+// the 32 lanes of a warp hold unrelated code bytes and index the same 512-byte
+// half table at random, and 2-byte elements put two lanes per bank to begin
+// with.
+//
+// This switch stores the table as float in shared instead. Four-byte elements
+// map one per bank, so a conflict needs two lanes on the same bank rather than
+// merely nearby. It doubles the shared footprint, which is why half was chosen;
+// if the scan gets faster despite that, conflicts are the mechanism.
+//   -DJHQ_SMEM_LUT_FLOAT=1
+#ifndef JHQ_SMEM_LUT_FLOAT
+#define JHQ_SMEM_LUT_FLOAT 0
+#endif
+
 // Per-thread candidate slots kept by scan_ivf_coalesced_kernel. Compile-time
 // so ld[]/lp[] stay in registers.
 //
@@ -165,6 +182,12 @@ __global__ void build_byte_lut_kernel(
 // In half it fits: 48 KB for M=96 plus the candidate scratch, opted into via
 // cudaFuncSetAttribute. When it does not fit (large M), s_lut is null and the
 // kernel reads from global as before.
+#if JHQ_SMEM_LUT_FLOAT
+#define LUT_AT(p, i) ((p)[(i)])
+#else
+#define LUT_AT(p, i) __half2float((p)[(i)])
+#endif
+
 __global__ void scan_ivf_coalesced_kernel(
     const __half*  __restrict__ d_byte_lut,     // [B, M, 256]
     const int*     __restrict__ probe_ids,
@@ -187,14 +210,22 @@ __global__ void scan_ivf_coalesced_kernel(
     int*   s_cpos    = (int*)(s_cdist + K_LOCAL * BLOCK);
     float* s_red_val = (float*)(s_cpos + K_LOCAL * BLOCK);
     int*   s_red_idx = (int*)(s_red_val + BLOCK);
-    __half* s_lut    = (__half*)(s_red_idx + BLOCK);   // only if lut_in_smem
+#if JHQ_SMEM_LUT_FLOAT
+    float* s_lut = (float*)(s_red_idx + BLOCK);
+#else
+    __half* s_lut = (__half*)(s_red_idx + BLOCK);
+#endif
 
     const __half* g_lut = d_byte_lut + (long long)bqi * M * 256;
     if (lut_in_smem) {
-        for (int i = tid; i < M * 256; i += BLOCK) s_lut[i] = g_lut[i];
+        for (int i = tid; i < M * 256; i += BLOCK)
+#if JHQ_SMEM_LUT_FLOAT
+            s_lut[i] = __half2float(g_lut[i]);
+#else
+            s_lut[i] = g_lut[i];
+#endif
         __syncthreads();
     }
-    const __half* my_lut = lut_in_smem ? s_lut : g_lut;
 
     int total      = query_total[bqi];
     const int* my_ids  = probe_ids     + bqi * nprobe;
@@ -221,7 +252,8 @@ __global__ void scan_ivf_coalesced_kernel(
 #elif JHQ_ABLATE_LUT
             dist += 1.0f + (float)(cm & 1);        // codes read, constant instead of lookup
 #else
-            dist += __half2float(my_lut[m * 256 + cm]);
+            dist += lut_in_smem ? LUT_AT(s_lut, m * 256 + cm)
+                                : __half2float(g_lut[m * 256 + cm]);
 #endif
         }
 
