@@ -111,7 +111,7 @@ def main():
     which = {w.strip() for w in a.which.split(",")}
     rows = []
     for name, fn in (("cagra", lambda: run_cagra(xb, xq, gt, a.k, rows, [32, 64], [32, 64, 128, 256])),
-                     ("ivfpq", lambda: run_cuvs_ivfpq(xb, xq, gt, a.k, rows, [48, 96, 192],
+                     ("ivfpq", lambda: run_cuvs_ivfpq(xb, xq, gt, a.k, rows, [48, 96, 192, 384],
                                                       1024, [1, 8, 32, 128])),
                      ("hnsw",  lambda: run_hnsw(xb, xq, gt, a.k, rows, [16, 32],
                                                 [32, 64, 128, 256], a.threads))):
