@@ -226,6 +226,12 @@ __global__ void scan_ivf_coalesced_kernel(
 #endif
         __syncthreads();
     }
+    // Whichever copy is live; LUT_AT converts if it is half.
+#if JHQ_SMEM_LUT_FLOAT
+    const float*  my_lut_s = s_lut;
+#else
+    const __half* my_lut_s = s_lut;
+#endif
 
     int total      = query_total[bqi];
     const int* my_ids  = probe_ids     + bqi * nprobe;
