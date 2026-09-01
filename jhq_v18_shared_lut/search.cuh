@@ -25,6 +25,18 @@ namespace jhq_gpu {
 struct SearchWorkspace {
     int batch_cap = 0, ck_cap = 0, k_cap = 0;
 
+#if JHQ_STEP_TIMING
+    // Per-stage timing bypasses the captured graph: events cannot be read back
+    // from inside one, and the question the timing answers -- which stage owns
+    // the time -- is worth losing graph launch overhead for. Enabled with
+    // -DJHQ_STEP_TIMING=1; the default build is untouched.
+    static constexpr int N_STEP_EVENTS = 9;
+    cudaEvent_t ev_step[N_STEP_EVENTS] = {};
+    cudaEvent_t ev_h2d_start = nullptr, ev_h2d_done = nullptr, ev_d2h_done = nullptr;
+    int         timing_count = 0;
+    double      acc_ms[N_STEP_EVENTS] = {};
+#endif
+
     float*    h_q_pinned      = nullptr;
     float*    d_q_batch       = nullptr;
     float*    d_q_rot         = nullptr;

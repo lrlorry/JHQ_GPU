@@ -1,5 +1,11 @@
 #include "jhq_v18_shared_lut/search.cuh"
 #include <cuda_fp16.h>
+#include <cstdio>
+
+// Stage timing is compiled out by default; -DJHQ_STEP_TIMING=1 turns it on.
+#ifndef JHQ_STEP_TIMING
+#define JHQ_STEP_TIMING 0
+#endif
 
 // Per-thread candidate slots kept by scan_ivf_coalesced_kernel. Compile-time
 // so ld[]/lp[] stay in registers.
@@ -396,18 +402,38 @@ static void capture_graph(
                 " B per block without opt-in.");
     }
 
+#if JHQ_STEP_TIMING
+    // ncu cannot read performance counters in this container (ERR_NVGPUCTRPERM),
+    // so stage attribution comes from events instead. They cannot be read back
+    // from inside a capture, so the timed build skips the graph and launches
+    // each batch directly -- it loses graph launch overhead, which is the same
+    // for every stage and so does not distort the shares.
+    for (int i = 0; i < SearchWorkspace::N_STEP_EVENTS; ++i)
+        if (!ws.ev_step[i]) CUDA_CHECK(cudaEventCreate(&ws.ev_step[i]));
+    CUDA_CHECK(cudaEventRecord(ws.ev_step[0], ws.stream));
+#else
     CUDA_CHECK(cudaStreamBeginCapture(ws.stream, cudaStreamCaptureModeGlobal));
+#endif
 
     // 1. Rotate
     CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_N, CUBLAS_OP_N,
                              d, B, d, &one, d_Pi, d, ws.d_q_batch, d, &zero, ws.d_q_rot, d));
+#if JHQ_STEP_TIMING
+    CUDA_CHECK(cudaEventRecord(ws.ev_step[1], ws.stream));
+#endif
     // 2. Centroid dots
     CUBLAS_CHECK(cublasSgemm(cublas, CUBLAS_OP_T, CUBLAS_OP_N,
                              nlist, B, d, &one, d_centroids, d, ws.d_q_rot, d, &zero, ws.d_dots, nlist));
+#if JHQ_STEP_TIMING
+    CUDA_CHECK(cudaEventRecord(ws.ev_step[2], ws.stream));
+#endif
     // 3. Select probes
     select_probes_kernel<<<B, BLOCK, (nlist + 2*BLOCK) * (int)sizeof(float), ws.stream>>>(
         ws.d_dots, d_cent_norms, d_list_offsets,
         ws.d_probe_ids, ws.d_probe_offsets, ws.d_query_total, nlist, nprobe);
+#if JHQ_STEP_TIMING
+    CUDA_CHECK(cudaEventRecord(ws.ev_step[3], ws.stream));
+#endif
     // 4. Build byte LUT
     {
         long long tot  = (long long)B * M * 256;
@@ -415,12 +441,18 @@ static void capture_graph(
         build_byte_lut_kernel<<<grid, BLOCK, 0, ws.stream>>>(
             ws.d_q_rot, d_cent, ws.d_byte_lut, B, d, M, Ds, K);
     }
+#if JHQ_STEP_TIMING
+    CUDA_CHECK(cudaEventRecord(ws.ev_step[4], ws.stream));
+#endif
     // 5. Scan IVF — coalesced via [M, N] list_primary_t
     scan_ivf_coalesced_kernel<<<B, BLOCK, scan_smem, ws.stream>>>(
         ws.d_byte_lut, ws.d_probe_ids, ws.d_probe_offsets, d_list_offsets,
         d_list_primary_t, ws.d_query_total,
         ws.d_topck_primary, ws.d_topck_pos,
         nprobe, M, ntotal, ck, lut_in_smem);
+#if JHQ_STEP_TIMING
+    CUDA_CHECK(cudaEventRecord(ws.ev_step[5], ws.stream));
+#endif
     // 6. Residual LUT
     {
         long long tot  = (long long)B * d * Kr;
@@ -428,6 +460,9 @@ static void capture_graph(
         build_residual_lut_batched_kernel<<<grid, BLOCK, 0, ws.stream>>>(
             ws.d_q_rot, d_res_c1d, ws.d_lut_r, B, d, Ds, Kr);
     }
+#if JHQ_STEP_TIMING
+    CUDA_CHECK(cudaEventRecord(ws.ev_step[6], ws.stream));
+#endif
     // 7. Residual refine
     {
         long long tot  = (long long)B * ck;
@@ -437,17 +472,53 @@ static void capture_graph(
             ws.d_lut_r, d_list_res, d_list_corr,
             ws.d_comp_dists, ck, d, Kr, Br, bpv, B);
     }
+#if JHQ_STEP_TIMING
+    CUDA_CHECK(cudaEventRecord(ws.ev_step[7], ws.stream));
+#endif
     // 8. Final top-k
     batched_topk_final_kernel<<<B, BLOCK, topk_smem, ws.stream>>>(
         ws.d_comp_dists, ws.d_topck_pos, d_list_ids,
         ws.d_final_dists, ws.d_final_ids, ck, k, B);
 
+#if JHQ_STEP_TIMING
+    CUDA_CHECK(cudaEventRecord(ws.ev_step[8], ws.stream));
+    CUDA_CHECK(cudaEventSynchronize(ws.ev_step[8]));
+    for (int i = 0; i < SearchWorkspace::N_STEP_EVENTS - 1; ++i) {
+        float ms = 0.f;
+        CUDA_CHECK(cudaEventElapsedTime(&ms, ws.ev_step[i], ws.ev_step[i + 1]));
+        ws.acc_ms[i] += ms;
+    }
+    ws.timing_count++;
+#else
     CUDA_CHECK(cudaStreamEndCapture(ws.stream, &ws.graph));
     CUDA_CHECK(cudaGraphInstantiate(&ws.graph_exec, ws.graph, nullptr, nullptr, 0));
+#endif
 
     ws.graph_ck     = ck;
     ws.graph_nprobe = nprobe;
 }
+
+#if JHQ_STEP_TIMING
+static void report_step_timing(SearchWorkspace& ws, int B, int nprobe, int ck) {
+    if (!ws.timing_count) return;
+    static const char* names[] = {
+        "gemm_rotate", "gemm_centroid", "select_probes", "build_byte_lut",
+        "scan_ivf", "build_lut_r", "residual_refine", "topk_final"};
+    double tot = 0.0;
+    for (int i = 0; i < SearchWorkspace::N_STEP_EVENTS - 1; ++i) tot += ws.acc_ms[i];
+    std::fprintf(stderr,
+        "[STEP-TIMING  B=%d nprobe=%d ck=%d  batches=%d]\n", B, nprobe, ck,
+        ws.timing_count);
+    for (int i = 0; i < SearchWorkspace::N_STEP_EVENTS - 1; ++i)
+        std::fprintf(stderr, "  %-16s %8.3f ms/batch  %5.1f%%\n",
+                     names[i], ws.acc_ms[i] / ws.timing_count,
+                     tot > 0 ? 100.0 * ws.acc_ms[i] / tot : 0.0);
+    std::fprintf(stderr, "  %-16s %8.3f ms/batch\n", "TOTAL",
+                 tot / ws.timing_count);
+    for (int i = 0; i < SearchWorkspace::N_STEP_EVENTS - 1; ++i) ws.acc_ms[i] = 0.0;
+    ws.timing_count = 0;
+}
+#endif
 
 void search_gpu(
     cublasHandle_t cublas,
@@ -492,7 +563,17 @@ void search_gpu(
         CUDA_CHECK(cudaMemcpyAsync(ws.d_q_batch, ws.h_q_pinned,
                                    (long long)B_full * d * sizeof(float),
                                    cudaMemcpyHostToDevice, ws.stream));
+#if JHQ_STEP_TIMING
+        // No graph to launch in the timed build: re-run the sequence so the
+        // events land on this batch.
+        capture_graph(ws, cublas,
+                      d_Pi, d_cent, d_res_c1d, d_centroids, d_cent_norms,
+                      d_list_offsets, d_list_ids, d_list_primary_t, d_list_res,
+                      d_list_corr, B_full, d, M, Ds, K, Kr, nlist, nprobe,
+                      Br, bpv, ck, k, ntotal);
+#else
         CUDA_CHECK(cudaGraphLaunch(ws.graph_exec, ws.stream));
+#endif
         CUDA_CHECK(cudaMemcpyAsync(h_out_ids   + (long long)qoff * k,
                                    ws.d_final_ids,
                                    (long long)B * k * sizeof(int),
@@ -506,6 +587,9 @@ void search_gpu(
     cudaError_t err;
     do { err = cudaStreamQuery(ws.stream); } while (err == cudaErrorNotReady);
     CUDA_CHECK(err);
+#if JHQ_STEP_TIMING
+    report_step_timing(ws, B_full, nprobe, ck);
+#endif
 }
 
 } // namespace jhq_gpu
