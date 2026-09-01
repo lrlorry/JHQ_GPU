@@ -59,11 +59,24 @@
 #ifndef JHQ_TILE_M
 #define JHQ_TILE_M 8
 #endif
+// Measured neutral. Striding the tile does keep the recall that a contiguous
+// tile loses (0.9411 at TILE_C=2 against 0.9411 at TILE_C=1), so the
+// explanation for that loss was right -- adjacent candidates landing on one
+// thread -- but it buys no throughput either: 46192 QPS against 46322 at
+// nprobe=128. At BLOCK=1024 the occupancy already fills the pipeline, so the
+// extra independent chains have nothing to hide. Kept for the record; TILE_C
+// stays 1.
 #ifndef JHQ_TILE_STRIDED
 #define JHQ_TILE_STRIDED 0
 #endif
+// On by default: sorting the candidate array once holds recall to four
+// decimal places against the ck-pass selection it replaces (0.7617 -> 0.7616,
+// 0.8956 -> 0.8956, 0.9411 -> 0.9413) and lifts QPS 46% at nprobe=128, 77% at
+// 32 and 90% at 8. The gain is largest where there is least to scan because
+// the cost it removes -- ck block-wide reductions -- does not scale with
+// nprobe. Set to 0 to measure against the old path.
 #ifndef JHQ_BITONIC_SELECT
-#define JHQ_BITONIC_SELECT 0
+#define JHQ_BITONIC_SELECT 1
 #endif
 #ifndef JHQ_ABLATE_LUT
 #define JHQ_ABLATE_LUT 0
