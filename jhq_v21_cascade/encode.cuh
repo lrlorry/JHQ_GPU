@@ -25,6 +25,11 @@ void launch_residual_encode(
     const float*   d_cent,
     const float*   d_res_c1d,
     int N, int d, int M, int Ds, int K, int Kr, int Br, int bpv,
+    // Level 2, quantising what level 1 leaves. Pass Br2 = 0 (and null
+    // pointers) to keep the single-level index exactly as it was.
+    uint8_t*       d_res2_codes,
+    const float*   d_res2_c1d,
+    int Kr2, int Br2, int bpv2,
     cudaStream_t stream = 0);
 
 } // namespace jhq_gpu

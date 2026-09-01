@@ -19,6 +19,13 @@ public:
         int   M          = 96;
         int   B          = 8;   // bits per subspace; K = 2^B, B <= 8
         int   Br         = 4;
+        // Second residual level. The official IndexJHQ indexes its scalar
+        // codebooks by (subspace, level), so more than one level is part of
+        // the design; this implementation only ever filled level 0. 0 leaves
+        // it off and the index is byte-identical to before. Each level costs
+        // d*Br2/8 bytes per vector -- 192 B at Br2=2, d=768 -- against the
+        // 384 B level 1 already spends, so it is not free.
+        int   Br2        = 0;
         float alpha      = 4.0f;
         int   nlist      = 1024;
         int   nprobe     = 8;
@@ -54,6 +61,7 @@ public:
 
 private:
     int   d_, M_, B_, Br_, Ds_, K_, bpv_;
+    int   Br2_ = 0, Kr2_ = 0, bpv2_ = 0;
     int   nlist_, nprobe_, ivf_iters_, batch_size_, add_batch_;
     int   kmeans_iters_, seed_;
     float alpha_;
@@ -68,11 +76,14 @@ private:
     // One scalar residual codebook per subspace ([M][Kr]), as in the
     // official get_scalar_codebook_ptr(subspace_idx, level).
     std::vector<float> res_c1d_;
+    // Level 2, quantising what level 1 leaves. Empty when Br2 is 0.
+    std::vector<float> res2_c1d_;
     std::vector<float> centroids_;
 
     float*   d_Pi_             = nullptr;
     float*   d_cent_           = nullptr;  // [M][K][Ds]
     float*   d_res_c1d_        = nullptr;
+    float*   d_res2_c1d_       = nullptr;
     float*   d_centroids_      = nullptr;
     float*   d_cent_norms_     = nullptr;
 
@@ -80,6 +91,7 @@ private:
     int*     d_list_ids_       = nullptr;
     uint8_t* d_list_primary_t_ = nullptr;  // [M, N] transposed — replaces [N, M]
     uint8_t* d_list_res_       = nullptr;
+    uint8_t* d_list_res2_      = nullptr;
     float*   d_list_corr_      = nullptr;
 
     mutable SearchWorkspace ws_;

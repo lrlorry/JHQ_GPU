@@ -48,6 +48,7 @@ struct SearchWorkspace {
     int*      d_topck_pos     = nullptr;
     float*    d_topck_primary = nullptr;
     float*    d_lut_r         = nullptr;
+    float*    d_lut_r2        = nullptr;   // level 2; null when Br2 == 0
     float*    d_comp_dists    = nullptr;
     int*      d_final_ids     = nullptr;
     float*    d_final_dists   = nullptr;
@@ -74,6 +75,10 @@ void search_gpu(
     int nq, int d, int M, int Ds, int K, int Kr,
     int nlist, int nprobe,
     int Br, int bpv,
+    // Level 2 of the residual hierarchy. Br2 = 0 with null pointers is the
+    // single-level index, unchanged.
+    const float* d_res2_c1d, const uint8_t* d_list_res2,
+    int Kr2, int Br2, int bpv2,
     float alpha, int k,
     int batch_size,
     int ntotal,                         // N — needed for [M,N] index

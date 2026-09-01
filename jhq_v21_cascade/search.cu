@@ -525,7 +525,10 @@ __global__ void residual_refine_batched_kernel(
     const uint8_t* __restrict__ list_res,
     const float*   __restrict__ list_corr,
     float*                      comp_dists,
-    int ck, int d, int Kr, int Br, int bpv, int B)
+    int ck, int d, int Kr, int Br, int bpv, int B,
+    const float*   __restrict__ lut_r2,
+    const uint8_t* __restrict__ list_res2,
+    int Kr2, int Br2, int bpv2)
 {
     long long total = (long long)B * ck;
     for (long long i = (long long)blockIdx.x * blockDim.x + threadIdx.x;
@@ -541,6 +544,21 @@ __global__ void residual_refine_batched_kernel(
                 ? ((j % 2 == 0) ? (rc[j/2] & 0x0F) : (rc[j/2] >> 4))
                 : rc[j];
             d_res += my_lut_r[(long long)j * Kr + ri];
+        }
+        if (Br2 > 0) {
+            // Second level, same asymmetric form. Each term adds another
+            // ||q||^2 to every candidate, which is constant per query and so
+            // leaves the ranking alone; the cross terms it cannot see are in
+            // list_corr, written at encode time.
+            const float*   my_lut_r2 = lut_r2 + (long long)bqi * d * Kr2;
+            const uint8_t* rc2       = list_res2 + (long long)pos * bpv2;
+            for (int j = 0; j < d; ++j) {
+                int ri2;
+                if (Br2 == 2)      ri2 = (rc2[j >> 2] >> (2 * (j & 3))) & 0x03;
+                else if (Br2 == 4) ri2 = (j % 2 == 0) ? (rc2[j/2] & 0x0F) : (rc2[j/2] >> 4);
+                else               ri2 = rc2[j];
+                d_res += my_lut_r2[(long long)j * Kr2 + ri2];
+            }
         }
         comp_dists[i] = topck_primary[i] + d_res + list_corr[pos];
     }
@@ -749,6 +767,12 @@ static void capture_graph(
         build_residual_lut_batched_kernel<<<grid, BLOCK, 0, ws.stream>>>(
             ws.d_q_rot, d_res_c1d, ws.d_lut_r, B, d, Ds, Kr);
     }
+    if (Br2 > 0) {
+        long long tot  = (long long)B * d * Kr2;
+        int       grid = (int)std::min((tot + BLOCK - 1) / BLOCK, (long long)65535);
+        build_residual_lut_batched_kernel<<<grid, BLOCK, 0, ws.stream>>>(
+            ws.d_q_rot, d_res2_c1d, ws.d_lut_r2, B, d, Ds, Kr2);
+    }
 #if JHQ_STEP_TIMING
     CUDA_CHECK(cudaEventRecord(ws.ev_step[6], ws.stream));
 #endif
@@ -759,7 +783,8 @@ static void capture_graph(
         residual_refine_batched_kernel<<<grid, BLOCK, 0, ws.stream>>>(
             ws.d_topck_pos, ws.d_topck_primary,
             ws.d_lut_r, d_list_res, d_list_corr,
-            ws.d_comp_dists, ck, d, Kr, Br, bpv, B);
+            ws.d_comp_dists, ck, d, Kr, Br, bpv, B,
+            ws.d_lut_r2, d_list_res2, Kr2, Br2, bpv2);
     }
 #if JHQ_STEP_TIMING
     CUDA_CHECK(cudaEventRecord(ws.ev_step[7], ws.stream));
@@ -819,6 +844,8 @@ void search_gpu(
     const float* h_queries,
     int nq, int d, int M, int Ds, int K, int Kr,
     int nlist, int nprobe, int Br, int bpv,
+    const float* d_res2_c1d, const uint8_t* d_list_res2,
+    int Kr2, int Br2, int bpv2,
     float alpha, int k, int batch_size,
     int ntotal,
     SearchWorkspace& ws,

@@ -117,7 +117,7 @@ __global__ void transpose_uint8_kernel(
 
 // ── Constructor / Destructor ──────────────────────────────────────────────────
 JHQGpuIndex::JHQGpuIndex(int d, Params p)
-    : d_(d), M_(p.M), B_(p.B), Br_(p.Br),
+    : d_(d), M_(p.M), B_(p.B), Br_(p.Br), Br2_(p.Br2),
       nlist_(p.nlist), nprobe_(p.nprobe), ivf_iters_(p.ivf_iters),
       batch_size_(p.batch_size), add_batch_(p.add_batch),
       kmeans_iters_(p.kmeans_iters), seed_(p.seed),
@@ -133,6 +133,8 @@ JHQGpuIndex::JHQGpuIndex(int d, Params p)
     // dimension -- see cpu/pq_codebook.h.
     if (p.B > 8)         throw std::invalid_argument("B must be <= 8");
     if (p.Br != 4 && p.Br != 8) throw std::invalid_argument("Br must be 4 or 8");
+    if (p.Br2 != 0 && p.Br2 != 2 && p.Br2 != 4 && p.Br2 != 8)
+        throw std::invalid_argument("Br2 must be 0, 2, 4 or 8");
     if (p.nlist <= 0)    throw std::invalid_argument("nlist must be positive");
     if (p.nprobe <= 0)   throw std::invalid_argument("nprobe must be positive");
     if (p.ivf_iters <= 0) throw std::invalid_argument("ivf_iters must be positive");
@@ -145,6 +147,8 @@ JHQGpuIndex::JHQGpuIndex(int d, Params p)
     K_            = 1 << B_;
     Kr_           = 1 << Br_;
     bpv_          = (d_ * Br_ + 7) / 8;
+    Kr2_          = Br2_ ? (1 << Br2_) : 0;
+    bpv2_         = Br2_ ? (d_ * Br2_ + 7) / 8 : 0;
     nprobe_       = std::min(nprobe_, nlist_);
 
     CUBLAS_CHECK(cublasCreate(&cublas_));
@@ -164,6 +168,8 @@ JHQGpuIndex::~JHQGpuIndex() {
     cudaFree(d_list_offsets_);
     cudaFree(d_list_ids_);
     cudaFree(d_list_primary_t_);
+    cudaFree(d_res2_c1d_);
+    cudaFree(d_list_res2_);
     cudaFree(d_list_res_);
     cudaFree(d_list_corr_);
     if (ws_.h_q_pinned) cudaFreeHost(ws_.h_q_pinned);
@@ -177,6 +183,7 @@ JHQGpuIndex::~JHQGpuIndex() {
     cudaFree(ws_.d_topck_pos);
     cudaFree(ws_.d_topck_primary);
     cudaFree(ws_.d_lut_r);
+    cudaFree(ws_.d_lut_r2);
     cudaFree(ws_.d_comp_dists);
     cudaFree(ws_.d_final_ids);
     cudaFree(ws_.d_final_dists);
@@ -199,6 +206,7 @@ void JHQGpuIndex::alloc_workspace(int batch_size) {
     cudaFree(ws_.d_topck_pos);     ws_.d_topck_pos      = nullptr;
     cudaFree(ws_.d_topck_primary); ws_.d_topck_primary  = nullptr;
     cudaFree(ws_.d_lut_r);         ws_.d_lut_r          = nullptr;
+    cudaFree(ws_.d_lut_r2);        ws_.d_lut_r2         = nullptr;
     cudaFree(ws_.d_comp_dists);    ws_.d_comp_dists     = nullptr;
     cudaFree(ws_.d_final_ids);     ws_.d_final_ids      = nullptr;
     cudaFree(ws_.d_final_dists);   ws_.d_final_dists    = nullptr;
@@ -214,6 +222,7 @@ void JHQGpuIndex::alloc_workspace(int batch_size) {
     CUDA_CHECK(cudaMalloc(&ws_.d_query_total,    B                    * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_byte_lut,       B * M_ * 256         * sizeof(__half)));
     CUDA_CHECK(cudaMalloc(&ws_.d_lut_r,          B * d_ * Kr_        * sizeof(float)));
+    if (Br2_) CUDA_CHECK(cudaMalloc(&ws_.d_lut_r2, B * d_ * Kr2_      * sizeof(float)));
     ws_.batch_cap = batch_size;
 
     if (ws_.h_q_pinned) { cudaFreeHost(ws_.h_q_pinned); ws_.h_q_pinned = nullptr; }
@@ -650,7 +659,9 @@ void JHQGpuIndex::add(const float* h_x, int n) {
         launch_residual_encode(d_y_batch, d_pc + start * M_,
                                d_rc + start * bpv_, d_co + start,
                                d_cent_, d_res_c1d_,
-                               nb, d_, M_, Ds_, K_, Kr_, Br_, bpv_);
+                               nb, d_, M_, Ds_, K_, Kr_, Br_, bpv_,
+                               Br2_ ? d_rc2 + (long long)start * bpv2_ : nullptr,
+                               d_res2_c1d_, Kr2_, Br2_, bpv2_);
         CUDA_CHECK(cudaDeviceSynchronize());
 
         int* d_assign_batch = assign_on_gpu(d_y_batch, nb);
@@ -742,6 +753,7 @@ void JHQGpuIndex::search(const float* h_q, int nq, int k,
                h_q,
                nq, d_, M_, Ds_, K_, Kr_, nlist_, nprobe_,
                Br_, bpv_,
+               d_res2_c1d_, d_list_res2_, Kr2_, Br2_, bpv2_,
                alpha_, k,
                batch_size_,
                ntotal_,
