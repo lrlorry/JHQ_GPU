@@ -866,6 +866,25 @@ foreach(TC 2 4 8)
     add_jhq_strided(${TC} 1)
 endforeach()
 
+# JQ-GPU: identical primary quantiser, IVF, cascade, occupancy and selection,
+# with the residual level switched off. Everything that differs between this
+# and demo_jhq_v22_s2b1 is the hierarchy itself.
+add_library(jhq_v22_jq STATIC
+    jhq_v21_cascade/encode.cu
+    jhq_v21_cascade/search.cu
+    jhq_v21_cascade/jhq_gpu_index.cu
+)
+target_include_directories(jhq_v22_jq PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_v22_jq PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+target_compile_definitions(jhq_v22_jq PRIVATE
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=2 JHQ_PREFIX_KEEP=8
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_NO_RESIDUAL=1)
+target_compile_options(jhq_v22_jq PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
+)
+add_executable(demo_jhq_v22_jq examples/demo_jhq_v21_cascade.cu)
+target_link_libraries(demo_jhq_v22_jq PRIVATE jhq_v22_jq)
+
 # Recall-ceiling diagnostics. Recall saturates near 0.95 and three independent
 # causes are consistent with that: IVF pruning (nprobe=128 of nlist=1024),
 # per-thread truncation (K_LOCAL=4 keeps 4096 of 116541 candidates at

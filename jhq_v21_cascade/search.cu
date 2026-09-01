@@ -66,6 +66,9 @@
 // nprobe=128. At BLOCK=1024 the occupancy already fills the pipeline, so the
 // extra independent chains have nothing to hide. Kept for the record; TILE_C
 // stays 1.
+#ifndef JHQ_NO_RESIDUAL
+#define JHQ_NO_RESIDUAL 0
+#endif
 #ifndef JHQ_TILE_STRIDED
 #define JHQ_TILE_STRIDED 0
 #endif
@@ -542,7 +545,17 @@ __global__ void residual_refine_batched_kernel(
                 : rc[j];
             d_res += my_lut_r[(long long)j * Kr + ri];
         }
+#if JHQ_NO_RESIDUAL
+        // JQ-GPU: the same primary quantiser, IVF and GPU scan, with the
+        // residual level switched off. This is the hierarchy ablation -- it
+        // separates what the second level of the quantiser contributes from
+        // what the kernel work contributes, which a comparison against the
+        // published CPU numbers cannot do.
+        (void)d_res; (void)list_corr;
+        comp_dists[i] = topck_primary[i];
+#else
         comp_dists[i] = topck_primary[i] + d_res + list_corr[pos];
+#endif
     }
 }
 
