@@ -59,6 +59,9 @@
 #ifndef JHQ_TILE_M
 #define JHQ_TILE_M 8
 #endif
+#ifndef JHQ_BITONIC_SELECT
+#define JHQ_BITONIC_SELECT 0
+#endif
 #ifndef JHQ_ABLATE_LUT
 #define JHQ_ABLATE_LUT 0
 #endif
@@ -407,6 +410,38 @@ __global__ void scan_ivf_coalesced_kernel(
     }
     return;
 #endif
+#if JHQ_BITONIC_SELECT
+    // ck is ceil(alpha*k) -- 1000 at the alpha=100 operating point -- and the
+    // loop below extracts one candidate per pass with a whole-block reduction:
+    // log2(BLOCK)+2 barriers each, so ~12000 barriers per block at BLOCK=1024,
+    // with 1023 of 1024 threads idle for every write. None of that scales with
+    // nprobe, which is why the scan stays expensive when there is almost
+    // nothing to scan: at nprobe=8 each thread holds only 7 candidates.
+    //
+    // Sorting the whole array once instead costs log2(n)*(log2(n)+1)/2 passes
+    // -- 78 at n_cands = 4096 -- one barrier each, with every thread working.
+    // n_cands is K_LOCAL*BLOCK, a power of two whenever both are.
+    for (int k2 = 2; k2 <= n_cands; k2 <<= 1) {
+        for (int j = k2 >> 1; j > 0; j >>= 1) {
+            for (int i = tid; i < n_cands; i += BLOCK) {
+                const int ixj = i ^ j;
+                if (ixj > i) {
+                    const bool up = ((i & k2) == 0);
+                    if ((s_cdist[i] > s_cdist[ixj]) == up) {
+                        float td = s_cdist[i]; s_cdist[i] = s_cdist[ixj]; s_cdist[ixj] = td;
+                        int   tp = s_cpos [i]; s_cpos [i] = s_cpos [ixj]; s_cpos [ixj] = tp;
+                    }
+                }
+            }
+            __syncthreads();
+        }
+    }
+    for (int c = tid; c < ck; c += BLOCK) {
+        const bool have = (c < n_cands);
+        out_primary[c] = have ? s_cdist[c] : INF;
+        out_pos    [c] = have ? s_cpos [c] : -1;
+    }
+#else
     for (int c = 0; c < ck; ++c) {
         float bv = INF; int bi = -1;
         for (int ci = tid; ci < n_cands; ci += BLOCK)
@@ -427,6 +462,7 @@ __global__ void scan_ivf_coalesced_kernel(
         }
         __syncthreads();
     }
+#endif
 }
 
 // ── Residual / final-topk kernels (same as v10) ───────────────────────────────
