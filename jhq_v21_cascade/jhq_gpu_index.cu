@@ -23,6 +23,9 @@
 #include <cstdint>
 #include <cstring>
 #include <numeric>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
 #include <stdexcept>
 #include <vector>
 
@@ -375,8 +378,25 @@ void JHQGpuIndex::train_residual_codebook(
 }
 
 // ── Train ─────────────────────────────────────────────────────────────────────
+// Phase timing for train(). The 29 s build against cuVS's 4.5 s was attributed
+// to the PQ codebook k-means on the strength of an nsys trace showing only
+// ~700 ms of GPU work, but that only says the time is on the host, not which
+// host loop owns it -- parallelising the codebook changed the total by nothing.
+#define JHQ_TRAIN_PHASE(label)                                                \
+    do { if (phase_timing) {                                                  \
+        CUDA_CHECK(cudaDeviceSynchronize());                                  \
+        const double now = std::chrono::duration<double, std::milli>(         \
+            std::chrono::high_resolution_clock::now() - t_phase).count();     \
+        std::printf("  [train] %-22s %8.1f ms\n", label, now);                \
+        t_phase = std::chrono::high_resolution_clock::now();                   \
+    } } while (0)
+
 void JHQGpuIndex::train(const float* h_x, int n_train) {
+    const bool phase_timing = std::getenv("JHQ_TRAIN_PHASES") != nullptr;
+    auto t_phase = std::chrono::high_resolution_clock::now();
+
     jl_.estimate_sigma(h_x, n_train);
+    JHQ_TRAIN_PHASE("estimate_sigma");
     cb_ = std::make_unique<PQCodebook>(d_, M_, B_);
 
     CUDA_CHECK(cudaMalloc(&d_Pi_, (long long)d_ * d_ * sizeof(float)));
@@ -392,8 +412,10 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
     CUDA_CHECK(cudaMemcpy(h_y_train.data(), d_y_train,
                           (long long)n_train * d_ * sizeof(float),
                           cudaMemcpyDeviceToHost));
+    JHQ_TRAIN_PHASE("rotate + D2H");
 
     cb_->train(h_y_train.data(), n_train, kmeans_iters_, seed_);
+    JHQ_TRAIN_PHASE("pq codebook kmeans");
 
     CUDA_CHECK(cudaMalloc(&d_cent_, cb_->size() * sizeof(float)));
     CUDA_CHECK(cudaMemcpy(d_cent_, cb_->data(), cb_->size() * sizeof(float),
@@ -405,9 +427,13 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
     launch_primary_encode(d_y_train, d_codes_train, d_cent_,
                           n_train, d_, M_, Ds_, K_);
     CUDA_CHECK(cudaDeviceSynchronize());
+    JHQ_TRAIN_PHASE("primary encode");
 
     train_ivf_centroids(h_y_train.data(), d_y_train, n_train);
+    JHQ_TRAIN_PHASE("ivf centroids");
+
     train_residual_codebook(d_y_train, d_codes_train, n_train);
+    JHQ_TRAIN_PHASE("residual codebook");
 
     cudaFree(d_y_train);
     cudaFree(d_codes_train);
