@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit -m ' *)",
+      "Bash(python3 -c ' *)",
+      "Bash(git commit -m 'Add troubleshooting writeup for the JHQ dataset download saga *)",
+      "Bash(python3 -c \"import matplotlib, pandas; print\\('matplotlib', matplotlib.__version__, 'pandas', pandas.__version__, 'available locally'\\)\")"
+    ]
+  }
+}

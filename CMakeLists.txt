@@ -731,6 +731,38 @@ foreach(TC 1 2 4 8 16)
     endforeach()
 endforeach()
 
+# ── v21: cascaded scan ───────────────────────────────────────────────────────
+# Pass 1 ranks every candidate on a NUM/DEN prefix of the subspaces, pass 2
+# completes only the best KEEP per thread. NUM==DEN is v19 with extra copies,
+# which is the control the sweep needs.
+function(add_jhq_cascade_variant NUM DEN KEEP)
+    set(tgt jhq_v21_p${NUM}_${DEN}k${KEEP})
+    add_library(${tgt} STATIC
+        jhq_v21_cascade/encode.cu
+        jhq_v21_cascade/search.cu
+        jhq_v21_cascade/jhq_gpu_index.cu
+    )
+    target_include_directories(${tgt} PUBLIC ${CMAKE_SOURCE_DIR})
+    target_link_libraries(${tgt} PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+    target_compile_definitions(${tgt} PRIVATE
+        JHQ_STEP_TIMING=1
+        JHQ_PREFIX_NUM=${NUM} JHQ_PREFIX_DEN=${DEN} JHQ_PREFIX_KEEP=${KEEP})
+    target_compile_options(${tgt} PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    )
+    add_executable(demo_${tgt} examples/demo_jhq_v21_cascade.cu)
+    target_link_libraries(demo_${tgt} PRIVATE ${tgt})
+endfunction()
+
+foreach(KEEP 4 8 16 32)
+    foreach(FRAC "1_8" "1_4" "1_3" "1_2" "1_1")
+        string(REPLACE "_" ";" NUMDEN ${FRAC})
+        list(GET NUMDEN 0 NUM)
+        list(GET NUMDEN 1 DEN)
+        add_jhq_cascade_variant(${NUM} ${DEN} ${KEEP})
+    endforeach()
+endforeach()
+
 # ── Residual-codebook layout ablation ────────────────────────────────────────
 # Same sources as jhq_v16_pq_primary with the residual codebook forced global
 # (v15's layout) instead of per-subspace (the official layout). Only the

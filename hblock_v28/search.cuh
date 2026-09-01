@@ -76,7 +76,7 @@ struct SearchWorkspace {
 void gpu_block_search_v27(
     int B, int n_blks, int d_proj,
     int K2, int K3, int ck1, int ck2, int ck3,
-    int degree, int budget, int max_ls, int entry_per_cell,
+    int degree, int depth, int max_ls, int entry_per_cell,
     const int*   d_block_adj,
     const float* d_blk_proj,
     const float* d_blk_norm,

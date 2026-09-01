@@ -334,7 +334,7 @@ __global__ void block_search_fused_v28(
     int* d_leaf_sel, int* d_leaf_cnt, int* d_visited,
     int n_blks, int d_proj, int K2, int K3,
     int ck1, int ck2, int ck3,
-    int degree, int budget, int max_ls,
+    int degree, int depth, int max_ls,
     int entry_per_cell, int bitmap_words)
 {
     const int qi = blockIdx.x, tid = threadIdx.x;
@@ -402,7 +402,7 @@ __global__ void block_search_fused_v28(
     }
 
     int out_cnt = 0;
-    for (int iter = 0; iter < budget; iter++) {
+    for (int iter = 0; iter < depth; iter++) {
         float lb = 1e38f; int lbs = -1;
         for (int s = 0; s < SPT; s++)
             if (!my_exp[s] && my_id[s] >= 0 && my_dist[s] < lb) { lb = my_dist[s]; lbs = s; }
@@ -441,12 +441,12 @@ __global__ void block_search_fused_v28(
         ws.d_q_proj1, \
         ws.d_leaf_sel, ws.d_leaf_cnt, ws.d_visited, \
         n_blks, d_proj, K2, K3, \
-        ck1, ck2, ck3, degree, budget, max_ls, entry_per_cell, ws.bitmap_words)
+        ck1, ck2, ck3, degree, depth, max_ls, entry_per_cell, ws.bitmap_words)
 
 void gpu_block_search_v27(  // name kept for linkage compatibility
     int B, int n_blks, int d_proj,
     int K2, int K3, int ck1, int ck2, int ck3,
-    int degree, int budget, int max_ls, int entry_per_cell,
+    int degree, int depth, int max_ls, int entry_per_cell,
     const int*   d_block_adj, const float* d_blk_proj, const float* d_blk_norm,
     const int*   d_pair_blk_start, const int*   d_pair_blk_count,
     SearchWorkspace& ws)

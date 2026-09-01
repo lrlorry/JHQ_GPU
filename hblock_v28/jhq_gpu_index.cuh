@@ -29,7 +29,7 @@ public:
         int km_iters     = 30;
         int batch_size   = 1024;
         int graph_degree   = 32;
-        int graph_budget   = 32;
+        int graph_depth    = 32;
         int entry_per_cell = 4;
         int n_c2_nbrs      = 4;
         int n_c1_nbrs      = 2;
@@ -56,7 +56,7 @@ private:
     int d_, d_proj_, Kr_, Br_, bpv_, leaf_size_;
     int K1_, K2_, K3_, ck1_, ck2_, ck3_;
     int per_block_r_, klocal_, km_iters_, batch_size_;
-    int graph_degree_, graph_budget_, entry_per_cell_;
+    int graph_degree_, graph_depth_, entry_per_cell_;
     int n_c2_nbrs_, n_c1_nbrs_, max_cand_blocks_;
     int beam_size_, mini_km_iters_;
     int ntotal_           = 0;

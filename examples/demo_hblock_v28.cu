@@ -31,7 +31,7 @@ int main(int argc, char** argv)
             "         [K1=16] [K2=16] [K3=16]\n"
             "         [ck1=2] [ck2=2]\n"
             "         [k=10] [batch_size=1024] [d_proj=64] [per_block_r=16] [km_iters=30]\n"
-            "         [graph_degree=32] [graph_budget=32] [entry_per_cell=4]\n"
+            "         [graph_degree=32] [graph_depth=32] [entry_per_cell=4]\n"
             "         [n_c2_nbrs=4] [n_c1_nbrs=2] [beam_size=32] [klocal=10] [mini_km_iters=5]\n",
             argv[0]);
         return 1;
@@ -51,7 +51,7 @@ int main(int argc, char** argv)
     int per_block_r   = (argc > 12) ? atoi(argv[12]) : 16;
     int km_iters      = (argc > 13) ? atoi(argv[13]) : 30;
     int graph_degree  = (argc > 14) ? atoi(argv[14]) : 32;
-    int graph_budget  = (argc > 15) ? atoi(argv[15]) : 32;
+    int graph_depth  = (argc > 15) ? atoi(argv[15]) : 32;
     int entry_per_cell= (argc > 16) ? atoi(argv[16]) : 4;
     int n_c2_nbrs     = (argc > 17) ? atoi(argv[17]) : 4;
     int n_c1_nbrs     = (argc > 18) ? atoi(argv[18]) : 2;
@@ -71,11 +71,11 @@ int main(int argc, char** argv)
            nb, d, nq, d_query, (int)(gt.size()/d_gt), d_gt);
     printf("K1=%d K2=%d K3=%d  ck1=%d ck2=%d  k=%d  batch=%d\n"
            "  d_proj=%d  per_block_r=%d  klocal=%d  km_iters=%d\n"
-           "  graph_degree=%d  graph_budget=%d  entry_per_cell=%d\n"
+           "  graph_degree=%d  graph_depth=%d  entry_per_cell=%d\n"
            "  n_c2_nbrs=%d  n_c1_nbrs=%d  beam_size=%d  mini_km_iters=%d\n",
            K1, K2, K3, ck1, ck2, k, batch_sz,
            d_proj, per_block_r, klocal, km_iters,
-           graph_degree, graph_budget, entry_per_cell,
+           graph_degree, graph_depth, entry_per_cell,
            n_c2_nbrs, n_c1_nbrs, beam_size, mini_km_iters);
 
     hblock_v28::HBlockIndex::Params p;
@@ -90,7 +90,7 @@ int main(int argc, char** argv)
     p.km_iters      = km_iters;
     p.batch_size    = batch_sz;
     p.graph_degree  = graph_degree;
-    p.graph_budget  = graph_budget;
+    p.graph_depth  = graph_depth;
     p.entry_per_cell = entry_per_cell;
     p.n_c2_nbrs     = n_c2_nbrs;
     p.n_c1_nbrs     = n_c1_nbrs;
@@ -134,8 +134,8 @@ int main(int argc, char** argv)
     double qps = nq / (ms / 1000.0);
 
     printf("\n=== Results ===\n");
-    printf("per_block_r=%d  klocal=%d  graph_budget=%d  beam_size=%d\n",
-           per_block_r, klocal, graph_budget, beam_size);
+    printf("per_block_r=%d  klocal=%d  graph_depth=%d  beam_size=%d\n",
+           per_block_r, klocal, graph_depth, beam_size);
     printf("Oracle Recall@%d : %.4f\n", k, oracle_rec);
     printf("PQ    Recall@%d  : %.4f\n", k, rec);
     printf("Latency   : %.2f ms  (%d queries)\n", ms, nq);

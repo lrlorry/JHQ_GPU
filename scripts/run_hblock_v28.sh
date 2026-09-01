@@ -24,7 +24,7 @@ DEGREE=32; ENTRY=4; C2N=4; C1N=2; MINI_KM=5
 PER_BLOCK_R=16
 KLOCAL=10
 
-BUDGETS="32 64"
+DEPTHS="32 64"
 BEAM_SIZES="32 64 128"
 
 run_dataset() {
@@ -33,20 +33,20 @@ run_dataset() {
     echo "========================================"
     echo "Dataset: $NAME  ->  $CSV"
     echo "========================================"
-    echo "budget,beam_size,oracle_recall@10,recall@10,latency_ms,qps" > $CSV
-    for BUD in $BUDGETS; do
+    echo "depth,beam_size,oracle_recall@10,recall@10,latency_ms,qps" > $CSV
+    for DEP in $DEPTHS; do
         for BS in $BEAM_SIZES; do
-            echo "--- budget=$BUD  beam_size=$BS  per_block_r=$PER_BLOCK_R  klocal=$KLOCAL ---"
+            echo "--- depth=$DEP  beam_size=$BS  per_block_r=$PER_BLOCK_R  klocal=$KLOCAL ---"
             OUT=$($BIN $BASE $QRY $GT \
                 $K1 $K2 $K3 $CK1 $CK2 \
                 $K $BATCH $D_PROJ $PER_BLOCK_R $KM_ITERS \
-                $DEGREE $BUD $ENTRY $C2N $C1N $BS $KLOCAL $MINI_KM 2>&1)
+                $DEGREE $DEP $ENTRY $C2N $C1N $BS $KLOCAL $MINI_KM 2>&1)
             echo "$OUT"
             ORACLE=$(echo "$OUT" | grep "Oracle Recall@" | tail -1 | awk '{print $NF}')
             RECALL=$(echo "$OUT" | grep "PQ    Recall@"  | awk '{print $NF}')
             LATENCY=$(echo "$OUT" | grep "Latency" | awk '{print $3}')
             QPS=$(echo "$OUT"    | grep "QPS"     | awk '{print $NF}')
-            echo "$BUD,$BS,$ORACLE,$RECALL,$LATENCY,$QPS" | tee -a $CSV
+            echo "$DEP,$BS,$ORACLE,$RECALL,$LATENCY,$QPS" | tee -a $CSV
             echo ""
         done
     done

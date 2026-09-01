@@ -42,7 +42,7 @@ HBlockIndex::HBlockIndex(int d, Params p)
       ck1_(p.ck1), ck2_(p.ck2), ck3_(p.ck3),
       per_block_r_(p.per_block_r), klocal_(p.klocal),
       km_iters_(p.km_iters), batch_size_(p.batch_size),
-      graph_degree_(p.graph_degree), graph_budget_(p.graph_budget),
+      graph_degree_(p.graph_degree), graph_depth_(p.graph_depth),
       entry_per_cell_(p.entry_per_cell),
       n_c2_nbrs_(p.n_c2_nbrs), n_c1_nbrs_(p.n_c1_nbrs),
       max_cand_blocks_(p.max_cand_blocks),
@@ -188,9 +188,9 @@ void HBlockIndex::train(const float* h_x, int n_train)
     auto T0 = Clock::now();
     const int n_km = std::min(n_train, 200000);
     printf("[v28 train] d=%d d_proj=%d K1=%d K2=%d K3=%d ck1=%d ck2=%d ck3=%d"
-           " graph_degree=%d graph_budget=%d entry_per_cell=%d beam_size=%d\n",
+           " graph_degree=%d graph_depth=%d entry_per_cell=%d beam_size=%d\n",
            d_, d_proj_, K1_, K2_, K3_, ck1_, ck2_, ck3_,
-           graph_degree_, graph_budget_, entry_per_cell_, beam_size_);
+           graph_degree_, graph_depth_, entry_per_cell_, beam_size_);
 
     const float one=1.f, zero=0.f;
     CUBLAS_CHECK(cublasSetStream(cublas_, nullptr));
@@ -746,7 +746,7 @@ void HBlockIndex::build_block_graph(
 
 void HBlockIndex::alloc_workspace()
 {
-    const int B=batch_size_, max_ls=graph_budget_;
+    const int B=batch_size_, max_ls=graph_depth_;
     const int max_pairs=B*max_ls;
 
     if(ws_.stream){cublasSetStream(cublas_,nullptr);cudaStreamDestroy(ws_.stream);}
@@ -848,7 +848,7 @@ void HBlockIndex::search(const float* h_q, int nq, int k,
         auto t1=Clock::now();
         gpu_block_search_v27(nb, n_leaf_blocks_, d_proj_,
                              K2_, K3_, ck1_, ck2_, ck3_,
-                             graph_degree_, graph_budget_, ws_.max_leaf_sel,
+                             graph_degree_, graph_depth_, ws_.max_leaf_sel,
                              entry_per_cell_,
                              d_block_adj_gpu_, d_blk_proj_gpu_, d_blk_norm_gpu_,
                              d_pair_blk_start_, d_pair_blk_count_, ws_);
@@ -929,7 +929,7 @@ double HBlockIndex::oracle_recall(const float* h_q, int nq, int k,
 
         gpu_block_search_v27(nb, n_leaf_blocks_, d_proj_,
                              K2_, K3_, ck1_, ck2_, ck3_,
-                             graph_degree_, graph_budget_, ws_.max_leaf_sel,
+                             graph_degree_, graph_depth_, ws_.max_leaf_sel,
                              entry_per_cell_,
                              d_block_adj_gpu_, d_blk_proj_gpu_, d_blk_norm_gpu_,
                              d_pair_blk_start_, d_pair_blk_count_, ws_);
