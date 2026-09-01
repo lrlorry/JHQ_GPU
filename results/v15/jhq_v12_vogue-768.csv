@@ -1,0 +1,17 @@
+method,nprobe,recall,qps,build_time,pre_v15_score
+
+JHQ-GPU-v12-Transposed,1,0.4546,20048.0,26.6938,0.8862
+
+JHQ-GPU-v12-Transposed,2,0.5419,17697.0,26.6938,0.9591
+
+JHQ-GPU-v12-Transposed,4,0.6426,16039.0,26.6938,0.9907
+
+JHQ-GPU-v12-Transposed,8,0.7292,16842.0,26.6938,0.9982
+
+JHQ-GPU-v12-Transposed,16,0.792,16670.0,26.6938,1.0
+
+JHQ-GPU-v12-Transposed,32,0.8402,16056.0,26.6938,1.0
+
+JHQ-GPU-v12-Transposed,64,0.8622,14865.0,26.6938,1.0
+
+JHQ-GPU-v12-Transposed,128,0.8764,11046.0,26.6938,1.0

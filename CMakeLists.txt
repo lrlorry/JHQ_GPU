@@ -18,6 +18,7 @@ find_package(LAPACK REQUIRED)
 # All versions link this. Never duplicated.
 add_library(jhq_cpu STATIC
     cpu/codebook.cpp
+    cpu/pq_codebook.cpp
     cpu/jl_transform.cpp
 )
 target_include_directories(jhq_cpu PUBLIC ${CMAKE_SOURCE_DIR})
@@ -66,6 +67,7 @@ add_jhq_version(jhq_v12_transposed)
 add_jhq_version(jhq_v13_step_timing)
 add_jhq_version(jhq_v14_streaming_add)
 add_jhq_version(jhq_v15_eval_fix)
+add_jhq_version(jhq_v16_pq_primary)
 add_jhq_version(hblock_v1)
 add_jhq_version(hblock_v2)
 add_jhq_version(hblock_v3)
@@ -589,6 +591,24 @@ target_compile_options(jhq_hblock_v22 PRIVATE
 )
 add_executable(demo_hblock_v22 examples/demo_hblock_v22.cu)
 target_link_libraries(demo_hblock_v22 PRIVATE jhq_hblock_v22)
+
+# ── Residual-codebook layout ablation ────────────────────────────────────────
+# Same sources as jhq_v16_pq_primary with the residual codebook forced global
+# (v15's layout) instead of per-subspace (the official layout). Only the
+# codebook contents differ -- see JHQ_GLOBAL_RESIDUAL_CB in jhq_gpu_index.cu.
+add_library(jhq_v16_globalres STATIC
+    jhq_v16_pq_primary/encode.cu
+    jhq_v16_pq_primary/search.cu
+    jhq_v16_pq_primary/jhq_gpu_index.cu
+)
+target_include_directories(jhq_v16_globalres PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_v16_globalres PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+target_compile_definitions(jhq_v16_globalres PRIVATE JHQ_GLOBAL_RESIDUAL_CB=1)
+target_compile_options(jhq_v16_globalres PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+)
+add_executable(demo_jhq_v16_globalres examples/demo_jhq_v16_pq_primary.cu)
+target_link_libraries(demo_jhq_v16_globalres PRIVATE jhq_v16_globalres)
 
 # ── K_LOCAL ablation variants ────────────────────────────────────────────────
 # Same sources as jhq_v15_eval_fix; only JHQ_K_LOCAL differs.
