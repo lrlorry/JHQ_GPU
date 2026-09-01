@@ -765,6 +765,34 @@ foreach(KEEP 4 8 16 32)
     add_jhq_cascade_variant(1 4 ${KEEP})
 endforeach()
 
+# Same kernel with the step timers off. JHQ_STEP_TIMING inserts a cudaEvent
+# between every kernel and so suppresses CUDA Graph capture: at batch 1024 the
+# timed v20 build spent 45.7 ms outside the scan against 18.8 ms at batch 256,
+# and lost throughput (10197 QPS) even though its scan got faster (75.5 -> 52.4
+# ms). v16 is untimed and doubled over the same change, 10550 -> 20154. Any
+# number compared against v16 has to come from a build in the same mode.
+function(add_jhq_cascade_fast KEEP)
+    set(tgt jhq_v21_fast_k${KEEP})
+    add_library(${tgt} STATIC
+        jhq_v21_cascade/encode.cu
+        jhq_v21_cascade/search.cu
+        jhq_v21_cascade/jhq_gpu_index.cu
+    )
+    target_include_directories(${tgt} PUBLIC ${CMAKE_SOURCE_DIR})
+    target_link_libraries(${tgt} PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+    target_compile_definitions(${tgt} PRIVATE
+        JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=4 JHQ_PREFIX_KEEP=${KEEP})
+    target_compile_options(${tgt} PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    )
+    add_executable(demo_${tgt} examples/demo_jhq_v21_cascade.cu)
+    target_link_libraries(demo_${tgt} PRIVATE ${tgt})
+endfunction()
+
+foreach(KEEP 4 8 16 32)
+    add_jhq_cascade_fast(${KEEP})
+endforeach()
+
 # ── Residual-codebook layout ablation ────────────────────────────────────────
 # Same sources as jhq_v16_pq_primary with the residual codebook forced global
 # (v15's layout) instead of per-subspace (the official layout). Only the
