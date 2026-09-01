@@ -115,6 +115,8 @@ def run_jhq(binary, ds, params, env, reps):
 
 def aggregate(method, variant, ds, params, env, qpss, recalls,
               vram, train_ms, add_ms, errs):
+    """One row. `qpss` and `recalls` are the per-run samples, never a mean that
+    has already thrown away its spread."""
     ok = len(qpss) > 0
     return {
         "method": method, "variant": variant, "dataset": ds,
@@ -133,6 +135,130 @@ def aggregate(method, variant, ds, params, env, qpss, recalls,
         "status": "ok" if ok else "FAILED",
         "failures": json.dumps(errs[:2]) if errs else "",
     }
+
+
+# ── cuVS baselines ────────────────────────────────────────────────────────────
+#
+# Timing drains the stream before the clock stops. cuVS's search is
+# asynchronous and returns device arrays, so a clock read straight after it can
+# stop before the GPU has finished -- the benchmark this replaces synchronised
+# one line too late, inside cp.asnumpy() after the time had been taken.
+#
+# Memory is measured with cudaMemGetInfo around the build rather than derived
+# from bytes per vector, and the pool is trimmed first so the number reflects
+# what the index holds rather than what the allocator is caching.
+
+def _fvecs(path, limit=None):
+    import numpy as np
+    a = np.fromfile(path, dtype=np.int32)
+    d = int(a[0])
+    a = a.reshape(-1, d + 1)[:, 1:]
+    if limit: a = a[:limit]
+    return np.ascontiguousarray(a.view(np.float32))
+
+
+def _ivecs(path):
+    import numpy as np
+    a = np.fromfile(path, dtype=np.int32)
+    d = int(a[0])
+    return np.ascontiguousarray(a.reshape(-1, d + 1)[:, 1:])
+
+
+def _recall_at_k(found, gt, k):
+    """Set intersection against the true top-k, matching common/recall.cuh."""
+    hits = 0
+    for i in range(found.shape[0]):
+        hits += len(set(found[i, :k].tolist()) & set(gt[i, :k].tolist()))
+    return hits / (found.shape[0] * k)
+
+
+def _mem_used_mib():
+    import cupy as cp
+    cp.get_default_memory_pool().free_all_blocks()
+    free, total = cp.cuda.runtime.memGetInfo()
+    return (total - free) / 2**20
+
+
+def _timed(fn, reps):
+    """Warm up, drain, then time `reps` calls and drain again."""
+    import cupy as cp
+    out = fn()
+    cp.cuda.Stream.null.synchronize()
+    ts = []
+    for _ in range(reps):
+        t = time.time()
+        out = fn()
+        cp.cuda.Stream.null.synchronize()
+        ts.append(time.time() - t)
+    return ts, out
+
+
+def run_cuvs(method, ds, grid, k, reps):
+    import numpy as np, cupy as cp
+    from cuvs.neighbors import ivf_pq, cagra
+    base, query, gt_path, d, N = DATASETS[ds]
+    xb_h, xq_h, gt = _fvecs(base), _fvecs(query), _ivecs(gt_path)
+    rows = []
+    for cfg in grid:
+        try:
+            cp.get_default_memory_pool().free_all_blocks()
+            m_before = _mem_used_mib()
+            if method == "cagra-int8":
+                from cuvs.preprocessing.quantize import scalar
+                xb_d = cp.asarray(xb_h)
+                q = scalar.train(scalar.QuantizerParams(quantile=0.99), xb_d)
+                xb_q = scalar.transform(q, xb_d)
+                xq_q = scalar.transform(q, cp.asarray(xq_h))
+                xb_q = xb_q[0] if isinstance(xb_q, tuple) else xb_q
+                xq_q = xq_q[0] if isinstance(xq_q, tuple) else xq_q
+                del xb_d; cp.get_default_memory_pool().free_all_blocks()
+                xb_d, xq_d = xb_q, xq_q
+                bytes_vec = d + 4 * cfg["graph_degree"]
+            else:
+                xb_d, xq_d = cp.asarray(xb_h), cp.asarray(xq_h)
+                bytes_vec = (cfg.get("pq_dim") or d) if method == "ivfpq" \
+                            else 4 * d + 4 * cfg["graph_degree"]
+
+            t0 = time.time()
+            if method == "ivfpq":
+                idx = ivf_pq.build(ivf_pq.IndexParams(
+                    n_lists=cfg["n_lists"], pq_dim=cfg["pq_dim"],
+                    pq_bits=cfg["pq_bits"]), xb_d)
+            else:
+                idx = cagra.build(cagra.IndexParams(
+                    graph_degree=cfg["graph_degree"]), xb_d)
+            cp.cuda.Stream.null.synchronize()
+            build_s = time.time() - t0
+            m_after = _mem_used_mib()
+
+            if method == "ivfpq":
+                sp = ivf_pq.SearchParams(n_probes=cfg["n_probes"])
+                call = lambda: ivf_pq.search(sp, idx, xq_d, k)
+            else:
+                sp = cagra.SearchParams(itopk_size=cfg["itopk_size"],
+                                        search_width=cfg.get("search_width", 1))
+                call = lambda: cagra.search(sp, idx, xq_d, k)
+            ts, out = _timed(call, reps)
+            I = cp.asnumpy(out[1])
+            qps = [len(xq_h) / t for t in ts]
+            rec = _recall_at_k(I, gt, k)
+            rows.append(aggregate(
+                {"ivfpq": "cuVS-IVFPQ", "cagra": "cuVS-CAGRA",
+                 "cagra-int8": "cuVS-CAGRA-int8"}[method],
+                f"{bytes_vec}B", ds, dict(cfg, bytes_per_vec=bytes_vec, k=k),
+                {}, qps, [rec] * len(qps), m_after - m_before,
+                build_s * 1000, None, []))
+            del idx, xb_d, xq_d
+            cp.get_default_memory_pool().free_all_blocks()
+        except Exception as ex:
+            rows.append(aggregate(
+                method, str(cfg), ds, cfg, {}, [], [], None, None, None,
+                [(-1, [f"{type(ex).__name__}: {str(ex)[:300]}"])]))
+        r = rows[-1]
+        print(f"  {method} {cfg} -> {r['status']} R={r['recall']} "
+              f"QPS={r['qps_mean']}±{r['qps_std']} vram={r['vram_mib']}MiB",
+              file=sys.stderr, flush=True)
+    return rows
 
 
 FIELDS = ["method", "variant", "dataset", "d", "N", "params", "env", "n_runs",
@@ -155,6 +281,12 @@ def write_rows(path, rows, meta):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", required=True, choices=sorted(DATASETS))
+    ap.add_argument("--method", default="jhq",
+                    choices=["jhq", "ivfpq", "cagra", "cagra-int8"])
+    ap.add_argument("--pq-dims", default="96,192,384,768")
+    ap.add_argument("--graph-degrees", default="32,64")
+    ap.add_argument("--itopk", default="32,64,128,256,512")
+    ap.add_argument("--search-width", default="1,2,4")
     ap.add_argument("--out", required=True)
     ap.add_argument("--reps", type=int, default=5)
     ap.add_argument("--binary", default="demo_jhq_v22_s2b1")
@@ -170,6 +302,21 @@ def main():
 
     meta = env_metadata()
     print("env: " + json.dumps(meta, sort_keys=True), file=sys.stderr)
+
+    if a.method != "jhq":
+        probes = [int(x) for x in a.nprobe.split(",")]
+        if a.method == "ivfpq":
+            grid = [dict(n_lists=a.nlist, pq_dim=pd, pq_bits=8, n_probes=np_)
+                    for pd in (int(x) for x in a.pq_dims.split(","))
+                    for np_ in probes]
+        else:
+            grid = [dict(graph_degree=gd, itopk_size=it, search_width=sw)
+                    for gd in (int(x) for x in a.graph_degrees.split(","))
+                    for it in (int(x) for x in a.itopk.split(","))
+                    for sw in (int(x) for x in a.search_width.split(","))]
+        write_rows(a.out, run_cuvs(a.method, a.dataset, grid, 10, a.reps), meta)
+        return
+
     num, den = a.prefix.split("/")
     env = {"JHQ_BLOCK": a.block, "JHQ_PFX_NUM": num, "JHQ_PFX_DEN": den,
            "JHQ_TILE_M_RT": a.M}
