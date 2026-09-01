@@ -613,6 +613,23 @@ target_compile_options(jhq_v18_timed PRIVATE
 add_executable(demo_jhq_v18_timed examples/demo_jhq_v18_shared_lut.cu)
 target_link_libraries(demo_jhq_v18_timed PRIVATE jhq_v18_timed)
 
+# ── In-scan top-k ablation (timed) ────────────────────────────────────────────
+# Prices the ck-round block reduction inside scan_ivf. Produces wrong results
+# by design; it exists only to measure what that selection costs.
+add_library(jhq_v18_notopk STATIC
+    jhq_v18_shared_lut/encode.cu
+    jhq_v18_shared_lut/search.cu
+    jhq_v18_shared_lut/jhq_gpu_index.cu
+)
+target_include_directories(jhq_v18_notopk PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_v18_notopk PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+target_compile_definitions(jhq_v18_notopk PRIVATE JHQ_STEP_TIMING=1 JHQ_ABLATE_INSCAN_TOPK=1)
+target_compile_options(jhq_v18_notopk PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+)
+add_executable(demo_jhq_v18_notopk examples/demo_jhq_v18_shared_lut.cu)
+target_link_libraries(demo_jhq_v18_notopk PRIVATE jhq_v18_notopk)
+
 # ── Residual-codebook layout ablation ────────────────────────────────────────
 # Same sources as jhq_v16_pq_primary with the residual codebook forced global
 # (v15's layout) instead of per-subspace (the official layout). Only the

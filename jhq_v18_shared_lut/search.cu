@@ -7,6 +7,18 @@
 #define JHQ_STEP_TIMING 0
 #endif
 
+// Ablation switch, not a correctness option: skips the in-scan top-ck
+// selection and writes the first ck per-thread candidates instead. Results are
+// wrong with it on. It exists to price that selection, which the stage timing
+// implicates -- fitting t = R + c*per to the two nprobe points puts 15.77 ms
+// per batch in a term that does not grow with the candidate count, 95% of the
+// time at nprobe=8 and 56% at nprobe=128, while the scan itself costs only
+// 0.41 ns per candidate (235 GB/s at 96 B each).
+//   -DJHQ_ABLATE_INSCAN_TOPK=1
+#ifndef JHQ_ABLATE_INSCAN_TOPK
+#define JHQ_ABLATE_INSCAN_TOPK 0
+#endif
+
 // Per-thread candidate slots kept by scan_ivf_coalesced_kernel. Compile-time
 // so ld[]/lp[] stay in registers.
 //
@@ -212,6 +224,13 @@ __global__ void scan_ivf_coalesced_kernel(
     float* out_primary = topck_primary + (long long)bqi * ck;
     int*   out_pos     = topck_pos     + (long long)bqi * ck;
 
+#if JHQ_ABLATE_INSCAN_TOPK
+    for (int c = tid; c < ck; c += BLOCK) {
+        out_primary[c] = s_cdist[c % n_cands];
+        out_pos    [c] = s_cpos [c % n_cands];
+    }
+    return;
+#endif
     for (int c = 0; c < ck; ++c) {
         float bv = INF; int bi = -1;
         for (int ci = tid; ci < n_cands; ci += BLOCK)
