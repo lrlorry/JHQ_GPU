@@ -26,10 +26,10 @@ run() {  # name binary batch extra-env
 printf "%-26s %6s %9s %10s %9s\n" "variant" "batch" "recall" "scan_ms" "QPS"
 for b in 256 1024; do
     run "v16 (published point)" demo_jhq_v16_pq_primary $b JHQ_UNUSED=1
-    run "v19 tiled"             demo_jhq_v19_timed      $b JHQ_UNUSED=1
+    run "v20 c1m96 (best plain)" demo_jhq_v20_c1m96     $b JHQ_UNUSED=1
     for blk in 256 1024; do
       run "v21 casc 1/4 k8 blk$blk" demo_jhq_v21_k8 $b \
-          JHQ_BLOCK=$blk JHQ_PFX_NUM=1 JHQ_PFX_DEN=4
+          JHQ_BLOCK=$blk JHQ_PFX_NUM=1 JHQ_PFX_DEN=4 JHQ_TILE_M_RT=96
     done
 done
 echo
