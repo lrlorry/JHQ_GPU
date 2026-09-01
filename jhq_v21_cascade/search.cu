@@ -105,6 +105,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <cstdlib>
 #include <stdexcept>
 
 namespace jhq_gpu {
@@ -561,7 +562,16 @@ static void capture_graph(
     if (ws.graph)      { cudaGraphDestroy(ws.graph);          ws.graph      = nullptr; }
 
     const float one = 1.0f, zero = 0.0f;
-    const int   BLOCK = 256;
+    // The scan block carries the 48 KB table plus (2*K_LOCAL+2)*BLOCK floats of
+    // scratch, so at 256 threads one block holds ~58 KB and the SM fits exactly
+    // one of them: 256 of 1536 resident threads, 17% occupancy. 1024 threads
+    // costs 89 KB, still one block, but four times the threads. Runtime rather
+    // than build-time so one binary sweeps it.
+    static const int BLOCK = [] {
+        const char* e = getenv("JHQ_BLOCK");
+        const int   v = e ? atoi(e) : 256;
+        return (v == 128 || v == 256 || v == 512 || v == 1024) ? v : 256;
+    }();
     // Must track JHQ_K_LOCAL exactly -- the kernel indexes s_cdist/s_cpos as
     // K_LOCAL*BLOCK each, so a stale literal here silently corrupts memory
     // rather than failing to build.
