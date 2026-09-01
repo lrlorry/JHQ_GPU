@@ -24,7 +24,7 @@ for np in 1 2 4 8 16 32 64 128 256; do
     "$(echo "$o" | grep '^Recall@' | awk '{print $3}')" "-" \
     "$(echo "$o" | grep '^QPS' | awk '{print $3}')"
   o=$(JHQ_BLOCK=$BLK JHQ_PFX_NUM=$PFXN JHQ_PFX_DEN=$PFXD JHQ_TILE_M_RT=96 \
-      $BIN/demo_jhq_v21_fast_k $D 96 8 4 $ALPHA 10 1024 $np 8 $BATCH "" 5 2>&1)
+      $BIN/demo_jhq_v21_fast_k"$KEEP" $D 96 8 4 $ALPHA 10 1024 $np 8 $BATCH "" 5 2>&1)
   printf "%-10s %7s %9s %10s %9s\n" "v21" "$np" \
     "$(echo "$o" | grep '^Recall@' | awk '{print $3}')" \
     "$(echo "$o" | grep scan_ivf | head -1 | awk '{print $2}')" \
