@@ -40,8 +40,7 @@ def run_cagra(xb, xq, gt, k, rows, degrees, itopks):
         print(f"  CAGRA degree={deg} built in {build:.1f}s ({bpv} B/vec)", flush=True)
         for it in itopks:
             sp = cagra.SearchParams(itopk_size=it)
-            cagra.search(sp, idx, xq_d, k)             # warm-up
-            t = time.time(); _, I = cagra.search(sp, idx, xq_d, k); el = time.time() - t
+            el, (_, I) = _timed_search(lambda: cagra.search(sp, idx, xq_d, k))
             r = recall_at_k(cp.asnumpy(I), gt, k)
             qps = len(xq) / el
             print(f"    itopk={it:<5} recall={r:.4f}  qps={qps:.0f}", flush=True)
@@ -63,13 +62,31 @@ def run_cuvs_ivfpq(xb, xq, gt, k, rows, ms, nlist, nprobes):
         print(f"  cuVS IVF-PQ pq_dim={M} built in {build:.1f}s", flush=True)
         for np_ in nprobes:
             sp = ivf_pq.SearchParams(n_probes=np_)
-            ivf_pq.search(sp, idx, xq_d, k)            # warm-up
-            t = time.time(); _, I = ivf_pq.search(sp, idx, xq_d, k); el = time.time() - t
+            el, (_, I) = _timed_search(lambda: ivf_pq.search(sp, idx, xq_d, k))
             r = recall_at_k(cp.asnumpy(I), gt, k)
             qps = len(xq) / el
             print(f"    nprobe={np_:<4} recall={r:.4f}  qps={qps:.0f}", flush=True)
             rows.append(dict(method=f"cuVS-IVFPQ-{M}B", param=np_, recall=r, qps=qps,
                              build_s=build, bytes_per_vec=M))
+
+
+def _timed_search(fn, reps=5):
+    """Time a cuVS search with the device actually drained.
+
+    cuVS's Python search is asynchronous: it enqueues work and hands back
+    device arrays, so a time.time() taken straight after it can stop before the
+    GPU has finished. The sync in this benchmark used to arrive one line too
+    late, inside cp.asnumpy(I) after the clock had already been read, which
+    overstates QPS. Drain once after the warm-up and once after the timed runs,
+    and average over reps the way the JHQ demo does.
+    """
+    out = fn()                                   # warm-up
+    cp.cuda.Stream.null.synchronize()
+    t = time.time()
+    for _ in range(reps):
+        out = fn()
+    cp.cuda.Stream.null.synchronize()
+    return (time.time() - t) / reps, out
 
 
 def run_hnsw(xb, xq, gt, k, rows, Ms, efs, threads):
