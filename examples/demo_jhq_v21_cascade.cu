@@ -121,11 +121,25 @@ int main(int argc, char** argv) {
     // Warm-up (also captures the CUDA graph on first call)
     idx.search(query.data(), nq, k, out_dists.data(), out_ids.data());
 
+    // Resident device memory with the index built and the search workspace
+    // allocated, measured rather than derived from bytes-per-vector.
+    size_t mem_free = 0, mem_total = 0;
+    cudaDeviceSynchronize();
+    cudaMemGetInfo(&mem_free, &mem_total);
+
+    // Per-repetition timings, so the harness can report a spread rather than a
+    // single number. Reported alongside the mean, not instead of it.
     const int REPS = 5;
-    t0 = Clock::now();
-    for (int r = 0; r < REPS; r++)
+    std::vector<double> rep_ms;
+    rep_ms.reserve(REPS);
+    for (int r = 0; r < REPS; r++) {
+        auto tr = Clock::now();
         idx.search(query.data(), nq, k, out_dists.data(), out_ids.data());
-    double ms = Ms(Clock::now() - t0).count() / REPS;
+        rep_ms.push_back(Ms(Clock::now() - tr).count());
+    }
+    double ms = 0.0;
+    for (double v : rep_ms) ms += v;
+    ms /= REPS;
 
     RecallResult rec = evaluate_recall(out_ids.data(), gt.data(), nq, k, d_gt);
     double qps = nq / (ms / 1000.0);
@@ -138,6 +152,12 @@ int main(int argc, char** argv) {
                rec.dup_queries, nq);
     printf("Latency   : %.2f ms  (%d queries)\n", ms, nq);
     printf("QPS       : %.0f\n", qps);
+    printf("VRAM used : %.1f MiB  (of %.0f MiB total, measured after build)\n",
+           (double)(mem_total - mem_free) / (1024.0 * 1024.0),
+           (double)mem_total / (1024.0 * 1024.0));
+    printf("rep_ms    :");
+    for (double v : rep_ms) printf(" %.3f", v);
+    printf("\n");
 
     if (out_prefix) {
         char path[4096];
