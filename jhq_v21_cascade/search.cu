@@ -702,6 +702,13 @@ static void capture_graph(
         d_list_primary_t, ws.d_query_total,
         ws.d_topck_primary, ws.d_topck_pos,
         nprobe, M, ntotal, ck, lut_in_smem, pfx_num, pfx_den, tile_m);
+    // A launch that fails for resources is otherwise silent here: the stream
+    // carries on, every distance stays at its initial value and the run reports
+    // recall 0.0000 next to a QPS in the hundreds of thousands, which reads
+    // like a data point. KEEP=16 at BLOCK=1024 does exactly that -- pd[KEEP]
+    // and pp[KEEP] alone are 32 registers against the 64 per thread available
+    // when 1024 of them are resident.
+    CUDA_CHECK(cudaGetLastError());
 #if JHQ_STEP_TIMING
     CUDA_CHECK(cudaEventRecord(ws.ev_step[5], ws.stream));
 #endif
