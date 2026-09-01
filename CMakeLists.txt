@@ -736,7 +736,7 @@ endforeach()
 # completes only the best KEEP per thread. NUM==DEN is v19 with extra copies,
 # which is the control the sweep needs.
 function(add_jhq_cascade_variant NUM DEN KEEP)
-    set(tgt jhq_v21_p${NUM}_${DEN}k${KEEP})
+    set(tgt jhq_v21_k${KEEP})
     add_library(${tgt} STATIC
         jhq_v21_cascade/encode.cu
         jhq_v21_cascade/search.cu
@@ -755,12 +755,7 @@ function(add_jhq_cascade_variant NUM DEN KEEP)
 endfunction()
 
 foreach(KEEP 4 8 16 32)
-    foreach(FRAC "1_8" "1_4" "1_3" "1_2" "1_1")
-        string(REPLACE "_" ";" NUMDEN ${FRAC})
-        list(GET NUMDEN 0 NUM)
-        list(GET NUMDEN 1 DEN)
-        add_jhq_cascade_variant(${NUM} ${DEN} ${KEEP})
-    endforeach()
+    add_jhq_cascade_variant(1 4 ${KEEP})
 endforeach()
 
 # ── Residual-codebook layout ablation ────────────────────────────────────────

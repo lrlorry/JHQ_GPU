@@ -231,7 +231,8 @@ __global__ void scan_ivf_coalesced_kernel(
     const int*     __restrict__ query_total,
     float*                      topck_primary,
     int*                        topck_pos,
-    int nprobe, int M, int N, int ck, bool lut_in_smem)
+    int nprobe, int M, int N, int ck, bool lut_in_smem,
+    int pfx_num, int pfx_den)
 {
     constexpr int K_LOCAL = JHQ_K_LOCAL;
     const float   INF     = __int_as_float(0x7F800000);
@@ -276,7 +277,9 @@ __global__ void scan_ivf_coalesced_kernel(
     constexpr int KEEP   = JHQ_PREFIX_KEEP;
 
     // Prefix length, rounded down to a whole tile so pass 1 never splits one.
-    int PM = (M * JHQ_PREFIX_NUM) / JHQ_PREFIX_DEN;
+    // The fraction is read from the environment so one binary sweeps it; only
+    // KEEP has to be a build-time constant, because it sizes an array.
+    int PM = (M * pfx_num) / pfx_den;
     PM = (PM / TILE_M) * TILE_M;
     if (PM < TILE_M) PM = (M < TILE_M) ? M : TILE_M;
     if (PM > M) PM = M;
@@ -567,6 +570,10 @@ static void capture_graph(
     // one of them: 256 of 1536 resident threads, 17% occupancy. 1024 threads
     // costs 89 KB, still one block, but four times the threads. Runtime rather
     // than build-time so one binary sweeps it.
+    // Cascade prefix as a fraction of M; 1/1 disables it and restores v19.
+    static const int pfx_num = [] { const char* e = getenv("JHQ_PFX_NUM"); int v = e ? atoi(e) : JHQ_PREFIX_NUM; return v > 0 ? v : 1; }();
+    static const int pfx_den = [] { const char* e = getenv("JHQ_PFX_DEN"); int v = e ? atoi(e) : JHQ_PREFIX_DEN; return v > 0 ? v : 4; }();
+
     static const int BLOCK = [] {
         const char* e = getenv("JHQ_BLOCK");
         const int   v = e ? atoi(e) : 256;
@@ -648,7 +655,7 @@ static void capture_graph(
         ws.d_byte_lut, ws.d_probe_ids, ws.d_probe_offsets, d_list_offsets,
         d_list_primary_t, ws.d_query_total,
         ws.d_topck_primary, ws.d_topck_pos,
-        nprobe, M, ntotal, ck, lut_in_smem);
+        nprobe, M, ntotal, ck, lut_in_smem, pfx_num, pfx_den);
 #if JHQ_STEP_TIMING
     CUDA_CHECK(cudaEventRecord(ws.ev_step[5], ws.stream));
 #endif
