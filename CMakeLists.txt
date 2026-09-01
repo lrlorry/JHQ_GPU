@@ -807,7 +807,7 @@ add_library(jhq_v21_noselect STATIC
 target_include_directories(jhq_v21_noselect PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(jhq_v21_noselect PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
 target_compile_definitions(jhq_v21_noselect PRIVATE
-    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=4 JHQ_PREFIX_KEEP=16 JHQ_ABLATE_INSCAN_TOPK=1)
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=4 JHQ_PREFIX_KEEP=8 JHQ_ABLATE_INSCAN_TOPK=1)
 target_compile_options(jhq_v21_noselect PRIVATE
     $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
 )
