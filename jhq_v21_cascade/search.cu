@@ -723,9 +723,35 @@ static void capture_graph(
     CUDA_CHECK(cudaEventRecord(ws.ev_step[2], ws.stream));
 #endif
     // 3. Select probes
+    // Opt in before launching: this block asks for (nlist + 2*BLOCK) floats,
+    // which is 40 KB at nlist=8192 but 72 KB at 16384 -- past the 48 KB a
+    // kernel gets without asking. Without this the launch fails, and because
+    // the sequence is being captured into a graph the failure surfaces later
+    // as "operation failed due to a previous error during capture", pointing
+    // at whichever check runs next rather than at this line. It only shows up
+    // on datasets large enough to want that many lists: 10M vectors at
+    // nlist=8192 were fine, 17.8M at 16384 were not.
+    {
+        const int probe_smem = (nlist + 2 * BLOCK) * (int)sizeof(float);
+        if (probe_smem > 48 * 1024) {
+            int optin = 0;
+            CUDA_CHECK(cudaDeviceGetAttribute(
+                &optin, cudaDevAttrMaxSharedMemoryPerBlockOptin, 0));
+            if (probe_smem > optin)
+                throw std::runtime_error(
+                    "select_probes_kernel needs " + std::to_string(probe_smem) +
+                    " B of shared memory for nlist=" + std::to_string(nlist) +
+                    " but the device allows " + std::to_string(optin) +
+                    "; lower nlist or raise the block size");
+            CUDA_CHECK(cudaFuncSetAttribute(
+                select_probes_kernel,
+                cudaFuncAttributeMaxDynamicSharedMemorySize, probe_smem));
+        }
+    }
     select_probes_kernel<<<B, BLOCK, (nlist + 2*BLOCK) * (int)sizeof(float), ws.stream>>>(
         ws.d_dots, d_cent_norms, d_list_offsets,
         ws.d_probe_ids, ws.d_probe_offsets, ws.d_query_total, nlist, nprobe);
+    CUDA_CHECK(cudaGetLastError());
 #if JHQ_STEP_TIMING
     CUDA_CHECK(cudaEventRecord(ws.ev_step[3], ws.stream));
 #endif
