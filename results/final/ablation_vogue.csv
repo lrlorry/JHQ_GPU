@@ -1,0 +1,5 @@
+step,recall,qps,note
+v16 baseline (BLOCK=256),0.9448,20473,published GPU port
++BLOCK=1024 occupancy,0.9450,30791,cascade off; 17%->67% resident threads
++cascade prefix 1/2,0.9450,39607,fewer table lookups
++bitonic selection,0.9452,53818,12000 barriers -> 78
