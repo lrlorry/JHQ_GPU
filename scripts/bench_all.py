@@ -203,21 +203,26 @@ def run_cuvs(method, ds, grid, k, reps):
         try:
             cp.get_default_memory_pool().free_all_blocks()
             m_before = _mem_used_mib()
+            # Build from the host array. cuVS accepts host input for ivf_pq,
+            # cagra and the scalar quantiser, and uploading the fp32 set first
+            # is what made 10M x 1024 look like it did not fit: the upload of
+            # 41.3 GiB failed on a 31.4 GiB card while the index it would have
+            # produced is under 4 GiB. Only the queries go to the device.
             if method == "cagra-int8":
                 from cuvs.preprocessing.quantize import scalar
-                xb_d = cp.asarray(xb_h)
-                q = scalar.train(scalar.QuantizerParams(quantile=0.99), xb_d)
-                xb_q = scalar.transform(q, xb_d)
-                xq_q = scalar.transform(q, cp.asarray(xq_h))
-                xb_q = xb_q[0] if isinstance(xb_q, tuple) else xb_q
-                xq_q = xq_q[0] if isinstance(xq_q, tuple) else xq_q
-                del xb_d; cp.get_default_memory_pool().free_all_blocks()
-                xb_d, xq_d = xb_q, xq_q
+                q = scalar.train(scalar.QuantizerParams(quantile=0.99), xb_h)
+                xb_q = scalar.transform(q, xb_h)
+                xq_q = scalar.transform(q, xq_h)
+                xb_in = xb_q[0] if isinstance(xb_q, tuple) else xb_q
+                xq_in = xq_q[0] if isinstance(xq_q, tuple) else xq_q
                 bytes_vec = d + 4 * cfg["graph_degree"]
             else:
-                xb_d, xq_d = cp.asarray(xb_h), cp.asarray(xq_h)
+                xb_in, xq_in = xb_h, xq_h
                 bytes_vec = (cfg.get("pq_dim") or d) if method == "ivfpq" \
                             else 4 * d + 4 * cfg["graph_degree"]
+            # Queries are 1000 rows; the search API needs them on the device.
+            xq_d = cp.asarray(xq_in) if not hasattr(xq_in, "__cuda_array_interface__") else xq_in
+            xb_d = xb_in
 
             t0 = time.time()
             if method == "ivfpq":
@@ -248,7 +253,7 @@ def run_cuvs(method, ds, grid, k, reps):
                 f"{bytes_vec}B", ds, dict(cfg, bytes_per_vec=bytes_vec, k=k),
                 {}, qps, [rec] * len(qps), m_after - m_before,
                 build_s * 1000, None, []))
-            del idx, xb_d, xq_d
+            del idx, xq_d
             cp.get_default_memory_pool().free_all_blocks()
         except Exception as ex:
             # An out-of-memory failure is a result, not an accident: record the
