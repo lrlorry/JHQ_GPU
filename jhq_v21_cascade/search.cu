@@ -59,6 +59,9 @@
 #ifndef JHQ_TILE_M
 #define JHQ_TILE_M 8
 #endif
+#ifndef JHQ_TILE_STRIDED
+#define JHQ_TILE_STRIDED 0
+#endif
 #ifndef JHQ_BITONIC_SELECT
 #define JHQ_BITONIC_SELECT 0
 #endif
@@ -296,14 +299,28 @@ __global__ void scan_ivf_coalesced_kernel(
     for (int i = 0; i < KEEP; i++) { pd[i] = INF; pp[i] = -1; }
 
     // ── pass 1: subspaces [0, PM) over every candidate ───────────────────────
+    // Candidate assignment. Contiguous (lt = base + t) hands one thread a run of
+    // adjacent candidates, and adjacency means the same IVF list region: the v20
+    // grid lost 0.7328 -> 0.6933 recall going from TILE_C 1 to 16 because true
+    // neighbours cluster and then compete for one thread's K_LOCAL slots.
+    // Striding by BLOCK gives each thread the same spread-out sample TILE_C=1
+    // sees, while still running TILE_C independent accumulate chains.
+#if JHQ_TILE_STRIDED
+    for (int base = tid; base < total; base += BLOCK * TILE_C) {
+#else
     for (int base = tid * TILE_C; base < total; base += BLOCK * TILE_C) {
+#endif
         float acc[TILE_C];
         int   pos[TILE_C];
         int   live = 0;
         #pragma unroll
         for (int t = 0; t < TILE_C; ++t) {
             acc[t] = 0.0f;
+#if JHQ_TILE_STRIDED
+            const int lt = base + t * BLOCK;
+#else
             const int lt = base + t;
+#endif
             if (lt < total) {
                 int p = 0;
                 while (p + 1 < nprobe && lt >= my_offs[p + 1]) ++p;

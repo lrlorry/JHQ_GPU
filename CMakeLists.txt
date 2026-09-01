@@ -837,6 +837,35 @@ foreach(KEEP 8 16 32)
     add_jhq_bitonic(${KEEP})
 endforeach()
 
+# Strided candidate assignment, with and without the bitonic selection. TILE_C
+# chains without TILE_C's recall cost: the v20 grid lost 0.7328 -> 0.6933 going
+# to TILE_C=16 because contiguous tiles concentrate adjacent candidates, and
+# striding by BLOCK undoes exactly that. KEEP stays at 8; 16 needs more than
+# the 64 registers a thread gets when 1024 are resident.
+function(add_jhq_strided TC BITO)
+    set(tgt jhq_v22_s${TC}b${BITO})
+    add_library(${tgt} STATIC
+        jhq_v21_cascade/encode.cu
+        jhq_v21_cascade/search.cu
+        jhq_v21_cascade/jhq_gpu_index.cu
+    )
+    target_include_directories(${tgt} PUBLIC ${CMAKE_SOURCE_DIR})
+    target_link_libraries(${tgt} PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+    target_compile_definitions(${tgt} PRIVATE
+        JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=4 JHQ_PREFIX_KEEP=8
+        JHQ_TILE_C=${TC} JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=${BITO})
+    target_compile_options(${tgt} PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    )
+    add_executable(demo_${tgt} examples/demo_jhq_v21_cascade.cu)
+    target_link_libraries(demo_${tgt} PRIVATE ${tgt})
+endfunction()
+
+foreach(TC 2 4 8)
+    add_jhq_strided(${TC} 0)
+    add_jhq_strided(${TC} 1)
+endforeach()
+
 # ── Residual-codebook layout ablation ────────────────────────────────────────
 # Same sources as jhq_v16_pq_primary with the residual codebook forced global
 # (v15's layout) instead of per-subspace (the official layout). Only the
