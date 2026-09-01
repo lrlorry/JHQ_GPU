@@ -1,4 +1,5 @@
 #pragma once
+#include <iosfwd>
 #include <vector>
 
 // Johnson-Lindenstrauss orthogonal transformation.
@@ -26,6 +27,12 @@ public:
     // Estimate per-dimension std σ from n sample vectors (original space).
     // Must be called before building the codebook.
     void estimate_sigma(const float* x, int n_samples);
+
+    // Round-trip the trained state. Training is deterministic given the seed
+    // and the sample, so a cached rotation is the same rotation; this exists
+    // because every parameter-sweep run otherwise retrains an identical index.
+    void write_state(std::ostream& os) const;
+    bool read_state(std::istream& is);
 
 private:
     int d_;

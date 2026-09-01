@@ -1,4 +1,7 @@
 #include "cpu/pq_codebook.h"
+
+#include <istream>
+#include <ostream>
 #include "cpu/erfinv.h"
 
 #include <algorithm>
@@ -187,4 +190,29 @@ void PQCodebook::reconstruct(const uint8_t* code, float* out) const {
         std::memcpy(out + (size_t)m * Ds_,
                     centroids(m) + (size_t)code[m] * Ds_,
                     (size_t)Ds_ * sizeof(float));
+}
+
+
+// ── trained-state round-trip ──────────────────────────────────────────────────
+void PQCodebook::write_state(std::ostream& os) const {
+    const long long n = (long long)cent_.size();
+    os.write(reinterpret_cast<const char*>(&d_),  sizeof d_);
+    os.write(reinterpret_cast<const char*>(&M_),  sizeof M_);
+    os.write(reinterpret_cast<const char*>(&Ds_), sizeof Ds_);
+    os.write(reinterpret_cast<const char*>(&K_),  sizeof K_);
+    os.write(reinterpret_cast<const char*>(&n),   sizeof n);
+    os.write(reinterpret_cast<const char*>(cent_.data()), (std::streamsize)n * sizeof(float));
+}
+
+bool PQCodebook::read_state(std::istream& is) {
+    int d = 0, M = 0, Ds = 0, K = 0; long long n = 0;
+    is.read(reinterpret_cast<char*>(&d),  sizeof d);
+    is.read(reinterpret_cast<char*>(&M),  sizeof M);
+    is.read(reinterpret_cast<char*>(&Ds), sizeof Ds);
+    is.read(reinterpret_cast<char*>(&K),  sizeof K);
+    is.read(reinterpret_cast<char*>(&n),  sizeof n);
+    if (!is || d != d_ || M != M_ || Ds != Ds_ || K != K_ ||
+        n != (long long)cent_.size()) return false;
+    is.read(reinterpret_cast<char*>(cent_.data()), (std::streamsize)n * sizeof(float));
+    return (bool)is;
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include <cstddef>
+#include <iosfwd>
 #include <cstdint>
 #include <vector>
 
@@ -54,6 +55,10 @@ public:
     int K()  const { return K_; }
 
     // Nearest centroid in subspace m to the Ds-dim subvector ym.
+    // Round-trip the trained centroids; see JLTransform::write_state.
+    void write_state(std::ostream& os) const;
+    bool read_state(std::istream& is);
+
     int encode_subspace(int m, const float* ym) const;
 
     // Reconstruct the full d-dim approximation from an M-byte code.

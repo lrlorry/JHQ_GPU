@@ -1,4 +1,7 @@
 #include "cpu/jl_transform.h"
+
+#include <istream>
+#include <ostream>
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
 typedef __CLPK_integer lapack_int_t;
@@ -80,4 +83,27 @@ void JLTransform::estimate_sigma(const float* x, int n_samples) {
         for (int j = 0; j < d_; j++) sum2 += (double)xi[j] * xi[j];
     }
     sigma_ = (float)std::sqrt(sum2 / ((double)n_samples * d_));
+}
+
+
+// ── trained-state round-trip ──────────────────────────────────────────────────
+void JLTransform::write_state(std::ostream& os) const {
+    const int n = (int)Pi_.size();
+    os.write(reinterpret_cast<const char*>(&d_), sizeof d_);
+    os.write(reinterpret_cast<const char*>(&sigma_), sizeof sigma_);
+    os.write(reinterpret_cast<const char*>(&n), sizeof n);
+    os.write(reinterpret_cast<const char*>(Pi_.data()), (std::streamsize)n * sizeof(float));
+}
+
+bool JLTransform::read_state(std::istream& is) {
+    int d = 0, n = 0; float sigma = 0.f;
+    is.read(reinterpret_cast<char*>(&d), sizeof d);
+    is.read(reinterpret_cast<char*>(&sigma), sizeof sigma);
+    is.read(reinterpret_cast<char*>(&n), sizeof n);
+    if (!is || d != d_ || n != (int)((long long)d_ * d_)) return false;
+    Pi_.resize((size_t)n);
+    is.read(reinterpret_cast<char*>(Pi_.data()), (std::streamsize)n * sizeof(float));
+    if (!is) return false;
+    sigma_ = sigma;
+    return true;
 }

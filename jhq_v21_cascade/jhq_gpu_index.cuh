@@ -3,6 +3,7 @@
 #include <cublas_v2.h>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "cpu/codebook.h"      // train_1d_kmeans, for the residual level
@@ -91,6 +92,15 @@ private:
                                const float* d_y_train, int n_train);
     int*   assign_on_gpu(const float* d_y, int n) const;
     void   alloc_workspace(int batch_size);
+
+    // Trained-state cache. Every run of a parameter sweep retrains an
+    // identical index -- ~29 s on Vogue, against ~1 s of search -- because
+    // training depends only on the sample and the seed, not on any search
+    // parameter. Enabled by setting JHQ_INDEX_CACHE to a directory.
+    void        upload_trained();
+    std::string cache_path(const char* dir, const float* h_x, int n_train) const;
+    bool        load_trained(const std::string& path);
+    void        save_trained(const std::string& path) const;
 };
 
 } // namespace jhq_gpu

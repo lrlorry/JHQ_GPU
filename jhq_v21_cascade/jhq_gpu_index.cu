@@ -24,6 +24,8 @@
 #include <cstring>
 #include <numeric>
 #include <chrono>
+#include <string>
+#include <fstream>
 #include <cstdio>
 #include <cstdlib>
 #include <stdexcept>
@@ -378,6 +380,106 @@ void JHQGpuIndex::train_residual_codebook(
 }
 
 // ── Train ─────────────────────────────────────────────────────────────────────
+// ── Trained-state cache ───────────────────────────────────────────────────────
+//
+// Training reads only the sample and the seed, so every point in a parameter
+// sweep rebuilds the same codebooks: ~29 s on Vogue against ~1 s of search,
+// which was three quarters of the wall time of a sweep. Keyed on everything
+// train() consumes, plus a checksum of the sample, so a changed dataset or
+// parameter misses rather than silently reusing the wrong codebooks.
+
+void JHQGpuIndex::upload_trained() {
+    if (!d_Pi_) CUDA_CHECK(cudaMalloc(&d_Pi_, (long long)d_ * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMemcpy(d_Pi_, jl_.pi_data(),
+                          (long long)d_ * d_ * sizeof(float), cudaMemcpyHostToDevice));
+
+    if (!d_cent_) CUDA_CHECK(cudaMalloc(&d_cent_, cb_->size() * sizeof(float)));
+    CUDA_CHECK(cudaMemcpy(d_cent_, cb_->data(), cb_->size() * sizeof(float),
+                          cudaMemcpyHostToDevice));
+
+    if (!d_res_c1d_)
+        CUDA_CHECK(cudaMalloc(&d_res_c1d_, (size_t)M_ * Kr_ * sizeof(float)));
+    CUDA_CHECK(cudaMemcpy(d_res_c1d_, res_c1d_.data(),
+                          (size_t)M_ * Kr_ * sizeof(float), cudaMemcpyHostToDevice));
+
+    // Same work as the upload_centroids lambda inside train_ivf_centroids;
+    // that one is local to the function, so it cannot be reused from here.
+    std::vector<float> cent_norms(nlist_, 0.0f);
+    for (int c = 0; c < nlist_; ++c) {
+        double sn = 0.0;
+        const float* cc = centroids_.data() + (long long)c * d_;
+        for (int j = 0; j < d_; ++j) sn += (double)cc[j] * cc[j];
+        cent_norms[c] = (float)sn;
+    }
+    cudaFree(d_centroids_);  d_centroids_  = nullptr;
+    cudaFree(d_cent_norms_); d_cent_norms_ = nullptr;
+    CUDA_CHECK(cudaMalloc(&d_centroids_, (long long)nlist_ * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMemcpy(d_centroids_, centroids_.data(),
+                          (long long)nlist_ * d_ * sizeof(float),
+                          cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMalloc(&d_cent_norms_, (long long)nlist_ * sizeof(float)));
+    CUDA_CHECK(cudaMemcpy(d_cent_norms_, cent_norms.data(),
+                          (long long)nlist_ * sizeof(float),
+                          cudaMemcpyHostToDevice));
+}
+
+std::string JHQGpuIndex::cache_path(const char* dir, const float* h_x,
+                                    int n_train) const {
+    // FNV-1a over the parameters and a strided sample of the training data.
+    // Striding keeps the hash O(1) in n_train while still covering the file.
+    unsigned long long h = 1469598103934665603ULL;
+    auto mix = [&h](const void* p, size_t n) {
+        const unsigned char* b = (const unsigned char*)p;
+        for (size_t i = 0; i < n; ++i) { h ^= b[i]; h *= 1099511628211ULL; }
+    };
+    const int params[] = { d_, M_, B_, Br_, K_, Kr_, nlist_,
+                           ivf_iters_, kmeans_iters_, seed_, n_train };
+    mix(params, sizeof params);
+    const long long total = (long long)n_train * d_;
+    const long long step  = total > 4096 ? total / 4096 : 1;
+    for (long long i = 0; i < total; i += step) mix(&h_x[i], sizeof(float));
+
+    char buf[64];
+    std::snprintf(buf, sizeof buf, "/jhq_trained_%016llx.bin", h);
+    return std::string(dir) + buf;
+}
+
+bool JHQGpuIndex::load_trained(const std::string& path) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f) return false;
+    if (!jl_.read_state(f)) return false;
+    cb_ = std::make_unique<PQCodebook>(d_, M_, B_);
+    if (!cb_->read_state(f)) return false;
+
+    long long nr = 0, nc = 0;
+    f.read(reinterpret_cast<char*>(&nr), sizeof nr);
+    f.read(reinterpret_cast<char*>(&nc), sizeof nc);
+    if (!f || nr != (long long)M_ * Kr_ || nc != (long long)nlist_ * d_) return false;
+    res_c1d_.resize((size_t)nr);
+    centroids_.resize((size_t)nc);
+    f.read(reinterpret_cast<char*>(res_c1d_.data()),   (std::streamsize)nr * sizeof(float));
+    f.read(reinterpret_cast<char*>(centroids_.data()), (std::streamsize)nc * sizeof(float));
+    return (bool)f;
+}
+
+void JHQGpuIndex::save_trained(const std::string& path) const {
+    const std::string tmp = path + ".tmp";
+    { std::ofstream f(tmp, std::ios::binary);
+      if (!f) return;
+      jl_.write_state(f);
+      cb_->write_state(f);
+      const long long nr = (long long)res_c1d_.size(), nc = (long long)centroids_.size();
+      f.write(reinterpret_cast<const char*>(&nr), sizeof nr);
+      f.write(reinterpret_cast<const char*>(&nc), sizeof nc);
+      f.write(reinterpret_cast<const char*>(res_c1d_.data()),   (std::streamsize)nr * sizeof(float));
+      f.write(reinterpret_cast<const char*>(centroids_.data()), (std::streamsize)nc * sizeof(float));
+      if (!f) { std::remove(tmp.c_str()); return; }
+    }
+    // Rename last so a run killed mid-write never leaves a half file behind
+    // that the next run would load as if it were complete.
+    if (std::rename(tmp.c_str(), path.c_str()) != 0) std::remove(tmp.c_str());
+}
+
 // Phase timing for train(). The 29 s build against cuVS's 4.5 s was attributed
 // to the PQ codebook k-means on the strength of an nsys trace showing only
 // ~700 ms of GPU work, but that only says the time is on the host, not which
@@ -397,6 +499,17 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
 
     jl_.estimate_sigma(h_x, n_train);
     JHQ_TRAIN_PHASE("estimate_sigma");
+
+    const char* cache_dir = std::getenv("JHQ_INDEX_CACHE");
+    std::string cpath;
+    if (cache_dir) {
+        cpath = cache_path(cache_dir, h_x, n_train);
+        if (load_trained(cpath)) {
+            upload_trained();
+            JHQ_TRAIN_PHASE("loaded from cache");
+            return;
+        }
+    }
     cb_ = std::make_unique<PQCodebook>(d_, M_, B_);
 
     CUDA_CHECK(cudaMalloc(&d_Pi_, (long long)d_ * d_ * sizeof(float)));
@@ -434,6 +547,8 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
 
     train_residual_codebook(d_y_train, d_codes_train, n_train);
     JHQ_TRAIN_PHASE("residual codebook");
+
+    if (cache_dir) { save_trained(cpath); JHQ_TRAIN_PHASE("cache write"); }
 
     cudaFree(d_y_train);
     cudaFree(d_codes_train);
