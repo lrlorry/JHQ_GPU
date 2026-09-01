@@ -251,9 +251,20 @@ def run_cuvs(method, ds, grid, k, reps):
             del idx, xb_d, xq_d
             cp.get_default_memory_pool().free_all_blocks()
         except Exception as ex:
+            # An out-of-memory failure is a result, not an accident: record the
+            # data scale, the configuration and what the device actually had
+            # free at the moment it failed, so the claim rests on a measurement
+            # rather than on bytes-per-vector arithmetic.
+            try:
+                free_b, total_b = cp.cuda.runtime.memGetInfo()
+                mem_note = (f"device free {free_b/2**30:.2f} GiB of "
+                            f"{total_b/2**30:.2f} GiB at failure; dataset "
+                            f"{N} x {d} fp32 = {N*d*4/2**30:.2f} GiB")
+            except Exception:
+                mem_note = "device memory unreadable at failure"
             rows.append(aggregate(
                 method, str(cfg), ds, cfg, {}, [], [], None, None, None,
-                [(-1, [f"{type(ex).__name__}: {str(ex)[:300]}"])]))
+                [(-1, [f"{type(ex).__name__}: {str(ex)[:300]}", mem_note])]))
         r = rows[-1]
         print(f"  {method} {cfg} -> {r['status']} R={r['recall']} "
               f"QPS={r['qps_mean']}±{r['qps_std']} vram={r['vram_mib']}MiB",
