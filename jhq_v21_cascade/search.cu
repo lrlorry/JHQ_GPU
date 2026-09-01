@@ -54,7 +54,7 @@
 #define JHQ_PREFIX_KEEP (2 * JHQ_K_LOCAL)
 #endif
 #ifndef JHQ_TILE_C
-#define JHQ_TILE_C 4
+#define JHQ_TILE_C 1
 #endif
 #ifndef JHQ_TILE_M
 #define JHQ_TILE_M 8
@@ -232,7 +232,7 @@ __global__ void scan_ivf_coalesced_kernel(
     float*                      topck_primary,
     int*                        topck_pos,
     int nprobe, int M, int N, int ck, bool lut_in_smem,
-    int pfx_num, int pfx_den)
+    int pfx_num, int pfx_den, int tile_m)
 {
     constexpr int K_LOCAL = JHQ_K_LOCAL;
     const float   INF     = __int_as_float(0x7F800000);
@@ -273,15 +273,17 @@ __global__ void scan_ivf_coalesced_kernel(
     const int* my_offs = probe_offsets + bqi * (nprobe + 1);
 
     constexpr int TILE_C = JHQ_TILE_C;
-    constexpr int TILE_M = JHQ_TILE_M;
+    const     int TILE_M = tile_m;
     constexpr int KEEP   = JHQ_PREFIX_KEEP;
 
-    // Prefix length, rounded down to a whole tile so pass 1 never splits one.
-    // The fraction is read from the environment so one binary sweeps it; only
-    // KEEP has to be a build-time constant, because it sizes an array.
+    // Prefix length. Do NOT round it to a whole tile: at TILE_M = 96 that sent
+    // PM = 24 to 0 and then clamped it back up to M, silently turning the
+    // cascade off. The tile loop already clamps its upper bound to PM, so a
+    // partial last tile is handled. The fraction is read from the environment
+    // so one binary sweeps it; only KEEP has to be a build-time constant,
+    // because it sizes an array.
     int PM = (M * pfx_num) / pfx_den;
-    PM = (PM / TILE_M) * TILE_M;
-    if (PM < TILE_M) PM = (M < TILE_M) ? M : TILE_M;
+    if (PM < 1) PM = 1;
     if (PM > M) PM = M;
 
     // Best KEEP candidates by the prefix, with the partial sum kept so pass 2
@@ -574,6 +576,14 @@ static void capture_graph(
     static const int pfx_num = [] { const char* e = getenv("JHQ_PFX_NUM"); int v = e ? atoi(e) : JHQ_PREFIX_NUM; return v > 0 ? v : 1; }();
     static const int pfx_den = [] { const char* e = getenv("JHQ_PFX_DEN"); int v = e ? atoi(e) : JHQ_PREFIX_DEN; return v > 0 ? v : 4; }();
 
+    // The v20 grid put TILE_C=1, TILE_M=96 ahead of every tiled shape at equal
+    // recall (10.089 ms vs 11.491 at TILE_C=4/TILE_M=8), and TILE_C >= 8 lost
+    // recall outright -- 0.7192 at 8, 0.6933 at 16 against 0.7328 -- because a
+    // larger tile hands one thread a run of spatially adjacent candidates that
+    // then compete for its K_LOCAL slots. So TILE_M is swept at runtime and
+    // TILE_C defaults to 1.
+    static const int tile_m = [] { const char* e = getenv("JHQ_TILE_M_RT"); int v = e ? atoi(e) : 96; return v > 0 ? v : 96; }();
+
     static const int BLOCK = [] {
         const char* e = getenv("JHQ_BLOCK");
         const int   v = e ? atoi(e) : 256;
@@ -655,7 +665,7 @@ static void capture_graph(
         ws.d_byte_lut, ws.d_probe_ids, ws.d_probe_offsets, d_list_offsets,
         d_list_primary_t, ws.d_query_total,
         ws.d_topck_primary, ws.d_topck_pos,
-        nprobe, M, ntotal, ck, lut_in_smem, pfx_num, pfx_den);
+        nprobe, M, ntotal, ck, lut_in_smem, pfx_num, pfx_den, tile_m);
 #if JHQ_STEP_TIMING
     CUDA_CHECK(cudaEventRecord(ws.ev_step[5], ws.stream));
 #endif
