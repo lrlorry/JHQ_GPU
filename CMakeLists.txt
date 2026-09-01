@@ -51,7 +51,7 @@ macro(add_jhq_version VER)
         CUDA::cudart
     )
     target_compile_options(jhq_${VER} PRIVATE
-        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
     )
 
     add_executable(demo_${VER} examples/demo_${VER}.cu)
@@ -109,7 +109,7 @@ target_link_libraries(jhq_hblock_v18 PUBLIC
     CUDA::cudart
 )
 target_compile_options(jhq_hblock_v18 PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
 )
 add_executable(demo_hblock_v18 examples/demo_hblock_v18.cu)
 target_link_libraries(demo_hblock_v18 PRIVATE jhq_hblock_v18)
@@ -127,7 +127,7 @@ target_link_libraries(jhq_hblock_v19 PUBLIC
     CUDA::cudart
 )
 target_compile_options(jhq_hblock_v19 PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
 )
 add_executable(demo_hblock_v19 examples/demo_hblock_v19.cu)
 target_link_libraries(demo_hblock_v19 PRIVATE jhq_hblock_v19)
@@ -145,7 +145,7 @@ target_link_libraries(jhq_hblock_v20 PUBLIC
     CUDA::cudart
 )
 target_compile_options(jhq_hblock_v20 PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
 )
 add_executable(demo_hblock_v20 examples/demo_hblock_v20.cu)
 target_link_libraries(demo_hblock_v20 PRIVATE jhq_hblock_v20)
@@ -163,7 +163,7 @@ target_link_libraries(jhq_hblock_v21 PUBLIC
     CUDA::cudart
 )
 target_compile_options(jhq_hblock_v21 PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
 )
 add_executable(demo_hblock_v21 examples/demo_hblock_v21.cu)
 target_link_libraries(demo_hblock_v21 PRIVATE jhq_hblock_v21)
@@ -597,7 +597,7 @@ target_link_libraries(jhq_hblock_v22 PUBLIC
     CUDA::cudart
 )
 target_compile_options(jhq_hblock_v22 PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
 )
 add_executable(demo_hblock_v22 examples/demo_hblock_v22.cu)
 target_link_libraries(demo_hblock_v22 PRIVATE jhq_hblock_v22)
@@ -616,7 +616,7 @@ target_include_directories(jhq_v18_timed PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(jhq_v18_timed PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
 target_compile_definitions(jhq_v18_timed PRIVATE JHQ_STEP_TIMING=1)
 target_compile_options(jhq_v18_timed PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
 )
 add_executable(demo_jhq_v18_timed examples/demo_jhq_v18_shared_lut.cu)
 target_link_libraries(demo_jhq_v18_timed PRIVATE jhq_v18_timed)
@@ -633,7 +633,7 @@ target_include_directories(jhq_v18_notopk PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(jhq_v18_notopk PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
 target_compile_definitions(jhq_v18_notopk PRIVATE JHQ_STEP_TIMING=1 JHQ_ABLATE_INSCAN_TOPK=1)
 target_compile_options(jhq_v18_notopk PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
 )
 add_executable(demo_jhq_v18_notopk examples/demo_jhq_v18_shared_lut.cu)
 target_link_libraries(demo_jhq_v18_notopk PRIVATE jhq_v18_notopk)
@@ -648,7 +648,7 @@ target_include_directories(jhq_v18_ab_lut PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(jhq_v18_ab_lut PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
 target_compile_definitions(jhq_v18_ab_lut PRIVATE JHQ_STEP_TIMING=1 JHQ_ABLATE_LUT=1)
 target_compile_options(jhq_v18_ab_lut PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
 )
 add_executable(demo_jhq_v18_ab_lut examples/demo_jhq_v18_shared_lut.cu)
 target_link_libraries(demo_jhq_v18_ab_lut PRIVATE jhq_v18_ab_lut)
@@ -662,7 +662,7 @@ target_include_directories(jhq_v18_ab_acc PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(jhq_v18_ab_acc PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
 target_compile_definitions(jhq_v18_ab_acc PRIVATE JHQ_STEP_TIMING=1 JHQ_ABLATE_ACC=1)
 target_compile_options(jhq_v18_ab_acc PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
 )
 add_executable(demo_jhq_v18_ab_acc examples/demo_jhq_v18_shared_lut.cu)
 target_link_libraries(demo_jhq_v18_ab_acc PRIVATE jhq_v18_ab_acc)
@@ -676,7 +676,7 @@ target_include_directories(jhq_v18_ab_insert PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(jhq_v18_ab_insert PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
 target_compile_definitions(jhq_v18_ab_insert PRIVATE JHQ_STEP_TIMING=1 JHQ_ABLATE_INSERT=1)
 target_compile_options(jhq_v18_ab_insert PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
 )
 add_executable(demo_jhq_v18_ab_insert examples/demo_jhq_v18_shared_lut.cu)
 target_link_libraries(demo_jhq_v18_ab_insert PRIVATE jhq_v18_ab_insert)
@@ -690,7 +690,7 @@ target_include_directories(jhq_v18_ab_f32lut PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(jhq_v18_ab_f32lut PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
 target_compile_definitions(jhq_v18_ab_f32lut PRIVATE JHQ_STEP_TIMING=1 JHQ_SMEM_LUT_FLOAT=1)
 target_compile_options(jhq_v18_ab_f32lut PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
 )
 add_executable(demo_jhq_v18_ab_f32lut examples/demo_jhq_v18_shared_lut.cu)
 target_link_libraries(demo_jhq_v18_ab_f32lut PRIVATE jhq_v18_ab_f32lut)
@@ -704,7 +704,7 @@ target_include_directories(jhq_v19_timed PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(jhq_v19_timed PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
 target_compile_definitions(jhq_v19_timed PRIVATE JHQ_STEP_TIMING=1)
 target_compile_options(jhq_v19_timed PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
 )
 add_executable(demo_jhq_v19_timed examples/demo_jhq_v19_tiled_scan.cu)
 target_link_libraries(demo_jhq_v19_timed PRIVATE jhq_v19_timed)
@@ -726,7 +726,7 @@ function(add_jhq_tile_variant TC TM)
     target_compile_definitions(${tgt} PRIVATE
         JHQ_STEP_TIMING=1 JHQ_TILE_C=${TC} JHQ_TILE_M=${TM})
     target_compile_options(${tgt} PRIVATE
-        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
     )
     add_executable(demo_${tgt} examples/demo_jhq_v19_tiled_scan.cu)
     target_link_libraries(demo_${tgt} PRIVATE ${tgt})
@@ -755,7 +755,7 @@ function(add_jhq_cascade_variant NUM DEN KEEP)
         JHQ_STEP_TIMING=1
         JHQ_PREFIX_NUM=${NUM} JHQ_PREFIX_DEN=${DEN} JHQ_PREFIX_KEEP=${KEEP})
     target_compile_options(${tgt} PRIVATE
-        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
     )
     add_executable(demo_${tgt} examples/demo_jhq_v21_cascade.cu)
     target_link_libraries(demo_${tgt} PRIVATE ${tgt})
@@ -783,7 +783,7 @@ function(add_jhq_cascade_fast KEEP)
     target_compile_definitions(${tgt} PRIVATE
         JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=4 JHQ_PREFIX_KEEP=${KEEP})
     target_compile_options(${tgt} PRIVATE
-        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
     )
     add_executable(demo_${tgt} examples/demo_jhq_v21_cascade.cu)
     target_link_libraries(demo_${tgt} PRIVATE ${tgt})
@@ -809,7 +809,7 @@ target_link_libraries(jhq_v21_noselect PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
 target_compile_definitions(jhq_v21_noselect PRIVATE
     JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=4 JHQ_PREFIX_KEEP=8 JHQ_ABLATE_INSCAN_TOPK=1)
 target_compile_options(jhq_v21_noselect PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
 )
 add_executable(demo_jhq_v21_noselect examples/demo_jhq_v21_cascade.cu)
 target_link_libraries(demo_jhq_v21_noselect PRIVATE jhq_v21_noselect)
@@ -827,7 +827,7 @@ function(add_jhq_bitonic KEEP)
     target_compile_definitions(${tgt} PRIVATE
         JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=4 JHQ_PREFIX_KEEP=${KEEP} JHQ_BITONIC_SELECT=1)
     target_compile_options(${tgt} PRIVATE
-        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
     )
     add_executable(demo_${tgt} examples/demo_jhq_v21_cascade.cu)
     target_link_libraries(demo_${tgt} PRIVATE ${tgt})
@@ -855,7 +855,7 @@ function(add_jhq_strided TC BITO)
         JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=4 JHQ_PREFIX_KEEP=8
         JHQ_TILE_C=${TC} JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=${BITO})
     target_compile_options(${tgt} PRIVATE
-        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
     )
     add_executable(demo_${tgt} examples/demo_jhq_v21_cascade.cu)
     target_link_libraries(demo_${tgt} PRIVATE ${tgt})
@@ -884,7 +884,7 @@ function(add_jhq_klocal KL)
     target_compile_definitions(${tgt} PRIVATE
         JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=2 JHQ_PREFIX_KEEP=8 JHQ_K_LOCAL=${KL})
     target_compile_options(${tgt} PRIVATE
-        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
     )
     add_executable(demo_${tgt} examples/demo_jhq_v21_cascade.cu)
     target_link_libraries(demo_${tgt} PRIVATE ${tgt})
@@ -907,7 +907,7 @@ target_include_directories(jhq_v16_globalres PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(jhq_v16_globalres PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
 target_compile_definitions(jhq_v16_globalres PRIVATE JHQ_GLOBAL_RESIDUAL_CB=1)
 target_compile_options(jhq_v16_globalres PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
 )
 add_executable(demo_jhq_v16_globalres examples/demo_jhq_v16_pq_primary.cu)
 target_link_libraries(demo_jhq_v16_globalres PRIVATE jhq_v16_globalres)
@@ -928,7 +928,7 @@ foreach(KL 8 16)
     target_link_libraries(jhq_v15_kl${KL} PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
     target_compile_definitions(jhq_v15_kl${KL} PRIVATE JHQ_K_LOCAL=${KL})
     target_compile_options(jhq_v15_kl${KL} PRIVATE
-        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
     )
     add_executable(demo_jhq_v15_kl${KL} examples/demo_jhq_v15_eval_fix.cu)
     target_link_libraries(demo_jhq_v15_kl${KL} PRIVATE jhq_v15_kl${KL})
