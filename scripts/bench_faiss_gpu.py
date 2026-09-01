@@ -59,6 +59,7 @@ def main():
     # Exact reference. Also the recall ceiling any approximate row is measured against.
     flat = faiss.GpuIndexFlatL2(res, d)
     flat.add(xb)
+    flat.search(xq, a.k)             # warm-up
     t = time.time(); _, I = flat.search(xq, a.k); el = time.time() - t
     r = recall_at_k(I, gt, a.k)
     print(f"  GPU-Flat            recall={r:.4f}  qps={len(xq)/el:.0f}", flush=True)
@@ -70,7 +71,15 @@ def main():
         if d % M:
             print(f"  skip M={M}: d={d} not divisible", flush=True)
             continue
+        # FAISS GPU keeps the PQ lookup table in shared memory, so the default
+        # path caps out at M*256*4 <= 48KB -- M=96 already needs 98304 bytes on
+        # this device. float16 tables halve that, and interleavedLayout lifts
+        # the "supported code length" restriction that blocks M=192 and beyond.
+        # Worth noting against JHQ-GPU, whose byte LUT lives in global memory
+        # and is read through __ldg, so it has no such ceiling.
         cfg = faiss.GpuIndexIVFPQConfig()
+        cfg.useFloat16LookupTables = True
+        cfg.interleavedLayout = True
         try:
             idx = faiss.GpuIndexIVFPQ(res, d, a.nlist, M, 8, faiss.METRIC_L2, cfg)
         except Exception as e:
@@ -81,8 +90,11 @@ def main():
         idx.add(xb)
         build = time.time() - t
         print(f"  IVFPQ M={M} ({M} B/vec) built in {build:.1f}s", flush=True)
+        idx.nprobe = 8
+        idx.search(xq, a.k)          # warm-up: the first search pays kernel setup
         for np_ in [int(x) for x in a.nprobes.split(",")]:
             idx.nprobe = np_
+            idx.search(xq, a.k)      # warm-up per configuration
             t = time.time(); _, I = idx.search(xq, a.k); el = time.time() - t
             r = recall_at_k(I, gt, a.k)
             qps = len(xq) / el
