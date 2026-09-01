@@ -1,0 +1,12 @@
+##### A. gap#3: per-subspace vs global residual codebook #####
+v16_pq_primary         vogue per-sub  M=192  a=4.0   np=128  km=5  Recall@10 : 0.9475 (standard: vs true top-10) QPS : 5279 
+v16_globalres          vogue global   M=192  a=4.0   np=128  km=5  Recall@10 : 0.9502 (standard: vs true top-10) QPS : 5304 
+v16_pq_primary         vogue per-sub  M=96   a=4.0   np=128  km=5  Recall@10 : 0.8974 (standard: vs true top-10) QPS : 11009 
+v16_globalres          vogue global   M=96   a=4.0   np=128  km=5  Recall@10 : 0.8975 (standard: vs true top-10) QPS : 11014 
+v16_pq_primary         vogue per-sub  M=48   a=4.0   np=128  km=5  Recall@10 : 0.7291 (standard: vs true top-10) QPS : 17314 
+v16_globalres          vogue global   M=48   a=4.0   np=128  km=5  Recall@10 : 0.7293 (standard: vs true top-10) QPS : 17378 
+v16_pq_primary         arxiv per-sub  M=192  a=4.0   np=128  km=5  Recall@10 : 0.9694 (standard: vs true top-10) QPS : 4527 
+v16_globalres          arxiv global   M=192  a=4.0   np=128  km=5  Recall@10 : 0.9687 (standard: vs true top-10) QPS : 4513 
+v16_pq_primary         arxiv per-sub  M=96   a=4.0   np=128  km=5  Recall@10 : 0.9197 (standard: vs true top-10) QPS : 9346 
+v16_globalres          arxiv global   M=96   a=4.0   np=128  km=5  Recall@10 : 0.9191 (standard: vs true top-10) QPS : 9343 
+v16_pq_primary         arxiv per-sub  M=48   a=4.0   np=128  km=5  ###END

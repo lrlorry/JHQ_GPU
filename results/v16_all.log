@@ -1,0 +1,33 @@
+##### A. gap#3: per-subspace vs global residual codebook #####
+v16_pq_primary         vogue per-sub  M=192  a=4.0   np=128  km=5  Recall@10 : 0.9475 (standard: vs true top-10) QPS : 5279 
+v16_globalres          vogue global   M=192  a=4.0   np=128  km=5  Recall@10 : 0.9502 (standard: vs true top-10) QPS : 5304 
+v16_pq_primary         vogue per-sub  M=96   a=4.0   np=128  km=5  Recall@10 : 0.8974 (standard: vs true top-10) QPS : 11009 
+v16_globalres          vogue global   M=96   a=4.0   np=128  km=5  Recall@10 : 0.8975 (standard: vs true top-10) QPS : 11014 
+v16_pq_primary         vogue per-sub  M=48   a=4.0   np=128  km=5  Recall@10 : 0.7291 (standard: vs true top-10) QPS : 17314 
+v16_globalres          vogue global   M=48   a=4.0   np=128  km=5  Recall@10 : 0.7293 (standard: vs true top-10) QPS : 17378 
+v16_pq_primary         arxiv per-sub  M=192  a=4.0   np=128  km=5  Recall@10 : 0.9694 (standard: vs true top-10) QPS : 4527 
+v16_globalres          arxiv global   M=192  a=4.0   np=128  km=5  Recall@10 : 0.9687 (standard: vs true top-10) QPS : 4513 
+v16_pq_primary         arxiv per-sub  M=96   a=4.0   np=128  km=5  Recall@10 : 0.9197 (standard: vs true top-10) QPS : 9346 
+v16_globalres          arxiv global   M=96   a=4.0   np=128  km=5  Recall@10 : 0.9191 (standard: vs true top-10) QPS : 9343 
+v16_pq_primary         arxiv per-sub  M=48   a=4.0   np=128  km=5  Recall@10 : 0.7536 (standard: vs true top-10) QPS : 18822 
+v16_globalres          arxiv global   M=48   a=4.0   np=128  km=5  Recall@10 : 0.7528 (standard: vs true top-10) QPS : 18819 
+
+##### B. v16 vs v15 across datasets (M=d/8, alpha=4) #####
+v15_eval_fix           vogue v15      M=96   a=4.0   np=128  km=-  Recall@10 : 0.8764 (standard: vs true top-10) QPS : 11103 
+v16_pq_primary         vogue v16      M=96   a=4.0   np=128  km=5  Recall@10 : 0.8974 (standard: vs true top-10) QPS : 11033 
+v15_eval_fix           arxiv v15      M=96   a=4.0   np=128  km=-  Recall@10 : 0.7969 (standard: vs true top-10) QPS : 9685 
+v16_pq_primary         arxiv v16      M=96   a=4.0   np=128  km=5  Recall@10 : 0.9197 (standard: vs true top-10) QPS : 9347 
+v15_eval_fix           oai1536 v15    M=192  a=4.0   np=128  km=-  Recall@10 : 0.9499 (standard: vs true top-10) QPS : 11442 
+v16_pq_primary         oai1536 v16    M=192  a=4.0   np=128  km=5  Recall@10 : 0.9592 (standard: vs true top-10) QPS : 11275 
+v15_eval_fix           stella v15     M=128  a=4.0   np=128  km=-  Recall@10 : 0.9493 (standard: vs true top-10) QPS : 794 
+v16_pq_primary         stella v16     M=128  a=4.0   np=128  km=5  Recall@10 : 0.9645 (standard: vs true top-10) QPS : 788 
+
+##### C. arXiv M-sweep: does the Vogue frontier generalise? #####
+v16_pq_primary         arxiv          M=192  a=4.0   np=128  km=5  Recall@10 : 0.9694 (standard: vs true top-10) QPS : 4540 
+v16_pq_primary         arxiv          M=96   a=4.0   np=128  km=5  Recall@10 : 0.9197 (standard: vs true top-10) QPS : 9332 
+v16_pq_primary         arxiv          M=48   a=4.0   np=128  km=5  Recall@10 : 0.7536 (standard: vs true top-10) QPS : 18878 
+v16_pq_primary         arxiv          M=24   a=4.0   np=128  km=5  Recall@10 : 0.4470 (standard: vs true top-10) QPS : 29098 
+v16_pq_primary         arxiv          M=96   a=64.0  np=128  km=5  Recall@10 : 0.9573 (standard: vs true top-10) QPS : 9160 
+v16_pq_primary         arxiv          M=48   a=64.0  np=128  km=5  Recall@10 : 0.9436 (standard: vs true top-10) QPS : 17938 
+
+=========== ALL DONE 16:52:30 ===========
