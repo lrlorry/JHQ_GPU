@@ -866,6 +866,34 @@ foreach(TC 2 4 8)
     add_jhq_strided(${TC} 1)
 endforeach()
 
+# Recall-ceiling diagnostics. Recall saturates near 0.95 and three independent
+# causes are consistent with that: IVF pruning (nprobe=128 of nlist=1024),
+# per-thread truncation (K_LOCAL=4 keeps 4096 of 116541 candidates at
+# BLOCK=1024), and the 96 B code itself. K_LOCAL sizes the shared scratch --
+# (2*K_LOCAL*BLOCK + 2*BLOCK) floats -- so 8 needs 73 KB beside the 48 KB
+# table and only fits at BLOCK <= 512.
+function(add_jhq_klocal KL)
+    set(tgt jhq_v22_kl${KL})
+    add_library(${tgt} STATIC
+        jhq_v21_cascade/encode.cu
+        jhq_v21_cascade/search.cu
+        jhq_v21_cascade/jhq_gpu_index.cu
+    )
+    target_include_directories(${tgt} PUBLIC ${CMAKE_SOURCE_DIR})
+    target_link_libraries(${tgt} PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+    target_compile_definitions(${tgt} PRIVATE
+        JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=2 JHQ_PREFIX_KEEP=8 JHQ_K_LOCAL=${KL})
+    target_compile_options(${tgt} PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    )
+    add_executable(demo_${tgt} examples/demo_jhq_v21_cascade.cu)
+    target_link_libraries(demo_${tgt} PRIVATE ${tgt})
+endfunction()
+
+foreach(KL 2 4 8 16)
+    add_jhq_klocal(${KL})
+endforeach()
+
 # ── Residual-codebook layout ablation ────────────────────────────────────────
 # Same sources as jhq_v16_pq_primary with the residual codebook forced global
 # (v15's layout) instead of per-subspace (the official layout). Only the
