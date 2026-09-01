@@ -338,8 +338,6 @@ void JHQGpuIndex::train_residual_codebook(
     // subspace, and a single global codebook has to straddle all of them.
     res_c1d_.assign((size_t)M_ * Kr_, 0.f);
 
-    std::vector<float> resid;
-    resid.reserve((size_t)n_train * Ds_);
     std::vector<float> yhat(d_);
 
     // Reconstruct once per vector, then slice per subspace, rather than
@@ -362,13 +360,22 @@ void JHQGpuIndex::train_residual_codebook(
             std::copy(cb.begin(), cb.end(), res_c1d_.begin() + (size_t)m * Kr_);
     }
 #else
+    // This loop, not the primary codebook, is the index build: phase timing put
+    // it at 23.5 s of a 28.5 s train against the PQ k-means's 4.2 s. Each
+    // subspace reads its own stride of all_resid and writes its own slice of
+    // res_c1d_, so the axis parallelises the same way -- resid moves inside so
+    // each thread has its own scratch.
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
     for (int m = 0; m < M_; ++m) {
-        resid.clear();
+        std::vector<float> resid_m;
+        resid_m.reserve((size_t)n_train * Ds_);
         for (int i = 0; i < n_train; i++) {
             const float* ri = all_resid.data() + (size_t)i * d_ + (size_t)m * Ds_;
-            resid.insert(resid.end(), ri, ri + Ds_);
+            resid_m.insert(resid_m.end(), ri, ri + Ds_);
         }
-        std::vector<float> cb = train_1d_kmeans(resid.data(), (int)resid.size(), Kr_);
+        std::vector<float> cb = train_1d_kmeans(resid_m.data(), (int)resid_m.size(), Kr_);
         std::copy(cb.begin(), cb.end(), res_c1d_.begin() + (size_t)m * Kr_);
     }
 #endif
