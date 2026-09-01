@@ -630,6 +630,49 @@ target_compile_options(jhq_v18_notopk PRIVATE
 add_executable(demo_jhq_v18_notopk examples/demo_jhq_v18_shared_lut.cu)
 target_link_libraries(demo_jhq_v18_notopk PRIVATE jhq_v18_notopk)
 
+# ── Inner-loop ablations (timed, results invalid by design) ───────────────────
+add_library(jhq_v18_ab_lut STATIC
+    jhq_v18_shared_lut/encode.cu
+    jhq_v18_shared_lut/search.cu
+    jhq_v18_shared_lut/jhq_gpu_index.cu
+)
+target_include_directories(jhq_v18_ab_lut PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_v18_ab_lut PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+target_compile_definitions(jhq_v18_ab_lut PRIVATE JHQ_STEP_TIMING=1 JHQ_ABLATE_LUT=1)
+target_compile_options(jhq_v18_ab_lut PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+)
+add_executable(demo_jhq_v18_ab_lut examples/demo_jhq_v18_shared_lut.cu)
+target_link_libraries(demo_jhq_v18_ab_lut PRIVATE jhq_v18_ab_lut)
+
+add_library(jhq_v18_ab_acc STATIC
+    jhq_v18_shared_lut/encode.cu
+    jhq_v18_shared_lut/search.cu
+    jhq_v18_shared_lut/jhq_gpu_index.cu
+)
+target_include_directories(jhq_v18_ab_acc PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_v18_ab_acc PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+target_compile_definitions(jhq_v18_ab_acc PRIVATE JHQ_STEP_TIMING=1 JHQ_ABLATE_ACC=1)
+target_compile_options(jhq_v18_ab_acc PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+)
+add_executable(demo_jhq_v18_ab_acc examples/demo_jhq_v18_shared_lut.cu)
+target_link_libraries(demo_jhq_v18_ab_acc PRIVATE jhq_v18_ab_acc)
+
+add_library(jhq_v18_ab_insert STATIC
+    jhq_v18_shared_lut/encode.cu
+    jhq_v18_shared_lut/search.cu
+    jhq_v18_shared_lut/jhq_gpu_index.cu
+)
+target_include_directories(jhq_v18_ab_insert PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_v18_ab_insert PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+target_compile_definitions(jhq_v18_ab_insert PRIVATE JHQ_STEP_TIMING=1 JHQ_ABLATE_INSERT=1)
+target_compile_options(jhq_v18_ab_insert PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+)
+add_executable(demo_jhq_v18_ab_insert examples/demo_jhq_v18_shared_lut.cu)
+target_link_libraries(demo_jhq_v18_ab_insert PRIVATE jhq_v18_ab_insert)
+
 # ── Residual-codebook layout ablation ────────────────────────────────────────
 # Same sources as jhq_v16_pq_primary with the residual codebook forced global
 # (v15's layout) instead of per-subspace (the official layout). Only the

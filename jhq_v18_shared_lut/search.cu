@@ -19,6 +19,23 @@
 #define JHQ_ABLATE_INSCAN_TOPK 0
 #endif
 
+// Inner-loop ablations. All of them produce wrong results; they exist to price
+// the three things the loop does per candidate, one at a time, after the
+// in-scan top-k turned out to cost nothing (removing it changed 16.53 -> 16.84
+// and 27.98 -> 28.56 ms, i.e. nothing).
+//   1  JHQ_ABLATE_LUT      table lookup replaced by a constant, codes still read
+//   2  JHQ_ABLATE_ACC      no lookup and no accumulate, codes still read
+//   3  JHQ_ABLATE_INSERT   per-thread top-4 insertion sort removed
+#ifndef JHQ_ABLATE_LUT
+#define JHQ_ABLATE_LUT 0
+#endif
+#ifndef JHQ_ABLATE_ACC
+#define JHQ_ABLATE_ACC 0
+#endif
+#ifndef JHQ_ABLATE_INSERT
+#define JHQ_ABLATE_INSERT 0
+#endif
+
 // Per-thread candidate slots kept by scan_ivf_coalesced_kernel. Compile-time
 // so ld[]/lp[] stay in registers.
 //
@@ -199,9 +216,18 @@ __global__ void scan_ivf_coalesced_kernel(
         #pragma unroll 4
         for (int m = 0; m < M; ++m) {
             uint8_t cm = __ldg(&list_primary_t[(long long)m * N + abs_pos]);
+#if JHQ_ABLATE_ACC
+            dist += (float)cm;                     // codes read, no table, no chain
+#elif JHQ_ABLATE_LUT
+            dist += 1.0f + (float)(cm & 1);        // codes read, constant instead of lookup
+#else
             dist += __half2float(my_lut[m * 256 + cm]);
+#endif
         }
 
+#if JHQ_ABLATE_INSERT
+        if (dist < ld[0]) { ld[0] = dist; lp[0] = abs_pos; }
+#else
         if (dist < ld[K_LOCAL - 1]) {
             ld[K_LOCAL - 1] = dist;
             lp[K_LOCAL - 1] = abs_pos;
@@ -211,6 +237,7 @@ __global__ void scan_ivf_coalesced_kernel(
                 int   tp = lp[i-1]; lp[i-1] = lp[i]; lp[i] = tp;
             }
         }
+#endif
     }
 
     #pragma unroll
