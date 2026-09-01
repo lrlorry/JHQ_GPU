@@ -26,6 +26,14 @@
 //   1  JHQ_ABLATE_LUT      table lookup replaced by a constant, codes still read
 //   2  JHQ_ABLATE_ACC      no lookup and no accumulate, codes still read
 //   3  JHQ_ABLATE_INSERT   per-thread top-4 insertion sort removed
+// Tile shape, swept in v20. TILE_C independent accumulate chains per thread,
+// TILE_M subspaces per pass over them.
+#ifndef JHQ_TILE_C
+#define JHQ_TILE_C 4
+#endif
+#ifndef JHQ_TILE_M
+#define JHQ_TILE_M 8
+#endif
 #ifndef JHQ_ABLATE_LUT
 #define JHQ_ABLATE_LUT 0
 #endif
@@ -260,8 +268,8 @@ __global__ void scan_ivf_coalesced_kernel(
     // only 1.69x the time because at nprobe=8 each thread ran 28 iterations,
     // too few to fill the pipeline. TILE_C independent chains fill it at any
     // nprobe.
-    constexpr int TILE_C = 4;
-    constexpr int TILE_M = 8;
+    constexpr int TILE_C = JHQ_TILE_C;
+    constexpr int TILE_M = JHQ_TILE_M;
 
     for (int base = tid * TILE_C; base < total; base += BLOCK * TILE_C) {
         float acc[TILE_C];

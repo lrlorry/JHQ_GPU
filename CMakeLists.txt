@@ -702,6 +702,35 @@ target_compile_options(jhq_v19_timed PRIVATE
 add_executable(demo_jhq_v19_timed examples/demo_jhq_v19_tiled_scan.cu)
 target_link_libraries(demo_jhq_v19_timed PRIVATE jhq_v19_timed)
 
+# ── v20: tile-shape sweep ────────────────────────────────────────────────────
+# v19 fixed TILE_C=4, TILE_M=8 and took scan_ivf 16.56 -> 11.48 ms at nprobe=8.
+# TILE_C is the number of independent accumulate chains a thread runs, TILE_M
+# how many subspaces it sweeps before moving to the next candidate. Which of
+# the two bought the 30% was never separated, so build the grid and measure.
+function(add_jhq_tile_variant TC TM)
+    set(tgt jhq_v20_c${TC}m${TM})
+    add_library(${tgt} STATIC
+        jhq_v19_tiled_scan/encode.cu
+        jhq_v19_tiled_scan/search.cu
+        jhq_v19_tiled_scan/jhq_gpu_index.cu
+    )
+    target_include_directories(${tgt} PUBLIC ${CMAKE_SOURCE_DIR})
+    target_link_libraries(${tgt} PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+    target_compile_definitions(${tgt} PRIVATE
+        JHQ_STEP_TIMING=1 JHQ_TILE_C=${TC} JHQ_TILE_M=${TM})
+    target_compile_options(${tgt} PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+    )
+    add_executable(demo_${tgt} examples/demo_jhq_v19_tiled_scan.cu)
+    target_link_libraries(demo_${tgt} PRIVATE ${tgt})
+endfunction()
+
+foreach(TC 1 2 4 8 16)
+    foreach(TM 4 8 16 32 96)
+        add_jhq_tile_variant(${TC} ${TM})
+    endforeach()
+endforeach()
+
 # ── Residual-codebook layout ablation ────────────────────────────────────────
 # Same sources as jhq_v16_pq_primary with the residual codebook forced global
 # (v15's layout) instead of per-subspace (the official layout). Only the
