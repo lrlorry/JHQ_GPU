@@ -793,6 +793,27 @@ foreach(KEEP 4 8 16 32)
     add_jhq_cascade_fast(${KEEP})
 endforeach()
 
+# In-scan top-ck ablation at the matched point. ck = ceil(alpha*k), so alpha=100
+# with k=10 makes it 1000, and the selection is 1000 sequential passes of a
+# whole-block min-reduction: 10 barriers each at BLOCK=1024, so 10000 barriers
+# per block, none of which scale with nprobe. The earlier ablation that found
+# this free was run at alpha=4 (ck=40) and BLOCK=256, 25x fewer passes, so it
+# says nothing about this regime.
+add_library(jhq_v21_noselect STATIC
+    jhq_v21_cascade/encode.cu
+    jhq_v21_cascade/search.cu
+    jhq_v21_cascade/jhq_gpu_index.cu
+)
+target_include_directories(jhq_v21_noselect PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_v21_noselect PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+target_compile_definitions(jhq_v21_noselect PRIVATE
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=4 JHQ_PREFIX_KEEP=16 JHQ_ABLATE_INSCAN_TOPK=1)
+target_compile_options(jhq_v21_noselect PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math>
+)
+add_executable(demo_jhq_v21_noselect examples/demo_jhq_v21_cascade.cu)
+target_link_libraries(demo_jhq_v21_noselect PRIVATE jhq_v21_noselect)
+
 # ── Residual-codebook layout ablation ────────────────────────────────────────
 # Same sources as jhq_v16_pq_primary with the residual codebook forced global
 # (v15's layout) instead of per-subspace (the official layout). Only the
