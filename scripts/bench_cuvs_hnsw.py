@@ -80,6 +80,8 @@ def _timed_search(fn, reps=5):
     overstates QPS. Drain once after the warm-up and once after the timed runs,
     and average over reps the way the JHQ demo does.
     """
+    import cupy as cp   # imported per-function elsewhere in this file, so the
+                       # module-level name does not exist here
     out = fn()                                   # warm-up
     cp.cuda.Stream.null.synchronize()
     t = time.time()
