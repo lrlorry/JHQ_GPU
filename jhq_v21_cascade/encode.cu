@@ -1,4 +1,4 @@
-#include "jhq_v19_tiled_scan/encode.cuh"
+#include "jhq_v21_cascade/encode.cuh"
 #include "common/cuda_utils.cuh"
 
 namespace jhq_gpu {
