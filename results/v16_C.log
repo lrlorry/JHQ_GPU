@@ -1,0 +1,22 @@
+##### C1. alpha past 64 on Vogue #####
+vogue M=48       M=48   a=100.0  np=128  b=256   Recall@10 : 0.9224 (standard: vs true top-10) Latency : 64.37 ms (1000 queries) QPS : 15536 
+vogue M=48       M=48   a=200.0  np=128  b=256   Recall@10 : 0.9226 (standard: vs true top-10) Latency : 67.24 ms (1000 queries) QPS : 14872 
+vogue M=96       M=96   a=100.0  np=128  b=256   Recall@10 : 0.9448 (standard: vs true top-10) Latency : 95.32 ms (1000 queries) QPS : 10491 
+
+##### C2. latency vs batch size (fresh index per point) #####
+vogue b=1        M=96   a=4.0    np=8    b=1     Recall@10 : 0.7327 (standard: vs true top-10) Latency : 3292.99 ms (1000 queries) QPS : 304 
+vogue b=8        M=96   a=4.0    np=8    b=8     Recall@10 : 0.7327 (standard: vs true top-10) Latency : 1224.90 ms (1000 queries) QPS : 816 
+vogue b=32       M=96   a=4.0    np=8    b=32    Recall@10 : 0.7327 (standard: vs true top-10) Latency : 342.13 ms (1000 queries) QPS : 2923 
+vogue b=128      M=96   a=4.0    np=8    b=128   Recall@10 : 0.7327 (standard: vs true top-10) Latency : 101.68 ms (1000 queries) QPS : 9835 
+vogue b=256      M=96   a=4.0    np=8    b=256   Recall@10 : 0.7327 (standard: vs true top-10) Latency : 59.33 ms (1000 queries) QPS : 16856 
+vogue b=1024     M=96   a=4.0    np=8    b=1024  Recall@10 : 0.7327 (standard: vs true top-10) Latency : 24.62 ms (1000 queries) QPS : 40613 
+arxiv b=1        M=96   a=4.0    np=8    b=1     Recall@10 : 0.8304 (standard: vs true top-10) Latency : 1444.35 ms (1000 queries) QPS : 692 
+arxiv b=32       M=96   a=4.0    np=8    b=32    Recall@10 : 0.8304 (standard: vs true top-10) Latency : 66.86 ms (1000 queries) QPS : 14957 
+arxiv b=256      M=96   a=4.0    np=8    b=256   Recall@10 : 0.8304 (standard: vs true top-10) Latency : 9.28 ms (1000 queries) QPS : 107758 
+
+=========== C DONE 23:01:38 ===========
+--- cuvs ---
+1
+  Successfully uninstalled librmm-cu12-26.8.0
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+=== installing the cu13 build ===
