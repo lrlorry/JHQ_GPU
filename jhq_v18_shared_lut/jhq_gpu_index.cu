@@ -1,0 +1,604 @@
+#include "jhq_v18_shared_lut/jhq_gpu_index.cuh"
+
+// Ablation switch for the residual codebook layout. The official
+// get_scalar_codebook_ptr(subspace_idx, level) keeps one scalar codebook per
+// subspace; v15 and earlier kept a single global one. Setting this to 1 trains
+// the global codebook and replicates it into all M slots, so the device
+// buffer, the kernels and the indexing stay byte-identical and the only thing
+// that differs is the codebook contents -- which is what makes the comparison
+// clean.  -DJHQ_GLOBAL_RESIDUAL_CB=1
+#ifndef JHQ_GLOBAL_RESIDUAL_CB
+#define JHQ_GLOBAL_RESIDUAL_CB 0
+#endif
+#include "jhq_v18_shared_lut/encode.cuh"
+#include "jhq_v18_shared_lut/search.cuh"
+#include "common/cuda_utils.cuh"
+
+#include <thrust/device_ptr.h>
+#include <thrust/sequence.h>
+#include <thrust/sort.h>
+
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <numeric>
+#include <stdexcept>
+#include <vector>
+
+namespace jhq_gpu {
+
+namespace {
+
+// ── Assign kernel ─────────────────────────────────────────────────────────────
+__global__ void assign_from_dots_kernel(
+    const float* __restrict__ dots,
+    const float* __restrict__ cent_norms,
+    int*                  assigns,
+    int nlist, int nb)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= nb) return;
+    const float* col = dots + (long long)i * nlist;
+    float best = cent_norms[0] - 2.0f * col[0];
+    int best_id = 0;
+    for (int c = 1; c < nlist; ++c) {
+        float dist = cent_norms[c] - 2.0f * col[c];
+        if (dist < best) { best = dist; best_id = c; }
+    }
+    assigns[i] = best_id;
+}
+
+// ── Gather kernel ─────────────────────────────────────────────────────────────
+__global__ void gather_list_storage_kernel(
+    const int*     __restrict__ sorted_ids,
+    const uint8_t* __restrict__ primary,
+    const uint8_t* __restrict__ residual,
+    const float*   __restrict__ corrections,
+    int*                        list_ids,
+    uint8_t*                    list_primary,
+    uint8_t*                    list_res,
+    float*                      list_corr,
+    int n, int M, int bpv)
+{
+    int pos = blockIdx.x * blockDim.x + threadIdx.x;
+    if (pos >= n) return;
+    int id = sorted_ids[pos];
+    list_ids[pos] = id;
+    const uint8_t* pc = primary + (long long)id * M;
+    uint8_t* out_pc = list_primary + (long long)pos * M;
+    for (int m = 0; m < M; ++m) out_pc[m] = pc[m];
+    const uint8_t* rc = residual + (long long)id * bpv;
+    uint8_t* out_rc = list_res + (long long)pos * bpv;
+    for (int b = 0; b < bpv; ++b) out_rc[b] = rc[b];
+    list_corr[pos] = corrections[id];
+}
+
+// ── Transpose kernel: [N, M] → [M, N] with shared-memory tiling ──────────────
+// TILE=32 avoids bank conflicts (padding +1 on shared dim).
+// Grid: (ceil(N/TILE), ceil(M/TILE)) -- N (millions of vectors) MUST be the
+// grid.x axis, not grid.y: CUDA caps grid.y/grid.z at 65535 regardless of
+// compute capability, while grid.x goes up to 2^31-1. The original version
+// put N on grid.y (ceil(N/TILE) with TILE=32 exceeds 65535 once N exceeds
+// ~2.1M), which failed with "invalid argument" at the kernel launch on
+// arxiv-abstracts-768 (2,253,000 vectors) -- never caught before since every
+// dataset this was tested against until now (Vogue-768, openai3-1536) had
+// fewer than ~2.1M vectors. M (subspace count, order 100s) safely stays
+// under 65535 either way, so it's the one that belongs on grid.y.
+// Each block transposes a TILE×TILE sub-block.
+template <int TILE>
+__global__ void transpose_uint8_kernel(
+    const uint8_t* __restrict__ src,   // [N, M]
+    uint8_t*                    dst,   // [M, N]
+    long long N, int M)
+{
+    __shared__ uint8_t tile[TILE][TILE + 1];  // +1 avoids bank conflicts
+
+    // Read: block reads tile[threadIdx.y][threadIdx.x] from src[row_src, col_src]
+    long long col_src = (long long)blockIdx.y * TILE + threadIdx.x;  // m-axis
+    long long row_src = (long long)blockIdx.x * TILE + threadIdx.y;  // n-axis
+    if (col_src < M && row_src < N)
+        tile[threadIdx.y][threadIdx.x] = src[row_src * M + col_src];
+    __syncthreads();
+
+    // Write: transposed — dst[row_dst, col_dst] where row is m-axis, col is n-axis
+    long long col_dst = (long long)blockIdx.x * TILE + threadIdx.x;  // n-axis
+    long long row_dst = (long long)blockIdx.y * TILE + threadIdx.y;  // m-axis
+    if (col_dst < N && row_dst < M)
+        dst[row_dst * N + col_dst] = tile[threadIdx.x][threadIdx.y];
+}
+
+} // namespace
+
+// ── Constructor / Destructor ──────────────────────────────────────────────────
+JHQGpuIndex::JHQGpuIndex(int d, Params p)
+    : d_(d), M_(p.M), B_(p.B), Br_(p.Br),
+      nlist_(p.nlist), nprobe_(p.nprobe), ivf_iters_(p.ivf_iters),
+      batch_size_(p.batch_size), add_batch_(p.add_batch),
+      kmeans_iters_(p.kmeans_iters), seed_(p.seed),
+      alpha_(p.alpha),
+      jl_(d, p.seed)
+{
+    if (d <= 0)          throw std::invalid_argument("d must be positive");
+    if (p.M <= 0)        throw std::invalid_argument("M must be positive");
+    if (d % p.M != 0)   throw std::invalid_argument("d must be divisible by M");
+    // No B % Ds constraint: a subspace codeword is one of K = 2^B free
+    // centroids in Ds dims, not a packed tuple of per-dimension indices, so
+    // Ds may exceed B. That is what allows a primary code below one bit per
+    // dimension -- see cpu/pq_codebook.h.
+    if (p.B > 8)         throw std::invalid_argument("B must be <= 8");
+    if (p.Br != 4 && p.Br != 8) throw std::invalid_argument("Br must be 4 or 8");
+    if (p.nlist <= 0)    throw std::invalid_argument("nlist must be positive");
+    if (p.nprobe <= 0)   throw std::invalid_argument("nprobe must be positive");
+    if (p.ivf_iters <= 0) throw std::invalid_argument("ivf_iters must be positive");
+    if (p.batch_size <= 0) throw std::invalid_argument("batch_size must be positive");
+    if (p.add_batch <= 0) throw std::invalid_argument("add_batch must be positive");
+    if (p.kmeans_iters < 0) throw std::invalid_argument("kmeans_iters must be >= 0");
+    if (p.alpha <= 0.0f) throw std::invalid_argument("alpha must be positive");
+
+    Ds_           = d_ / M_;
+    K_            = 1 << B_;
+    Kr_           = 1 << Br_;
+    bpv_          = (d_ * Br_ + 7) / 8;
+    nprobe_       = std::min(nprobe_, nlist_);
+
+    CUBLAS_CHECK(cublasCreate(&cublas_));
+}
+
+JHQGpuIndex::~JHQGpuIndex() {
+    if (ws_.graph_exec) cudaGraphExecDestroy(ws_.graph_exec);
+    if (ws_.graph)      cudaGraphDestroy(ws_.graph);
+    if (ws_.stream)     cudaStreamDestroy(ws_.stream);
+
+    cublasDestroy(cublas_);
+    cudaFree(d_Pi_);
+    cudaFree(d_cent_);
+    cudaFree(d_res_c1d_);
+    cudaFree(d_centroids_);
+    cudaFree(d_cent_norms_);
+    cudaFree(d_list_offsets_);
+    cudaFree(d_list_ids_);
+    cudaFree(d_list_primary_t_);
+    cudaFree(d_list_res_);
+    cudaFree(d_list_corr_);
+    if (ws_.h_q_pinned) cudaFreeHost(ws_.h_q_pinned);
+    cudaFree(ws_.d_q_batch);
+    cudaFree(ws_.d_q_rot);
+    cudaFree(ws_.d_dots);
+    cudaFree(ws_.d_byte_lut);
+    cudaFree(ws_.d_probe_ids);
+    cudaFree(ws_.d_probe_offsets);
+    cudaFree(ws_.d_query_total);
+    cudaFree(ws_.d_topck_pos);
+    cudaFree(ws_.d_topck_primary);
+    cudaFree(ws_.d_lut_r);
+    cudaFree(ws_.d_comp_dists);
+    cudaFree(ws_.d_final_ids);
+    cudaFree(ws_.d_final_dists);
+}
+
+// ── Workspace allocation ──────────────────────────────────────────────────────
+void JHQGpuIndex::alloc_workspace(int batch_size) {
+    if (ws_.graph_exec) { cudaGraphExecDestroy(ws_.graph_exec); ws_.graph_exec = nullptr; }
+    if (ws_.graph)      { cudaGraphDestroy(ws_.graph);          ws_.graph      = nullptr; }
+    ws_.graph_ck     = 0;
+    ws_.graph_nprobe = 0;
+
+    cudaFree(ws_.d_q_batch);       ws_.d_q_batch        = nullptr;
+    cudaFree(ws_.d_q_rot);         ws_.d_q_rot          = nullptr;
+    cudaFree(ws_.d_dots);          ws_.d_dots           = nullptr;
+    cudaFree(ws_.d_probe_ids);     ws_.d_probe_ids      = nullptr;
+    cudaFree(ws_.d_probe_offsets); ws_.d_probe_offsets  = nullptr;
+    cudaFree(ws_.d_query_total);   ws_.d_query_total    = nullptr;
+    cudaFree(ws_.d_byte_lut);      ws_.d_byte_lut       = nullptr;
+    cudaFree(ws_.d_topck_pos);     ws_.d_topck_pos      = nullptr;
+    cudaFree(ws_.d_topck_primary); ws_.d_topck_primary  = nullptr;
+    cudaFree(ws_.d_lut_r);         ws_.d_lut_r          = nullptr;
+    cudaFree(ws_.d_comp_dists);    ws_.d_comp_dists     = nullptr;
+    cudaFree(ws_.d_final_ids);     ws_.d_final_ids      = nullptr;
+    cudaFree(ws_.d_final_dists);   ws_.d_final_dists    = nullptr;
+    ws_.ck_cap = 0;
+    ws_.k_cap  = 0;
+
+    long long B = batch_size;
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_batch,        B * d_               * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_q_rot,          B * d_               * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_dots,           B * nlist_           * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_probe_ids,      B * nprobe_          * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_probe_offsets,  B * (nprobe_ + 1)   * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_query_total,    B                    * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_byte_lut,       B * M_ * 256         * sizeof(__half)));
+    CUDA_CHECK(cudaMalloc(&ws_.d_lut_r,          B * d_ * Kr_        * sizeof(float)));
+    ws_.batch_cap = batch_size;
+
+    if (ws_.h_q_pinned) { cudaFreeHost(ws_.h_q_pinned); ws_.h_q_pinned = nullptr; }
+    CUDA_CHECK(cudaMallocHost(&ws_.h_q_pinned, B * d_ * sizeof(float)));
+
+    if (!ws_.stream) {
+        CUDA_CHECK(cudaStreamCreate(&ws_.stream));
+    }
+    CUBLAS_CHECK(cublasSetStream(cublas_, ws_.stream));
+}
+
+// ── GPU rotation helper ───────────────────────────────────────────────────────
+float* JHQGpuIndex::rotate_on_gpu(const float* h_x, int n) const {
+    float* d_x = nullptr;
+    float* d_y = nullptr;
+    CUDA_CHECK(cudaMalloc(&d_x, (long long)n * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_y, (long long)n * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMemcpy(d_x, h_x, (long long)n * d_ * sizeof(float),
+                          cudaMemcpyHostToDevice));
+    const float one = 1.f, zero = 0.f;
+    CUBLAS_CHECK(cublasSgemm(cublas_,
+                             CUBLAS_OP_N, CUBLAS_OP_N,
+                             d_, n, d_,
+                             &one, d_Pi_, d_,
+                                   d_x,  d_,
+                             &zero, d_y, d_));
+    cudaFree(d_x);
+    return d_y;
+}
+
+// ── IVF centroid training ─────────────────────────────────────────────────────
+void JHQGpuIndex::train_ivf_centroids(
+    const float* h_y_train, const float* d_y_train, int n_train)
+{
+    if (n_train < nlist_)
+        throw std::invalid_argument("n_train must be >= nlist for v12_transposed");
+
+    centroids_.assign((long long)nlist_ * d_, 0.0f);
+    for (int c = 0; c < nlist_; ++c) {
+        int src = (int)((long long)c * n_train / nlist_);
+        std::memcpy(centroids_.data() + (long long)c * d_,
+                    h_y_train + (long long)src * d_,
+                    (size_t)d_ * sizeof(float));
+    }
+
+    auto upload_centroids = [&]() {
+        std::vector<float> cent_norms(nlist_, 0.0f);
+        for (int c = 0; c < nlist_; ++c) {
+            double s = 0.0;
+            const float* cc = centroids_.data() + (long long)c * d_;
+            for (int j = 0; j < d_; ++j) s += (double)cc[j] * cc[j];
+            cent_norms[c] = (float)s;
+        }
+        cudaFree(d_centroids_);
+        cudaFree(d_cent_norms_);
+        d_centroids_ = nullptr;
+        d_cent_norms_ = nullptr;
+        CUDA_CHECK(cudaMalloc(&d_centroids_,  (long long)nlist_ * d_ * sizeof(float)));
+        CUDA_CHECK(cudaMemcpy(d_centroids_, centroids_.data(),
+                              (long long)nlist_ * d_ * sizeof(float),
+                              cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaMalloc(&d_cent_norms_, (long long)nlist_ * sizeof(float)));
+        CUDA_CHECK(cudaMemcpy(d_cent_norms_, cent_norms.data(),
+                              (long long)nlist_ * sizeof(float),
+                              cudaMemcpyHostToDevice));
+    };
+
+    std::vector<int>    h_assign(n_train);
+    std::vector<double> sums((long long)nlist_ * d_);
+    std::vector<int>    counts(nlist_);
+
+    for (int iter = 0; iter < ivf_iters_; ++iter) {
+        upload_centroids();
+        int* d_assign = assign_on_gpu(d_y_train, n_train);
+        CUDA_CHECK(cudaMemcpy(h_assign.data(), d_assign,
+                              (long long)n_train * sizeof(int),
+                              cudaMemcpyDeviceToHost));
+        cudaFree(d_assign);
+
+        std::fill(sums.begin(), sums.end(), 0.0);
+        std::fill(counts.begin(), counts.end(), 0);
+        for (int i = 0; i < n_train; ++i) {
+            int c = h_assign[i];
+            counts[c]++;
+            const float* yi = h_y_train + (long long)i * d_;
+            double* sc = sums.data() + (long long)c * d_;
+            for (int j = 0; j < d_; ++j) sc[j] += yi[j];
+        }
+        for (int c = 0; c < nlist_; ++c) {
+            float* cc = centroids_.data() + (long long)c * d_;
+            if (counts[c] == 0) {
+                int src = (int)(((long long)c * 1103515245 + iter * 12345) % n_train);
+                std::memcpy(cc, h_y_train + (long long)src * d_,
+                            (size_t)d_ * sizeof(float));
+                continue;
+            }
+            const double inv = 1.0 / (double)counts[c];
+            const double* sc = sums.data() + (long long)c * d_;
+            for (int j = 0; j < d_; ++j) cc[j] = (float)(sc[j] * inv);
+        }
+    }
+    upload_centroids();
+}
+
+// ── Residual codebook training ────────────────────────────────────────────────
+void JHQGpuIndex::train_residual_codebook(
+    const float* d_y_train, const uint8_t* d_codes_train, int n_train)
+{
+    std::vector<float>   h_y    ((long long)n_train * d_);
+    std::vector<uint8_t> h_codes((long long)n_train * M_);
+
+    CUDA_CHECK(cudaMemcpy(h_y.data(), d_y_train,
+                          (long long)n_train * d_ * sizeof(float),
+                          cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(h_codes.data(), d_codes_train,
+                          (long long)n_train * M_ * sizeof(uint8_t),
+                          cudaMemcpyDeviceToHost));
+
+    // One codebook per subspace, not one shared by all d dimensions. The
+    // official get_scalar_codebook_ptr() is indexed by (subspace, level) for a
+    // reason: the primary quantiser leaves a different residual scale in each
+    // subspace, and a single global codebook has to straddle all of them.
+    res_c1d_.assign((size_t)M_ * Kr_, 0.f);
+
+    std::vector<float> resid;
+    resid.reserve((size_t)n_train * Ds_);
+    std::vector<float> yhat(d_);
+
+    // Reconstruct once per vector, then slice per subspace, rather than
+    // reconstructing M times.
+    std::vector<float> all_resid((size_t)n_train * d_);
+    for (int i = 0; i < n_train; i++) {
+        cb_->reconstruct(h_codes.data() + (long long)i * M_, yhat.data());
+        const float* yi = h_y.data() + (long long)i * d_;
+        float* ri = all_resid.data() + (size_t)i * d_;
+        for (int j = 0; j < d_; j++) ri[j] = yi[j] - yhat[j];
+    }
+
+#if JHQ_GLOBAL_RESIDUAL_CB
+    {
+        // One codebook over every dimension of every subspace, then replicated
+        // so the layout the kernels see is unchanged.
+        std::vector<float> cb =
+            train_1d_kmeans(all_resid.data(), (int)all_resid.size(), Kr_);
+        for (int m = 0; m < M_; ++m)
+            std::copy(cb.begin(), cb.end(), res_c1d_.begin() + (size_t)m * Kr_);
+    }
+#else
+    for (int m = 0; m < M_; ++m) {
+        resid.clear();
+        for (int i = 0; i < n_train; i++) {
+            const float* ri = all_resid.data() + (size_t)i * d_ + (size_t)m * Ds_;
+            resid.insert(resid.end(), ri, ri + Ds_);
+        }
+        std::vector<float> cb = train_1d_kmeans(resid.data(), (int)resid.size(), Kr_);
+        std::copy(cb.begin(), cb.end(), res_c1d_.begin() + (size_t)m * Kr_);
+    }
+#endif
+
+    CUDA_CHECK(cudaMalloc(&d_res_c1d_, (size_t)M_ * Kr_ * sizeof(float)));
+    CUDA_CHECK(cudaMemcpy(d_res_c1d_, res_c1d_.data(),
+                          (size_t)M_ * Kr_ * sizeof(float),
+                          cudaMemcpyHostToDevice));
+}
+
+// ── Train ─────────────────────────────────────────────────────────────────────
+void JHQGpuIndex::train(const float* h_x, int n_train) {
+    jl_.estimate_sigma(h_x, n_train);
+    cb_ = std::make_unique<PQCodebook>(d_, M_, B_);
+
+    CUDA_CHECK(cudaMalloc(&d_Pi_, (long long)d_ * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMemcpy(d_Pi_, jl_.pi_data(),
+                          (long long)d_ * d_ * sizeof(float),
+                          cudaMemcpyHostToDevice));
+
+    // The PQ centroids need the rotated training data, so rotate first and
+    // pull it back once -- train() already copies it to the host below for
+    // the IVF, so this costs one extra D2H at build time, not per query.
+    float* d_y_train = rotate_on_gpu(h_x, n_train);
+    std::vector<float> h_y_train((long long)n_train * d_);
+    CUDA_CHECK(cudaMemcpy(h_y_train.data(), d_y_train,
+                          (long long)n_train * d_ * sizeof(float),
+                          cudaMemcpyDeviceToHost));
+
+    cb_->train(h_y_train.data(), n_train, kmeans_iters_, seed_);
+
+    CUDA_CHECK(cudaMalloc(&d_cent_, cb_->size() * sizeof(float)));
+    CUDA_CHECK(cudaMemcpy(d_cent_, cb_->data(), cb_->size() * sizeof(float),
+                          cudaMemcpyHostToDevice));
+
+    uint8_t* d_codes_train = nullptr;
+    CUDA_CHECK(cudaMalloc(&d_codes_train, (long long)n_train * M_));
+
+    launch_primary_encode(d_y_train, d_codes_train, d_cent_,
+                          n_train, d_, M_, Ds_, K_);
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    train_ivf_centroids(h_y_train.data(), d_y_train, n_train);
+    train_residual_codebook(d_y_train, d_codes_train, n_train);
+
+    cudaFree(d_y_train);
+    cudaFree(d_codes_train);
+}
+
+// ── GPU assignment helper ─────────────────────────────────────────────────────
+int* JHQGpuIndex::assign_on_gpu(const float* d_y, int n) const {
+    int* d_assign = nullptr;
+    CUDA_CHECK(cudaMalloc(&d_assign, (long long)n * sizeof(int)));
+
+    const int batch = 8192;
+    float* d_dots = nullptr;
+    CUDA_CHECK(cudaMalloc(&d_dots, (long long)nlist_ * batch * sizeof(float)));
+
+    const float one = 1.f, zero = 0.f;
+    for (int start = 0; start < n; start += batch) {
+        int nb = std::min(batch, n - start);
+        CUBLAS_CHECK(cublasSgemm(cublas_,
+                                 CUBLAS_OP_T, CUBLAS_OP_N,
+                                 nlist_, nb, d_,
+                                 &one,
+                                 d_centroids_, d_,
+                                 d_y + (long long)start * d_, d_,
+                                 &zero,
+                                 d_dots, nlist_));
+        assign_from_dots_kernel<<<(nb + 255) / 256, 256>>>(
+            d_dots, d_cent_norms_, d_assign + start, nlist_, nb);
+        CUDA_CHECK(cudaGetLastError());
+    }
+    CUDA_CHECK(cudaDeviceSynchronize());
+    cudaFree(d_dots);
+    return d_assign;
+}
+
+// ── Add ───────────────────────────────────────────────────────────────────────
+// v12_transposed's add() called rotate_on_gpu(h_x, n) on the WHOLE n at
+// once -- two full n*d float device buffers (raw + JL-rotated). That's
+// fine up to a few million rows, but at bge-m3 (10.09M x 1024) or
+// stella-trec24 (17.8M x 1024) scale it needs ~83GB / ~145GB of VRAM
+// before a single kernel runs, far past any single GPU.
+//
+// Every stage AFTER rotation, though, already only touches compressed
+// per-vector data -- uint8 codes (d_pc, d_rc), scalars (d_co), or ints
+// (d_assign) -- which for the whole n is one to two orders of magnitude
+// smaller than the raw float vectors (e.g. stella-trec24: d_pc+d_rc+d_co+
+// d_assign is ~10.7GB total vs. ~145GB for two full float buffers). So
+// the fix isn't a full two-pass IVF-offset rewrite (unlike JHQ_official's
+// IndexIVFJHQ::add_core(), which needs one because FAISS's InvertedLists
+// storage is filled incrementally list-by-list) -- it's simpler: only the
+// rotate+encode+assign step needs to stream, exactly mirroring how
+// JHQ_repro's CPU add() chunks its own expensive stage (batch=32768)
+// while accumulating into a single set of outputs. Everything from the
+// thrust::sort_by_key onward is untouched from v12_transposed: it already
+// only allocates n-sized compressed arrays, which comfortably fit (see
+// jhq_v18_shared_lut/jhq_gpu_index.cuh's Params::add_batch comment for
+// the full VRAM accounting).
+void JHQGpuIndex::add(const float* h_x, int n) {
+    if (!cb_) throw std::runtime_error("call train() before add()");
+    if (ntotal_ != 0)
+        throw std::runtime_error("v14_streaming_add currently supports one add() call");
+
+    uint8_t* d_pc = nullptr;      // [n, M]   primary codes
+    uint8_t* d_rc = nullptr;      // [n, bpv] residual codes
+    float*   d_co = nullptr;      // [n]      residual corrections
+    int*     d_assign = nullptr;  // [n]      IVF cluster assignment
+    CUDA_CHECK(cudaMalloc(&d_pc, (long long)n * M_ * sizeof(uint8_t)));
+    CUDA_CHECK(cudaMalloc(&d_rc, (long long)n * bpv_ * sizeof(uint8_t)));
+    CUDA_CHECK(cudaMalloc(&d_co, (long long)n * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_assign, (long long)n * sizeof(int)));
+
+    const long long AB = add_batch_;
+    float* d_x_batch = nullptr;
+    float* d_y_batch = nullptr;
+    CUDA_CHECK(cudaMalloc(&d_x_batch, AB * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_y_batch, AB * d_ * sizeof(float)));
+
+    const float one = 1.f, zero = 0.f;
+    for (long long start = 0; start < n; start += AB) {
+        int nb = (int)std::min(AB, (long long)n - start);
+
+        CUDA_CHECK(cudaMemcpy(d_x_batch, h_x + start * (long long)d_,
+                              (long long)nb * d_ * sizeof(float),
+                              cudaMemcpyHostToDevice));
+        CUBLAS_CHECK(cublasSgemm(cublas_,
+                                 CUBLAS_OP_N, CUBLAS_OP_N,
+                                 d_, nb, d_,
+                                 &one, d_Pi_, d_, d_x_batch, d_,
+                                 &zero, d_y_batch, d_));
+
+        launch_primary_encode(d_y_batch, d_pc + start * M_, d_cent_,
+                              nb, d_, M_, Ds_, K_);
+        launch_residual_encode(d_y_batch, d_pc + start * M_,
+                               d_rc + start * bpv_, d_co + start,
+                               d_cent_, d_res_c1d_,
+                               nb, d_, M_, Ds_, K_, Kr_, Br_, bpv_);
+        CUDA_CHECK(cudaDeviceSynchronize());
+
+        int* d_assign_batch = assign_on_gpu(d_y_batch, nb);
+        CUDA_CHECK(cudaMemcpy(d_assign + start, d_assign_batch,
+                              (long long)nb * sizeof(int),
+                              cudaMemcpyDeviceToDevice));
+        cudaFree(d_assign_batch);
+    }
+    cudaFree(d_x_batch);
+    cudaFree(d_y_batch);
+
+    // ---- Unchanged from v12_transposed from here down. ----
+    int* d_order = nullptr;
+    CUDA_CHECK(cudaMalloc(&d_order, (long long)n * sizeof(int)));
+    thrust::device_ptr<int> t_assign(d_assign);
+    thrust::device_ptr<int> t_order(d_order);
+    thrust::sequence(t_order, t_order + n);
+    thrust::sort_by_key(t_assign, t_assign + n, t_order);
+
+    std::vector<int> h_assign(n);
+    CUDA_CHECK(cudaMemcpy(h_assign.data(), d_assign, (long long)n * sizeof(int),
+                          cudaMemcpyDeviceToHost));
+
+    std::vector<int> counts(nlist_, 0);
+    for (int a : h_assign) {
+        if (a < 0 || a >= nlist_) throw std::runtime_error("invalid IVF assignment");
+        counts[a]++;
+    }
+
+    std::vector<int> offsets(nlist_ + 1, 0);
+    for (int c = 0; c < nlist_; ++c) offsets[c + 1] = offsets[c] + counts[c];
+
+    CUDA_CHECK(cudaMalloc(&d_list_offsets_, (long long)(nlist_ + 1) * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_list_ids_,     (long long)n * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_list_res_,     (long long)n * bpv_ * sizeof(uint8_t)));
+    CUDA_CHECK(cudaMalloc(&d_list_corr_,    (long long)n * sizeof(float)));
+
+    CUDA_CHECK(cudaMemcpy(d_list_offsets_, offsets.data(),
+                          (long long)(nlist_ + 1) * sizeof(int),
+                          cudaMemcpyHostToDevice));
+
+    // Temporary [N, M] primary buffer for gathering, then transposed.
+    uint8_t* d_list_primary_nm = nullptr;
+    CUDA_CHECK(cudaMalloc(&d_list_primary_nm, (long long)n * M_ * sizeof(uint8_t)));
+
+    gather_list_storage_kernel<<<(n + 255) / 256, 256>>>(
+        d_order, d_pc, d_rc, d_co,
+        d_list_ids_, d_list_primary_nm, d_list_res_, d_list_corr_,
+        n, M_, bpv_);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    // Transpose [N, M] → [M, N] for coalesced scan access.
+    // grid.x = N-tiles, grid.y = M-tiles -- see transpose_uint8_kernel's
+    // comment for why N (which can be in the millions) must be on grid.x,
+    // not grid.y (CUDA's 65535 cap on grid.y/z).
+    constexpr int TILE = 32;
+    CUDA_CHECK(cudaMalloc(&d_list_primary_t_, (long long)M_ * n * sizeof(uint8_t)));
+    dim3 grid(((long long)n + TILE - 1) / TILE, (M_ + TILE - 1) / TILE);
+    dim3 block(TILE, TILE);
+    transpose_uint8_kernel<TILE><<<grid, block>>>(d_list_primary_nm, d_list_primary_t_,
+                                                   (long long)n, M_);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    // Free temporary [N, M] buffer — scan uses d_list_primary_t_ only.
+    cudaFree(d_list_primary_nm);
+
+    cudaFree(d_assign);
+    cudaFree(d_order);
+    cudaFree(d_pc);
+    cudaFree(d_rc);
+    cudaFree(d_co);
+
+    ntotal_ = n;
+    alloc_workspace(batch_size_);
+}
+
+// ── Search ────────────────────────────────────────────────────────────────────
+void JHQGpuIndex::search(const float* h_q, int nq, int k,
+                          float* h_dists, int* h_labels) const {
+    if (ntotal_ == 0) throw std::runtime_error("index is empty");
+
+    search_gpu(cublas_,
+               d_Pi_, d_cent_, d_res_c1d_,
+               d_centroids_, d_cent_norms_,
+               d_list_offsets_, d_list_ids_,
+               d_list_primary_t_, d_list_res_, d_list_corr_,
+               h_q,
+               nq, d_, M_, Ds_, K_, Kr_, nlist_, nprobe_,
+               Br_, bpv_,
+               alpha_, k,
+               batch_size_,
+               ntotal_,
+               ws_,
+               h_dists, h_labels);
+}
+
+} // namespace jhq_gpu
