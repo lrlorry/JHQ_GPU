@@ -154,9 +154,21 @@ def main():
     html = TEMPLATE.format(
         meta=meta_html or "environment not recorded",
         tables="\n".join(body),
+        gate95=img_tag("fig_gate95.png",
+                       "Best QPS among each method's configurations that reach Recall@10 0.95. "
+                       "A hatched stub means the method was swept and never got there; the "
+                       "ceiling it did reach is printed on it."),
+        gate98=img_tag("fig_gate98.png",
+                       "The same at 0.98. int8 CAGRA reaches it on none of the six, and on "
+                       "OpenAI3-3072 JHQ is ahead of fp32 CAGRA on throughput as well."),
+        ceiling=img_tag("fig_ceiling.png",
+                        "The highest recall each method reaches at any setting. Above 1024 "
+                        "dimensions JHQ's ceiling is the highest of the five."),
+        memory=img_tag("fig_memory.png",
+                       "Device memory actually in use against the recall it buys, read with "
+                       "cudaMemGetInfo rather than derived from bytes per vector."),
         fronts=img_tag("figA_fronts.png",
-                       "QPS against recall for every method on every dataset that finished. "
-                       "Five runs per point; the harness records the spread with each."),
+                       "Full fronts per dataset, for reference."),
         trend=img_tag("figB_dimension_trend.png",
                       "CAGRA scores against stored vectors, so its distance work grows with d "
                       "while JHQ's is fixed at M subspaces. The ratio is measured, not modelled."),
@@ -225,6 +237,45 @@ footer{{border-top:1px solid var(--rule);margin-top:44px;padding-top:20px;font-s
 </header>
 
 <section>
+  <h2>The five questions, answered</h2>
+  <p>Every figure below is the best configuration of each method that reaches the
+  stated recall. Where a method never reaches a gate, the sweep was pushed until
+  it stopped improving: int8 CAGRA was taken to itopk 2048, sixty-four times the
+  smallest value tried, and gained 0.0016 or less on the final doubling.</p>
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>question</th><th>answer</th></tr></thead>
+    <tbody>
+      <tr><td class="t">1</td><td class="t">How much faster than CPU JHQ?</td>
+      <td class="t"><b>427&times; single-thread, 82&times; all-core</b> at matched recall
+      (Vogue, alpha=100: 53,818 QPS against 126.0 and 658.7). The all-core figure is only
+      5.2&times; its own single-thread number on a 208-core host, so the reference scan is
+      not parallel &mdash; the comparison is against a baseline that does not use the
+      machine it runs on.</td></tr>
+      <tr><td class="t">2</td><td class="t">What does the hierarchy contribute over JQ?</td>
+      <td class="t"><b>It sets the ceiling.</b> With the residual level off, JQ fails to
+      reach 0.95 on any of the six datasets &mdash; its ceilings are 0.647 to 0.774. The
+      same ablation on CPU is 0.9341 against 0.6344.</td></tr>
+      <tr><td class="t">3</td><td class="t">Better than IVF-PQ at the same budget?</td>
+      <td class="t"><b>Yes.</b> 2.0&ndash;6.7&times; at R&ge;0.98 where IVF-PQ reaches it,
+      and IVF-PQ's ceiling falls away with dimension: 0.986 at 768d, 0.966 at 1536d,
+      0.913 at 3072d, against JHQ's 0.983, 0.994 and 0.992.</td></tr>
+      <tr><td class="t">4</td><td class="t">And against compressed CAGRA?</td>
+      <td class="t"><b>Above 1024 dimensions JHQ is the most accurate of the five.</b>
+      PQ-compressed CAGRA is not reachable in cuVS 26.08.01; the int8 dataset that is
+      reachable caps at 0.938&ndash;0.973 and reaches 0.98 on none of the six. fp32 CAGRA
+      has the higher ceiling at 768d (0.995, 0.999 against 0.983, 0.993) but not at 1536d
+      (0.986 against 0.994) or 3072d (0.985 against 0.992), where JHQ is also
+      <b>2.17&times; faster on 1.7&times; less memory</b>.</td></tr>
+      <tr><td class="t">5</td><td class="t">Does it hold across datasets and at scale?</td>
+      <td class="t"><b>Yes, and it strengthens with dimension.</b> JHQ reaches 0.95 on all
+      six; no other method does. CAGRA's throughput lead falls from 2.5&times; at 768d to
+      below parity at 3072d. On bge-m3's 10.1M vectors JHQ is the only method to reach
+      0.95, and stella-trec24's 17.8M run at 0.9510 and 41,812 QPS.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
   <h2>Throughput at each recall gate</h2>
   <p>Best QPS among the configurations of each method that reach the recall on
   the column. JHQ's two residual settings are separate rows because they are
@@ -234,13 +285,20 @@ footer{{border-top:1px solid var(--rule);margin-top:44px;padding-top:20px;font-s
 </section>
 
 <section>
-  <h2>Fronts</h2>
-  {fronts}
+  <h2>Against the baselines</h2>
+  <p>Each panel answers one question. A method absent from a panel is not
+  missing data &mdash; it is a method that was swept and never reached that
+  recall, drawn as a hatched stub with its ceiling on it.</p>
+  {gate95}
+  {gate98}
+  {ceiling}
+  {memory}
 </section>
 
 <section>
-  <h2>Dimension</h2>
+  <h2>Dimension, and the full fronts</h2>
   {trend}
+  {fronts}
 </section>
 
 <footer>

@@ -7,7 +7,9 @@ flock -n 9 || { echo "another p0_rest already holds the lock"; exit 0; }
 exec >/root/p0_rest.log 2>&1
 export PATH=/root/miniconda3/bin:/usr/local/cuda/bin:$PATH
 cd "$(dirname "$0")/.."
-for t in $(seq 1 12); do source /etc/network_turbo 2>/dev/null; git pull -q origin fix/recall-eval-v15 && break; sleep 10; done
+# No pull here. The link to the remote drops often enough that the retry
+# loop spent two minutes failing on every launch, and the checkout on this
+# machine already carries the harness and kernel fixes these runs need.
 echo "HEAD: $(git log --oneline -1)"
 export JHQ_INDEX_CACHE=/root/jhq_cache; mkdir -p $JHQ_INDEX_CACHE
 R=results/final

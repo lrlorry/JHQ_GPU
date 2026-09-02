@@ -1,0 +1,4 @@
+# {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0", "utc": "2026-09-02T02:26:07Z"}
+method,variant,dataset,d,N,params,env,n_runs,recall,recall_spread,qps_mean,qps_std,qps_rel_std_pct,vram_mib,train_ms,add_ms,status,failures
+cuVS-IVFPQ,768B,openai3-1536,1536,999000,"{""bytes_per_vec"": 768, ""k"": 10, ""n_lists"": 1024, ""n_probes"": 512, ""pq_bits"": 8, ""pq_dim"": 768}",{},3,0.9641,0.00000,1622,68,4.17,1558,16899,,ok,
+cuVS-IVFPQ,768B,openai3-1536,1536,999000,"{""bytes_per_vec"": 768, ""k"": 10, ""n_lists"": 1024, ""n_probes"": 1024, ""pq_bits"": 8, ""pq_dim"": 768}",{},3,0.9656,0.00000,859,13,1.46,1416,16834,,ok,

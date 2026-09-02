@@ -1,0 +1,8 @@
+# {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0", "utc": "2026-09-02T02:27:31Z"}
+method,variant,dataset,d,N,params,env,n_runs,recall,recall_spread,qps_mean,qps_std,qps_rel_std_pct,vram_mib,train_ms,add_ms,status,failures
+cuVS-CAGRA-int8,3328B,openai3-3072,3072,999000,"{""bytes_per_vec"": 3328, ""graph_degree"": 64, ""itopk_size"": 512, ""k"": 10, ""search_width"": 1}",{},3,0.9660,0.00000,20616,119,0.58,3310,17781,,ok,
+cuVS-CAGRA-int8,3328B,openai3-3072,3072,999000,"{""bytes_per_vec"": 3328, ""graph_degree"": 64, ""itopk_size"": 512, ""k"": 10, ""search_width"": 2}",{},3,0.9682,0.00000,20616,68,0.33,3174,18064,,ok,
+cuVS-CAGRA-int8,3328B,openai3-3072,3072,999000,"{""bytes_per_vec"": 3328, ""graph_degree"": 64, ""itopk_size"": 1024, ""k"": 10, ""search_width"": 1}",{},3,0.9716,0.00000,9908,12,0.12,3174,17831,,ok,
+cuVS-CAGRA-int8,3328B,openai3-3072,3072,999000,"{""bytes_per_vec"": 3328, ""graph_degree"": 64, ""itopk_size"": 1024, ""k"": 10, ""search_width"": 2}",{},3,0.9717,0.00000,9921,15,0.15,3174,18369,,ok,
+cuVS-CAGRA-int8,3328B,openai3-3072,3072,999000,"{""bytes_per_vec"": 3328, ""graph_degree"": 64, ""itopk_size"": 2048, ""k"": 10, ""search_width"": 1}",{},3,0.9733,0.00000,5259,2,0.04,3174,18031,,ok,
+cuVS-CAGRA-int8,3328B,openai3-3072,3072,999000,"{""bytes_per_vec"": 3328, ""graph_degree"": 64, ""itopk_size"": 2048, ""k"": 10, ""search_width"": 2}",{},3,0.9729,0.00000,5255,5,0.09,3174,17491,,ok,
