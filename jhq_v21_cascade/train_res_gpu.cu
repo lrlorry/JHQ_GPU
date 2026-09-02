@@ -53,13 +53,28 @@ __global__ void quantile_init_kernel(
 }
 
 // Binary search on midpoints of adjacent centroids, exactly the host's loop.
+//
+// The bins are private to the block: 25 iterations over n*Ds values with two
+// global atomics apiece is 3.8 billion of them at the usual settings, and the
+// atomics, not the sort, are what the phase costs. Accumulating in shared and
+// flushing once per block per bin divides the global traffic by roughly the
+// block size. Kr <= 256 so the private copy is 2 KB of doubles plus 1 KB of
+// counts, on top of the Kr floats of centroids.
 __global__ void assign_accum_kernel(
     const float* __restrict__ d_seg, const float* __restrict__ d_c,
     double* d_sum, int* d_cnt, long long seg, int Kr)
 {
-    extern __shared__ float s_c[];
+    extern __shared__ char s_raw[];
+    float*  s_c   = (float*)s_raw;                 // Kr
+    double* s_sum = (double*)(s_c + Kr);           // Kr
+    int*    s_cnt = (int*)(s_sum + Kr);            // Kr
+
     const int m = blockIdx.y;
-    for (int i = threadIdx.x; i < Kr; i += blockDim.x) s_c[i] = d_c[(long long)m * Kr + i];
+    for (int i = threadIdx.x; i < Kr; i += blockDim.x) {
+        s_c[i]   = d_c[(long long)m * Kr + i];
+        s_sum[i] = 0.0;
+        s_cnt[i] = 0;
+    }
     __syncthreads();
 
     for (long long t = (long long)blockIdx.x * blockDim.x + threadIdx.x;
@@ -70,8 +85,15 @@ __global__ void assign_accum_kernel(
             const int mid = (lo + hi) / 2;
             if (v < 0.5f * (s_c[mid] + s_c[mid + 1])) hi = mid; else lo = mid + 1;
         }
-        atomicAdd(d_sum + (long long)m * Kr + lo, (double)v);
-        atomicAdd(d_cnt + (long long)m * Kr + lo, 1);
+        atomicAdd(s_sum + lo, (double)v);
+        atomicAdd(s_cnt + lo, 1);
+    }
+    __syncthreads();
+
+    for (int i = threadIdx.x; i < Kr; i += blockDim.x) {
+        if (s_cnt[i] == 0) continue;
+        atomicAdd(d_sum + (long long)m * Kr + i, s_sum[i]);
+        atomicAdd(d_cnt + (long long)m * Kr + i, s_cnt[i]);
     }
 }
 
@@ -161,7 +183,8 @@ void launch_residual_codebook(const float* d_y, const uint8_t* d_codes,
     for (int it = 0; it < max_iter; ++it) {
         CUDA_CHECK(cudaMemsetAsync(d_sum, 0, (size_t)M * Kr * sizeof(double), stream));
         CUDA_CHECK(cudaMemsetAsync(d_cnt, 0, (size_t)M * Kr * sizeof(int), stream));
-        assign_accum_kernel<<<dim3(gx, M), BLOCK, Kr * sizeof(float), stream>>>(
+        const size_t acc_smem = (size_t)Kr * (sizeof(float) + sizeof(double) + sizeof(int));
+        assign_accum_kernel<<<dim3(gx, M), BLOCK, acc_smem, stream>>>(
             d_seg, d_res_c1d, d_sum, d_cnt, seg, Kr);
         CUDA_CHECK(cudaGetLastError());
         update_sort_kernel<<<M, BLOCK, Kr * sizeof(float), stream>>>(
