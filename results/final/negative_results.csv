@@ -1,7 +1,0 @@
-change,hypothesis,measured,verdict
-shared-memory LUT (v18),staging the 48 KB table cuts repeated global reads,14061 QPS vs v16 15877 at np=8,slower
-strided TILE_C,independent accumulate chains restore ILP without the recall loss,46192 vs 46322 QPS at TILE_C=1 same recall,no effect
-fp8 LUT,fewer shared-memory bank conflicts,"distinct bank words 28.3 -> 25.3 of 32 lanes, analytic",not worth implementing
-larger K_LOCAL,keeping more candidates per thread raises recall,0.9490 at K_LOCAL=4 vs 0.9489 at 16,saturated at 4
-more nprobe,probing every list reaches high recall,0.9528 probing all 1024 lists vs 0.9452 at 128,code-limited not probe-limited
-larger M,more primary bytes is the way to higher recall,M=192 gives 0.9583 for half the QPS; Br=8 gives 0.9795 for 4% ,residual bits dominate

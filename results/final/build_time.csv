@@ -1,8 +1,0 @@
-phase,before_ms,after_ms,note
-estimate_sigma,117,120,host
-rotate + D2H,302,315,2.9 GB device-to-host copy of the rotated sample
-pq codebook kmeans,4814,3528,OpenMP over subspaces (was already parallel)
-primary encode,47,47,GPU
-ivf centroids,458,468,GPU assign + host accumulate
-residual codebook,23620,3811,OpenMP over subspaces; needed -Xcompiler=-fopenmp for nvcc
-total train,29375,8304,cuVS IVF-PQ 384B builds in 6.1 s
