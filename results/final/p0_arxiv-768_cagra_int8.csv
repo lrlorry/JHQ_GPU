@@ -1,0 +1,18 @@
+# {"commit": "f222690", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0", "utc": "2026-09-01T21:48:53Z"}
+method,variant,dataset,d,N,params,env,n_runs,recall,recall_spread,qps_mean,qps_std,qps_rel_std_pct,vram_mib,train_ms,add_ms,status,failures
+cuVS-CAGRA-int8,896B,arxiv-768,768,2253000,"{""bytes_per_vec"": 896, ""graph_degree"": 32, ""itopk_size"": 32, ""k"": 10, ""search_width"": 1}",{},5,0.8725,0.00000,1057944,104131,9.84,2076,8762,,ok,
+cuVS-CAGRA-int8,896B,arxiv-768,768,2253000,"{""bytes_per_vec"": 896, ""graph_degree"": 32, ""itopk_size"": 32, ""k"": 10, ""search_width"": 2}",{},5,0.8812,0.00000,1026743,27112,2.64,270,8193,,ok,
+cuVS-CAGRA-int8,896B,arxiv-768,768,2253000,"{""bytes_per_vec"": 896, ""graph_degree"": 32, ""itopk_size"": 64, ""k"": 10, ""search_width"": 1}",{},5,0.9317,0.00000,722207,17549,2.43,270,8637,,ok,
+cuVS-CAGRA-int8,896B,arxiv-768,768,2253000,"{""bytes_per_vec"": 896, ""graph_degree"": 32, ""itopk_size"": 64, ""k"": 10, ""search_width"": 2}",{},5,0.9340,0.00000,715555,14606,2.04,270,8191,,ok,
+cuVS-CAGRA-int8,896B,arxiv-768,768,2253000,"{""bytes_per_vec"": 896, ""graph_degree"": 32, ""itopk_size"": 128, ""k"": 10, ""search_width"": 1}",{},5,0.9521,0.00000,440341,6502,1.48,270,8554,,ok,
+cuVS-CAGRA-int8,896B,arxiv-768,768,2253000,"{""bytes_per_vec"": 896, ""graph_degree"": 32, ""itopk_size"": 128, ""k"": 10, ""search_width"": 2}",{},5,0.9513,0.00000,441966,5744,1.30,270,9254,,ok,
+cuVS-CAGRA-int8,896B,arxiv-768,768,2253000,"{""bytes_per_vec"": 896, ""graph_degree"": 32, ""itopk_size"": 256, ""k"": 10, ""search_width"": 1}",{},5,0.9587,0.00000,243900,1804,0.74,270,9121,,ok,
+cuVS-CAGRA-int8,896B,arxiv-768,768,2253000,"{""bytes_per_vec"": 896, ""graph_degree"": 32, ""itopk_size"": 256, ""k"": 10, ""search_width"": 2}",{},5,0.9584,0.00000,254761,1887,0.74,270,8741,,ok,
+cuVS-CAGRA-int8,1024B,arxiv-768,768,2253000,"{""bytes_per_vec"": 1024, ""graph_degree"": 64, ""itopk_size"": 32, ""k"": 10, ""search_width"": 1}",{},5,0.9330,0.00000,726162,17118,2.36,546,12922,,ok,
+cuVS-CAGRA-int8,1024B,arxiv-768,768,2253000,"{""bytes_per_vec"": 1024, ""graph_degree"": 64, ""itopk_size"": 32, ""k"": 10, ""search_width"": 2}",{},5,0.9361,0.00000,674026,18111,2.69,546,12456,,ok,
+cuVS-CAGRA-int8,1024B,arxiv-768,768,2253000,"{""bytes_per_vec"": 1024, ""graph_degree"": 64, ""itopk_size"": 64, ""k"": 10, ""search_width"": 1}",{},5,0.9529,0.00000,449122,7481,1.67,546,12570,,ok,
+cuVS-CAGRA-int8,1024B,arxiv-768,768,2253000,"{""bytes_per_vec"": 1024, ""graph_degree"": 64, ""itopk_size"": 64, ""k"": 10, ""search_width"": 2}",{},5,0.9522,0.00000,434528,7973,1.83,546,12901,,ok,
+cuVS-CAGRA-int8,1024B,arxiv-768,768,2253000,"{""bytes_per_vec"": 1024, ""graph_degree"": 64, ""itopk_size"": 128, ""k"": 10, ""search_width"": 1}",{},5,0.9593,0.00000,258339,2593,1.00,546,13016,,ok,
+cuVS-CAGRA-int8,1024B,arxiv-768,768,2253000,"{""bytes_per_vec"": 1024, ""graph_degree"": 64, ""itopk_size"": 128, ""k"": 10, ""search_width"": 2}",{},5,0.9592,0.00000,251203,7308,2.91,546,12721,,ok,
+cuVS-CAGRA-int8,1024B,arxiv-768,768,2253000,"{""bytes_per_vec"": 1024, ""graph_degree"": 64, ""itopk_size"": 256, ""k"": 10, ""search_width"": 1}",{},5,0.9615,0.00000,138656,730,0.53,546,12615,,ok,
+cuVS-CAGRA-int8,1024B,arxiv-768,768,2253000,"{""bytes_per_vec"": 1024, ""graph_degree"": 64, ""itopk_size"": 256, ""k"": 10, ""search_width"": 2}",{},5,0.9616,0.00000,140292,355,0.25,546,12845,,ok,
