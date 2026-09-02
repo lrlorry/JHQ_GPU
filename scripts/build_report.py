@@ -160,6 +160,33 @@ def main():
                        "the lines cross near 0.97 and at 3072 JHQ is above it from 0.96 on. "
                        "JQ never exceeds 0.774, so it has no line in this range and its "
                        "ceiling is noted in each panel instead."),
+        ablation=img_tag("fig3_ablation.png",
+                         "Three changes, measured one at a time at fixed recall. The largest "
+                         "is the one that looks least like an algorithm."),
+        klocal=img_tag("fig7_klocal.png",
+                       "The scan block stages a 48 KB table, leaving 51 KB of the 99 KB opt-in "
+                       "limit for scratch, and the scratch is (2*K_LOCAL*BLOCK + 2*BLOCK) "
+                       "floats. Keeping more candidates per thread and running more threads "
+                       "are the same budget."),
+        nprobe=img_tag("fig8_nprobe.png",
+                       "Probing every one of the 1024 lists reaches 0.9528, so what caps recall "
+                       "at this code size is the quantiser, not how much of the index is "
+                       "searched."),
+        bytes=img_tag("fig6_bytes.png",
+                      "Doubling the residual precision moves recall further than doubling the "
+                      "primary code, and costs a fraction of the throughput."),
+        alpha=img_tag("fig5_alpha.png",
+                      "Recall stops improving at about alpha=32 while the cost of refining "
+                      "alpha*k candidates keeps climbing. The published setting of 100 is "
+                      "past the knee."),
+        build=img_tag("fig4_build.png",
+                      "Phase timing of the index build. The residual codebook held 80% of it "
+                      "on a single core of 208; the primary codebook, which was blamed first, "
+                      "held 16%."),
+        cpu=img_tag("fig9_cpu_gpu.png",
+                    "The same index and the same settings on CPU. All-core is only 5.2x "
+                    "single-thread on a 208-core host, so the reference search is not "
+                    "parallel."),
         memory=img_tag("fig2_memory.png",
                        "What reaching 0.98 costs. Memory is read with cudaMemGetInfo and so "
                        "includes the search workspace, not only the code payload -- which is "
@@ -290,6 +317,19 @@ footer{{border-top:1px solid var(--rule);margin-top:44px;padding-top:20px;font-s
   appear at all. On a front it is simply where the line stops.</p>
   {gate95}
   {memory}
+</section>
+
+<section>
+  <h2>What produced it</h2>
+  <p>The comparison says where JHQ is ahead. These say what put it there, what
+  the two selection parameters buy, and where the design is pinned.</p>
+  {ablation}
+  {klocal}
+  {nprobe}
+  {bytes}
+  {alpha}
+  {build}
+  {cpu}
 </section>
 
 <footer>
