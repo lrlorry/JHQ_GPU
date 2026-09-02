@@ -154,21 +154,19 @@ def main():
     html = TEMPLATE.format(
         meta=meta_html or "environment not recorded",
         tables="\n".join(body),
-        gate95=img_tag("fig_gate95.png",
-                       "Best QPS among each method's configurations that reach Recall@10 0.95. "
-                       "A hatched stub means the method was swept and never got there; the "
-                       "ceiling it did reach is printed on it."),
-        gate98=img_tag("fig_gate98.png",
-                       "The same at 0.98. int8 CAGRA reaches it on none of the six, and on "
-                       "OpenAI3-3072 JHQ is ahead of fp32 CAGRA on throughput as well."),
+        gate95=img_tag("fig1_fronts.png",
+                       "Each line ends at that method's ceiling, printed beside it. The two "
+                       "768-dimension panels have fp32 CAGRA above JHQ throughout; at 1536 "
+                       "the lines cross near 0.97 and at 3072 JHQ is above it from 0.96 on. "
+                       "JQ never exceeds 0.774, so it has no line in this range and its "
+                       "ceiling is noted in each panel instead."),
+        gate98="",
         ceiling=img_tag("fig_ceiling.png",
                         "The highest recall each method reaches at any setting. Above 1024 "
                         "dimensions JHQ's ceiling is the highest of the five."),
         memory=img_tag("fig_memory.png",
                        "Device memory actually in use against the recall it buys, read with "
                        "cudaMemGetInfo rather than derived from bytes per vector."),
-        fronts=img_tag("figA_fronts.png",
-                       "Full fronts per dataset, for reference."),
         trend=img_tag("figB_dimension_trend.png",
                       "CAGRA scores against stored vectors, so its distance work grows with d "
                       "while JHQ's is fixed at M subspaces. The ratio is measured, not modelled."),
@@ -286,19 +284,19 @@ footer{{border-top:1px solid var(--rule);margin-top:44px;padding-top:20px;font-s
 
 <section>
   <h2>Against the baselines</h2>
-  <p>Each panel answers one question. A method absent from a panel is not
-  missing data &mdash; it is a method that was swept and never reached that
-  recall, drawn as a hatched stub with its ceiling on it.</p>
+  <p>Throughput against recall, the form the field reads. An earlier version of
+  this section used bar charts at fixed recall gates; a bar at a gate discards
+  the curve that is the whole trade-off, log-scale bar heights cannot be
+  compared by eye, and "never reaches this recall" needed a hatched marker to
+  appear at all. On a front it is simply where the line stops.</p>
   {gate95}
-  {gate98}
   {ceiling}
   {memory}
 </section>
 
 <section>
-  <h2>Dimension, and the full fronts</h2>
+  <h2>Dimension</h2>
   {trend}
-  {fronts}
 </section>
 
 <footer>
