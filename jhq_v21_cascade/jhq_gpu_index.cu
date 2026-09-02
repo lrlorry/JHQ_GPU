@@ -779,6 +779,18 @@ void JHQGpuIndex::add(const float* h_x, int n) {
         CUDA_CHECK(cudaStreamCreate(&st[b]));
         CUDA_CHECK(cudaEventCreateWithFlags(&ev[b], cudaEventDisableTiming));
     }
+    // The GEMM form of the primary encode needs somewhere to put y.c for a chunk
+    // of subspaces: chunk*AB*K floats. 512 MB of it covers 8 subspaces at
+    // AB=65536, K=256, so the batched call runs twelve times per batch rather
+    // than ninety-six.
+    float* d_cent_sqnorm = nullptr;
+    CUDA_CHECK(cudaMalloc(&d_cent_sqnorm, (size_t)M_ * K_ * sizeof(float)));
+    launch_centroid_sqnorms(d_cent_, d_cent_sqnorm, M_, K_, Ds_);
+    const size_t dots_bytes = (size_t)512 << 20;
+    const int dots_rows = (int)std::min<size_t>(dots_bytes / (sizeof(float) * K_),
+                                                (size_t)M_ * AB);
+    float* d_dots_enc[2] = {nullptr, nullptr};
+
     // One assignment scratch per stream, not one for the loop. Hoisting it out
     // of the batch loop removes a malloc and a free per batch, but a single
     // buffer is written by both streams at once: the coarse assignment then
@@ -789,6 +801,8 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     float* d_dots[2] = {nullptr, nullptr};
     for (int b = 0; b < NBUF; ++b)
         CUDA_CHECK(cudaMalloc(&d_dots[b], (long long)nlist_ * 8192 * sizeof(float)));
+    for (int b = 0; b < NBUF; ++b)
+        CUDA_CHECK(cudaMalloc(&d_dots_enc[b], (size_t)dots_rows * K_ * sizeof(float)));
 
     const float one = 1.f, zero = 0.f;
     int nbatch = 0;
@@ -836,8 +850,27 @@ void JHQGpuIndex::add(const float* h_x, int n) {
                                  d_xb[cur], d_, &zero, d_yb[cur], d_));
         lap(t0, t_rot);
 
-        launch_primary_encode(d_yb[cur], d_pc + start * M_, d_cent_,
-                              nb, d_, M_, Ds_, K_, st[cur]);
+        // Which form wins depends on the subspace width, and the crossover was
+        // measured rather than guessed. The GEMM reduces over Ds, so a narrow
+        // subspace makes it a product too thin for cuBLAS to fill; the loop
+        // instead holds Ds floats per thread and loses occupancy as Ds grows.
+        // Primary encode, milliseconds, loop against GEMM:
+        //     Ds=8  (Vogue)          98  vs  247
+        //     Ds=16 (OpenAI3-1536)  219  vs  263
+        //     Ds=32 (OpenAI3-3072)  439  vs  272
+        // JHQ_ENCODE_GEMM forces either for measurement.
+        {
+            const char* force = std::getenv("JHQ_ENCODE_GEMM");
+            const bool use_gemm = force ? (force[0] == '1') : (Ds_ >= 32);
+            if (use_gemm)
+                launch_primary_encode_gemm(cublas_, d_yb[cur], d_pc + start * M_,
+                                           d_cent_, d_cent_sqnorm,
+                                           d_dots_enc[cur], dots_rows,
+                                           nb, d_, M_, Ds_, K_, st[cur]);
+            else
+                launch_primary_encode(d_yb[cur], d_pc + start * M_, d_cent_,
+                                      nb, d_, M_, Ds_, K_, st[cur]);
+        }
         lap(t0, t_penc);
 
         launch_residual_encode(d_yb[cur], d_pc + start * M_,
@@ -859,19 +892,35 @@ void JHQGpuIndex::add(const float* h_x, int n) {
             "residual encode %.1f | ivf assign %.1f\n",
             t_h2d, t_rot, t_penc, t_renc, t_asg);
 
+    cudaFree(d_cent_sqnorm);
     for (int b = 0; b < NBUF; ++b) {
         cudaFree(d_dots[b]);
+        cudaFree(d_dots_enc[b]);
         cudaFreeHost(h_stage[b]); cudaFree(d_xb[b]); cudaFree(d_yb[b]);
         cudaStreamDestroy(st[b]); cudaEventDestroy(ev[b]);
     }
 
-    // ---- Unchanged from v12_transposed from here down. ----
+    // The tail of add() has never been timed: it is a device sort, a copy of the
+    // whole assignment array back to the host, a single-threaded count over it,
+    // then two more kernels. At 17.8M rows that copy is 71 MB and that loop is
+    // 17.8M iterations.
+    double t_sort = 0, t_count = 0, t_gather = 0, t_transpose = 0;
+    auto tail = std::chrono::steady_clock::now();
+    auto tail_lap = [&](double& acc) {
+        if (!add_phases) return;
+        CUDA_CHECK(cudaDeviceSynchronize());
+        auto now = std::chrono::steady_clock::now();
+        acc += std::chrono::duration<double, std::milli>(now - tail).count();
+        tail = now;
+    };
+
     int* d_order = nullptr;
     CUDA_CHECK(cudaMalloc(&d_order, (long long)n * sizeof(int)));
     thrust::device_ptr<int> t_assign(d_assign);
     thrust::device_ptr<int> t_order(d_order);
     thrust::sequence(t_order, t_order + n);
     thrust::sort_by_key(t_assign, t_assign + n, t_order);
+    tail_lap(t_sort);
 
     std::vector<int> h_assign(n);
     CUDA_CHECK(cudaMemcpy(h_assign.data(), d_assign, (long long)n * sizeof(int),
@@ -894,6 +943,7 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     CUDA_CHECK(cudaMemcpy(d_list_offsets_, offsets.data(),
                           (long long)(nlist_ + 1) * sizeof(int),
                           cudaMemcpyHostToDevice));
+    tail_lap(t_count);
 
     // Temporary [N, M] primary buffer for gathering, then transposed.
     uint8_t* d_list_primary_nm = nullptr;
@@ -903,6 +953,7 @@ void JHQGpuIndex::add(const float* h_x, int n) {
         d_order, d_pc, d_rc, d_co,
         d_list_ids_, d_list_primary_nm, d_list_res_, d_list_corr_,
         n, M_, bpv_);
+    tail_lap(t_gather);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
@@ -916,6 +967,12 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     dim3 block(TILE, TILE);
     transpose_uint8_kernel<TILE><<<grid, block>>>(d_list_primary_nm, d_list_primary_t_,
                                                    (long long)n, M_);
+    tail_lap(t_transpose);
+    if (add_phases)
+        std::fprintf(stderr,
+            "  [add-tail] sort %.1f ms | count (D2H + host loop) %.1f | "
+            "gather %.1f | transpose %.1f\n",
+            t_sort, t_count, t_gather, t_transpose);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 

@@ -1,6 +1,12 @@
 #include "jhq_v21_cascade/encode.cuh"
 
 #include <algorithm>
+
+#ifndef CUBLAS_CHECK
+#define CUBLAS_CHECK(x) do { cublasStatus_t _s = (x); if (_s != CUBLAS_STATUS_SUCCESS) { \
+    fprintf(stderr, "cuBLAS error %s:%d  %d\n", __FILE__, __LINE__, (int)_s); \
+    abort(); } } while (0)
+#endif
 #include "common/cuda_utils.cuh"
 
 namespace jhq_gpu {
@@ -168,6 +174,99 @@ void launch_residual_encode(
         d_y, d_primary, d_res_codes, d_corrections,
         d_cent, d_res_c1d, N, d, M, Ds, K, Kr, Br, bpv);
     CUDA_CHECK(cudaGetLastError());
+}
+
+} // namespace jhq_gpu
+
+namespace jhq_gpu {
+namespace {
+
+__global__ void centroid_sqnorm_kernel(const float* __restrict__ d_cent,
+                                       float* d_out, int M, int K, int Ds)
+{
+    for (long long t = (long long)blockIdx.x * blockDim.x + threadIdx.x;
+         t < (long long)M * K; t += (long long)gridDim.x * blockDim.x) {
+        const float* c = d_cent + t * Ds;
+        float s = 0.f;
+        for (int j = 0; j < Ds; ++j) s += c[j] * c[j];
+        d_out[t] = s;
+    }
+}
+
+// argmin over ||c||^2 - 2 y.c, one thread per (vector, subspace-in-chunk).
+// The tie goes to the lowest index, as the loop version and the host both do.
+__global__ void argmin_from_dots_kernel(
+    const float* __restrict__ d_dots,     // [chunk][nb][K], row-major per subspace
+    const float* __restrict__ d_sqnorm,   // [M][K]
+    uint8_t*                  d_codes,    // [N][M]
+    int nb, int K, int M, int m0, int chunk, long long row_offset)
+{
+    const long long total = (long long)chunk * nb;
+    for (long long t = (long long)blockIdx.x * blockDim.x + threadIdx.x;
+         t < total; t += (long long)gridDim.x * blockDim.x) {
+        const int mi = (int)(t / nb);          // subspace within the chunk
+        const int i  = (int)(t - (long long)mi * nb);
+        const float* dots = d_dots + ((long long)mi * nb + i) * K;
+        const float* sq   = d_sqnorm + (long long)(m0 + mi) * K;
+
+        int   best = 0;
+        float bd   = sq[0] - 2.f * dots[0];
+        for (int c = 1; c < K; ++c) {
+            const float v = sq[c] - 2.f * dots[c];
+            if (v < bd) { bd = v; best = c; }
+        }
+        d_codes[(row_offset + i) * M + (m0 + mi)] = (uint8_t)best;
+    }
+}
+
+} // namespace
+
+void launch_centroid_sqnorms(const float* d_cent, float* d_out,
+                             int M, int K, int Ds, cudaStream_t stream)
+{
+    const int BLOCK = 256;
+    centroid_sqnorm_kernel<<<((long long)M * K + BLOCK - 1) / BLOCK, BLOCK, 0, stream>>>(
+        d_cent, d_out, M, K, Ds);
+    CUDA_CHECK(cudaGetLastError());
+}
+
+void launch_primary_encode_gemm(cublasHandle_t cublas,
+                                const float* d_y, uint8_t* d_codes,
+                                const float* d_cent, const float* d_cent_sqnorm,
+                                float* d_dots, int dots_capacity_rows,
+                                int N, int d, int M, int Ds, int K,
+                                cudaStream_t stream)
+{
+    // The scratch holds chunk*N*K floats; pick the largest chunk it can take so
+    // one strided-batched call covers as many subspaces as possible.
+    int chunk = dots_capacity_rows / (N > 0 ? N : 1);
+    if (chunk < 1) chunk = 1;
+    if (chunk > M) chunk = M;
+
+    const float one = 1.f, zero = 0.f;
+    CUBLAS_CHECK(cublasSetStream(cublas, stream));
+    const int BLOCK = 256;
+
+    for (int m0 = 0; m0 < M; m0 += chunk) {
+        const int c = (m0 + chunk <= M) ? chunk : (M - m0);
+        // C[mi] (K x N, column-major) = A[mi]^T (K x Ds) * B[mi] (Ds x N)
+        //   A[mi] = centroids of subspace m0+mi, [K][Ds] row-major = Ds x K col-major
+        //   B[mi] = y's slice for that subspace: leading dimension d, stride Ds
+        CUBLAS_CHECK(cublasSgemmStridedBatched(
+            cublas, CUBLAS_OP_T, CUBLAS_OP_N,
+            K, N, Ds,
+            &one,
+            d_cent + (long long)m0 * K * Ds, Ds, (long long)K * Ds,
+            d_y + (long long)m0 * Ds,        d,  (long long)Ds,
+            &zero,
+            d_dots, K, (long long)N * K,
+            c));
+        const long long total = (long long)c * N;
+        argmin_from_dots_kernel<<<(int)std::min((total + BLOCK - 1) / BLOCK, 4096LL),
+                                  BLOCK, 0, stream>>>(
+            d_dots, d_cent_sqnorm, d_codes, N, K, M, m0, c, 0);
+        CUDA_CHECK(cudaGetLastError());
+    }
 }
 
 } // namespace jhq_gpu
