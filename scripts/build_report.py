@@ -160,10 +160,6 @@ def main():
                        "the lines cross near 0.97 and at 3072 JHQ is above it from 0.96 on. "
                        "JQ never exceeds 0.774, so it has no line in this range and its "
                        "ceiling is noted in each panel instead."),
-        gate98="",
-        ceiling=img_tag("fig_ceiling.png",
-                        "The highest recall each method reaches at any setting. Above 1024 "
-                        "dimensions JHQ's ceiling is the highest of the five."),
         memory=img_tag("fig2_memory.png",
                        "What reaching 0.98 costs. Memory is read with cudaMemGetInfo and so "
                        "includes the search workspace, not only the code payload -- which is "
@@ -171,9 +167,6 @@ def main():
                        "dimensions IVF-PQ gets to 0.98 as cheaply as JHQ or cheaper; JHQ's "
                        "memory advantage appears at 1536 and 3072, where IVF-PQ and int8 "
                        "CAGRA do not get there at all."),
-        trend=img_tag("figB_dimension_trend.png",
-                      "CAGRA scores against stored vectors, so its distance work grows with d "
-                      "while JHQ's is fixed at M subspaces. The ratio is measured, not modelled."),
         failures=fail_html,
     )
     with open(a.out, "w") as fh:
@@ -296,13 +289,7 @@ footer{{border-top:1px solid var(--rule);margin-top:44px;padding-top:20px;font-s
   compared by eye, and "never reaches this recall" needed a hatched marker to
   appear at all. On a front it is simply where the line stops.</p>
   {gate95}
-  {ceiling}
   {memory}
-</section>
-
-<section>
-  <h2>Dimension</h2>
-  {trend}
 </section>
 
 <footer>
