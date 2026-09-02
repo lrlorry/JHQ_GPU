@@ -171,8 +171,18 @@ def fig_scale():
         ax.set_xlim(0, 46)
         ax.set_xlabel("device memory held, GiB (measured after build)")
         ax.set_title(title, fontsize=12)
+        # the point is not that others fail to fit -- int8 CAGRA and IVF-PQ both
+        # do -- but that the ones which fit cap out below 0.95 while the one with
+        # the higher ceiling cannot be loaded at all
+        ok = [(nm, nt) for nm, nt in zip(names, notes) if nt.startswith("R=")]
+        if ok:
+            best = max(ok, key=lambda t: float(t[1][2:]))
+            ax.text(.98, .04, f"highest recall here: {best[0]}  {best[1]}",
+                    transform=ax.transAxes, ha="right", fontsize=9.5,
+                    color="#12507B", weight="bold")
         ax.grid(alpha=.22, axis="x", zorder=0)
-    fig.suptitle("What fits on one card at ten and eighteen million vectors", fontsize=13)
+    fig.suptitle("At ten million vectors everything but fp32 CAGRA fits — and only JHQ still "
+                 "reaches 0.95", fontsize=13)
     fig.tight_layout(rect=[0, 0, 1, .94])
     fig.savefig(os.path.join(D, "core2_scale.png"), dpi=155)
     print("core2_scale.png")
@@ -202,7 +212,16 @@ def fig_hierarchy():
         ax.axvline(0.95, color="#888", ls=":", lw=1.2)
         ax.set_yscale("log"); ax.set_xlim(0.55, 1.04)
         ax.set_xlabel("Recall@10", fontsize=10.5); ax.set_ylabel("QPS", fontsize=10.5)
-        ax.set_title(title, fontsize=12); ax.grid(alpha=.22, which="both")
+        ax.set_title(title, fontsize=12)
+        # the point is not that others fail to fit -- int8 CAGRA and IVF-PQ both
+        # do -- but that the ones which fit cap out below 0.95 while the one with
+        # the higher ceiling cannot be loaded at all
+        ok = [(nm, nt) for nm, nt in zip(names, notes) if nt.startswith("R=")]
+        if ok:
+            best = max(ok, key=lambda t: float(t[1][2:]))
+            ax.text(.98, .04, f"highest recall here: {best[0]}  {best[1]}",
+                    transform=ax.transAxes, ha="right", fontsize=9.5,
+                    color="#12507B", weight="bold"); ax.grid(alpha=.22, which="both")
     axes[0].legend(fontsize=9.5, loc="lower left")
     fig.suptitle("Same kernel, same IVF, same occupancy and selection — only the residual level "
                  "differs.  Without it nothing reaches 0.95.", fontsize=12.5)

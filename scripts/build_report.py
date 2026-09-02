@@ -166,10 +166,13 @@ def main():
                       "so its work grows with d. The recall at which JHQ passes fp32 CAGRA is "
                       "marked: absent at 768, 0.979 at 1536, 0.968 at 3072."),
         core2=img_tag("core2_scale.png",
-                      "Device memory held after the build, against the card. fp32 CAGRA asks "
-                      "for 41.3 GiB at 10.1M vectors and fails; JHQ at four residual bits "
-                      "holds 6.8 GiB and is the only configuration there above 0.95. Our own "
-                      "eight-bit setting fails during add at 17.8M, which is shown too."),
+                      "Device memory held after the build, against the card. Everything except "
+                      "fp32 CAGRA fits at 10.1M vectors -- int8 CAGRA at 11.1 GiB and IVF-PQ at "
+                      "7.4 GiB both run -- but they cap at 0.9376 and 0.9425, while the method "
+                      "with the higher ceiling cannot be loaded at all, asking 41.3 GiB. JHQ "
+                      "holds the least memory of any of them, 6.8 GiB, and is the only one "
+                      "there that reaches 0.95. Our own eight-bit setting fails during add at "
+                      "17.8M, which is shown too."),
         core3=img_tag("core3_hierarchy.png",
                       "Residual level off, on at four bits, on at eight. Same kernel, same "
                       "IVF, same occupancy and selection -- the gap is the quantiser, not the "
