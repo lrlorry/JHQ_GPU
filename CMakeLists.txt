@@ -748,6 +748,7 @@ function(add_jhq_cascade_variant NUM DEN KEEP)
         jhq_v21_cascade/encode.cu
         jhq_v21_cascade/search.cu
         jhq_v21_cascade/jhq_gpu_index.cu
+    jhq_v21_cascade/train_pq_gpu.cu
     )
     target_include_directories(${tgt} PUBLIC ${CMAKE_SOURCE_DIR})
     target_link_libraries(${tgt} PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
@@ -777,6 +778,7 @@ function(add_jhq_cascade_fast KEEP)
         jhq_v21_cascade/encode.cu
         jhq_v21_cascade/search.cu
         jhq_v21_cascade/jhq_gpu_index.cu
+    jhq_v21_cascade/train_pq_gpu.cu
     )
     target_include_directories(${tgt} PUBLIC ${CMAKE_SOURCE_DIR})
     target_link_libraries(${tgt} PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
@@ -803,6 +805,7 @@ add_library(jhq_v21_noselect STATIC
     jhq_v21_cascade/encode.cu
     jhq_v21_cascade/search.cu
     jhq_v21_cascade/jhq_gpu_index.cu
+    jhq_v21_cascade/train_pq_gpu.cu
 )
 target_include_directories(jhq_v21_noselect PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(jhq_v21_noselect PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
@@ -821,6 +824,7 @@ function(add_jhq_bitonic KEEP)
         jhq_v21_cascade/encode.cu
         jhq_v21_cascade/search.cu
         jhq_v21_cascade/jhq_gpu_index.cu
+    jhq_v21_cascade/train_pq_gpu.cu
     )
     target_include_directories(${tgt} PUBLIC ${CMAKE_SOURCE_DIR})
     target_link_libraries(${tgt} PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
@@ -848,6 +852,7 @@ function(add_jhq_strided TC BITO)
         jhq_v21_cascade/encode.cu
         jhq_v21_cascade/search.cu
         jhq_v21_cascade/jhq_gpu_index.cu
+    jhq_v21_cascade/train_pq_gpu.cu
     )
     target_include_directories(${tgt} PUBLIC ${CMAKE_SOURCE_DIR})
     target_link_libraries(${tgt} PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
@@ -873,6 +878,7 @@ add_library(jhq_v22_jq STATIC
     jhq_v21_cascade/encode.cu
     jhq_v21_cascade/search.cu
     jhq_v21_cascade/jhq_gpu_index.cu
+    jhq_v21_cascade/train_pq_gpu.cu
 )
 target_include_directories(jhq_v22_jq PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(jhq_v22_jq PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
@@ -897,6 +903,7 @@ function(add_jhq_klocal KL)
         jhq_v21_cascade/encode.cu
         jhq_v21_cascade/search.cu
         jhq_v21_cascade/jhq_gpu_index.cu
+    jhq_v21_cascade/train_pq_gpu.cu
     )
     target_include_directories(${tgt} PUBLIC ${CMAKE_SOURCE_DIR})
     target_link_libraries(${tgt} PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)

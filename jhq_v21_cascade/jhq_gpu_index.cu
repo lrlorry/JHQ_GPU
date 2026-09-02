@@ -11,6 +11,7 @@
 #define JHQ_GLOBAL_RESIDUAL_CB 0
 #endif
 #include "jhq_v21_cascade/encode.cuh"
+#include "jhq_v21_cascade/train_pq_gpu.cuh"
 #include "jhq_v21_cascade/search.cuh"
 #include "common/cuda_utils.cuh"
 
@@ -534,12 +535,29 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
                           cudaMemcpyDeviceToHost));
     JHQ_TRAIN_PHASE("rotate + D2H");
 
-    cb_->train(h_y_train.data(), n_train, kmeans_iters_, seed_);
-    JHQ_TRAIN_PHASE("pq codebook kmeans");
+    // The primary codebook is 96 independent subspaces of 100k points against
+    // 256 centroids in 8 dimensions -- about 98 GFLOP over five iterations, and
+    // 3.5 s of the 8.3 s build even with every core busy. Setting
+    // JHQ_GPU_CODEBOOK runs the Lloyd iterations on the device instead; the
+    // analytical placement stays on the host so both paths start identically.
+    const bool gpu_codebook = std::getenv("JHQ_GPU_CODEBOOK") != nullptr;
+    cb_->train(h_y_train.data(), n_train,
+               gpu_codebook ? 0 : kmeans_iters_, seed_);
+    JHQ_TRAIN_PHASE(gpu_codebook ? "pq codebook init (host)" : "pq codebook kmeans");
 
     CUDA_CHECK(cudaMalloc(&d_cent_, cb_->size() * sizeof(float)));
     CUDA_CHECK(cudaMemcpy(d_cent_, cb_->data(), cb_->size() * sizeof(float),
                           cudaMemcpyHostToDevice));
+
+    if (gpu_codebook && kmeans_iters_ > 0) {
+        launch_pq_kmeans(d_y_train, n_train, d_, M_, Ds_, K_,
+                         d_cent_, kmeans_iters_);
+        // hand the result back: the residual level trains against these, and
+        // the trained-state cache stores them
+        CUDA_CHECK(cudaMemcpy(cb_->mutable_data(), d_cent_,
+                              cb_->size() * sizeof(float), cudaMemcpyDeviceToHost));
+        JHQ_TRAIN_PHASE("pq codebook kmeans (device)");
+    }
 
     uint8_t* d_codes_train = nullptr;
     CUDA_CHECK(cudaMalloc(&d_codes_train, (long long)n_train * M_));

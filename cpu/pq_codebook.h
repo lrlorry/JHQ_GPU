@@ -47,6 +47,10 @@ public:
         return cent_.data() + (size_t)m * (size_t)K_ * (size_t)Ds_;
     }
     const float* data() const { return cent_.data(); }
+    // Writable view of the same buffer. Exists so the Lloyd iterations can run
+    // on the device and hand the result back; the analytical initialisation
+    // stays on the host either way, so the starting point does not change.
+    float*       mutable_data() { return cent_.data(); }
     size_t       size() const { return cent_.size(); }
 
     int d()  const { return d_; }
