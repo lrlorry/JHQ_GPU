@@ -77,10 +77,19 @@ void JLTransform::estimate_sigma(const float* x, int n_samples) {
     // Lemma 2: after rotation, Var[y_i] = ||x||²/d.
     // So σ² = E[||x||²]/d — computed directly from raw vectors in O(nd),
     // avoiding the full O(nd²) rotation that the naive approach requires.
+    // A reduction over n_samples*d values -- 76.8M at the usual settings, and
+    // 121 ms of the build on one core. Reassociating it changes sigma in the
+    // last bits of a double, and sigma only places quantiles for the analytical
+    // initialisation, so the effect is far below what that placement resolves.
     double sum2 = 0.0;
+#ifdef _OPENMP
+#pragma omp parallel for reduction(+:sum2) schedule(static)
+#endif
     for (int i = 0; i < n_samples; i++) {
         const float* xi = x + (size_t)i * d_;
-        for (int j = 0; j < d_; j++) sum2 += (double)xi[j] * xi[j];
+        double s = 0.0;
+        for (int j = 0; j < d_; j++) s += (double)xi[j] * xi[j];
+        sum2 += s;
     }
     sigma_ = (float)std::sqrt(sum2 / ((double)n_samples * d_));
 }

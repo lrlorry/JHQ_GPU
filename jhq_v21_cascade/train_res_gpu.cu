@@ -64,10 +64,11 @@ __global__ void assign_accum_kernel(
     const float* __restrict__ d_seg, const float* __restrict__ d_c,
     double* d_sum, int* d_cnt, long long seg, int Kr)
 {
+    // doubles first so their alignment does not depend on Kr
     extern __shared__ char s_raw[];
-    float*  s_c   = (float*)s_raw;                 // Kr
-    double* s_sum = (double*)(s_c + Kr);           // Kr
+    double* s_sum = (double*)s_raw;                // Kr
     int*    s_cnt = (int*)(s_sum + Kr);            // Kr
+    float*  s_c   = (float*)(s_cnt + Kr);          // Kr
 
     const int m = blockIdx.y;
     for (int i = threadIdx.x; i < Kr; i += blockDim.x) {

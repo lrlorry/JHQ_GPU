@@ -24,6 +24,9 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 #include <numeric>
 #include <chrono>
 #include <string>
@@ -253,12 +256,22 @@ void JHQGpuIndex::train_ivf_centroids(
     if (n_train < nlist_)
         throw std::invalid_argument("n_train must be >= nlist for v12_transposed");
 
+    // Seed every list from an evenly spaced training vector. With the rotated
+    // set no longer copied to the host, those rows are fetched one at a time
+    // from the device -- nlist of them, against the whole set.
     centroids_.assign((long long)nlist_ * d_, 0.0f);
     for (int c = 0; c < nlist_; ++c) {
-        int src = (int)((long long)c * n_train / nlist_);
-        std::memcpy(centroids_.data() + (long long)c * d_,
-                    h_y_train + (long long)src * d_,
-                    (size_t)d_ * sizeof(float));
+        const int src = (int)((long long)c * n_train / nlist_);
+        if (h_y_train) {
+            std::memcpy(centroids_.data() + (long long)c * d_,
+                        h_y_train + (long long)src * d_,
+                        (size_t)d_ * sizeof(float));
+        } else {
+            CUDA_CHECK(cudaMemcpy(centroids_.data() + (long long)c * d_,
+                                  d_y_train + (long long)src * d_,
+                                  (size_t)d_ * sizeof(float),
+                                  cudaMemcpyDeviceToHost));
+        }
     }
 
     auto upload_centroids = [&]() {
@@ -286,6 +299,25 @@ void JHQGpuIndex::train_ivf_centroids(
     std::vector<int>    h_assign(n_train);
     std::vector<double> sums((long long)nlist_ * d_);
     std::vector<int>    counts(nlist_);
+
+    // With the codebooks on the device the assignment no longer has to come back:
+    // eight round trips and eight single-threaded passes over the training set
+    // were 397 ms of the build, and only the assignment step was on the GPU.
+    const bool gpu_ivf = std::getenv("JHQ_GPU_CODEBOOK") != nullptr;
+    if (gpu_ivf) {
+        for (int iter = 0; iter < ivf_iters_; ++iter) {
+            upload_centroids();
+            int* d_assign = assign_on_gpu(d_y_train, n_train);
+            launch_ivf_accumulate(d_y_train, d_assign, d_centroids_,
+                                  n_train, d_, nlist_, iter);
+            cudaFree(d_assign);
+            CUDA_CHECK(cudaMemcpy(centroids_.data(), d_centroids_,
+                                  (long long)nlist_ * d_ * sizeof(float),
+                                  cudaMemcpyDeviceToHost));
+        }
+        upload_centroids();
+        return;
+    }
 
     for (int iter = 0; iter < ivf_iters_; ++iter) {
         upload_centroids();
@@ -529,22 +561,45 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
     // The PQ centroids need the rotated training data, so rotate first and
     // pull it back once -- train() already copies it to the host below for
     // the IVF, so this costs one extra D2H at build time, not per query.
+    const bool gpu_codebook = std::getenv("JHQ_GPU_CODEBOOK") != nullptr;
+
     float* d_y_train = rotate_on_gpu(h_x, n_train);
-    std::vector<float> h_y_train((long long)n_train * d_);
-    CUDA_CHECK(cudaMemcpy(h_y_train.data(), d_y_train,
-                          (long long)n_train * d_ * sizeof(float),
-                          cudaMemcpyDeviceToHost));
-    JHQ_TRAIN_PHASE("rotate + D2H");
+    // The rotated training set is 2.9 GB on Vogue and every host-side consumer
+    // of it has moved to the device, except the analytical initialisation --
+    // and that reads only the per-subspace mean and variance. Computing those
+    // here brings back M*Ds*2 floats instead.
+    std::vector<float> h_y_train;
+    if (!gpu_codebook) {
+        h_y_train.resize((long long)n_train * d_);
+        CUDA_CHECK(cudaMemcpy(h_y_train.data(), d_y_train,
+                              (long long)n_train * d_ * sizeof(float),
+                              cudaMemcpyDeviceToHost));
+    }
+    JHQ_TRAIN_PHASE(gpu_codebook ? "rotate" : "rotate + D2H");
 
     // The primary codebook is 96 independent subspaces of 100k points against
     // 256 centroids in 8 dimensions -- about 98 GFLOP over five iterations, and
     // 3.5 s of the 8.3 s build even with every core busy. Setting
     // JHQ_GPU_CODEBOOK runs the Lloyd iterations on the device instead; the
     // analytical placement stays on the host so both paths start identically.
-    const bool gpu_codebook = std::getenv("JHQ_GPU_CODEBOOK") != nullptr;
-    cb_->train(h_y_train.data(), n_train,
-               gpu_codebook ? 0 : kmeans_iters_, seed_);
-    JHQ_TRAIN_PHASE(gpu_codebook ? "pq codebook init (host)" : "pq codebook kmeans");
+    if (gpu_codebook) {
+        const int cols = M_ * Ds_;
+        float *d_mean = nullptr, *d_var = nullptr;
+        CUDA_CHECK(cudaMalloc(&d_mean, (size_t)cols * sizeof(float)));
+        CUDA_CHECK(cudaMalloc(&d_var,  (size_t)cols * sizeof(float)));
+        launch_subspace_stats(d_y_train, n_train, d_, M_, Ds_, d_mean, d_var);
+        std::vector<float> h_mean(cols), h_var(cols);
+        CUDA_CHECK(cudaMemcpy(h_mean.data(), d_mean, (size_t)cols * sizeof(float),
+                              cudaMemcpyDeviceToHost));
+        CUDA_CHECK(cudaMemcpy(h_var.data(), d_var, (size_t)cols * sizeof(float),
+                              cudaMemcpyDeviceToHost));
+        cudaFree(d_mean); cudaFree(d_var);
+        cb_->init_from_stats(h_mean.data(), h_var.data(), seed_);
+    } else {
+        cb_->train(h_y_train.data(), n_train, kmeans_iters_, seed_);
+    }
+    JHQ_TRAIN_PHASE(gpu_codebook ? "pq codebook init (moments on device)"
+                                 : "pq codebook kmeans");
 
     CUDA_CHECK(cudaMalloc(&d_cent_, cb_->size() * sizeof(float)));
     CUDA_CHECK(cudaMemcpy(d_cent_, cb_->data(), cb_->size() * sizeof(float),
@@ -568,7 +623,8 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
     CUDA_CHECK(cudaDeviceSynchronize());
     JHQ_TRAIN_PHASE("primary encode");
 
-    train_ivf_centroids(h_y_train.data(), d_y_train, n_train);
+    train_ivf_centroids(h_y_train.empty() ? nullptr : h_y_train.data(),
+                        d_y_train, n_train);
     JHQ_TRAIN_PHASE("ivf centroids");
 
     if (gpu_codebook) {
@@ -626,6 +682,24 @@ int* JHQGpuIndex::assign_on_gpu(const float* d_y, int n) const {
     return d_assign;
 }
 
+void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
+                              float* d_dots, cudaStream_t stream) const {
+    const int   batch = 8192;
+    const float one = 1.f, zero = 0.f;
+    CUBLAS_CHECK(cublasSetStream(cublas_, stream));
+    for (int start = 0; start < n; start += batch) {
+        int nb = std::min(batch, n - start);
+        CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
+                                 nlist_, nb, d_, &one,
+                                 d_centroids_, d_,
+                                 d_y + (long long)start * d_, d_,
+                                 &zero, d_dots, nlist_));
+        assign_from_dots_kernel<<<(nb + 255) / 256, 256, 0, stream>>>(
+            d_dots, d_cent_norms_, d_out + start, nlist_, nb);
+        CUDA_CHECK(cudaGetLastError());
+    }
+}
+
 // ── Add ───────────────────────────────────────────────────────────────────────
 // v12_transposed's add() called rotate_on_gpu(h_x, n) on the WHOLE n at
 // once -- two full n*d float device buffers (raw + JL-rotated). That's
@@ -663,40 +737,133 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     CUDA_CHECK(cudaMalloc(&d_assign, (long long)n * sizeof(int)));
 
     const long long AB = add_batch_;
-    float* d_x_batch = nullptr;
-    float* d_y_batch = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_x_batch, AB * d_ * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_y_batch, AB * d_ * sizeof(float)));
+
+    // add() is the part of the build that scales with N: train is capped at
+    // 100k sample vectors whatever the dataset, so at 17.8M rows add is 96% of
+    // the build. Timing the phases rather than guessing which one costs,
+    // reported when JHQ_ADD_PHASES is set.
+    const bool add_phases = std::getenv("JHQ_ADD_PHASES") != nullptr;
+    double t_h2d = 0, t_rot = 0, t_penc = 0, t_renc = 0, t_asg = 0;
+    auto tick = [&]() {
+        if (add_phases) CUDA_CHECK(cudaDeviceSynchronize());
+        return std::chrono::steady_clock::now();
+    };
+    auto lap = [&](std::chrono::steady_clock::time_point& t0, double& acc) {
+        if (!add_phases) return;
+        CUDA_CHECK(cudaDeviceSynchronize());
+        auto t1 = std::chrono::steady_clock::now();
+        acc += std::chrono::duration<double, std::milli>(t1 - t0).count();
+        t0 = t1;
+    };
+
+    // Two-deep pipeline. The loop it replaces did a pageable copy, a device-wide
+    // synchronise and a pair of mallocs per batch, so the link sat idle while the
+    // GPU worked and vice versa. Two pinned staging buffers, two streams and one
+    // hoisted scratch let the host copy for batch i+1 run against the GPU work for
+    // batch i.
+    //
+    // Phase timing forces a synchronise after every step, so JHQ_ADD_PHASES
+    // degenerates this to the serial order on purpose: attribution needs the
+    // steps separated, throughput needs them overlapped.
+    const int NBUF = add_phases ? 1 : 2;
+    float*       h_stage[2] = {nullptr, nullptr};
+    float*       d_xb[2]    = {nullptr, nullptr};
+    float*       d_yb[2]    = {nullptr, nullptr};
+    cudaStream_t st[2]      = {nullptr, nullptr};
+    cudaEvent_t  ev[2]      = {nullptr, nullptr};
+    for (int b = 0; b < NBUF; ++b) {
+        CUDA_CHECK(cudaHostAlloc(&h_stage[b], (size_t)AB * d_ * sizeof(float),
+                                 cudaHostAllocDefault));
+        CUDA_CHECK(cudaMalloc(&d_xb[b], (long long)AB * d_ * sizeof(float)));
+        CUDA_CHECK(cudaMalloc(&d_yb[b], (long long)AB * d_ * sizeof(float)));
+        CUDA_CHECK(cudaStreamCreate(&st[b]));
+        CUDA_CHECK(cudaEventCreateWithFlags(&ev[b], cudaEventDisableTiming));
+    }
+    // One assignment scratch per stream, not one for the loop. Hoisting it out
+    // of the batch loop removes a malloc and a free per batch, but a single
+    // buffer is written by both streams at once: the coarse assignment then
+    // lands in the wrong list for whichever batch loses, and recall falls from
+    // 0.9452 to 0.80. Single-threaded staging hid it -- the copy was slow enough
+    // that the previous batch's assignment had finished -- so it only appeared
+    // once the staging copy got fast.
+    float* d_dots[2] = {nullptr, nullptr};
+    for (int b = 0; b < NBUF; ++b)
+        CUDA_CHECK(cudaMalloc(&d_dots[b], (long long)nlist_ * 8192 * sizeof(float)));
 
     const float one = 1.f, zero = 0.f;
-    for (long long start = 0; start < n; start += AB) {
-        int nb = (int)std::min(AB, (long long)n - start);
+    int nbatch = 0;
+    for (long long start = 0; start < n; start += AB, ++nbatch) {
+        const int nb  = (int)std::min(AB, (long long)n - start);
+        const int cur = nbatch % NBUF;
+        if (nbatch >= NBUF) CUDA_CHECK(cudaEventSynchronize(ev[cur]));
 
-        CUDA_CHECK(cudaMemcpy(d_x_batch, h_x + start * (long long)d_,
-                              (long long)nb * d_ * sizeof(float),
-                              cudaMemcpyHostToDevice));
-        CUBLAS_CHECK(cublasSgemm(cublas_,
-                                 CUBLAS_OP_N, CUBLAS_OP_N,
-                                 d_, nb, d_,
-                                 &one, d_Pi_, d_, d_x_batch, d_,
-                                 &zero, d_y_batch, d_));
+        auto t0 = tick();
+        // The source is an mmap of the base file, so it cannot be handed to the
+        // DMA engine directly and has to pass through the pinned buffer. That
+        // copy, single-threaded, was the wall: 12.3 GB at a few GB/s on
+        // openai3-3072, more than the GPU work it was supposed to hide behind.
+        // Splitting it across the host's cores is the cheapest way to make it
+        // small enough to overlap.
+        {
+            const size_t bytes = (size_t)nb * d_ * sizeof(float);
+            const char*  src   = (const char*)(h_x + start * (long long)d_);
+            char*        dst   = (char*)h_stage[cur];
+#ifdef _OPENMP
+            // Eight threads copied this fastest; 208 took three times as long as
+            // one, the fork, join and the cores taken from the CUDA driver
+            // costing more than the copy they split.
+            const int nthr = omp_get_max_threads() < 8 ? omp_get_max_threads() : 8;
+#pragma omp parallel num_threads(nthr)
+            {
+                const int nt = omp_get_num_threads(), ti = omp_get_thread_num();
+                const size_t chunk = (bytes + nt - 1) / nt;
+                const size_t lo = (size_t)ti * chunk;
+                const size_t hi = lo + chunk < bytes ? lo + chunk : bytes;
+                if (lo < bytes) std::memcpy(dst + lo, src + lo, hi - lo);
+            }
+#else
+            std::memcpy(dst, src, bytes);
+#endif
+        }
+        CUDA_CHECK(cudaMemcpyAsync(d_xb[cur], h_stage[cur],
+                                   (long long)nb * d_ * sizeof(float),
+                                   cudaMemcpyHostToDevice, st[cur]));
+        lap(t0, t_h2d);
 
-        launch_primary_encode(d_y_batch, d_pc + start * M_, d_cent_,
-                              nb, d_, M_, Ds_, K_);
-        launch_residual_encode(d_y_batch, d_pc + start * M_,
+        CUBLAS_CHECK(cublasSetStream(cublas_, st[cur]));
+        CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_N, CUBLAS_OP_N,
+                                 d_, nb, d_, &one, d_Pi_, d_,
+                                 d_xb[cur], d_, &zero, d_yb[cur], d_));
+        lap(t0, t_rot);
+
+        launch_primary_encode(d_yb[cur], d_pc + start * M_, d_cent_,
+                              nb, d_, M_, Ds_, K_, st[cur]);
+        lap(t0, t_penc);
+
+        launch_residual_encode(d_yb[cur], d_pc + start * M_,
                                d_rc + start * bpv_, d_co + start,
                                d_cent_, d_res_c1d_,
-                               nb, d_, M_, Ds_, K_, Kr_, Br_, bpv_);
-        CUDA_CHECK(cudaDeviceSynchronize());
+                               nb, d_, M_, Ds_, K_, Kr_, Br_, bpv_, st[cur]);
+        lap(t0, t_renc);
 
-        int* d_assign_batch = assign_on_gpu(d_y_batch, nb);
-        CUDA_CHECK(cudaMemcpy(d_assign + start, d_assign_batch,
-                              (long long)nb * sizeof(int),
-                              cudaMemcpyDeviceToDevice));
-        cudaFree(d_assign_batch);
+        assign_into(d_yb[cur], nb, d_assign + start, d_dots[cur], st[cur]);
+        CUDA_CHECK(cudaEventRecord(ev[cur], st[cur]));
+        lap(t0, t_asg);
     }
-    cudaFree(d_x_batch);
-    cudaFree(d_y_batch);
+    for (int b = 0; b < NBUF; ++b) CUDA_CHECK(cudaStreamSynchronize(st[b]));
+    CUBLAS_CHECK(cublasSetStream(cublas_, 0));
+
+    if (add_phases)
+        std::fprintf(stderr,
+            "  [add] h2d %.1f ms | rotate %.1f | primary encode %.1f | "
+            "residual encode %.1f | ivf assign %.1f\n",
+            t_h2d, t_rot, t_penc, t_renc, t_asg);
+
+    for (int b = 0; b < NBUF; ++b) {
+        cudaFree(d_dots[b]);
+        cudaFreeHost(h_stage[b]); cudaFree(d_xb[b]); cudaFree(d_yb[b]);
+        cudaStreamDestroy(st[b]); cudaEventDestroy(ev[b]);
+    }
 
     // ---- Unchanged from v12_transposed from here down. ----
     int* d_order = nullptr;

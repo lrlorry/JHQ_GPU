@@ -32,8 +32,7 @@ PQCodebook::PQCodebook(int d, int M, int B)
 }
 
 void PQCodebook::analytical_init(const float* sub, int n, float* out, int seed) const {
-    const int dim = Ds_, k = K_;
-
+    const int dim = Ds_;
     std::vector<float> mean(dim, 0.f), var(dim, 0.f);
     for (int i = 0; i < n; ++i)
         for (int j = 0; j < dim; ++j) mean[j] += sub[(size_t)i * dim + j];
@@ -47,13 +46,25 @@ void PQCodebook::analytical_init(const float* sub, int n, float* out, int seed) 
             }
         for (int j = 0; j < dim; ++j) var[j] /= (float)(n - 1);
     }
+    analytical_init_from_stats(mean.data(), var.data(), out, seed);
+}
+
+// The construction past the first two moments touches no data: a trimmed
+// variance sets the radius, the radii are Gaussian quantiles, and the
+// directions are random vectors orthogonalised against each other. Splitting it
+// here lets the device compute the two moments -- which is the only part that
+// reads all n*d values -- and hand back M*Ds*2 floats instead of the whole
+// rotated training set.
+void PQCodebook::analytical_init_from_stats(const float* mean, const float* var,
+                                            float* out, int seed) const {
+    const int dim = Ds_, k = K_;
 
     // A trimmed statistic rather than the plain mean: after the JL rotation the
     // per-dimension variances are close but not identical, and a single outlier
     // dimension would otherwise set the radius for every centroid.
     float robust_var;
     {
-        std::vector<float> sv = var;
+        std::vector<float> sv(var, var + dim);
         std::sort(sv.begin(), sv.end());
         if (dim <= 8) {
             robust_var = sv[dim / 2];
@@ -215,4 +226,13 @@ bool PQCodebook::read_state(std::istream& is) {
         n != (long long)cent_.size()) return false;
     is.read(reinterpret_cast<char*>(cent_.data()), (std::streamsize)n * sizeof(float));
     return (bool)is;
+}
+
+
+void PQCodebook::init_from_stats(const float* mean_all, const float* var_all, int seed) {
+    for (int m = 0; m < M_; ++m)
+        analytical_init_from_stats(mean_all + (size_t)m * Ds_,
+                                   var_all  + (size_t)m * Ds_,
+                                   cent_.data() + (size_t)m * K_ * Ds_,
+                                   seed + m);
 }

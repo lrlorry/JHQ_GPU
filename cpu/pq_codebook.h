@@ -51,6 +51,10 @@ public:
     // on the device and hand the result back; the analytical initialisation
     // stays on the host either way, so the starting point does not change.
     float*       mutable_data() { return cent_.data(); }
+
+    // Seed every subspace from per-subspace moments, both laid out [M][Ds].
+    // Equivalent to train(y, n, 0, seed) but without needing y on the host.
+    void init_from_stats(const float* mean_all, const float* var_all, int seed);
     size_t       size() const { return cent_.size(); }
 
     int d()  const { return d_; }
@@ -79,4 +83,7 @@ private:
     // these positions a good starting point without looking at the data
     // beyond its mean and variance.
     void analytical_init(const float* sub, int n, float* out, int seed) const;
+    // Same construction, from the two moments rather than from the data.
+    void analytical_init_from_stats(const float* mean, const float* var,
+                                    float* out, int seed) const;
 };

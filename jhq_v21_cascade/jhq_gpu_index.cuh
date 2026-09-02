@@ -91,6 +91,13 @@ private:
     void   train_ivf_centroids(const float* h_y_train,
                                const float* d_y_train, int n_train);
     int*   assign_on_gpu(const float* d_y, int n) const;
+    // Same coarse assignment, but writing into caller-owned memory on a caller-
+    // owned stream. assign_on_gpu allocates two buffers, synchronises the whole
+    // device and frees on every call; inside add()'s batch loop that is a
+    // malloc, a device-wide barrier and a free per batch -- 272 of them on
+    // stella-trec24 -- which is what stops the loop from pipelining.
+    void   assign_into(const float* d_y, int n, int* d_out, float* d_dots,
+                       cudaStream_t stream) const;
     void   alloc_workspace(int batch_size);
 
     // Trained-state cache. Every run of a parameter sweep retrains an

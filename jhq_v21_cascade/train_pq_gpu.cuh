@@ -22,3 +22,33 @@ void launch_pq_kmeans(const float* d_y, int n, int d, int M, int Ds, int K,
                       int iters, cudaStream_t stream = 0);
 
 } // namespace jhq_gpu
+
+namespace jhq_gpu {
+
+// IVF centroid refinement, on the device.
+//
+// The host loop reads the assignment back and accumulates on one core, once per
+// iteration: eight round trips and eight single-threaded passes over the
+// training set, 397 ms of the build. Only the assignment was already on the
+// device.
+//
+// Matches the host rule for a list that draws nothing: it is reseeded from the
+// training vector at (c*1103515245 + iter*12345) % n, not left where it was.
+void launch_ivf_accumulate(const float* d_y,      // [n, d] rotated training set
+                           const int*   d_assign, // [n]
+                           float*       d_cent,   // [nlist][d], updated in place
+                           int n, int d, int nlist, int iter,
+                           cudaStream_t stream = 0);
+
+} // namespace jhq_gpu
+
+namespace jhq_gpu {
+
+// Per-subspace first and second moments of the rotated training set, [M][Ds]
+// each. These are the only things the analytical initialisation reads from the
+// data, so computing them here replaces a copy of the whole rotated training
+// set to the host -- 2.9 GB on Vogue -- with M*Ds*2 floats, about 6 KB.
+void launch_subspace_stats(const float* d_y, int n, int d, int M, int Ds,
+                           float* d_mean, float* d_var, cudaStream_t stream = 0);
+
+} // namespace jhq_gpu
