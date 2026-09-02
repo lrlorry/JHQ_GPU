@@ -34,7 +34,7 @@ __global__ void pq_assign_kernel(
     for (long long i = (long long)blockIdx.x * blockDim.x + threadIdx.x;
          i < n; i += (long long)gridDim.x * blockDim.x) {
         const float* xi = d_y + i * d + (long long)m * Ds;
-        float x[16];                       // Ds <= 16 covers every configuration here
+        float x[32];                       // Ds = d/M is 32 at d=3072, M=96
         for (int j = 0; j < Ds; ++j) x[j] = xi[j];
 
         int   best = 0;
@@ -94,9 +94,10 @@ __global__ void pq_update_kernel(
 void launch_pq_kmeans(const float* d_y, int n, int d, int M, int Ds, int K,
                       float* d_cent, int iters, cudaStream_t stream)
 {
-    if (Ds > 16)
-        throw std::runtime_error("launch_pq_kmeans: Ds > 16 exceeds the per-thread "
-                                 "register buffer; raise it or fall back to the host path");
+    if (Ds > 32)
+        throw std::runtime_error("launch_pq_kmeans: Ds = " + std::to_string(Ds) +
+                                 " exceeds the 32-float per-thread buffer; raise it or "
+                                 "use the host path");
 
     int*    d_assign = nullptr;
     double* d_sums   = nullptr;
