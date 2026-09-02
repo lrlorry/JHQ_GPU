@@ -12,6 +12,7 @@
 #endif
 #include "jhq_v21_cascade/encode.cuh"
 #include "jhq_v21_cascade/train_pq_gpu.cuh"
+#include "jhq_v21_cascade/train_res_gpu.cuh"
 #include "jhq_v21_cascade/search.cuh"
 #include "common/cuda_utils.cuh"
 
@@ -570,8 +571,25 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
     train_ivf_centroids(h_y_train.data(), d_y_train, n_train);
     JHQ_TRAIN_PHASE("ivf centroids");
 
-    train_residual_codebook(d_y_train, d_codes_train, n_train);
-    JHQ_TRAIN_PHASE("residual codebook");
+    if (gpu_codebook) {
+        // The largest phase of the build, and almost all of it a sort: one per
+        // subspace over n_train*Ds values. On the device that is a single
+        // segmented radix sort, and the residual is written straight into the
+        // segment-major layout the sort wants, so the host's gather disappears.
+        res_c1d_.assign((size_t)M_ * Kr_, 0.f);
+        if (!d_res_c1d_)
+            CUDA_CHECK(cudaMalloc(&d_res_c1d_, (size_t)M_ * Kr_ * sizeof(float)));
+        launch_residual_codebook(d_y_train, d_codes_train, d_cent_,
+                                 n_train, d_, M_, Ds_, K_, Kr_, 25, d_res_c1d_);
+        CUDA_CHECK(cudaMemcpy(res_c1d_.data(), d_res_c1d_,
+                              (size_t)M_ * Kr_ * sizeof(float), cudaMemcpyDeviceToHost));
+        // The correction term per vector still comes from the host encode path
+        // in add(); only the codebook moved.
+        JHQ_TRAIN_PHASE("residual codebook (device)");
+    } else {
+        train_residual_codebook(d_y_train, d_codes_train, n_train);
+        JHQ_TRAIN_PHASE("residual codebook");
+    }
 
     if (cache_dir) { save_trained(cpath); JHQ_TRAIN_PHASE("cache write"); }
 
