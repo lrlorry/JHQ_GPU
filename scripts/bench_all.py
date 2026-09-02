@@ -149,12 +149,27 @@ def aggregate(method, variant, ds, params, env, qpss, recalls,
 # what the index holds rather than what the allocator is caching.
 
 def _fvecs(path, limit=None):
+    """Read an .fvecs file holding one float32 array, not three.
+
+    fromfile followed by ascontiguousarray materialises the file twice: at
+    stella-trec24's 67 GiB that is 134 GiB before cuVS allocates anything, and
+    the runs were killed by the host OOM killer with no CUDA error to explain
+    it. Map the file and copy row blocks into a single preallocated array.
+    """
     import numpy as np
-    a = np.fromfile(path, dtype=np.int32)
-    d = int(a[0])
-    a = a.reshape(-1, d + 1)[:, 1:]
-    if limit: a = a[:limit]
-    return np.ascontiguousarray(a.view(np.float32))
+    mm = np.memmap(path, dtype=np.int32, mode="r")
+    d = int(mm[0])
+    n = mm.size // (d + 1)
+    if limit:
+        n = min(n, limit)
+    out = np.empty((n, d), dtype=np.float32)
+    CHUNK = 1 << 19
+    for i in range(0, n, CHUNK):
+        j = min(i + CHUNK, n)
+        block = np.asarray(mm[i * (d + 1):j * (d + 1)]).reshape(-1, d + 1)[:, 1:]
+        out[i:j] = block.view(np.float32)
+    del mm
+    return out
 
 
 def _ivecs(path):
