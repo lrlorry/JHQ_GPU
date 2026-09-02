@@ -164,9 +164,13 @@ def main():
         ceiling=img_tag("fig_ceiling.png",
                         "The highest recall each method reaches at any setting. Above 1024 "
                         "dimensions JHQ's ceiling is the highest of the five."),
-        memory=img_tag("fig_memory.png",
-                       "Device memory actually in use against the recall it buys, read with "
-                       "cudaMemGetInfo rather than derived from bytes per vector."),
+        memory=img_tag("fig2_memory.png",
+                       "What reaching 0.98 costs. Memory is read with cudaMemGetInfo and so "
+                       "includes the search workspace, not only the code payload -- which is "
+                       "why these numbers are larger than bytes-per-vector arithmetic. At 768 "
+                       "dimensions IVF-PQ gets to 0.98 as cheaply as JHQ or cheaper; JHQ's "
+                       "memory advantage appears at 1536 and 3072, where IVF-PQ and int8 "
+                       "CAGRA do not get there at all."),
         trend=img_tag("figB_dimension_trend.png",
                       "CAGRA scores against stored vectors, so its distance work grows with d "
                       "while JHQ's is fixed at M subspaces. The ratio is measured, not modelled."),
@@ -258,7 +262,9 @@ footer{{border-top:1px solid var(--rule);margin-top:44px;padding-top:20px;font-s
       and IVF-PQ's ceiling falls away with dimension: 0.986 at 768d, 0.966 at 1536d,
       0.913 at 3072d, against JHQ's 0.983, 0.994 and 0.992.</td></tr>
       <tr><td class="t">4</td><td class="t">And against compressed CAGRA?</td>
-      <td class="t"><b>Above 1024 dimensions JHQ is the most accurate of the five.</b>
+      <td class="t"><b>Above 1024 dimensions JHQ is the most accurate of the five, and gets
+      to 0.98 on the least memory.</b> At 768 dimensions it does not: IVF-PQ reaches 0.98 on
+      Vogue at 1,559 measured bytes per vector against JHQ's 2,462.
       PQ-compressed CAGRA is not reachable in cuVS 26.08.01; the int8 dataset that is
       reachable caps at 0.938&ndash;0.973 and reaches 0.98 on none of the six. fp32 CAGRA
       has the higher ceiling at 768d (0.995, 0.999 against 0.983, 0.993) but not at 1536d
