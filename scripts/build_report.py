@@ -160,6 +160,21 @@ def main():
                        "the lines cross near 0.97 and at 3072 JHQ is above it from 0.96 on. "
                        "JQ never exceeds 0.774, so it has no line in this range and its "
                        "ceiling is noted in each panel instead."),
+        core1=img_tag("core1_crossover.png",
+                      "The same comparison at three dimensions. JHQ's distance work is O(M) "
+                      "with M fixed at 96 subspaces; CAGRA scores against the stored vectors, "
+                      "so its work grows with d. The recall at which JHQ passes fp32 CAGRA is "
+                      "marked: absent at 768, 0.979 at 1536, 0.968 at 3072."),
+        core2=img_tag("core2_scale.png",
+                      "Device memory held after the build, against the card. fp32 CAGRA asks "
+                      "for 41.3 GiB at 10.1M vectors and fails; JHQ at four residual bits "
+                      "holds 6.8 GiB and is the only configuration there above 0.95. Our own "
+                      "eight-bit setting fails during add at 17.8M, which is shown too."),
+        core3=img_tag("core3_hierarchy.png",
+                      "Residual level off, on at four bits, on at eight. Same kernel, same "
+                      "IVF, same occupancy and selection -- the gap is the quantiser, not the "
+                      "kernel work. Nothing without the residual level reaches 0.95 on any "
+                      "dataset."),
         ablation=img_tag("fig3_ablation.png",
                          "Three changes, measured one at a time at fixed recall. The largest "
                          "is the one that looks least like an algorithm."),
@@ -306,6 +321,14 @@ footer{{border-top:1px solid var(--rule);margin-top:44px;padding-top:20px;font-s
   separate memory budgets, not one curve.</p>
   {tables}
   {failures}
+</section>
+
+<section>
+  <h2>The three that carry the argument</h2>
+  <p>The rest of this page is evidence for these.</p>
+  {core1}
+  {core2}
+  {core3}
 </section>
 
 <section>
