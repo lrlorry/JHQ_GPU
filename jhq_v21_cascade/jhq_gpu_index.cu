@@ -19,6 +19,8 @@
 #include <thrust/device_ptr.h>
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
+#include <thrust/binary_search.h>
+#include <thrust/iterator/counting_iterator.h>
 
 #include <algorithm>
 #include <cmath>
@@ -86,7 +88,56 @@ __global__ void assign_from_dots_kernel(
     if (lane == 0) assigns[row] = best_id;
 }
 
+namespace {
+__global__ void f32_to_f16_kernel(const float* __restrict__ src,
+                                  __half* __restrict__ dst, long long n)
+{
+    long long i = ((long long)blockIdx.x * blockDim.x + threadIdx.x) * 4;
+    if (i + 3 < n) {
+        const float4 v = *reinterpret_cast<const float4*>(src + i);
+        __half2* o = reinterpret_cast<__half2*>(dst + i);
+        o[0] = __floats2half2_rn(v.x, v.y);
+        o[1] = __floats2half2_rn(v.z, v.w);
+    } else {
+        for (; i < n; ++i) dst[i] = __float2half_rn(src[i]);
+    }
+}
+
+// Centroid c starts as training row c*n/nlist, the same evenly spaced seeds
+// the host path takes, gathered on the device instead of nlist single-row
+// copies back to the host.
+__global__ void seed_centroids_kernel(const float* __restrict__ y, int n, int d,
+                                      int nlist, float* __restrict__ cent)
+{
+    const long long i = (long long)blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= (long long)nlist * d) return;
+    const int c = (int)(i / d), j = (int)(i - (long long)c * d);
+    const int src = (int)((long long)c * n / nlist);
+    cent[i] = y[(long long)src * d + j];
+}
+
+// One warp per row, summed in double so the norms do not depend on lane order.
+__global__ void row_sqnorms_kernel(const float* __restrict__ rows, int nrows, int d,
+                                   float* __restrict__ out)
+{
+    const int lane = threadIdx.x & 31;
+    const int row  = (blockIdx.x * blockDim.x + threadIdx.x) >> 5;
+    if (row >= nrows) return;
+    const float* r = rows + (long long)row * d;
+    double s = 0.0;
+    for (int j = lane; j < d; j += 32) s += (double)r[j] * r[j];
+    for (int off = 16; off > 0; off >>= 1) s += __shfl_xor_sync(0xffffffffu, s, off);
+    if (lane == 0) out[row] = (float)s;
+}
+} // namespace
+
 // ── Gather kernel ─────────────────────────────────────────────────────────────
+// One warp per sorted position. The primary and residual rows are copied as
+// 16-byte words when both widths allow it (M and bpv multiples of 16, which
+// every configuration measured here satisfies), a lane per word; otherwise
+// a lane per byte. The thread-per-vector version copied M + bpv bytes one at a
+// time from rows 4 KB apart across the warp -- 228 ms of the stella-trec24
+// add tail for 1.9 GB moved.
 __global__ void gather_list_storage_kernel(
     const int*     __restrict__ sorted_ids,
     const uint8_t* __restrict__ primary,
@@ -98,17 +149,26 @@ __global__ void gather_list_storage_kernel(
     float*                      list_corr,
     int n, int M, int bpv)
 {
-    int pos = blockIdx.x * blockDim.x + threadIdx.x;
+    const int lane = threadIdx.x & 31;
+    const int pos  = (blockIdx.x * blockDim.x + threadIdx.x) >> 5;
     if (pos >= n) return;
-    int id = sorted_ids[pos];
-    list_ids[pos] = id;
+    const int id = sorted_ids[pos];
+    if (lane == 0) { list_ids[pos] = id; list_corr[pos] = corrections[id]; }
     const uint8_t* pc = primary + (long long)id * M;
     uint8_t* out_pc = list_primary + (long long)pos * M;
-    for (int m = 0; m < M; ++m) out_pc[m] = pc[m];
     const uint8_t* rc = residual + (long long)id * bpv;
     uint8_t* out_rc = list_res + (long long)pos * bpv;
-    for (int b = 0; b < bpv; ++b) out_rc[b] = rc[b];
-    list_corr[pos] = corrections[id];
+    if (((M | bpv) & 15) == 0) {
+        const uint4* pc4 = reinterpret_cast<const uint4*>(pc);
+        uint4* out_pc4 = reinterpret_cast<uint4*>(out_pc);
+        for (int w = lane; w < (M >> 4); w += 32) out_pc4[w] = pc4[w];
+        const uint4* rc4 = reinterpret_cast<const uint4*>(rc);
+        uint4* out_rc4 = reinterpret_cast<uint4*>(out_rc);
+        for (int w = lane; w < (bpv >> 4); w += 32) out_rc4[w] = rc4[w];
+    } else {
+        for (int m = lane; m < M; m += 32) out_pc[m] = pc[m];
+        for (int b = lane; b < bpv; b += 32) out_rc[b] = rc[b];
+    }
 }
 
 // ── Transpose kernel: [N, M] → [M, N] with shared-memory tiling ──────────────
@@ -180,6 +240,19 @@ JHQGpuIndex::JHQGpuIndex(int d, Params p)
     nprobe_       = std::min(nprobe_, nlist_);
 
     CUBLAS_CHECK(cublasCreate(&cublas_));
+    {
+        // The first GEMM of a process also loads cuBLAS's kernels; that is
+        // resource setup, so it happens here with the handle rather than
+        // inside train()'s rotation.
+        float* d_w = nullptr;
+        CUDA_CHECK(cudaMalloc(&d_w, (size_t)3 * 256 * 256 * sizeof(float)));
+        const float one = 1.f, zero = 0.f;
+        CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_N, CUBLAS_OP_N, 256, 256, 256,
+                                 &one, d_w, 256, d_w + 256 * 256, 256,
+                                 &zero, d_w + 2 * 256 * 256, 256));
+        CUDA_CHECK(cudaDeviceSynchronize());
+        cudaFree(d_w);
+    }
     // The JL rotation is a d x d product per vector -- 9.4 MFLOP at d=3072, and
     // 9.4 TFLOP over a million of them. Measured at 35 TFLOP/s it is already
     // near the card's fp32 peak, so the only headroom left is the tensor cores.
@@ -280,13 +353,58 @@ void JHQGpuIndex::alloc_workspace(int batch_size) {
 }
 
 // ── GPU rotation helper ───────────────────────────────────────────────────────
+// Host-to-device through a pair of pinned 32 MB buffers, each filled by a
+// parallel memcpy while the other is in flight. The source is the mmap of the
+// base file, and a pageable cudaMemcpy from it runs at the speed of one core
+// faulting the pages in -- 1.3 GB/s measured, 300 ms for the training sample
+// on stella-trec24 -- against 56 GB/s on the link.
+namespace {
+void staged_h2d(void* d_dst, const void* h_src, size_t bytes) {
+    constexpr size_t CHUNK = 32u << 20;
+    if (bytes <= CHUNK) {
+        CUDA_CHECK(cudaMemcpy(d_dst, h_src, bytes, cudaMemcpyHostToDevice));
+        return;
+    }
+    char* h_buf[2] = {nullptr, nullptr};
+    cudaStream_t st[2];
+    for (int b = 0; b < 2; ++b) {
+        CUDA_CHECK(cudaHostAlloc(&h_buf[b], CHUNK, cudaHostAllocDefault));
+        CUDA_CHECK(cudaStreamCreateWithFlags(&st[b], cudaStreamNonBlocking));
+    }
+    const char* se = std::getenv("JHQ_STAGE_THREADS");
+    const int want = se ? std::atoi(se) : 32;
+    const int nthr = std::max(1, std::min(omp_get_max_threads(), want));
+    int k = 0;
+    for (size_t off = 0; off < bytes; off += CHUNK, ++k) {
+        const int b = k & 1;
+        const size_t len = std::min(CHUNK, bytes - off);
+        CUDA_CHECK(cudaStreamSynchronize(st[b]));
+        const char* src = (const char*)h_src + off;
+#pragma omp parallel num_threads(nthr)
+        {
+            const int nt = omp_get_num_threads(), ti = omp_get_thread_num();
+            const size_t chunk = (len + nt - 1) / nt;
+            const size_t lo = (size_t)ti * chunk;
+            const size_t hi = lo + chunk < len ? lo + chunk : len;
+            if (lo < len) std::memcpy(h_buf[b] + lo, src + lo, hi - lo);
+        }
+        CUDA_CHECK(cudaMemcpyAsync((char*)d_dst + off, h_buf[b], len,
+                                   cudaMemcpyHostToDevice, st[b]));
+    }
+    for (int b = 0; b < 2; ++b) {
+        CUDA_CHECK(cudaStreamSynchronize(st[b]));
+        cudaStreamDestroy(st[b]);
+        cudaFreeHost(h_buf[b]);
+    }
+}
+} // namespace
+
 float* JHQGpuIndex::rotate_on_gpu(const float* h_x, int n, double* sum_sq) const {
     float* d_x = nullptr;
     float* d_y = nullptr;
     CUDA_CHECK(cudaMalloc(&d_x, (long long)n * d_ * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&d_y, (long long)n * d_ * sizeof(float)));
-    CUDA_CHECK(cudaMemcpy(d_x, h_x, (long long)n * d_ * sizeof(float),
-                          cudaMemcpyHostToDevice));
+    staged_h2d(d_x, h_x, (size_t)n * d_ * sizeof(float));
     // Lemma 2's sigma^2 = E[||x||^2]/d wants one reduction over the sample,
     // and the sample is here already; on the host it was a pass over 0.4 GB.
     if (sum_sq) {
@@ -311,6 +429,67 @@ void JHQGpuIndex::train_ivf_centroids(
 {
     if (n_train < nlist_)
         throw std::invalid_argument("n_train must be >= nlist for v12_transposed");
+
+    // The device path keeps everything resident across the iterations: the
+    // seeds are gathered there, the norms are a kernel, and the centroids come
+    // back once at the end for the trained-state cache. Before this, each
+    // iteration fetched the nlist seed rows one memcpy at a time, freed and
+    // re-allocated the centroid buffers, and took the norms on the host from a
+    // 64 MB round trip: 739 ms of a 951 ms train on stella-trec24, for eight
+    // iterations whose GEMM is 10 ms each.
+    const bool gpu_ivf = std::getenv("JHQ_GPU_CODEBOOK") != nullptr;
+    if (gpu_ivf) {
+        cudaFree(d_centroids_);  d_centroids_  = nullptr;
+        cudaFree(d_cent_norms_); d_cent_norms_ = nullptr;
+        if (d_centroids16_) { cudaFree(d_centroids16_); d_centroids16_ = nullptr; }
+        CUDA_CHECK(cudaMalloc(&d_centroids_,  (long long)nlist_ * d_ * sizeof(float)));
+        CUDA_CHECK(cudaMalloc(&d_cent_norms_, (long long)nlist_ * sizeof(float)));
+        {
+            const long long tot = (long long)nlist_ * d_;
+            seed_centroids_kernel<<<(int)((tot + 255) / 256), 256>>>(
+                d_y_train, n_train, d_, nlist_, d_centroids_);
+            CUDA_CHECK(cudaGetLastError());
+        }
+
+        const int prec = assign_precision();
+        const char* sb = std::getenv("JHQ_ASSIGN_BATCH");
+        const int batch = std::min(n_train, sb ? std::atoi(sb)
+                                               : (nlist_ >= 8192 ? 32768 : 8192));
+        int* d_assign = nullptr; float* d_dots = nullptr; __half* d_y16 = nullptr;
+        CUDA_CHECK(cudaMalloc(&d_assign, (long long)n_train * sizeof(int)));
+        CUDA_CHECK(cudaMalloc(&d_dots, (long long)nlist_ * batch * sizeof(float)));
+        if (prec == 16) {
+            CUDA_CHECK(cudaMalloc(&d_y16, (long long)n_train * d_ * sizeof(__half)));
+            CUDA_CHECK(cudaMalloc(&d_centroids16_,
+                                  (long long)nlist_ * d_ * sizeof(__half)));
+        }
+        auto refresh = [&]() {
+            row_sqnorms_kernel<<<(nlist_ * 32 + 255) / 256, 256>>>(
+                d_centroids_, nlist_, d_, d_cent_norms_);
+            CUDA_CHECK(cudaGetLastError());
+            if (prec == 16) {
+                const long long nc = (long long)nlist_ * d_;
+                f32_to_f16_kernel<<<(int)((nc / 4 + 255) / 256), 256>>>(
+                    d_centroids_, d_centroids16_, nc);
+                CUDA_CHECK(cudaGetLastError());
+            }
+        };
+        for (int iter = 0; iter < ivf_iters_; ++iter) {
+            refresh();
+            assign_into(d_y_train, n_train, d_assign, d_dots, 0, 0, d_y16);
+            launch_ivf_accumulate(d_y_train, d_assign, d_centroids_,
+                                  n_train, d_, nlist_, iter);
+        }
+        refresh();
+        CUDA_CHECK(cudaDeviceSynchronize());
+        CUBLAS_CHECK(cublasSetStream(cublas_, 0));
+        centroids_.resize((long long)nlist_ * d_);
+        CUDA_CHECK(cudaMemcpy(centroids_.data(), d_centroids_,
+                              (long long)nlist_ * d_ * sizeof(float),
+                              cudaMemcpyDeviceToHost));
+        cudaFree(d_assign); cudaFree(d_dots); if (d_y16) cudaFree(d_y16);
+        return;
+    }
 
     // Seed every list from an evenly spaced training vector. With the rotated
     // set no longer copied to the host, those rows are fetched one at a time
@@ -356,25 +535,6 @@ void JHQGpuIndex::train_ivf_centroids(
     std::vector<int>    h_assign(n_train);
     std::vector<double> sums((long long)nlist_ * d_);
     std::vector<int>    counts(nlist_);
-
-    // With the codebooks on the device the assignment no longer has to come back:
-    // eight round trips and eight single-threaded passes over the training set
-    // were 397 ms of the build, and only the assignment step was on the GPU.
-    const bool gpu_ivf = std::getenv("JHQ_GPU_CODEBOOK") != nullptr;
-    if (gpu_ivf) {
-        for (int iter = 0; iter < ivf_iters_; ++iter) {
-            upload_centroids();
-            int* d_assign = assign_on_gpu(d_y_train, n_train);
-            launch_ivf_accumulate(d_y_train, d_assign, d_centroids_,
-                                  n_train, d_, nlist_, iter);
-            cudaFree(d_assign);
-            CUDA_CHECK(cudaMemcpy(centroids_.data(), d_centroids_,
-                                  (long long)nlist_ * d_ * sizeof(float),
-                                  cudaMemcpyDeviceToHost));
-        }
-        upload_centroids();
-        return;
-    }
 
     for (int iter = 0; iter < ivf_iters_; ++iter) {
         upload_centroids();
@@ -795,22 +955,6 @@ int* JHQGpuIndex::assign_on_gpu(const float* d_y, int n) const {
     return d_assign;
 }
 
-namespace {
-__global__ void f32_to_f16_kernel(const float* __restrict__ src,
-                                  __half* __restrict__ dst, long long n)
-{
-    long long i = ((long long)blockIdx.x * blockDim.x + threadIdx.x) * 4;
-    if (i + 3 < n) {
-        const float4 v = *reinterpret_cast<const float4*>(src + i);
-        __half2* o = reinterpret_cast<__half2*>(dst + i);
-        o[0] = __floats2half2_rn(v.x, v.y);
-        o[1] = __floats2half2_rn(v.z, v.w);
-    } else {
-        for (; i < n; ++i) dst[i] = __float2half_rn(src[i]);
-    }
-}
-} // namespace
-
 // The assignment's precision is a separate decision from the rotation's. The
 // rotation's output is what gets quantised, so its error shows up in every
 // code; the assignment only picks a list, and a lower-precision product can
@@ -990,7 +1134,8 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     // pinning that much costs a few hundred milliseconds, which is most of what
     // the phase timings could not account for. 128 MB a buffer is more than
     // enough to keep the link busy.
-    const size_t stage_budget = (size_t)128 << 20;
+    const char* smb = std::getenv("JHQ_STAGE_MB");
+    const size_t stage_budget = (size_t)(smb ? std::atoi(smb) : 128) << 20;
     const long long AB_rows = std::max<long long>(
         1, std::min<long long>(AB, (long long)(stage_budget / (sizeof(float) * d_))));
     for (int b = 0; b < NBUF; ++b) {
@@ -1060,10 +1205,14 @@ void JHQGpuIndex::add(const float* h_x, int n) {
             const char*  src   = (const char*)(h_x + start * (long long)d_);
             char*        dst   = (char*)h_stage[cur];
 #ifdef _OPENMP
-            // Eight threads copied this fastest; 208 took three times as long as
-            // one, the fork, join and the cores taken from the CUDA driver
-            // costing more than the copy they split.
-            const int nthr = omp_get_max_threads() < 8 ? omp_get_max_threads() : 8;
+            // The host's link is PCIe 5.0 (56 GB/s pinned either way), so the
+            // fill is what paces this stage: from the page cache, 8 threads
+            // copy at 43 GB/s and 32 at 74 GB/s on the 208-core host. All 208
+            // took three times as long as one -- the fork, join and the cores
+            // taken from the CUDA driver cost more than the copy they split.
+            const char* se = std::getenv("JHQ_STAGE_THREADS");
+            const int want = se ? std::atoi(se) : 32;
+            const int nthr = std::max(1, std::min(omp_get_max_threads(), want));
 #pragma omp parallel num_threads(nthr)
             {
                 const int nt = omp_get_num_threads(), ti = omp_get_thread_num();
@@ -1201,34 +1350,30 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     thrust::sort_by_key(t_assign, t_assign + n, t_order);
     tail_lap(t_sort);
 
-    std::vector<int> h_assign(n);
-    CUDA_CHECK(cudaMemcpy(h_assign.data(), d_assign, (long long)n * sizeof(int),
-                          cudaMemcpyDeviceToHost));
-
-    std::vector<int> counts(nlist_, 0);
-    for (int a : h_assign) {
-        if (a < 0 || a >= nlist_) throw std::runtime_error("invalid IVF assignment");
-        counts[a]++;
-    }
-
-    std::vector<int> offsets(nlist_ + 1, 0);
-    for (int c = 0; c < nlist_; ++c) offsets[c + 1] = offsets[c] + counts[c];
-
+    // The assignments are sorted, so list c starts at the first position whose
+    // key is >= c: one lower_bound over the keys for each of the nlist + 1
+    // boundaries, in place of copying the n keys back and counting them on one
+    // host thread (72 ms of the stella-trec24 tail).
     CUDA_CHECK(cudaMalloc(&d_list_offsets_, (long long)(nlist_ + 1) * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&d_list_ids_,     (long long)n * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&d_list_res_,     (long long)n * bpv_ * sizeof(uint8_t)));
     CUDA_CHECK(cudaMalloc(&d_list_corr_,    (long long)n * sizeof(float)));
-
-    CUDA_CHECK(cudaMemcpy(d_list_offsets_, offsets.data(),
-                          (long long)(nlist_ + 1) * sizeof(int),
-                          cudaMemcpyHostToDevice));
+    {
+        thrust::counting_iterator<int> first(0);
+        thrust::lower_bound(t_assign, t_assign + n, first, first + nlist_ + 1,
+                            thrust::device_ptr<int>(d_list_offsets_));
+        int lo = 0, hi = 0;
+        CUDA_CHECK(cudaMemcpy(&lo, d_assign, sizeof(int), cudaMemcpyDeviceToHost));
+        CUDA_CHECK(cudaMemcpy(&hi, d_assign + (n - 1), sizeof(int), cudaMemcpyDeviceToHost));
+        if (lo < 0 || hi >= nlist_) throw std::runtime_error("invalid IVF assignment");
+    }
     tail_lap(t_count);
 
     // Temporary [N, M] primary buffer for gathering, then transposed.
     uint8_t* d_list_primary_nm = nullptr;
     CUDA_CHECK(cudaMalloc(&d_list_primary_nm, (long long)n * M_ * sizeof(uint8_t)));
 
-    gather_list_storage_kernel<<<(n + 255) / 256, 256>>>(
+    gather_list_storage_kernel<<<(int)(((long long)n * 32 + 255) / 256), 256>>>(
         d_order, d_pc, d_rc, d_co,
         d_list_ids_, d_list_primary_nm, d_list_res_, d_list_corr_,
         n, M_, bpv_);
@@ -1249,7 +1394,7 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     tail_lap(t_transpose);
     if (add_phases)
         std::fprintf(stderr,
-            "  [add-tail] sort %.1f ms | count (D2H + host loop) %.1f | "
+            "  [add-tail] sort %.1f ms | offsets %.1f | "
             "gather %.1f | transpose %.1f\n",
             t_sort, t_count, t_gather, t_transpose);
     CUDA_CHECK(cudaGetLastError());

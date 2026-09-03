@@ -136,17 +136,23 @@ void launch_pq_kmeans(const float* d_y, int n, int d, int M, int Ds, int K,
 namespace jhq_gpu {
 namespace {
 
+// One warp per vector: the lanes read consecutive floats and add to
+// consecutive doubles, so each step is one coalesced read and one warp-wide
+// atomic to a 256-byte run. The thread-per-vector version had the lanes d
+// floats apart on both sides, every element its own transaction.
 __global__ void ivf_accum_kernel(
     const float* __restrict__ d_y, const int* __restrict__ d_assign,
     double* d_sums, int* d_counts, int n, int d)
 {
-    for (long long i = (long long)blockIdx.x * blockDim.x + threadIdx.x;
-         i < n; i += (long long)gridDim.x * blockDim.x) {
+    const int lane = threadIdx.x & 31;
+    const long long nwarps = (long long)gridDim.x * (blockDim.x >> 5);
+    for (long long i = ((long long)blockIdx.x * blockDim.x + threadIdx.x) >> 5;
+         i < n; i += nwarps) {
         const int c = d_assign[i];
         const float* yi = d_y + i * d;
         double* s = d_sums + (long long)c * d;
-        for (int j = 0; j < d; ++j) atomicAdd(s + j, (double)yi[j]);
-        atomicAdd(d_counts + c, 1);
+        for (int j = lane; j < d; j += 32) atomicAdd(s + j, (double)yi[j]);
+        if (lane == 0) atomicAdd(d_counts + c, 1);
     }
 }
 
@@ -182,7 +188,7 @@ void launch_ivf_accumulate(const float* d_y, const int* d_assign, float* d_cent,
     CUDA_CHECK(cudaMemsetAsync(d_counts, 0, (size_t)nlist * sizeof(int), stream));
 
     const int BLOCK = 256;
-    const int gx = (int)std::min((long long)((n + BLOCK - 1) / BLOCK), 4096LL);
+    const int gx = (int)std::min(((long long)n * 32 + BLOCK - 1) / BLOCK, 8192LL);
     ivf_accum_kernel<<<gx, BLOCK, 0, stream>>>(d_y, d_assign, d_sums, d_counts, n, d);
     CUDA_CHECK(cudaGetLastError());
     ivf_update_kernel<<<std::min(nlist, 4096), BLOCK, 0, stream>>>(

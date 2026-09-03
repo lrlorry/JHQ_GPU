@@ -1,6 +1,8 @@
 #include "jhq_v21_cascade/encode.cuh"
 
 #include <algorithm>
+#include <cstdint>
+#include <cstdlib>
 #include <stdexcept>
 
 #ifndef CUBLAS_CHECK
@@ -403,6 +405,110 @@ __global__ void encode_fused_cartesian_kernel(
     }
 }
 
+
+// The same computation with each thread owning G consecutive subspaces of one
+// vector, for the dimension-major layout. The thread-per-(vector, subspace)
+// kernel above stores every code byte, every residual byte and every
+// correction share on its own: a warp's 32 lanes are 32 vectors, so each of
+// those stores touches 32 sectors for 32 bytes, and there are Ds + 2 of them
+// per subspace -- 1152 per vector at M=128. That, not the 73 GB it reads,
+// is what held it at 465 ms on stella-trec24. Here the G code bytes leave as
+// one 8-byte store, the G*Ds residual codes as 16-byte stores, and the
+// correction as one atomic per group: 80 stores per vector. The residual
+// codebooks of the G subspaces sit in shared memory as before.
+template <int G, int DS, int BR>
+__global__ void encode_fused_grouped_kernel(
+    const float* __restrict__ d_y,
+    const float* __restrict__ d_levels,
+    const float* __restrict__ d_res_c1d,
+    uint8_t* d_codes, uint8_t* d_res_codes, float* d_corrections,
+    int L, int N, int M, int Kr, int bpv)
+{
+    extern __shared__ float s_all[];
+    float* s_lv  = s_all;
+    float* s_lb  = s_lv + L;
+    float* s_rcb = s_lb + L;
+    float* s_rb  = s_rcb + G * Kr;
+
+    const int m0 = blockIdx.y * G;
+    for (int i = threadIdx.x; i < L; i += blockDim.x) s_lv[i] = d_levels[i];
+    for (int i = threadIdx.x; i < G * Kr; i += blockDim.x)
+        s_rcb[i] = d_res_c1d[(long long)m0 * Kr + i];
+    __syncthreads();
+    for (int i = threadIdx.x; i + 1 < L; i += blockDim.x) s_lb[i] = 0.5f * (s_lv[i] + s_lv[i + 1]);
+    for (int t = threadIdx.x; t < G * Kr; t += blockDim.x) {
+        const int i = t % Kr;
+        if (i + 1 < Kr) s_rb[t] = 0.5f * (s_rcb[t] + s_rcb[t + 1]);
+    }
+    __syncthreads();
+
+    constexpr int RBYTES = G * DS * BR / 8;      // residual bytes per thread
+    constexpr int RWORDS = RBYTES / 4;
+    static_assert(RBYTES % 16 == 0, "residual codes of a group must fill whole 16-byte stores");
+
+    for (long long vid = (long long)blockIdx.x * blockDim.x + threadIdx.x;
+         vid < N; vid += (long long)gridDim.x * blockDim.x) {
+        uint32_t rw[RWORDS];
+#pragma unroll
+        for (int w = 0; w < RWORDS; ++w) rw[w] = 0u;
+        unsigned long long cw = 0ull;
+        float dot = 0.f;
+
+#pragma unroll
+        for (int g = 0; g < G; ++g) {
+            const float* rcb = s_rcb + g * Kr;
+            const float* rb  = s_rb  + g * Kr;
+            const float* col = d_y + ((long long)(m0 + g) * DS) * N + vid;
+            int code = 0;
+#pragma unroll
+            for (int j = 0; j < DS; ++j) {
+                const float v = col[(long long)j * N];
+                int best = 0;
+                for (int w = L >> 1; w > 0; w >>= 1)
+                    best += (v > s_lb[best + w - 1]) ? w : 0;
+                code = code * L + best;
+                const float yhat = s_lv[best];
+                const float r = v - yhat;
+                int rbi = 0;
+                for (int w = Kr >> 1; w > 0; w >>= 1)
+                    rbi += (r > rb[rbi + w - 1]) ? w : 0;
+                dot += yhat * rcb[rbi];
+                // residual code of dimension idx of the group, packed as the
+                // per-subspace kernel lays it out: a byte per dimension at
+                // Br=8, the even dimension in the low nibble at Br=4
+                const int idx = g * DS + j;
+                if (BR == 8) rw[idx >> 2] |= (uint32_t)rbi << ((idx & 3) * 8);
+                else         rw[idx >> 3] |= (uint32_t)(rbi & 0xF) << ((idx & 7) * 4);
+            }
+            cw |= (unsigned long long)(code & 0xFF) << (8 * g);
+        }
+
+        *reinterpret_cast<uint2*>(d_codes + vid * M + m0) =
+            make_uint2((uint32_t)cw, (uint32_t)(cw >> 32));
+        uint4* rdst = reinterpret_cast<uint4*>(d_res_codes + vid * bpv + (m0 * DS * BR) / 8);
+#pragma unroll
+        for (int w = 0; w < RWORDS / 4; ++w)
+            rdst[w] = make_uint4(rw[4 * w], rw[4 * w + 1], rw[4 * w + 2], rw[4 * w + 3]);
+        atomicAdd(d_corrections + vid, 2.f * dot);
+    }
+}
+
+template <int DS, int BR>
+static void launch_grouped(const float* d_y, const float* d_levels, int L,
+                           const float* d_res_c1d, uint8_t* d_codes,
+                           uint8_t* d_res_codes, float* d_corrections,
+                           int N, int M, int Kr, int bpv, cudaStream_t stream)
+{
+    constexpr int G = 8;
+    const int BLOCK = 256;
+    const int gx = (int)std::min((long long)((N + BLOCK - 1) / BLOCK), 4096LL);
+    encode_fused_grouped_kernel<G, DS, BR><<<dim3(gx, M / G), BLOCK,
+        (size_t)(2 * L + 2 * G * Kr) * sizeof(float), stream>>>(
+        d_y, d_levels, d_res_c1d, d_codes, d_res_codes, d_corrections,
+        L, N, M, Kr, bpv);
+    CUDA_CHECK(cudaGetLastError());
+}
+
 } // namespace
 
 void launch_encode_fused_cartesian(
@@ -421,6 +527,21 @@ void launch_encode_fused_cartesian(
     if ((L & (L - 1)) || (Kr & (Kr - 1)))
         throw std::runtime_error("launch_encode_fused_cartesian: L and Kr must "
                                  "be powers of two for the cell search");
+    if (y_transposed && M % 8 == 0 && (Br == 4 || Br == 8) &&
+        (Ds == 4 || Ds == 8 || Ds == 16) && L <= 256 &&
+        std::getenv("JHQ_ENCODE_GROUPED_OFF") == nullptr) {
+        if (Ds == 4) {
+            if (Br == 8) launch_grouped<4, 8>(d_y, d_levels, L, d_res_c1d, d_codes, d_res_codes, d_corrections, N, M, Kr, bpv, stream);
+            else         launch_grouped<4, 4>(d_y, d_levels, L, d_res_c1d, d_codes, d_res_codes, d_corrections, N, M, Kr, bpv, stream);
+        } else if (Ds == 8) {
+            if (Br == 8) launch_grouped<8, 8>(d_y, d_levels, L, d_res_c1d, d_codes, d_res_codes, d_corrections, N, M, Kr, bpv, stream);
+            else         launch_grouped<8, 4>(d_y, d_levels, L, d_res_c1d, d_codes, d_res_codes, d_corrections, N, M, Kr, bpv, stream);
+        } else {
+            if (Br == 8) launch_grouped<16, 8>(d_y, d_levels, L, d_res_c1d, d_codes, d_res_codes, d_corrections, N, M, Kr, bpv, stream);
+            else         launch_grouped<16, 4>(d_y, d_levels, L, d_res_c1d, d_codes, d_res_codes, d_corrections, N, M, Kr, bpv, stream);
+        }
+        return;
+    }
     encode_fused_cartesian_kernel<<<dim3(gx, M), BLOCK,
                                     (size_t)(2 * L + 2 * Kr) * sizeof(float), stream>>>(
         d_y, d_levels, d_res_c1d, d_codes, d_res_codes, d_corrections,
