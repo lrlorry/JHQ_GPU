@@ -241,30 +241,55 @@ void PQCodebook::init_from_stats(const float* mean_all, const float* var_all, in
 void PQCodebook::build_analytical_cartesian(float sigma) {
     int B = 0;
     while ((1 << B) < K_) ++B;              // K = 2^B
-    if (!cartesian_admissible(B, Ds_))
-        throw std::invalid_argument(
-            "build_analytical_cartesian: Ds=" + std::to_string(Ds_) +
-            " does not divide B=" + std::to_string(B) + ", so K^(1/Ds) is not "
-            "an integer number of levels per dimension");
 
-    // Levels per dimension, and the one scalar codebook they share.
-    const int L = 1 << (B / Ds_);           // = K^(1/Ds)
-    levels_.assign(L, 0.f);
-    std::vector<float>& level = levels_;
-    for (int i = 1; i <= L; ++i) {
-        const float q = ((float)i - 0.5f) / (float)L;
-        level[i - 1] = sigma * std::sqrt(2.f) * erfinv_f(2.f * q - 1.f);
+    // Equation 4 spends the subspace's B bits across its Ds dimensions and
+    // takes the Cartesian product of the per-dimension Lloyd-Max codewords.
+    // The paper writes K^(1/Ds) levels per dimension, which is a whole number
+    // only when Ds divides B; the construction itself does not need the split
+    // to be equal, though. Give r = B mod Ds dimensions one bit more than the
+    // rest and the product still has exactly 2^B codewords, which covers every
+    // M -- including Ds > B, where B dimensions carry one bit and the rest
+    // carry none and are reconstructed at the mean. The codebook stays
+    // analytical: no data is read, and the cost is still O(MK).
+    bits_.assign(Ds_, B / Ds_);
+    for (int j = 0; j < B % Ds_; ++j) bits_[j] += 1;
+
+    // One scalar codebook per distinct width, laid out per dimension so the
+    // digits can be read off directly.
+    level_off_.assign(Ds_, 0);
+    levels_.clear();
+    for (int j = 0; j < Ds_; ++j) {
+        const int L = 1 << bits_[j];
+        level_off_[j] = (int)levels_.size();
+        for (int i = 1; i <= L; ++i) {
+            const float q = ((float)i - 0.5f) / (float)L;
+            levels_.push_back(sigma * std::sqrt(2.f) * erfinv_f(2.f * q - 1.f));
+        }
     }
 
-    // Codeword k of a subspace is k written in base L across its Ds dimensions.
+    // Codeword k of a subspace is k written in mixed radix across its
+    // dimensions, least significant digit last, as before.
     for (int m = 0; m < M_; ++m) {
         float* cent = cent_.data() + (size_t)m * K_ * Ds_;
         for (int k = 0; k < K_; ++k) {
             int rem = k;
             for (int j = Ds_ - 1; j >= 0; --j) {
-                cent[(size_t)k * Ds_ + j] = level[rem % L];
+                const int L = 1 << bits_[j];
+                cent[(size_t)k * Ds_ + j] = levels_[level_off_[j] + rem % L];
                 rem /= L;
             }
         }
+    }
+
+    // The separable and fused encoders read one shared level table and assume
+    // every dimension has the same radix, so they are available only for the
+    // equal split. Where the split is uneven the general encoder runs against
+    // the expanded table above, which is the same codebook either way.
+    uniform_levels_ = cartesian_admissible(B, Ds_);
+    if (uniform_levels_) {
+        const int L = 1 << (B / Ds_);
+        levels_.assign(levels_.begin(), levels_.begin() + L);
+    } else {
+        levels_.clear();
     }
 }

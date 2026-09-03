@@ -1,0 +1,23 @@
+# Equation 4's analytical Cartesian codebook against the Lloyd-refined product
+# quantiser at equal code length, 2026-09-04 (asg27). Ds = d/M is the subspace
+# width; the paper's construction gives every dimension B/Ds bits, which is a
+# whole number only when Ds divides B, so the uneven split (r = B mod Ds
+# dimensions carry one bit more) is what reaches Ds > B at all. alpha=32,
+# Br=4, nprobe=128. A blank recall with FAIL is a crash, not a low score.
+dataset,M,Ds,codebook,recall,qps,train_ms,add_ms,status
+oai3072,384,8,eq4,0.9586,11479,575.7,2771.8,
+oai3072,384,8,pq,0.9610,11445,548.5,1135.2,
+oai3072,192,16,eq4,0.9534,33759,237.0,1151.5,
+oai3072,192,16,pq,0.9579,33858,554.2,1172.5,
+oai3072,128,24,eq4,0.9531,49995,238.6,1118.8,
+oai3072,128,24,pq,0.9570,50898,548.9,1138.9,
+oai3072,64,48,eq4,0.9467,63537,415.0,797.2,
+oai3072,64,48,pq,,,,,FAIL
+oai3072,32,96,eq4,0.8993,73101,437.0,821.4,
+oai3072,32,96,pq,,,,,FAIL
+stella,128,8,eq4,0.9580,22564,356.5,16665.0,
+stella,128,8,pq,0.9682,22606,335.5,6613.9,
+stella,64,16,eq4,0.9486,37959,234.9,6626.2,
+stella,64,16,pq,0.9599,38363,345.7,6686.8,
+stella,32,32,eq4,0.9215,62838,244.1,5532.1,
+stella,32,32,pq,0.8823,63389,351.8,5564.5,

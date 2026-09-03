@@ -1,0 +1,17 @@
+# The residual codebook's sensitivity to how many vectors it is estimated from,
+# 2026-09-04 (asg27). Equation 5 collects residuals over all of Y and the paper
+# gives the stage O(n*Kr); these rows ask what that buys. S is the sample size
+# (JHQ_N_TRAIN), N the database size. Encoding still visits every vector -- only
+# the estimation of the Kr level values is sampled. The larger sizes run out of
+# memory in the rotation buffer, which holds S*d floats.
+dataset,S,recall,qps,train_ms,note
+vogue,100000,0.9716,52456,97.9,
+vogue,500000,0.9688,60061,281.4,
+vogue,all,0.9740,74798,458.5,
+bge,100000,0.9211,8586,286.5,
+bge,1000000,0.9269,18638,1096.3,
+bge,5000000,,,,out of memory
+bge,all,,,,out of memory
+stella,100000,0.9579,22548,371.2,
+stella,1000000,0.9585,28916,2138.0,
+stella,all,,,,out of memory

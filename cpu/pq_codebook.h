@@ -70,6 +70,10 @@ public:
     // The per-dimension level table the product is built from, ascending.
     // Empty unless build_analytical_cartesian has run.
     const std::vector<float>& levels() const { return levels_; }
+    // Bits per dimension of the analytical construction, and whether the split
+    // came out equal -- the separable encoders need the equal one.
+    const std::vector<int>& bits() const { return bits_; }
+    bool uniform_levels() const { return uniform_levels_; }
     static bool cartesian_admissible(int B, int Ds) { return Ds > 0 && B % Ds == 0; }
     bool cartesian_admissible() const { int b = 0; while ((1 << b) < K_) ++b;
                                         return cartesian_admissible(b, Ds_); }
@@ -92,7 +96,12 @@ public:
 
 private:
     int d_, M_, Ds_, K_;
-    std::vector<float> levels_;   // set by build_analytical_cartesian
+    std::vector<float> levels_;   // set by build_analytical_cartesian: the one
+                                  // shared scalar codebook when the split is
+                                  // equal, empty when it is not
+    std::vector<int>   bits_;     // bits given to each dimension, summing to B
+    std::vector<int>   level_off_;// where each dimension's levels start
+    bool uniform_levels_ = false; // whether the separable encoders can run
     std::vector<float> cent_;   // [M][K][Ds]
 
     // Mirrors IndexJHQ::analytical_gaussian_init: K centroids placed along

@@ -112,9 +112,26 @@ int main(int argc, char** argv) {
         const long long want = (std::strcmp(e, "all") == 0) ? nb : std::atoll(e);
         n_train = (want <= 0 || want > nb) ? nb : (int)want;
     }
+    // Equation 5 collects residuals over all of Y; a sample stands in for it,
+    // and the claim that the sample size does not have to grow with N rests on
+    // the sample being representative. A contiguous prefix is not: these files
+    // arrive in whatever order they were built in, and arXiv is ordered by
+    // date. Take every (N/S)-th vector instead, which costs one gather and is
+    // uniform whatever the file's order.
     printf("Training on %d vectors...\n", n_train);
+    std::vector<float> sample;
+    const float* train_src = base.data;
+    if (n_train < nb) {
+        sample.resize((size_t)n_train * d);
+        const long long stride = (long long)nb / n_train;
+        for (int i = 0; i < n_train; ++i)
+            std::memcpy(sample.data() + (size_t)i * d,
+                        base.data + (size_t)(i * stride) * d,
+                        (size_t)d * sizeof(float));
+        train_src = sample.data();
+    }
     auto t0 = Clock::now();
-    idx.train(base.data, n_train);
+    idx.train(train_src, n_train);
     double train_ms = Ms(Clock::now() - t0).count();
     printf("  train: %.1f ms\n", train_ms);
 

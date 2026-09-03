@@ -24,10 +24,13 @@ __global__ void residual_segments_kernel(
     const float*   __restrict__ d_y,      // [n, d]
     const uint8_t* __restrict__ d_codes,  // [n, M]
     const float*   __restrict__ d_cent,   // [M][K][Ds]
-    float*                      d_seg,    // [M][n*Ds]
-    int n, int d, int M, int Ds, int K)
+    float*                      d_seg,    // [mc][n*Ds], subspaces m0 .. m0+mc
+    int n, int d, int M, int Ds, int K, int m0 = 0)
 {
-    const int m = blockIdx.y;
+    // Local index into the scratch, global index into the codes and centroids:
+    // the scratch holds one chunk of subspaces, the index holds all of them.
+    const int ml = blockIdx.y;
+    const int m  = m0 + ml;
     const long long seg = (long long)n * Ds;
     for (long long t = (long long)blockIdx.x * blockDim.x + threadIdx.x;
          t < seg; t += (long long)gridDim.x * blockDim.x) {
@@ -35,7 +38,7 @@ __global__ void residual_segments_kernel(
         const int       j = (int)(t - i * Ds);
         const uint8_t   c = d_codes[i * M + m];
         const float yhat  = d_cent[((long long)m * K + c) * Ds + j];
-        d_seg[(long long)m * seg + t] = d_y[i * d + (long long)m * Ds + j] - yhat;
+        d_seg[(long long)ml * seg + t] = d_y[i * d + (long long)m * Ds + j] - yhat;
     }
 }
 
@@ -222,84 +225,104 @@ void launch_residual_codebook(const float* d_y, const uint8_t* d_codes,
     if (Kr > 256)
         throw std::runtime_error("launch_residual_codebook: Kr > 256 exceeds the "
                                  "single-block sort in update_sort_kernel");
-    const long long seg   = (long long)n * Ds;
-    const long long total = seg * M;
+    const long long seg = (long long)n * Ds;
 
-    float* d_seg    = nullptr;
-    float* d_sorted = nullptr;
-    double* d_sum   = nullptr;
-    int*   d_cnt    = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_seg,    total * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_sorted, total * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_sum,    (size_t)M * Kr * sizeof(double)));
-    CUDA_CHECK(cudaMalloc(&d_cnt,    (size_t)M * Kr * sizeof(int)));
+    // Equation 5 collects the residual of every vector in every dimension, so
+    // the scratch is n*d values three times over -- the segments, their sorted
+    // copy, and a double prefix sum -- which is 33 GB at n=2M, d=1024 and does
+    // not fit. Nothing here couples one subspace to another, though: each is an
+    // independent 1-D k-means. So the subspaces are done in chunks, and the
+    // scratch is sized by the chunk rather than by d. That also keeps the
+    // segmented sort inside the 32-bit offsets cub takes, which n*d alone
+    // exceeds past 2.1M vectors at 1024 dimensions.
+    const size_t per_sub = (size_t)seg * (sizeof(float) * 2 + sizeof(double));
+    size_t free_b = 0, total_b = 0;
+    CUDA_CHECK(cudaMemGetInfo(&free_b, &total_b));
+    int mc = (int)std::min<size_t>((size_t)M,
+                 std::max<size_t>(1, (size_t)(free_b * 0.55) / std::max<size_t>(per_sub, 1)));
+    while (mc > 1 && (long long)mc * seg > (long long)INT32_MAX) mc /= 2;
+    if ((long long)seg > (long long)INT32_MAX)
+        throw std::runtime_error("launch_residual_codebook: n*Ds exceeds the 32-bit "
+                                 "offsets cub's segmented sort takes; lower n_train");
+
+    float*  d_seg    = nullptr;
+    float*  d_sorted = nullptr;
+    double* d_prefix = nullptr;
+    double* d_sum    = nullptr;
+    int*    d_cnt    = nullptr;
+    int*    d_off    = nullptr;
+    CUDA_CHECK(cudaMalloc(&d_seg,    (size_t)mc * seg * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_sorted, (size_t)mc * seg * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_prefix, (size_t)mc * seg * sizeof(double)));
+    CUDA_CHECK(cudaMalloc(&d_sum,    (size_t)mc * Kr * sizeof(double)));
+    CUDA_CHECK(cudaMalloc(&d_cnt,    (size_t)mc * Kr * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&d_off,    (size_t)(mc + 1) * sizeof(int)));
 
     const int BLOCK = 256;
     const int gx = (int)std::min((seg + BLOCK - 1) / BLOCK, 4096LL);
-    residual_segments_kernel<<<dim3(gx, M), BLOCK, 0, stream>>>(
-        d_y, d_codes, d_cent, d_seg, n, d, M, Ds, K);
-    CUDA_CHECK(cudaGetLastError());
 
-    // One segmented radix sort replaces M host sorts of n*Ds values each --
-    // 96 sorts of 800k at the usual settings, which is where the 3.8 s went.
-    std::vector<int> h_off(M + 1);
-    for (int m = 0; m <= M; ++m) h_off[m] = (int)std::min((long long)m * seg, (long long)INT32_MAX);
-    if ((long long)M * seg > INT32_MAX)
-        throw std::runtime_error("launch_residual_codebook: M*n*Ds exceeds the 32-bit "
-                                 "offsets cub's segmented sort takes; lower n_train");
-    int* d_off = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_off, (M + 1) * sizeof(int)));
-    CUDA_CHECK(cudaMemcpyAsync(d_off, h_off.data(), (M + 1) * sizeof(int),
-                               cudaMemcpyHostToDevice, stream));
-    size_t tmp_bytes = 0;
+    // cub's temporaries are sized for the largest chunk and reused by the rest.
+    size_t sort_bytes = 0, scan_bytes = 0;
     CUDA_CHECK(cub::DeviceSegmentedRadixSort::SortKeys(
-        nullptr, tmp_bytes, d_seg, d_sorted, (int)total, M, d_off, d_off + 1, 0, 32, stream));
+        nullptr, sort_bytes, d_seg, d_sorted, (int)((long long)mc * seg), mc,
+        d_off, d_off + 1, 0, 32, stream));
+    CUDA_CHECK(cub::DeviceScan::InclusiveSum(
+        nullptr, scan_bytes, d_sorted, d_prefix, (int)((long long)mc * seg), stream));
     void* d_tmp = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_tmp, tmp_bytes));
-    CUDA_CHECK(cub::DeviceSegmentedRadixSort::SortKeys(
-        d_tmp, tmp_bytes, d_seg, d_sorted, (int)total, M, d_off, d_off + 1, 0, 32, stream));
+    CUDA_CHECK(cudaMalloc(&d_tmp, std::max(sort_bytes, scan_bytes)));
+    size_t tmp_bytes = std::max(sort_bytes, scan_bytes);
 
-    quantile_init_kernel<<<(M * Kr + BLOCK - 1) / BLOCK, BLOCK, 0, stream>>>(
-        d_sorted, d_res_c1d, seg, M, Kr);
-    CUDA_CHECK(cudaGetLastError());
+    for (int m0 = 0; m0 < M; m0 += mc) {
+        const int mb = std::min(mc, M - m0);
+        const long long tot = (long long)mb * seg;
 
-    // Prefix sum of the sorted values, once, so every iteration afterwards is
-    // O(Kr log n) rather than O(n log Kr).
-    double* d_prefix = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_prefix, (size_t)total * sizeof(double)));
-    {
-        size_t sb = 0;
-        CUDA_CHECK(cub::DeviceScan::InclusiveSum(
-            nullptr, sb, d_sorted, d_prefix, (int)total, stream));
-        void* st_tmp = nullptr;
-        CUDA_CHECK(cudaMalloc(&st_tmp, sb));
-        CUDA_CHECK(cub::DeviceScan::InclusiveSum(
-            st_tmp, sb, d_sorted, d_prefix, (int)total, stream));
-        cudaFree(st_tmp);
-        double* d_base = nullptr;
-        CUDA_CHECK(cudaMalloc(&d_base, (size_t)M * sizeof(double)));
-        gather_segment_bases_kernel<<<(M + BLOCK - 1) / BLOCK, BLOCK, 0, stream>>>(
-            d_prefix, d_base, seg, M);
+        std::vector<int> h_off(mb + 1);
+        for (int m = 0; m <= mb; ++m) h_off[m] = (int)((long long)m * seg);
+        CUDA_CHECK(cudaMemcpyAsync(d_off, h_off.data(), (size_t)(mb + 1) * sizeof(int),
+                                   cudaMemcpyHostToDevice, stream));
+
+        residual_segments_kernel<<<dim3(gx, mb), BLOCK, 0, stream>>>(
+            d_y, d_codes, d_cent, d_seg, n, d, M, Ds, K, m0);
         CUDA_CHECK(cudaGetLastError());
-        subtract_segment_base_kernel<<<dim3(gx, M), BLOCK, 0, stream>>>(
-            d_prefix, d_base, seg, M);
+
+        size_t sb = tmp_bytes;
+        CUDA_CHECK(cub::DeviceSegmentedRadixSort::SortKeys(
+            d_tmp, sb, d_seg, d_sorted, (int)tot, mb, d_off, d_off + 1, 0, 32, stream));
+
+        float* c_out = d_res_c1d + (long long)m0 * Kr;
+        quantile_init_kernel<<<(mb * Kr + BLOCK - 1) / BLOCK, BLOCK, 0, stream>>>(
+            d_sorted, c_out, seg, mb, Kr);
         CUDA_CHECK(cudaGetLastError());
+
+        sb = tmp_bytes;
+        CUDA_CHECK(cub::DeviceScan::InclusiveSum(
+            d_tmp, sb, d_sorted, d_prefix, (int)tot, stream));
+        {
+            double* d_base = nullptr;
+            CUDA_CHECK(cudaMalloc(&d_base, (size_t)mb * sizeof(double)));
+            gather_segment_bases_kernel<<<(mb + BLOCK - 1) / BLOCK, BLOCK, 0, stream>>>(
+                d_prefix, d_base, seg, mb);
+            CUDA_CHECK(cudaGetLastError());
+            subtract_segment_base_kernel<<<dim3(gx, mb), BLOCK, 0, stream>>>(
+                d_prefix, d_base, seg, mb);
+            CUDA_CHECK(cudaGetLastError());
+            CUDA_CHECK(cudaStreamSynchronize(stream));
+            cudaFree(d_base);
+        }
+
+        for (int it = 0; it < max_iter; ++it) {
+            assign_from_sorted_kernel<<<mb, BLOCK, (size_t)(Kr + 1) * sizeof(long long), stream>>>(
+                d_sorted, d_prefix, c_out, d_sum, d_cnt, seg, Kr);
+            CUDA_CHECK(cudaGetLastError());
+            update_sort_kernel<<<mb, BLOCK, Kr * sizeof(float), stream>>>(
+                d_sum, d_cnt, d_sorted, c_out, seg, Kr);
+            CUDA_CHECK(cudaGetLastError());
+        }
         CUDA_CHECK(cudaStreamSynchronize(stream));
-        cudaFree(d_base);
     }
 
-    for (int it = 0; it < max_iter; ++it) {
-        assign_from_sorted_kernel<<<M, BLOCK, (size_t)(Kr + 1) * sizeof(long long), stream>>>(
-            d_sorted, d_prefix, d_res_c1d, d_sum, d_cnt, seg, Kr);
-        CUDA_CHECK(cudaGetLastError());
-        update_sort_kernel<<<M, BLOCK, Kr * sizeof(float), stream>>>(
-            d_sum, d_cnt, d_sorted, d_res_c1d, seg, Kr);
-        CUDA_CHECK(cudaGetLastError());
-    }
-    cudaFree(d_prefix);
-    CUDA_CHECK(cudaStreamSynchronize(stream));
-    cudaFree(d_seg); cudaFree(d_sorted); cudaFree(d_sum); cudaFree(d_cnt);
-    cudaFree(d_off); cudaFree(d_tmp);
+    cudaFree(d_seg); cudaFree(d_sorted); cudaFree(d_prefix);
+    cudaFree(d_sum); cudaFree(d_cnt); cudaFree(d_off); cudaFree(d_tmp);
 }
 
 } // namespace jhq_gpu

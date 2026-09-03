@@ -1318,29 +1318,15 @@ void JHQGpuIndex::save_trained(const std::string& path) const {
 // caller has to ask for: it leaves the per-dimension levels unset, and the
 // general encoder that then runs has not been validated against the reference.
 bool JHQGpuIndex::paper_codebook_selected() const {
+    // Equation 4 is the algorithm this port implements, and the uneven bit
+    // split makes it constructible at every Ds, so it is the default
+    // everywhere. JHQ_PAPER_CODEBOOK=0 selects the Lloyd-refined product
+    // quantiser the reference implementation uses, which is the control this
+    // construction is measured against. Where the split is uneven the
+    // separable and fused encoders cannot run and the general one does; that
+    // costs throughput at build time, not accuracy.
     const char* e = std::getenv("JHQ_PAPER_CODEBOOK");
-    const bool admissible = (d_ % M_ == 0) && (Ds_ > 0) && (B_ % Ds_ == 0);
-    if (e && e[0] == '0') return false;
-    if (e && !admissible)
-        throw std::invalid_argument(
-            "JHQ_PAPER_CODEBOOK: equation 4 needs Ds to divide B; at d="
-            + std::to_string(d_) + ", M=" + std::to_string(M_) + " that is Ds="
-            + std::to_string(Ds_) + " against B=" + std::to_string(B_)
-            + ". Use M >= d/B, or JHQ_PAPER_CODEBOOK=0 for the refined product "
-              "quantiser.");
-    if (!admissible) {
-        static bool said = false;
-        if (!said) {
-            said = true;
-            std::fprintf(stderr,
-                "[jhq] Ds=%d does not divide B=%d, so the paper's equation 4 "
-                "cannot be constructed here; falling back to the refined "
-                "product quantiser, whose encoder path is not validated.\n",
-                Ds_, B_);
-        }
-        return false;
-    }
-    return true;
+    return !(e && e[0] == '0');
 }
 
 void JHQGpuIndex::train(const float* h_x, int n_train) {
@@ -1376,11 +1362,13 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
             if (paper_codebook) {
                 cb_->build_analytical_cartesian(jl_.sigma());
                 n_levels_ = (int)cb_->levels().size();
-                if (!d_levels_)
-                    CUDA_CHECK(cudaMalloc(&d_levels_, (size_t)n_levels_ * sizeof(float)));
-                CUDA_CHECK(cudaMemcpy(d_levels_, cb_->levels().data(),
-                                      (size_t)n_levels_ * sizeof(float),
-                                      cudaMemcpyHostToDevice));
+                if (n_levels_ > 0) {
+                    if (!d_levels_)
+                        CUDA_CHECK(cudaMalloc(&d_levels_, (size_t)n_levels_ * sizeof(float)));
+                    CUDA_CHECK(cudaMemcpy(d_levels_, cb_->levels().data(),
+                                          (size_t)n_levels_ * sizeof(float),
+                                          cudaMemcpyHostToDevice));
+                }
             }
             upload_trained();
             JHQ_TRAIN_PHASE("loaded from cache");
@@ -1434,11 +1422,16 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
                               cudaMemcpyHostToDevice));
         // The level table the product is built from. Keeping it lets the
         // encoder use the separable argmin, which never visits the K codewords.
+        // An uneven split has no single shared table; the expanded centroids
+        // above are the whole codebook then, and the general encoder reads
+        // them. Leaving d_levels_ null is what selects it.
         n_levels_ = (int)cb_->levels().size();
-        CUDA_CHECK(cudaMalloc(&d_levels_, (size_t)n_levels_ * sizeof(float)));
-        CUDA_CHECK(cudaMemcpy(d_levels_, cb_->levels().data(),
-                              (size_t)n_levels_ * sizeof(float),
-                              cudaMemcpyHostToDevice));
+        if (n_levels_ > 0) {
+            CUDA_CHECK(cudaMalloc(&d_levels_, (size_t)n_levels_ * sizeof(float)));
+            CUDA_CHECK(cudaMemcpy(d_levels_, cb_->levels().data(),
+                                  (size_t)n_levels_ * sizeof(float),
+                                  cudaMemcpyHostToDevice));
+        }
         JHQ_TRAIN_PHASE("pq codebook (analytical, paper eq. 4)");
     } else if (gpu_codebook) {
         const int cols = M_ * Ds_;
@@ -2004,8 +1997,25 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     // Dimension-major y, for the encoders' sake. Only the fused Cartesian
     // encoder and the coarse assignment read y in add(), and both are taught
     // the layout below, so this is off unless they are the ones running.
+    // Which encoder runs is decided further down from the same conditions
+    // repeated here: the generic and GEMM primary encoders take no layout
+    // argument and read y row-major, so honouring the request while one of
+    // them is running writes a garbage code for every vector -- silently, at
+    // full speed, with recall landing at 1e-4. The request is therefore
+    // granted only when the encoder that understands the layout is the one
+    // that will run.
     const char* ytr = std::getenv("JHQ_Y_TRANSPOSED");
-    const bool y_transposed = ytr ? (ytr[0] == '1') : false;
+    const char* fu_env = std::getenv("JHQ_ENCODE_FUSED");
+    const char* sep_env = std::getenv("JHQ_ENCODE_SEPARABLE");
+    const bool sep_ok = d_levels_ && (!sep_env || sep_env[0] == '1');
+    const bool fused_will_run = sep_ok && d_res_c1d_
+                             && (Br_ == 8 || (Ds_ % 2 == 0))
+                             && (!fu_env || fu_env[0] == '1');
+    const bool y_transposed = (ytr && ytr[0] == '1') && fused_will_run;
+    if (ytr && ytr[0] == '1' && !fused_will_run)
+        std::fprintf(stderr,
+            "[jhq] JHQ_Y_TRANSPOSED ignored: the encoder that will run here "
+            "reads y row-major.\n");
 
     // The single pass keeps every code beside its list-ordered copy while the
     // lists are gathered, so its peak is twice the code array and change. At
