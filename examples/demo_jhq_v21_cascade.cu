@@ -27,6 +27,7 @@
 #include <cstdio>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <vector>
 #include <chrono>
 #include <algorithm>
@@ -102,7 +103,15 @@ int main(int argc, char** argv) {
 
     jhq_gpu::JHQGpuIndex idx(d, p);
 
+    // The paper's eq. 5 collects residuals over the whole transformed set; this
+    // trains on a uniform prefix of it, 100k by default. JHQ_N_TRAIN moves that
+    // sample size (0 or "all" takes every vector) so the codebooks' sensitivity
+    // to it can be measured rather than assumed.
     int n_train = std::min(nb, 100000);
+    if (const char* e = std::getenv("JHQ_N_TRAIN")) {
+        const long long want = (std::strcmp(e, "all") == 0) ? nb : std::atoll(e);
+        n_train = (want <= 0 || want > nb) ? nb : (int)want;
+    }
     printf("Training on %d vectors...\n", n_train);
     auto t0 = Clock::now();
     idx.train(base.data, n_train);

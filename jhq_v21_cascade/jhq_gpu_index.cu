@@ -1176,8 +1176,9 @@ void JHQGpuIndex::train_residual_codebook(
 // Training reads only the sample and the seed, so every point in a parameter
 // sweep rebuilds the same codebooks: ~29 s on Vogue against ~1 s of search,
 // which was three quarters of the wall time of a sweep. Keyed on everything
-// train() consumes, plus a checksum of the sample, so a changed dataset or
-// parameter misses rather than silently reusing the wrong codebooks.
+// train() consumes -- the parameters, the codebook path, and a checksum of the
+// sample -- so a changed dataset, parameter or construction misses rather than
+// silently reusing the wrong codebooks.
 
 // The fused encoder locates a residual by the cell it falls in, which needs
 // each subspace's Kr codewords in increasing order. Lloyd's iterations keep
@@ -1239,8 +1240,17 @@ std::string JHQGpuIndex::cache_path(const char* dir, const float* h_x,
         const unsigned char* b = (const unsigned char*)p;
         for (size_t i = 0; i < n; ++i) { h ^= b[i]; h *= 1099511628211ULL; }
     };
+    // The primary codebook path is something train() consumes, so it belongs in
+    // the key: without it a state trained under the paper's eq. 4 construction
+    // and one trained by Lloyd hash the same, and a sweep that sets neither
+    // variable silently reuses whichever was written first. That is how a
+    // frontier can end up reporting recall for a quantiser its own environment
+    // never selected.
+    const int codebook_path = (std::getenv("JHQ_PAPER_CODEBOOK") ? 2 : 0)
+                            + (std::getenv("JHQ_GPU_CODEBOOK")   ? 1 : 0);
     const int params[] = { d_, M_, B_, Br_, K_, Kr_, nlist_,
-                           ivf_iters_, kmeans_iters_, seed_, n_train };
+                           ivf_iters_, kmeans_iters_, seed_, n_train,
+                           codebook_path };
     mix(params, sizeof params);
     const long long total = (long long)n_train * d_;
     const long long step  = total > 4096 ? total / 4096 : 1;
@@ -1300,6 +1310,39 @@ void JHQGpuIndex::save_trained(const std::string& path) const {
         t_phase = std::chrono::high_resolution_clock::now();                   \
     } } while (0)
 
+// Which primary construction is in force. The paper's analytical Cartesian
+// product (§3.2, equation 4) needs a whole number of levels per dimension --
+// K^(1/Ds) = 2^(B/Ds), so Ds must divide B -- and is the default whenever that
+// holds. Where it does not (Ds > B, the short-code configurations), the only
+// construction available is the Lloyd-refined product quantiser, which the
+// caller has to ask for: it leaves the per-dimension levels unset, and the
+// general encoder that then runs has not been validated against the reference.
+bool JHQGpuIndex::paper_codebook_selected() const {
+    const char* e = std::getenv("JHQ_PAPER_CODEBOOK");
+    const bool admissible = (d_ % M_ == 0) && (Ds_ > 0) && (B_ % Ds_ == 0);
+    if (e && e[0] == '0') return false;
+    if (e && !admissible)
+        throw std::invalid_argument(
+            "JHQ_PAPER_CODEBOOK: equation 4 needs Ds to divide B; at d="
+            + std::to_string(d_) + ", M=" + std::to_string(M_) + " that is Ds="
+            + std::to_string(Ds_) + " against B=" + std::to_string(B_)
+            + ". Use M >= d/B, or JHQ_PAPER_CODEBOOK=0 for the refined product "
+              "quantiser.");
+    if (!admissible) {
+        static bool said = false;
+        if (!said) {
+            said = true;
+            std::fprintf(stderr,
+                "[jhq] Ds=%d does not divide B=%d, so the paper's equation 4 "
+                "cannot be constructed here; falling back to the refined "
+                "product quantiser, whose encoder path is not validated.\n",
+                Ds_, B_);
+        }
+        return false;
+    }
+    return true;
+}
+
 void JHQGpuIndex::train(const float* h_x, int n_train) {
     const bool phase_timing = std::getenv("JHQ_TRAIN_PHASES") != nullptr;
     auto t_phase = std::chrono::high_resolution_clock::now();
@@ -1312,11 +1355,33 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
         JHQ_TRAIN_PHASE("estimate_sigma");
     }
 
+    // The paper's primary is the analytical Cartesian product of equation 4,
+    // so that is the default wherever it is admissible (K^(1/Ds) whole, i.e.
+    // Ds divides B). JHQ_PAPER_CODEBOOK=0 selects the Lloyd-refined product
+    // quantiser the reference implementation uses instead; that path does not
+    // set the per-dimension levels and so falls back to the general encoder,
+    // which is not validated -- it is opt-in and says so.
+    const bool paper_codebook = paper_codebook_selected();
+
     const char* cache_dir = std::getenv("JHQ_INDEX_CACHE");
     std::string cpath;
     if (cache_dir) {
         cpath = cache_path(cache_dir, h_x, n_train);
         if (load_trained(cpath)) {
+            // The cache holds the trained state, not the derived tables. The
+            // levels the separable encoder needs are a closed form in sigma,
+            // which the state does restore, so rebuild them here rather than
+            // storing them: without this a cache hit silently drops to the
+            // general encoder and every code it writes is wrong.
+            if (paper_codebook) {
+                cb_->build_analytical_cartesian(jl_.sigma());
+                n_levels_ = (int)cb_->levels().size();
+                if (!d_levels_)
+                    CUDA_CHECK(cudaMalloc(&d_levels_, (size_t)n_levels_ * sizeof(float)));
+                CUDA_CHECK(cudaMemcpy(d_levels_, cb_->levels().data(),
+                                      (size_t)n_levels_ * sizeof(float),
+                                      cudaMemcpyHostToDevice));
+            }
             upload_trained();
             JHQ_TRAIN_PHASE("loaded from cache");
             return;
@@ -1362,13 +1427,7 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
     // leveraging the k-means method". The reference implementation instead
     // runs five Lloyd iterations on top of an analytical seed. Both are here;
     // JHQ_PAPER_CODEBOOK selects the paper's.
-    const bool paper_codebook = std::getenv("JHQ_PAPER_CODEBOOK") != nullptr;
     if (paper_codebook) {
-        if (!cb_->cartesian_admissible())
-            throw std::invalid_argument(
-                "JHQ_PAPER_CODEBOOK: the Cartesian product needs Ds to divide B, "
-                "i.e. M >= d/B; at d=" + std::to_string(d_) + " and B=8 that means "
-                "M >= " + std::to_string(d_ / 8));
         cb_->build_analytical_cartesian(jl_.sigma());
         CUDA_CHECK(cudaMalloc(&d_cent_, cb_->size() * sizeof(float)));
         CUDA_CHECK(cudaMemcpy(d_cent_, cb_->data(), cb_->size() * sizeof(float),

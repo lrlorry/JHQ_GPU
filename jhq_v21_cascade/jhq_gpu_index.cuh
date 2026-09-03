@@ -123,6 +123,8 @@ private:
     void   ensure_assign_centroids(cudaStream_t stream, int x_domain = 0) const;
     void   requantize_centroids8(cudaStream_t stream, int x_domain = 0) const;
     void   drop_assign_centroids() const;
+    // True when the paper's equation 4 construction is in force; see the .cu.
+    bool   paper_codebook_selected() const;
     void   sort_residual_codebook();
     void   alloc_workspace(int batch_size);
 
