@@ -132,8 +132,11 @@ def aggregate(method, variant, ds, params, env, qpss, recalls,
         "vram_mib": f"{vram:.0f}" if vram else "",
         "train_ms": f"{train_ms:.0f}" if train_ms else "",
         "add_ms": f"{add_ms:.0f}" if add_ms else "",
-        "status": "ok" if ok else "FAILED",
-        "failures": json.dumps(errs[:2]) if errs else "",
+        "status": ("CONTAMINATED" if (ok and contamination(vram, qpss)) else
+                   ("ok" if ok else "FAILED")),
+        "failures": json.dumps(errs[:2]) if errs else
+                    (json.dumps([[-2, contamination(vram, qpss)]])
+                     if ok and contamination(vram, qpss) else ""),
     }
 
 
@@ -298,6 +301,26 @@ def run_cuvs(method, ds, grid, k, reps):
               f"QPS={r['qps_mean']}±{r['qps_std']} vram={r['vram_mib']}MiB",
               file=sys.stderr, flush=True)
     return rows
+
+
+def contamination(vram, qpss):
+    """Signals that another process shared the card during the measurement.
+
+    Two are visible in the row itself. Device memory is read as a delta around
+    the build, so a concurrent process freeing memory between the two reads
+    makes it negative. And run-to-run spread on an idle card is 0.02-0.64% on
+    this hardware, so a relative standard deviation in the double digits means
+    the runs were not seeing the same machine.
+    """
+    notes = []
+    if vram is not None and vram < 0:
+        notes.append(f"negative memory delta ({vram:.0f} MiB): another process "
+                     "freed memory between the two reads")
+    if len(qpss) > 1:
+        rel = 100 * statistics.stdev(qpss) / statistics.mean(qpss)
+        if rel > 5.0:
+            notes.append(f"QPS spread {rel:.1f}% against 0.02-0.64% on an idle card")
+    return notes
 
 
 FIELDS = ["method", "variant", "dataset", "d", "N", "params", "env", "n_runs",
