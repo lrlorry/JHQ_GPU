@@ -67,6 +67,9 @@ public:
     // Ds must divide B. That is the same constraint that makes the reference
     // implementation refuse M < d/B.
     void build_analytical_cartesian(float sigma);
+    // The per-dimension level table the product is built from, ascending.
+    // Empty unless build_analytical_cartesian has run.
+    const std::vector<float>& levels() const { return levels_; }
     static bool cartesian_admissible(int B, int Ds) { return Ds > 0 && B % Ds == 0; }
     bool cartesian_admissible() const { int b = 0; while ((1 << b) < K_) ++b;
                                         return cartesian_admissible(b, Ds_); }
@@ -89,6 +92,7 @@ public:
 
 private:
     int d_, M_, Ds_, K_;
+    std::vector<float> levels_;   // set by build_analytical_cartesian
     std::vector<float> cent_;   // [M][K][Ds]
 
     // Mirrors IndexJHQ::analytical_gaussian_init: K centroids placed along

@@ -270,3 +270,58 @@ void launch_primary_encode_gemm(cublasHandle_t cublas,
 }
 
 } // namespace jhq_gpu
+
+namespace jhq_gpu {
+namespace {
+
+// One thread per (vector, subspace). The level table is tiny -- 2 to 256 floats
+// -- so it sits in shared and every dimension reads the same copy.
+__global__ void primary_encode_cartesian_kernel(
+    const float* __restrict__ d_y,
+    uint8_t*                  d_codes,
+    const float* __restrict__ d_levels,   // L ascending values
+    int L, int N, int d, int M, int Ds)
+{
+    extern __shared__ float s_lv[];
+    for (int i = threadIdx.x; i < L; i += blockDim.x) s_lv[i] = d_levels[i];
+    __syncthreads();
+
+    const int m = blockIdx.y;
+    for (long long vid = (long long)blockIdx.x * blockDim.x + threadIdx.x;
+         vid < N; vid += (long long)gridDim.x * blockDim.x) {
+        const float* ym = d_y + vid * d + (long long)m * Ds;
+
+        // Digit j of the code in base L is the nearest level to y_j. Ties go to
+        // the lower level, matching the generic argmin's strict <.
+        int code = 0;
+        for (int j = 0; j < Ds; ++j) {
+            const float v = ym[j];
+            int   best = 0;
+            float bd   = (v - s_lv[0]) * (v - s_lv[0]);
+            for (int l = 1; l < L; ++l) {
+                const float t = v - s_lv[l];
+                const float dd = t * t;
+                if (dd < bd) { bd = dd; best = l; }
+            }
+            code = code * L + best;
+        }
+        d_codes[vid * M + m] = (uint8_t)code;
+    }
+}
+
+} // namespace
+
+void launch_primary_encode_cartesian(const float* d_y, uint8_t* d_codes,
+                                     const float* d_levels, int L,
+                                     int N, int d, int M, int Ds,
+                                     cudaStream_t stream)
+{
+    const int BLOCK = 256;
+    const int gx = (int)std::min((long long)((N + BLOCK - 1) / BLOCK), 4096LL);
+    primary_encode_cartesian_kernel<<<dim3(gx, M), BLOCK,
+                                      (size_t)L * sizeof(float), stream>>>(
+        d_y, d_codes, d_levels, L, N, d, M, Ds);
+    CUDA_CHECK(cudaGetLastError());
+}
+
+} // namespace jhq_gpu

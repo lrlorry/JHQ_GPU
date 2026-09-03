@@ -31,3 +31,29 @@ void launch_residual_codebook(const float*   d_y,       // [n, d] rotated traini
                               cudaStream_t stream = 0);
 
 } // namespace jhq_gpu
+
+namespace jhq_gpu {
+
+// The residual codebooks again, but from a histogram instead of a sort.
+//
+// The sorted values were only ever wanted for two things: the quantiles that
+// seed the codebook, and the boundary lookups each iteration. A histogram of
+// the residuals answers both -- quantiles are an inverse lookup on the
+// cumulative counts, and a bin's count and sum come from adding the buckets it
+// covers. That drops the O(n log n) sort and the prefix scan, leaving one O(n)
+// pass, and every iteration afterwards touches only the buckets:
+//
+//     sort + scan + 25 boundary searches   ->   one histogram + 25 bucket sweeps
+//
+// It is an approximation where the sort was exact: a value is placed by its
+// bucket rather than its own magnitude, so the centroids move by up to half a
+// bucket width. With 2^16 buckets over the observed range that is far below
+// what Br=4 or 8 resolves, but it is a real difference and the recall it costs
+// is measured rather than assumed.
+void launch_residual_codebook_hist(const float* d_y, const uint8_t* d_codes,
+                                   const float* d_cent,
+                                   int n, int d, int M, int Ds, int K,
+                                   int Kr, int max_iter, int nbuckets,
+                                   float* d_res_c1d, cudaStream_t stream = 0);
+
+} // namespace jhq_gpu

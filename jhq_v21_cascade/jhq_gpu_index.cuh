@@ -73,6 +73,11 @@ private:
     float*   d_Pi_             = nullptr;
     float*   d_cent_           = nullptr;  // [M][K][Ds]
     float*   d_res_c1d_        = nullptr;
+    // Per-dimension level table of the paper's product codebook, and its size.
+    // Present only when that construction was used; it is what makes the
+    // separable encode possible.
+    float*   d_levels_         = nullptr;
+    int      n_levels_         = 0;
     float*   d_centroids_      = nullptr;
     float*   d_cent_norms_     = nullptr;
 

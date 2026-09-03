@@ -55,3 +55,27 @@ void launch_centroid_sqnorms(const float* d_cent, float* d_out,
                              int M, int K, int Ds, cudaStream_t stream = 0);
 
 } // namespace jhq_gpu
+
+namespace jhq_gpu {
+
+// Encoding a Cartesian-product codebook, one dimension at a time.
+//
+// The paper builds each subspace's codebook as the product of per-dimension
+// Lloyd-Max codewords, and the squared distance separates across dimensions:
+// ||y - c||^2 = sum_j (y_j - c_j)^2. So the nearest codeword of the product is
+// the product of the per-dimension nearest levels -- the argmin decomposes and
+// never has to visit the K codewords at all.
+//
+//     generic argmin   K * Ds = 256 * 8 = 2048 operations
+//     separable        Ds * L =   8 * 2 =   16
+//
+// The level table is L = K^(1/Ds) floats and is shared by every dimension and
+// every subspace, because after the JL rotation they carry the same
+// distribution (Lemma 2). Valid only for the product codebook; a codebook that
+// k-means has moved is no longer separable.
+void launch_primary_encode_cartesian(const float* d_y, uint8_t* d_codes,
+                                     const float* d_levels, int L,
+                                     int N, int d, int M, int Ds,
+                                     cudaStream_t stream = 0);
+
+} // namespace jhq_gpu

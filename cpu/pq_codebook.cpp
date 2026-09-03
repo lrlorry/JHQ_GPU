@@ -249,7 +249,8 @@ void PQCodebook::build_analytical_cartesian(float sigma) {
 
     // Levels per dimension, and the one scalar codebook they share.
     const int L = 1 << (B / Ds_);           // = K^(1/Ds)
-    std::vector<float> level(L);
+    levels_.assign(L, 0.f);
+    std::vector<float>& level = levels_;
     for (int i = 1; i <= L; ++i) {
         const float q = ((float)i - 0.5f) / (float)L;
         level[i - 1] = sigma * std::sqrt(2.f) * erfinv_f(2.f * q - 1.f);

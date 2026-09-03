@@ -620,6 +620,13 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
         CUDA_CHECK(cudaMalloc(&d_cent_, cb_->size() * sizeof(float)));
         CUDA_CHECK(cudaMemcpy(d_cent_, cb_->data(), cb_->size() * sizeof(float),
                               cudaMemcpyHostToDevice));
+        // The level table the product is built from. Keeping it lets the
+        // encoder use the separable argmin, which never visits the K codewords.
+        n_levels_ = (int)cb_->levels().size();
+        CUDA_CHECK(cudaMalloc(&d_levels_, (size_t)n_levels_ * sizeof(float)));
+        CUDA_CHECK(cudaMemcpy(d_levels_, cb_->levels().data(),
+                              (size_t)n_levels_ * sizeof(float),
+                              cudaMemcpyHostToDevice));
         JHQ_TRAIN_PHASE("pq codebook (analytical, paper eq. 4)");
     } else if (gpu_codebook) {
         const int cols = M_ * Ds_;
@@ -676,8 +683,20 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
         res_c1d_.assign((size_t)M_ * Kr_, 0.f);
         if (!d_res_c1d_)
             CUDA_CHECK(cudaMalloc(&d_res_c1d_, (size_t)M_ * Kr_ * sizeof(float)));
-        launch_residual_codebook(d_y_train, d_codes_train, d_cent_,
-                                 n_train, d_, M_, Ds_, K_, Kr_, 25, d_res_c1d_);
+        // Two ways to the same codebook. The sorted path is exact; the
+        // histogram path drops the O(n log n) sort for one O(n) pass and places
+        // values by bucket instead of by magnitude. JHQ_RES_HIST picks it.
+        const char* rh = std::getenv("JHQ_RES_HIST");
+        if (rh && rh[0] == '1') {
+            const char* nbe = std::getenv("JHQ_RES_BUCKETS");
+            const int nbuckets = nbe ? std::atoi(nbe) : 2048;
+            launch_residual_codebook_hist(d_y_train, d_codes_train, d_cent_,
+                                          n_train, d_, M_, Ds_, K_, Kr_, 25,
+                                          nbuckets, d_res_c1d_);
+        } else {
+            launch_residual_codebook(d_y_train, d_codes_train, d_cent_,
+                                     n_train, d_, M_, Ds_, K_, Kr_, 25, d_res_c1d_);
+        }
         CUDA_CHECK(cudaMemcpy(res_c1d_.data(), d_res_c1d_,
                               (size_t)M_ * Kr_ * sizeof(float), cudaMemcpyDeviceToHost));
         // The correction term per vector still comes from the host encode path
@@ -924,7 +943,15 @@ void JHQGpuIndex::add(const float* h_x, int n) {
         {
             const char* force = std::getenv("JHQ_ENCODE_GEMM");
             const bool use_gemm = force ? (force[0] == '1') : (Ds_ >= 32);
-            if (use_gemm)
+            const char* sep = std::getenv("JHQ_ENCODE_SEPARABLE");
+            const bool use_sep = d_levels_ && (!sep || sep[0] == '1');
+            if (use_sep)
+                // Ds*L operations against K*Ds; only the product codebook is
+                // separable, so this needs the paper's construction.
+                launch_primary_encode_cartesian(d_yb[cur], d_pc + start * M_,
+                                                d_levels_, n_levels_,
+                                                nb, d_, M_, Ds_, st[cur]);
+            else if (use_gemm)
                 launch_primary_encode_gemm(cublas_, d_yb[cur], d_pc + start * M_,
                                            d_cent_, d_cent_sqnorm,
                                            d_dots_enc[cur], dots_rows,
