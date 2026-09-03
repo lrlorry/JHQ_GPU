@@ -236,3 +236,34 @@ void PQCodebook::init_from_stats(const float* mean_all, const float* var_all, in
                                    cent_.data() + (size_t)m * K_ * Ds_,
                                    seed + m);
 }
+
+
+void PQCodebook::build_analytical_cartesian(float sigma) {
+    int B = 0;
+    while ((1 << B) < K_) ++B;              // K = 2^B
+    if (!cartesian_admissible(B, Ds_))
+        throw std::invalid_argument(
+            "build_analytical_cartesian: Ds=" + std::to_string(Ds_) +
+            " does not divide B=" + std::to_string(B) + ", so K^(1/Ds) is not "
+            "an integer number of levels per dimension");
+
+    // Levels per dimension, and the one scalar codebook they share.
+    const int L = 1 << (B / Ds_);           // = K^(1/Ds)
+    std::vector<float> level(L);
+    for (int i = 1; i <= L; ++i) {
+        const float q = ((float)i - 0.5f) / (float)L;
+        level[i - 1] = sigma * std::sqrt(2.f) * erfinv_f(2.f * q - 1.f);
+    }
+
+    // Codeword k of a subspace is k written in base L across its Ds dimensions.
+    for (int m = 0; m < M_; ++m) {
+        float* cent = cent_.data() + (size_t)m * K_ * Ds_;
+        for (int k = 0; k < K_; ++k) {
+            int rem = k;
+            for (int j = Ds_ - 1; j >= 0; --j) {
+                cent[(size_t)k * Ds_ + j] = level[rem % L];
+                rem /= L;
+            }
+        }
+    }
+}

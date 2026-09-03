@@ -55,6 +55,21 @@ public:
     // Seed every subspace from per-subspace moments, both laid out [M][Ds].
     // Equivalent to train(y, n, 0, seed) but without needing y on the host.
     void init_from_stats(const float* mean_all, const float* var_all, int seed);
+
+    // The paper's primary codebook, equation (4): the Cartesian product of
+    // per-dimension Lloyd-Max codewords. Section 3.2 constructs it "directly
+    // without leveraging the k-means method" in O(MK), against O(I n K Ds M)
+    // for k-means, and it reads no data at all -- only sigma, which Lemma 2
+    // gives as E[||x||^2]/d. The subspaces share it, since after the JL
+    // rotation every dimension carries the same distribution.
+    //
+    // K^(1/Ds) = 2^(B/Ds) has to be a whole number of levels per dimension, so
+    // Ds must divide B. That is the same constraint that makes the reference
+    // implementation refuse M < d/B.
+    void build_analytical_cartesian(float sigma);
+    static bool cartesian_admissible(int B, int Ds) { return Ds > 0 && B % Ds == 0; }
+    bool cartesian_admissible() const { int b = 0; while ((1 << b) < K_) ++b;
+                                        return cartesian_admissible(b, Ds_); }
     size_t       size() const { return cent_.size(); }
 
     int d()  const { return d_; }

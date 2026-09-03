@@ -153,6 +153,27 @@ JHQGpuIndex::JHQGpuIndex(int d, Params p)
     nprobe_       = std::min(nprobe_, nlist_);
 
     CUBLAS_CHECK(cublasCreate(&cublas_));
+    // The JL rotation is a d x d product per vector -- 9.4 MFLOP at d=3072, and
+    // 9.4 TFLOP over a million of them. Measured at 35 TFLOP/s it is already
+    // near the card's fp32 peak, so the only headroom left is the tensor cores.
+    // TF32 keeps 10 mantissa bits where fp32 keeps 23, and what consumes the
+    // rotated vector is a quantiser that rounds it to an 8-bit code, so the
+    // margin is wide -- but that is an argument for measuring it, not for
+    // assuming it. Off unless JHQ_TF32 is set.
+    // Whether it pays turns on the dimension, and the measurement is not
+    // one-sided. Rotation time and recall, fp32 against TF32:
+    //     d=768   18.5 -> 11.5 ms,  0.9444 -> 0.9410   (-0.0034)
+    //     d=3072   271 -> 179  ms,  0.9538 -> 0.9534   (-0.0004)
+    // At 768 the rotation is 5% of add and the loss shows through; the
+    // quantiser's cells are fine enough there that TF32's ten mantissa bits sit
+    // above its noise. At 3072 the rotation is 17% and the loss is absorbed.
+    // JHQ_TF32=0 or 1 overrides.
+    {
+        const char* tf = std::getenv("JHQ_TF32");
+        const bool use_tf32 = tf ? (tf[0] == '1') : (d >= 1536);
+        if (use_tf32)
+            CUBLAS_CHECK(cublasSetMathMode(cublas_, CUBLAS_TF32_TENSOR_OP_MATH));
+    }
 }
 
 JHQGpuIndex::~JHQGpuIndex() {
@@ -582,7 +603,25 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
     // 3.5 s of the 8.3 s build even with every core busy. Setting
     // JHQ_GPU_CODEBOOK runs the Lloyd iterations on the device instead; the
     // analytical placement stays on the host so both paths start identically.
-    if (gpu_codebook) {
+    // The paper builds the primary codebook analytically, as the Cartesian
+    // product of per-dimension Lloyd-Max codewords (equation 4), reading no
+    // data and costing O(MK): section 3.2 constructs it "directly without
+    // leveraging the k-means method". The reference implementation instead
+    // runs five Lloyd iterations on top of an analytical seed. Both are here;
+    // JHQ_PAPER_CODEBOOK selects the paper's.
+    const bool paper_codebook = std::getenv("JHQ_PAPER_CODEBOOK") != nullptr;
+    if (paper_codebook) {
+        if (!cb_->cartesian_admissible())
+            throw std::invalid_argument(
+                "JHQ_PAPER_CODEBOOK: the Cartesian product needs Ds to divide B, "
+                "i.e. M >= d/B; at d=" + std::to_string(d_) + " and B=8 that means "
+                "M >= " + std::to_string(d_ / 8));
+        cb_->build_analytical_cartesian(jl_.sigma());
+        CUDA_CHECK(cudaMalloc(&d_cent_, cb_->size() * sizeof(float)));
+        CUDA_CHECK(cudaMemcpy(d_cent_, cb_->data(), cb_->size() * sizeof(float),
+                              cudaMemcpyHostToDevice));
+        JHQ_TRAIN_PHASE("pq codebook (analytical, paper eq. 4)");
+    } else if (gpu_codebook) {
         const int cols = M_ * Ds_;
         float *d_mean = nullptr, *d_var = nullptr;
         CUDA_CHECK(cudaMalloc(&d_mean, (size_t)cols * sizeof(float)));
@@ -601,11 +640,13 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
     JHQ_TRAIN_PHASE(gpu_codebook ? "pq codebook init (moments on device)"
                                  : "pq codebook kmeans");
 
-    CUDA_CHECK(cudaMalloc(&d_cent_, cb_->size() * sizeof(float)));
-    CUDA_CHECK(cudaMemcpy(d_cent_, cb_->data(), cb_->size() * sizeof(float),
-                          cudaMemcpyHostToDevice));
+    if (!paper_codebook) {
+        CUDA_CHECK(cudaMalloc(&d_cent_, cb_->size() * sizeof(float)));
+        CUDA_CHECK(cudaMemcpy(d_cent_, cb_->data(), cb_->size() * sizeof(float),
+                              cudaMemcpyHostToDevice));
+    }
 
-    if (gpu_codebook && kmeans_iters_ > 0) {
+    if (!paper_codebook && gpu_codebook && kmeans_iters_ > 0) {
         launch_pq_kmeans(d_y_train, n_train, d_, M_, Ds_, K_,
                          d_cent_, kmeans_iters_);
         // hand the result back: the residual level trains against these, and
@@ -727,6 +768,12 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     if (ntotal_ != 0)
         throw std::runtime_error("v14_streaming_add currently supports one add() call");
 
+    // The phase sums leave a few hundred milliseconds of add() unaccounted for
+    // and the tail is only 40 ms of it, so the rest should be here: these are
+    // gigabyte-scale allocations and cudaMalloc synchronises.
+    auto t_alloc0 = std::chrono::steady_clock::now();
+    double t_alloc = 0;
+
     uint8_t* d_pc = nullptr;      // [n, M]   primary codes
     uint8_t* d_rc = nullptr;      // [n, bpv] residual codes
     float*   d_co = nullptr;      // [n]      residual corrections
@@ -735,6 +782,13 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     CUDA_CHECK(cudaMalloc(&d_rc, (long long)n * bpv_ * sizeof(uint8_t)));
     CUDA_CHECK(cudaMalloc(&d_co, (long long)n * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&d_assign, (long long)n * sizeof(int)));
+
+    if (std::getenv("JHQ_ADD_PHASES")) {
+        CUDA_CHECK(cudaDeviceSynchronize());
+        t_alloc = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - t_alloc0).count();
+        std::fprintf(stderr, "  [add] device allocations %.1f ms\n", t_alloc);
+    }
 
     const long long AB = add_batch_;
 
@@ -771,11 +825,19 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     float*       d_yb[2]    = {nullptr, nullptr};
     cudaStream_t st[2]      = {nullptr, nullptr};
     cudaEvent_t  ev[2]      = {nullptr, nullptr};
+    // Size the staging by bytes, not by rows. add_batch is a row count, so at
+    // d=3072 each buffer would be 805 MB and the pair 1.6 GB of pinned memory;
+    // pinning that much costs a few hundred milliseconds, which is most of what
+    // the phase timings could not account for. 128 MB a buffer is more than
+    // enough to keep the link busy.
+    const size_t stage_budget = (size_t)128 << 20;
+    const long long AB_rows = std::max<long long>(
+        1, std::min<long long>(AB, (long long)(stage_budget / (sizeof(float) * d_))));
     for (int b = 0; b < NBUF; ++b) {
-        CUDA_CHECK(cudaHostAlloc(&h_stage[b], (size_t)AB * d_ * sizeof(float),
+        CUDA_CHECK(cudaHostAlloc(&h_stage[b], (size_t)AB_rows * d_ * sizeof(float),
                                  cudaHostAllocDefault));
-        CUDA_CHECK(cudaMalloc(&d_xb[b], (long long)AB * d_ * sizeof(float)));
-        CUDA_CHECK(cudaMalloc(&d_yb[b], (long long)AB * d_ * sizeof(float)));
+        CUDA_CHECK(cudaMalloc(&d_xb[b], (long long)AB_rows * d_ * sizeof(float)));
+        CUDA_CHECK(cudaMalloc(&d_yb[b], (long long)AB_rows * d_ * sizeof(float)));
         CUDA_CHECK(cudaStreamCreate(&st[b]));
         CUDA_CHECK(cudaEventCreateWithFlags(&ev[b], cudaEventDisableTiming));
     }
@@ -788,7 +850,7 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     launch_centroid_sqnorms(d_cent_, d_cent_sqnorm, M_, K_, Ds_);
     const size_t dots_bytes = (size_t)512 << 20;
     const int dots_rows = (int)std::min<size_t>(dots_bytes / (sizeof(float) * K_),
-                                                (size_t)M_ * AB);
+                                                (size_t)M_ * AB_rows);
     float* d_dots_enc[2] = {nullptr, nullptr};
 
     // One assignment scratch per stream, not one for the loop. Hoisting it out
@@ -806,8 +868,8 @@ void JHQGpuIndex::add(const float* h_x, int n) {
 
     const float one = 1.f, zero = 0.f;
     int nbatch = 0;
-    for (long long start = 0; start < n; start += AB, ++nbatch) {
-        const int nb  = (int)std::min(AB, (long long)n - start);
+    for (long long start = 0; start < n; start += AB_rows, ++nbatch) {
+        const int nb  = (int)std::min(AB_rows, (long long)n - start);
         const int cur = nbatch % NBUF;
         if (nbatch >= NBUF) CUDA_CHECK(cudaEventSynchronize(ev[cur]));
 
