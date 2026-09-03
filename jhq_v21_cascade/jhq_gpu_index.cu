@@ -41,22 +41,49 @@ namespace jhq_gpu {
 namespace {
 
 // ── Assign kernel ─────────────────────────────────────────────────────────────
+// One warp per row. The dots for a row are contiguous (the GEMM writes the
+// nlist x nb product column-major with ld = nlist), so a thread per row had
+// the 32 lanes of a warp reading addresses 4*nlist bytes apart -- 64 KB at
+// nlist=16384 -- and every load instruction touched 32 lines. With the lanes
+// spread along the row each load is 512 contiguous bytes, and the row's
+// minimum is a shuffle reduction at the end. Ties resolve to the lowest
+// index, as the sequential scan did.
 __global__ void assign_from_dots_kernel(
     const float* __restrict__ dots,
     const float* __restrict__ cent_norms,
     int*                  assigns,
     int nlist, int nb)
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= nb) return;
-    const float* col = dots + (long long)i * nlist;
-    float best = cent_norms[0] - 2.0f * col[0];
-    int best_id = 0;
-    for (int c = 1; c < nlist; ++c) {
-        float dist = cent_norms[c] - 2.0f * col[c];
-        if (dist < best) { best = dist; best_id = c; }
+    const int lane = threadIdx.x & 31;
+    const int row  = (blockIdx.x * blockDim.x + threadIdx.x) >> 5;
+    if (row >= nb) return;
+    const float* col = dots + (long long)row * nlist;
+    float best    = INFINITY;
+    int   best_id = 0x7fffffff;
+    int c = lane * 4;
+    if ((nlist & 3) == 0) {
+        for (; c < nlist; c += 128) {
+            const float4 v = *reinterpret_cast<const float4*>(col + c);
+            const float4 q = *reinterpret_cast<const float4*>(cent_norms + c);
+            const float d0 = q.x - 2.f * v.x, d1 = q.y - 2.f * v.y,
+                        d2 = q.z - 2.f * v.z, d3 = q.w - 2.f * v.w;
+            if (d0 < best) { best = d0; best_id = c;     }
+            if (d1 < best) { best = d1; best_id = c + 1; }
+            if (d2 < best) { best = d2; best_id = c + 2; }
+            if (d3 < best) { best = d3; best_id = c + 3; }
+        }
+    } else {
+        for (c = lane; c < nlist; c += 32) {
+            const float dd = cent_norms[c] - 2.f * col[c];
+            if (dd < best) { best = dd; best_id = c; }
+        }
     }
-    assigns[i] = best_id;
+    for (int off = 16; off > 0; off >>= 1) {
+        const float ob = __shfl_xor_sync(0xffffffffu, best, off);
+        const int   oi = __shfl_xor_sync(0xffffffffu, best_id, off);
+        if (ob < best || (ob == best && oi < best_id)) { best = ob; best_id = oi; }
+    }
+    if (lane == 0) assigns[row] = best_id;
 }
 
 // ── Gather kernel ─────────────────────────────────────────────────────────────
@@ -186,6 +213,7 @@ JHQGpuIndex::~JHQGpuIndex() {
     cudaFree(d_cent_);
     cudaFree(d_res_c1d_);
     cudaFree(d_centroids_);
+    if (d_centroids16_) { cudaFree(d_centroids16_); d_centroids16_ = nullptr; }
     cudaFree(d_cent_norms_);
     cudaFree(d_list_offsets_);
     cudaFree(d_list_ids_);
@@ -252,13 +280,20 @@ void JHQGpuIndex::alloc_workspace(int batch_size) {
 }
 
 // ── GPU rotation helper ───────────────────────────────────────────────────────
-float* JHQGpuIndex::rotate_on_gpu(const float* h_x, int n) const {
+float* JHQGpuIndex::rotate_on_gpu(const float* h_x, int n, double* sum_sq) const {
     float* d_x = nullptr;
     float* d_y = nullptr;
     CUDA_CHECK(cudaMalloc(&d_x, (long long)n * d_ * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&d_y, (long long)n * d_ * sizeof(float)));
     CUDA_CHECK(cudaMemcpy(d_x, h_x, (long long)n * d_ * sizeof(float),
                           cudaMemcpyHostToDevice));
+    // Lemma 2's sigma^2 = E[||x||^2]/d wants one reduction over the sample,
+    // and the sample is here already; on the host it was a pass over 0.4 GB.
+    if (sum_sq) {
+        float ss = 0.f;
+        CUBLAS_CHECK(cublasSdot(cublas_, n * d_, d_x, 1, d_x, 1, &ss));
+        *sum_sq = ss;
+    }
     const float one = 1.f, zero = 0.f;
     CUBLAS_CHECK(cublasSgemm(cublas_,
                              CUBLAS_OP_N, CUBLAS_OP_N,
@@ -304,6 +339,7 @@ void JHQGpuIndex::train_ivf_centroids(
             cent_norms[c] = (float)s;
         }
         cudaFree(d_centroids_);
+        if (d_centroids16_) { cudaFree(d_centroids16_); d_centroids16_ = nullptr; }
         cudaFree(d_cent_norms_);
         d_centroids_ = nullptr;
         d_cent_norms_ = nullptr;
@@ -450,6 +486,23 @@ void JHQGpuIndex::train_residual_codebook(
 // train() consumes, plus a checksum of the sample, so a changed dataset or
 // parameter misses rather than silently reusing the wrong codebooks.
 
+// The fused encoder locates a residual by the cell it falls in, which needs
+// each subspace's Kr codewords in increasing order. Lloyd's iterations keep
+// the order they start in and the initialisations are quantiles, so this is
+// normally a no-op -- but it is the encoder's precondition, so it is enforced
+// here rather than assumed. Relabelling codewords changes nothing else: the
+// codes are produced against, and the search LUT built from, the same array.
+void JHQGpuIndex::sort_residual_codebook() {
+    if (res_c1d_.empty()) return;
+    for (int m = 0; m < M_; ++m)
+        std::sort(res_c1d_.begin() + (size_t)m * Kr_,
+                  res_c1d_.begin() + (size_t)(m + 1) * Kr_);
+    if (!d_res_c1d_)
+        CUDA_CHECK(cudaMalloc(&d_res_c1d_, (size_t)M_ * Kr_ * sizeof(float)));
+    CUDA_CHECK(cudaMemcpy(d_res_c1d_, res_c1d_.data(),
+                          (size_t)M_ * Kr_ * sizeof(float), cudaMemcpyHostToDevice));
+}
+
 void JHQGpuIndex::upload_trained() {
     if (!d_Pi_) CUDA_CHECK(cudaMalloc(&d_Pi_, (long long)d_ * d_ * sizeof(float)));
     CUDA_CHECK(cudaMemcpy(d_Pi_, jl_.pi_data(),
@@ -459,10 +512,7 @@ void JHQGpuIndex::upload_trained() {
     CUDA_CHECK(cudaMemcpy(d_cent_, cb_->data(), cb_->size() * sizeof(float),
                           cudaMemcpyHostToDevice));
 
-    if (!d_res_c1d_)
-        CUDA_CHECK(cudaMalloc(&d_res_c1d_, (size_t)M_ * Kr_ * sizeof(float)));
-    CUDA_CHECK(cudaMemcpy(d_res_c1d_, res_c1d_.data(),
-                          (size_t)M_ * Kr_ * sizeof(float), cudaMemcpyHostToDevice));
+    sort_residual_codebook();
 
     // Same work as the upload_centroids lambda inside train_ivf_centroids;
     // that one is local to the function, so it cannot be reused from here.
@@ -473,7 +523,9 @@ void JHQGpuIndex::upload_trained() {
         for (int j = 0; j < d_; ++j) sn += (double)cc[j] * cc[j];
         cent_norms[c] = (float)sn;
     }
-    cudaFree(d_centroids_);  d_centroids_  = nullptr;
+    cudaFree(d_centroids_);
+    d_centroids_  = nullptr;
+    if (d_centroids16_) { cudaFree(d_centroids16_); d_centroids16_ = nullptr; }
     cudaFree(d_cent_norms_); d_cent_norms_ = nullptr;
     CUDA_CHECK(cudaMalloc(&d_centroids_, (long long)nlist_ * d_ * sizeof(float)));
     CUDA_CHECK(cudaMemcpy(d_centroids_, centroids_.data(),
@@ -559,8 +611,13 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
     const bool phase_timing = std::getenv("JHQ_TRAIN_PHASES") != nullptr;
     auto t_phase = std::chrono::high_resolution_clock::now();
 
-    jl_.estimate_sigma(h_x, n_train);
-    JHQ_TRAIN_PHASE("estimate_sigma");
+    // sigma comes back from the device with the rotation below unless the
+    // trained state is cached, which stores it.
+    const bool device_sigma = std::getenv("JHQ_HOST_SIGMA") == nullptr;
+    if (!device_sigma) {
+        jl_.estimate_sigma(h_x, n_train);
+        JHQ_TRAIN_PHASE("estimate_sigma");
+    }
 
     const char* cache_dir = std::getenv("JHQ_INDEX_CACHE");
     std::string cpath;
@@ -584,7 +641,10 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
     // the IVF, so this costs one extra D2H at build time, not per query.
     const bool gpu_codebook = std::getenv("JHQ_GPU_CODEBOOK") != nullptr;
 
-    float* d_y_train = rotate_on_gpu(h_x, n_train);
+    double sum_sq = 0.0;
+    float* d_y_train = rotate_on_gpu(h_x, n_train, device_sigma ? &sum_sq : nullptr);
+    if (device_sigma)
+        jl_.set_sigma((float)std::sqrt(sum_sq / ((double)n_train * d_)));
     // The rotated training set is 2.9 GB on Vogue and every host-side consumer
     // of it has moved to the device, except the analytical initialisation --
     // and that reads only the per-subspace mean and variance. Computing those
@@ -707,6 +767,8 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
         JHQ_TRAIN_PHASE("residual codebook");
     }
 
+    sort_residual_codebook();
+
     if (cache_dir) { save_trained(cpath); JHQ_TRAIN_PHASE("cache write"); }
 
     cudaFree(d_y_train);
@@ -717,44 +779,123 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
 int* JHQGpuIndex::assign_on_gpu(const float* d_y, int n) const {
     int* d_assign = nullptr;
     CUDA_CHECK(cudaMalloc(&d_assign, (long long)n * sizeof(int)));
-
-    const int batch = 8192;
+    const char* sb = std::getenv("JHQ_ASSIGN_BATCH");
+    const int   batch = std::min(n, sb ? std::atoi(sb)
+                                       : (nlist_ >= 8192 ? 32768 : 8192));
     float* d_dots = nullptr;
     CUDA_CHECK(cudaMalloc(&d_dots, (long long)nlist_ * batch * sizeof(float)));
-
-    const float one = 1.f, zero = 0.f;
-    for (int start = 0; start < n; start += batch) {
-        int nb = std::min(batch, n - start);
-        CUBLAS_CHECK(cublasSgemm(cublas_,
-                                 CUBLAS_OP_T, CUBLAS_OP_N,
-                                 nlist_, nb, d_,
-                                 &one,
-                                 d_centroids_, d_,
-                                 d_y + (long long)start * d_, d_,
-                                 &zero,
-                                 d_dots, nlist_));
-        assign_from_dots_kernel<<<(nb + 255) / 256, 256>>>(
-            d_dots, d_cent_norms_, d_assign + start, nlist_, nb);
-        CUDA_CHECK(cudaGetLastError());
-    }
+    __half* d_y16 = nullptr;
+    if (assign_precision() == 16)
+        CUDA_CHECK(cudaMalloc(&d_y16, (long long)n * d_ * sizeof(__half)));
+    assign_into(d_y, n, d_assign, d_dots, 0, 0, d_y16);
     CUDA_CHECK(cudaDeviceSynchronize());
+    CUBLAS_CHECK(cublasSetStream(cublas_, 0));
     cudaFree(d_dots);
+    if (d_y16) cudaFree(d_y16);
     return d_assign;
 }
 
+namespace {
+__global__ void f32_to_f16_kernel(const float* __restrict__ src,
+                                  __half* __restrict__ dst, long long n)
+{
+    long long i = ((long long)blockIdx.x * blockDim.x + threadIdx.x) * 4;
+    if (i + 3 < n) {
+        const float4 v = *reinterpret_cast<const float4*>(src + i);
+        __half2* o = reinterpret_cast<__half2*>(dst + i);
+        o[0] = __floats2half2_rn(v.x, v.y);
+        o[1] = __floats2half2_rn(v.z, v.w);
+    } else {
+        for (; i < n; ++i) dst[i] = __float2half_rn(src[i]);
+    }
+}
+} // namespace
+
+// The assignment's precision is a separate decision from the rotation's. The
+// rotation's output is what gets quantised, so its error shows up in every
+// code; the assignment only picks a list, and a lower-precision product can
+// only flip a vector between two lists it is nearly equidistant from -- which
+// the probe order covers either way. Measured, fp32 -> fp16 inputs with fp32
+// accumulation (assign time, recall):
+//     vogue 1M/768        25.8 ->   12.9 ms   0.9357 -> 0.9348
+//     openai 1M/3072      77.7 ->   47.3      0.9581 -> 0.9584
+//     bge-m3 10.1M/1024   2403 ->    977      0.9220 -> 0.9220
+//     stella 17.8M/1024   9118 ->   3370      0.9580 -> 0.9580
+// fp32 on the CUDA cores was already at 77 TFLOPS of the card's ~105, so the
+// tensor cores were the only headroom. JHQ_ASSIGN_PREC: 16 (default), tf32, 32.
+int JHQGpuIndex::assign_precision() const {
+    const char* p = std::getenv("JHQ_ASSIGN_PREC");
+    if (!p) return 16;
+    if (p[0] == 't' || p[0] == 'T') return 19;   // tf32
+    return std::atoi(p) == 16 ? 16 : 32;
+}
+
 void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
-                              float* d_dots, cudaStream_t stream) const {
-    const int   batch = 8192;
+                              float* d_dots, int y_transposed,
+                              cudaStream_t stream, __half* d_y16) const {
+    // At scale this is the largest thing add() does: every vector against every
+    // one of nlist centroids is 17.8M * 16384 * 1024 FLOP on stella-trec24,
+    // measured at 11.2 s of a 38 s add, two orders above the encode it feeds.
+    // The sub-batch is what decides how much of the machine the GEMM can use --
+    // 8192 rows against nlist=16384 leaves the product too narrow -- so it
+    // scales with nlist instead of staying fixed.
+    const char* sb = std::getenv("JHQ_ASSIGN_BATCH");
+    const int   batch = sb ? std::atoi(sb)
+                           : (nlist_ >= 8192 ? 32768 : 8192);
+    const int   prec  = assign_precision();
     const float one = 1.f, zero = 0.f;
     CUBLAS_CHECK(cublasSetStream(cublas_, stream));
+
+    if (prec == 16) {
+        if (!d_y16) throw std::runtime_error("assign_into: fp16 needs a half scratch");
+        if (!d_centroids16_) {
+            CUDA_CHECK(cudaMalloc(&d_centroids16_,
+                                  (long long)nlist_ * d_ * sizeof(__half)));
+            const long long nc = (long long)nlist_ * d_;
+            f32_to_f16_kernel<<<(int)((nc / 4 + 255) / 256), 256, 0, stream>>>(
+                d_centroids_, d_centroids16_, nc);
+            CUDA_CHECK(cudaGetLastError());
+        }
+        // The whole batch converts once, so the sub-batch slicing below is the
+        // same in either layout.
+        const long long ny = (long long)n * d_;
+        f32_to_f16_kernel<<<(int)((ny / 4 + 255) / 256), 256, 0, stream>>>(
+            d_y, d_y16, ny);
+        CUDA_CHECK(cudaGetLastError());
+    }
+
     for (int start = 0; start < n; start += batch) {
         int nb = std::min(batch, n - start);
-        CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
-                                 nlist_, nb, d_, &one,
-                                 d_centroids_, d_,
-                                 d_y + (long long)start * d_, d_,
-                                 &zero, d_dots, nlist_));
-        assign_from_dots_kernel<<<(nb + 255) / 256, 256, 0, stream>>>(
+        // y is (n x d) row-major, or with y_transposed (n x d) column-major
+        // with ld = n: then it enters transposed and this sub-batch's slice
+        // starts at column 0, row `start`.
+        const cublasOperation_t opB = y_transposed ? CUBLAS_OP_T : CUBLAS_OP_N;
+        const long long yoff = y_transposed ? start : (long long)start * d_;
+        const int       ldb  = y_transposed ? n : d_;
+        if (prec == 32) {
+            CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, opB,
+                                     nlist_, nb, d_, &one,
+                                     d_centroids_, d_,
+                                     d_y + yoff, ldb,
+                                     &zero, d_dots, nlist_));
+        } else if (prec == 19) {
+            CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, opB,
+                                      nlist_, nb, d_, &one,
+                                      d_centroids_, CUDA_R_32F, d_,
+                                      d_y + yoff,   CUDA_R_32F, ldb,
+                                      &zero, d_dots, CUDA_R_32F, nlist_,
+                                      CUBLAS_COMPUTE_32F_FAST_TF32,
+                                      CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+        } else {
+            CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, opB,
+                                      nlist_, nb, d_, &one,
+                                      d_centroids16_, CUDA_R_16F, d_,
+                                      d_y16 + yoff,   CUDA_R_16F, ldb,
+                                      &zero, d_dots, CUDA_R_32F, nlist_,
+                                      CUBLAS_COMPUTE_32F,
+                                      CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+        }
+        assign_from_dots_kernel<<<(nb * 32 + 255) / 256, 256, 0, stream>>>(
             d_dots, d_cent_norms_, d_out + start, nlist_, nb);
         CUDA_CHECK(cudaGetLastError());
     }
@@ -880,10 +1021,25 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     // that the previous batch's assignment had finished -- so it only appeared
     // once the staging copy got fast.
     float* d_dots[2] = {nullptr, nullptr};
-    for (int b = 0; b < NBUF; ++b)
-        CUDA_CHECK(cudaMalloc(&d_dots[b], (long long)nlist_ * 8192 * sizeof(float)));
+    {
+        const char* sb = std::getenv("JHQ_ASSIGN_BATCH");
+        const int abatch = sb ? std::atoi(sb) : (nlist_ >= 8192 ? 32768 : 8192);
+        for (int b = 0; b < NBUF; ++b)
+            CUDA_CHECK(cudaMalloc(&d_dots[b],
+                                  (long long)nlist_ * abatch * sizeof(float)));
+    }
     for (int b = 0; b < NBUF; ++b)
         CUDA_CHECK(cudaMalloc(&d_dots_enc[b], (size_t)dots_rows * K_ * sizeof(float)));
+    __half* d_y16[2] = {nullptr, nullptr};
+    if (assign_precision() == 16)
+        for (int b = 0; b < NBUF; ++b)
+            CUDA_CHECK(cudaMalloc(&d_y16[b], (long long)AB_rows * d_ * sizeof(__half)));
+
+    // Dimension-major y, for the encoders' sake. Only the fused Cartesian
+    // encoder and the coarse assignment read y in add(), and both are taught
+    // the layout below, so this is off unless they are the ones running.
+    const char* ytr = std::getenv("JHQ_Y_TRANSPOSED");
+    const bool y_transposed = ytr ? (ytr[0] == '1') : false;
 
     const float one = 1.f, zero = 0.f;
     int nbatch = 0;
@@ -926,9 +1082,22 @@ void JHQGpuIndex::add(const float* h_x, int n) {
         lap(t0, t_h2d);
 
         CUBLAS_CHECK(cublasSetStream(cublas_, st[cur]));
-        CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_N, CUBLAS_OP_N,
-                                 d_, nb, d_, &one, d_Pi_, d_,
-                                 d_xb[cur], d_, &zero, d_yb[cur], d_));
+        if (y_transposed) {
+            // The encoders read Ds values of one vector per thread, and with
+            // vectors contiguous the threads of a warp land d floats apart --
+            // every load its own transaction, measured at 378 GB/s of 1792.
+            // Storing y dimension-major makes those reads consecutive. The
+            // rotation can produce that orientation for free: (Pi X)^T is
+            // X^T Pi^T, which is the same GEMM with both operands transposed.
+            CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_T,
+                                     nb, d_, d_, &one,
+                                     d_xb[cur], d_, d_Pi_, d_,
+                                     &zero, d_yb[cur], nb));
+        } else {
+            CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_N, CUBLAS_OP_N,
+                                     d_, nb, d_, &one, d_Pi_, d_,
+                                     d_xb[cur], d_, &zero, d_yb[cur], d_));
+        }
         lap(t0, t_rot);
 
         // Which form wins depends on the subspace width, and the crossover was
@@ -945,7 +1114,18 @@ void JHQGpuIndex::add(const float* h_x, int n) {
             const bool use_gemm = force ? (force[0] == '1') : (Ds_ >= 32);
             const char* sep = std::getenv("JHQ_ENCODE_SEPARABLE");
             const bool use_sep = d_levels_ && (!sep || sep[0] == '1');
-            if (use_sep)
+            const char* fu = std::getenv("JHQ_ENCODE_FUSED");
+            const bool use_fused = use_sep && d_res_c1d_ && (Br_ == 8 || (Ds_ % 2 == 0))
+                                 && (!fu || fu[0] == '1');
+            if (use_fused) {
+                // One pass over y for both levels; skips the separate residual
+                // encode below.
+                launch_encode_fused_cartesian(
+                    d_yb[cur], d_levels_, n_levels_, d_res_c1d_,
+                    d_pc + start * M_, d_rc + start * bpv_, d_co + start,
+                    nb, d_, M_, Ds_, Kr_, Br_, bpv_, y_transposed ? 1 : 0,
+                    st[cur]);
+            } else if (use_sep)
                 // Ds*L operations against K*Ds; only the product codebook is
                 // separable, so this needs the paper's construction.
                 launch_primary_encode_cartesian(d_yb[cur], d_pc + start * M_,
@@ -962,13 +1142,22 @@ void JHQGpuIndex::add(const float* h_x, int n) {
         }
         lap(t0, t_penc);
 
-        launch_residual_encode(d_yb[cur], d_pc + start * M_,
-                               d_rc + start * bpv_, d_co + start,
-                               d_cent_, d_res_c1d_,
-                               nb, d_, M_, Ds_, K_, Kr_, Br_, bpv_, st[cur]);
+        {
+            const char* fu = std::getenv("JHQ_ENCODE_FUSED");
+            const char* sep = std::getenv("JHQ_ENCODE_SEPARABLE");
+            const bool sep_on = d_levels_ && (!sep || sep[0] == '1');
+            const bool fused = sep_on && d_res_c1d_ && (Br_ == 8 || (Ds_ % 2 == 0))
+                             && (!fu || fu[0] == '1');
+            if (!fused)
+                launch_residual_encode(d_yb[cur], d_pc + start * M_,
+                                       d_rc + start * bpv_, d_co + start,
+                                       d_cent_, d_res_c1d_,
+                                       nb, d_, M_, Ds_, K_, Kr_, Br_, bpv_, st[cur]);
+        }
         lap(t0, t_renc);
 
-        assign_into(d_yb[cur], nb, d_assign + start, d_dots[cur], st[cur]);
+        assign_into(d_yb[cur], nb, d_assign + start, d_dots[cur],
+                    y_transposed ? 1 : 0, st[cur], d_y16[cur]);
         CUDA_CHECK(cudaEventRecord(ev[cur], st[cur]));
         lap(t0, t_asg);
     }
@@ -985,6 +1174,7 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     for (int b = 0; b < NBUF; ++b) {
         cudaFree(d_dots[b]);
         cudaFree(d_dots_enc[b]);
+        if (d_y16[b]) cudaFree(d_y16[b]);
         cudaFreeHost(h_stage[b]); cudaFree(d_xb[b]); cudaFree(d_yb[b]);
         cudaStreamDestroy(st[b]); cudaEventDestroy(ev[b]);
     }

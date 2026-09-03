@@ -21,6 +21,7 @@ public:
 
     int   dim()     const { return d_; }
     float sigma()   const { return sigma_; }
+    void  set_sigma(float s) { sigma_ = s; }
     // Raw Π in column-major order (d×d), as produced by LAPACK sorgqr.
     const float* pi_data() const { return Pi_.data(); }
 

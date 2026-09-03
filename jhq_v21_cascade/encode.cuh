@@ -79,3 +79,31 @@ void launch_primary_encode_cartesian(const float* d_y, uint8_t* d_codes,
                                      cudaStream_t stream = 0);
 
 } // namespace jhq_gpu
+
+namespace jhq_gpu {
+
+// Both levels in one pass over the rotated vector.
+//
+// The primary and residual encoders each read all of y -- 12 KB a vector at
+// d=3072 -- and each walks it as one thread per vector, so adjacent threads sit
+// d floats apart and every load is a separate transaction. The separable
+// primary encode measured 378 GB/s of a 1792 GB/s machine for exactly that
+// reason.
+//
+// Here one thread owns one (vector, subspace): it reads its Ds values once,
+// picks the product codeword's digits from the level table, reconstructs what
+// those digits represent, quantises the residual against the scalar codebook,
+// and adds its share of the correction term. y is read once instead of twice
+// and the reconstruction never goes back to global memory for centroids.
+//
+// Needs the Cartesian-product codebook, since it derives the reconstruction
+// from the level digits rather than from a centroid table.
+void launch_encode_fused_cartesian(
+    const float* d_y, const float* d_levels, int L,
+    const float* d_res_c1d,                 // [M][Kr]
+    uint8_t* d_codes, uint8_t* d_res_codes, float* d_corrections,
+    int N, int d, int M, int Ds, int Kr, int Br, int bpv,
+    int y_transposed,          // 1 when d_y is [d][N] rather than [N][d]
+    cudaStream_t stream = 0);
+
+} // namespace jhq_gpu

@@ -1,6 +1,7 @@
 #pragma once
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+#include <cuda_fp16.h>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -80,6 +81,7 @@ private:
     int      n_levels_         = 0;
     float*   d_centroids_      = nullptr;
     float*   d_cent_norms_     = nullptr;
+    mutable __half* d_centroids16_ = nullptr;   // fp16 copy, built on demand
 
     int*     d_list_offsets_   = nullptr;
     int*     d_list_ids_       = nullptr;
@@ -90,7 +92,7 @@ private:
     mutable SearchWorkspace ws_;
     mutable cublasHandle_t  cublas_;
 
-    float* rotate_on_gpu(const float* h_x, int n) const;
+    float* rotate_on_gpu(const float* h_x, int n, double* sum_sq = nullptr) const;
     void   train_residual_codebook(const float* d_y_train,
                                    const uint8_t* d_codes_train, int n_train);
     void   train_ivf_centroids(const float* h_y_train,
@@ -102,7 +104,10 @@ private:
     // malloc, a device-wide barrier and a free per batch -- 272 of them on
     // stella-trec24 -- which is what stops the loop from pipelining.
     void   assign_into(const float* d_y, int n, int* d_out, float* d_dots,
-                       cudaStream_t stream) const;
+                       int y_transposed, cudaStream_t stream,
+                       __half* d_y16 = nullptr) const;
+    int    assign_precision() const;
+    void   sort_residual_codebook();
     void   alloc_workspace(int batch_size);
 
     // Trained-state cache. Every run of a parameter sweep retrains an

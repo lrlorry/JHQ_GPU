@@ -1,6 +1,7 @@
 #include "jhq_v21_cascade/encode.cuh"
 
 #include <algorithm>
+#include <stdexcept>
 
 #ifndef CUBLAS_CHECK
 #define CUBLAS_CHECK(x) do { cublasStatus_t _s = (x); if (_s != CUBLAS_STATUS_SUCCESS) { \
@@ -321,6 +322,109 @@ void launch_primary_encode_cartesian(const float* d_y, uint8_t* d_codes,
     primary_encode_cartesian_kernel<<<dim3(gx, M), BLOCK,
                                       (size_t)L * sizeof(float), stream>>>(
         d_y, d_codes, d_levels, L, N, d, M, Ds);
+    CUDA_CHECK(cudaGetLastError());
+}
+
+} // namespace jhq_gpu
+
+namespace jhq_gpu {
+namespace {
+
+__global__ void encode_fused_cartesian_kernel(
+    const float* __restrict__ d_y,
+    const float* __restrict__ d_levels,
+    const float* __restrict__ d_res_c1d,
+    uint8_t* d_codes, uint8_t* d_res_codes, float* d_corrections,
+    int L, int N, int d, int M, int Ds, int Kr, int Br, int bpv, int y_transposed)
+{
+    extern __shared__ float s_all[];
+    float* s_lv  = s_all;              // L levels of the primary product
+    float* s_rcb = s_all + L;          // Kr residual codewords for this subspace
+    float* s_lb  = s_rcb + Kr;         // L-1 boundaries between primary levels
+    float* s_rb  = s_lb + L;           // Kr-1 boundaries between residual codewords
+
+    // Both codebooks are sorted (the levels by construction, the residual
+    // codewords by train()), so the nearest codeword is the cell the value
+    // falls in, and the cells are delimited by the midpoints. That turns the
+    // Kr-way scan into log2(Kr) compares: 8 in place of 256 at Br=8.
+    const int m = blockIdx.y;
+    for (int i = threadIdx.x; i < L; i += blockDim.x) s_lv[i] = d_levels[i];
+    for (int i = threadIdx.x; i < Kr; i += blockDim.x)
+        s_rcb[i] = d_res_c1d[(long long)m * Kr + i];
+    __syncthreads();
+    for (int i = threadIdx.x; i + 1 < L;  i += blockDim.x) s_lb[i] = 0.5f * (s_lv[i]  + s_lv[i + 1]);
+    for (int i = threadIdx.x; i + 1 < Kr; i += blockDim.x) s_rb[i] = 0.5f * (s_rcb[i] + s_rcb[i + 1]);
+    __syncthreads();
+
+    for (long long vid = (long long)blockIdx.x * blockDim.x + threadIdx.x;
+         vid < N; vid += (long long)gridDim.x * blockDim.x) {
+        uint8_t* rcode = d_res_codes + vid * bpv;
+        // [N][d]: this vector's Ds values are contiguous, but the warp's
+        // threads are d floats apart. [d][N]: each dimension is one coalesced
+        // read across the warp, which is the point of the layout.
+        const float* ym = y_transposed ? nullptr : d_y + vid * d + (long long)m * Ds;
+
+        int   code = 0;
+        float dot  = 0.f;              // this subspace's share of yhat . rhat
+        for (int j = 0; j < Ds; ++j) {
+            const float v = y_transposed
+                          ? d_y[((long long)m * Ds + j) * N + vid]
+                          : ym[j];
+
+            // primary digit: the level whose cell holds v. L and Kr are
+            // powers of two, so this is a fixed number of branch-free steps;
+            // a value on a boundary goes to the lower index, as the scan did.
+            int best = 0;
+            for (int w = L >> 1; w > 0; w >>= 1)
+                best += (v > s_lb[best + w - 1]) ? w : 0;
+            code = code * L + best;
+            const float yhat = s_lv[best];
+
+            // residual against the scalar codebook, same rule
+            const float r = v - yhat;
+            int rb = 0;
+            for (int w = Kr >> 1; w > 0; w >>= 1)
+                rb += (r > s_rb[rb + w - 1]) ? w : 0;
+            const float rhat = s_rcb[rb];
+            dot += yhat * rhat;
+
+            const int gj = m * Ds + j;         // dimension index in the full vector
+            if (Br == 8) rcode[gj] = (uint8_t)rb;
+            else {
+                // two 4-bit codes share a byte, and the two dimensions that
+                // share one always belong to the same subspace when Ds is even,
+                // so this thread owns the whole byte and no atomic is needed
+                if ((gj & 1) == 0) rcode[gj >> 1] = (uint8_t)(rb & 0x0F);
+                else               rcode[gj >> 1] |= (uint8_t)((rb & 0x0F) << 4);
+            }
+        }
+        d_codes[vid * M + m] = (uint8_t)code;
+        atomicAdd(d_corrections + vid, 2.f * dot);
+    }
+}
+
+} // namespace
+
+void launch_encode_fused_cartesian(
+    const float* d_y, const float* d_levels, int L, const float* d_res_c1d,
+    uint8_t* d_codes, uint8_t* d_res_codes, float* d_corrections,
+    int N, int d, int M, int Ds, int Kr, int Br, int bpv, int y_transposed,
+    cudaStream_t stream)
+{
+    if (Br == 4 && (Ds & 1))
+        throw std::runtime_error("launch_encode_fused_cartesian: Br=4 packs two "
+                                 "dimensions per byte, so Ds must be even for a "
+                                 "thread to own whole bytes");
+    CUDA_CHECK(cudaMemsetAsync(d_corrections, 0, (size_t)N * sizeof(float), stream));
+    const int BLOCK = 256;
+    const int gx = (int)std::min((long long)((N + BLOCK - 1) / BLOCK), 4096LL);
+    if ((L & (L - 1)) || (Kr & (Kr - 1)))
+        throw std::runtime_error("launch_encode_fused_cartesian: L and Kr must "
+                                 "be powers of two for the cell search");
+    encode_fused_cartesian_kernel<<<dim3(gx, M), BLOCK,
+                                    (size_t)(2 * L + 2 * Kr) * sizeof(float), stream>>>(
+        d_y, d_levels, d_res_c1d, d_codes, d_res_codes, d_corrections,
+        L, N, d, M, Ds, Kr, Br, bpv, y_transposed);
     CUDA_CHECK(cudaGetLastError());
 }
 
