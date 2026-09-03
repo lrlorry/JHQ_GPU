@@ -818,9 +818,7 @@ JHQGpuIndex::~JHQGpuIndex() {
     cudaFree(d_cent_);
     cudaFree(d_res_c1d_);
     cudaFree(d_centroids_);
-    if (d_centroids16_) { cudaFree(d_centroids16_); d_centroids16_ = nullptr; }
-    if (d_centroids8_)  { cudaFree(d_centroids8_);  d_centroids8_  = nullptr; }
-    if (d_cstats8_)     { cudaFree(d_cstats8_);     d_cstats8_     = nullptr; }
+    drop_assign_centroids();
     cudaFree(d_cent_norms_);
     cudaFree(d_list_offsets_);
     cudaFree(d_list_ids_);
@@ -975,8 +973,7 @@ void JHQGpuIndex::train_ivf_centroids(
     if (gpu_ivf) {
         cudaFree(d_centroids_);  d_centroids_  = nullptr;
         cudaFree(d_cent_norms_); d_cent_norms_ = nullptr;
-        if (d_centroids16_) { cudaFree(d_centroids16_); d_centroids16_ = nullptr; }
-        if (d_centroids8_)  { cudaFree(d_centroids8_);  d_centroids8_  = nullptr; }
+        drop_assign_centroids();
         CUDA_CHECK(cudaMalloc(&d_centroids_,  (long long)nlist_ * d_ * sizeof(float)));
         CUDA_CHECK(cudaMalloc(&d_cent_norms_, (long long)nlist_ * sizeof(float)));
         {
@@ -1054,8 +1051,7 @@ void JHQGpuIndex::train_ivf_centroids(
             cent_norms[c] = (float)s;
         }
         cudaFree(d_centroids_);
-        if (d_centroids16_) { cudaFree(d_centroids16_); d_centroids16_ = nullptr; }
-        if (d_centroids8_)  { cudaFree(d_centroids8_);  d_centroids8_  = nullptr; }
+        drop_assign_centroids();
         cudaFree(d_cent_norms_);
         d_centroids_ = nullptr;
         d_cent_norms_ = nullptr;
@@ -1222,8 +1218,7 @@ void JHQGpuIndex::upload_trained() {
     }
     cudaFree(d_centroids_);
     d_centroids_  = nullptr;
-    if (d_centroids16_) { cudaFree(d_centroids16_); d_centroids16_ = nullptr; }
-    if (d_centroids8_)  { cudaFree(d_centroids8_);  d_centroids8_  = nullptr; }
+    drop_assign_centroids();
     cudaFree(d_cent_norms_); d_cent_norms_ = nullptr;
     CUDA_CHECK(cudaMalloc(&d_centroids_, (long long)nlist_ * d_ * sizeof(float)));
     CUDA_CHECK(cudaMemcpy(d_centroids_, centroids_.data(),
@@ -1513,44 +1508,87 @@ int JHQGpuIndex::assign_precision() const {
 }
 
 // The int8 tensor-core product with the bounded, exactly settled argmin (see
-// assign_from_dots8_kernel). JHQ_ASSIGN_INT8=0 keeps the fp16 product.
+// assign_from_dots8_kernel). Measured against the fp16 product, add time on
+// the card alone, warm page cache, the better of two runs each:
+//     vogue 0.93M/768,  nlist 1024      224 ->  224 ms
+//     bge-m3 10.1M/1024, nlist 8192    1679 -> 1574
+//     stella 17.8M/1024, nlist 16384   4271 -> 3705
+// The product itself halves; what it gives back is the settlement. The
+// bound is Cauchy-Schwarz on rounding errors that are in fact uncorrelated
+// with the data, so it is some thirty times wider than the error, and at
+// nlist 8192 and up most rows (85-88%) fall inside it and are recomputed
+// against their candidates from L2. The rows that end up differing from the
+// fp16 path are the ties: 0 of 14838 on vogue's last batch, 6 of 31748 on
+// bge-m3, 3 of 16359 on stella, recall the same to the third decimal.
+// JHQ_ASSIGN_INT8=0 keeps the fp16 product.
 bool JHQGpuIndex::assign_int8() const {
     if (assign_precision() != 16 || std::getenv("JHQ_ASSIGN_OUT32")) return false;
+    if (d_ % 8 != 0) return false;
     const char* e = std::getenv("JHQ_ASSIGN_INT8");
-    return e ? e[0] == '1' : false;
+    return e ? e[0] == '1' : true;
 }
 
-void JHQGpuIndex::ensure_assign_centroids(cudaStream_t stream) const {
+void JHQGpuIndex::ensure_assign_centroids(cudaStream_t stream, int x_domain) const {
     const int prec = assign_precision();
-    if (prec == 16 && !d_centroids16_) {
-        CUDA_CHECK(cudaMalloc(&d_centroids16_, (long long)nlist_ * d_ * sizeof(__half)));
-        const long long nc = (long long)nlist_ * d_;
-        f32_to_f16_kernel<<<(int)((nc / 4 + 255) / 256), 256, 0, stream>>>(
-            d_centroids_, d_centroids16_, nc);
+    const long long nc = (long long)nlist_ * d_;
+    if (x_domain && !d_centroids_x_) {
+        // R^T c for every centroid, as one GEMM against the rotation. The
+        // rotation's own product is y^T = x^T R^T (see add()), so the matrix
+        // taken transposed there is taken as stored here.
+        CUDA_CHECK(cudaMalloc(&d_centroids_x_, nc * sizeof(float)));
+        const float one = 1.f, zero = 0.f;
+        CUBLAS_CHECK(cublasSetStream(cublas_, stream));
+        CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
+                                 d_, nlist_, d_, &one,
+                                 d_Pi_, d_, d_centroids_, d_,
+                                 &zero, d_centroids_x_, d_));
+        CUBLAS_CHECK(cublasSetStream(cublas_, 0));
+    }
+    const float* cf  = x_domain ? d_centroids_x_ : d_centroids_;
+    __half*&     c16 = x_domain ? d_centroids16_x_ : d_centroids16_;
+    if (prec == 16 && !c16) {
+        CUDA_CHECK(cudaMalloc(&c16, nc * sizeof(__half)));
+        f32_to_f16_kernel<<<(int)((nc / 4 + 255) / 256), 256, 0, stream>>>(cf, c16, nc);
         CUDA_CHECK(cudaGetLastError());
     }
-    if (assign_int8() && !d_centroids8_) requantize_centroids8(stream);
+    if (assign_int8() && !(x_domain ? d_centroids8_x_ : d_centroids8_))
+        requantize_centroids8(stream, x_domain);
+}
+
+// Every derived copy of the coarse centroids, dropped when they change.
+void JHQGpuIndex::drop_assign_centroids() const {
+    if (d_centroids16_)   { cudaFree(d_centroids16_);   d_centroids16_   = nullptr; }
+    if (d_centroids8_)    { cudaFree(d_centroids8_);    d_centroids8_    = nullptr; }
+    if (d_cstats8_)       { cudaFree(d_cstats8_);       d_cstats8_       = nullptr; }
+    if (d_centroids_x_)   { cudaFree(d_centroids_x_);   d_centroids_x_   = nullptr; }
+    if (d_centroids16_x_) { cudaFree(d_centroids16_x_); d_centroids16_x_ = nullptr; }
+    if (d_centroids8_x_)  { cudaFree(d_centroids8_x_);  d_centroids8_x_  = nullptr; }
+    if (d_cstats8_x_)     { cudaFree(d_cstats8_x_);     d_cstats8_x_     = nullptr; }
 }
 
 // The centroids' int8 image on one shared scale, with that scale and the
 // largest per-centroid error kept on the device as float bits, so k-means
 // can refresh it every iteration without a host round trip.
-void JHQGpuIndex::requantize_centroids8(cudaStream_t stream) const {
+void JHQGpuIndex::requantize_centroids8(cudaStream_t stream, int x_domain) const {
     if (d_ % 8 != 0) throw std::runtime_error("assign: the int8 product needs d % 8 == 0");
-    if (!d_cstats8_) CUDA_CHECK(cudaMalloc(&d_cstats8_, 2 * sizeof(unsigned)));
-    if (!d_centroids8_) CUDA_CHECK(cudaMalloc(&d_centroids8_, (long long)nlist_ * d_));
-    CUDA_CHECK(cudaMemsetAsync(d_cstats8_, 0, 2 * sizeof(unsigned), stream));
+    const float* cf = x_domain ? d_centroids_x_ : d_centroids_;
+    int8_t*&   c8 = x_domain ? d_centroids8_x_ : d_centroids8_;
+    unsigned*& st = x_domain ? d_cstats8_x_ : d_cstats8_;
+    if (!st) CUDA_CHECK(cudaMalloc(&st, 2 * sizeof(unsigned)));
+    if (!c8) CUDA_CHECK(cudaMalloc(&c8, (long long)nlist_ * d_));
+    CUDA_CHECK(cudaMemsetAsync(st, 0, 2 * sizeof(unsigned), stream));
     const long long n4 = (long long)nlist_ * d_ / 4;
     absmax_kernel<<<(int)std::min<long long>((n4 + 255) / 256, 2048), 256, 0, stream>>>(
-        d_centroids_, n4, d_cstats8_);
+        cf, n4, st);
     quantize_centroids_kernel<<<(int)(((long long)nlist_ * 32 + 255) / 256), 256, 0, stream>>>(
-        d_centroids_, nlist_, d_, d_cstats8_, d_centroids8_, d_cstats8_ + 1);
+        cf, nlist_, d_, st, c8, st + 1);
     CUDA_CHECK(cudaGetLastError());
 }
 
 void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
                               float* d_dots, int y_transposed,
-                              cudaStream_t stream, __half* d_y16) const {
+                              cudaStream_t stream, __half* d_y16,
+                              int x_domain) const {
     // At scale this is the largest thing add() does: every vector against every
     // one of nlist centroids is 17.8M * 16384 * 1024 FLOP on stella-trec24,
     // measured at 11.2 s of a 38 s add, two orders above the encode it feeds.
@@ -1567,6 +1605,9 @@ void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
     const bool  out16 = (prec == 16) && !std::getenv("JHQ_ASSIGN_OUT32");
     const bool  int8  = out16 && assign_int8();
     const bool  check = out16 && std::getenv("JHQ_ASSIGN_CHECK");
+    // JHQ_ASSIGN_CHECK=32 holds the int8 path against the fp32 product itself
+    // rather than the fp16 path, which has rounding of its own.
+    const bool  check32 = check && int8 && std::atoi(std::getenv("JHQ_ASSIGN_CHECK")) == 32;
     // The bound's relative term: half an fp16 ulp of the dot is 2^-11, the
     // distance carries twice the dot, so 2^-10 = 0.000977, with a little over.
     // JHQ_ASSIGN_REL widens it, to show the disagreements that remain are
@@ -1583,10 +1624,14 @@ void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
     const float one = 1.f, zero = 0.f;
     CUBLAS_CHECK(cublasSetStream(cublas_, stream));
 
+    // Which side of the rotation the input is on decides the centroid set;
+    // the norms are the same on both.
+    if (x_domain && prec != 16) ensure_assign_centroids(stream, 1);
+    const float*    cf  = x_domain ? d_centroids_x_   : d_centroids_;
     int8_t* y8 = nullptr; float4* y8_stats = nullptr; size_t smem8 = 0;
     if (prec == 16) {
         if (!d_y16) throw std::runtime_error("assign_into: fp16 needs a half scratch");
-        ensure_assign_centroids(stream);
+        ensure_assign_centroids(stream, x_domain);
         const long long ny = (long long)n * d_;
         if (int8 && !check) {
             // The int8 image of y, row-major in either layout, and the row
@@ -1625,6 +1670,10 @@ void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
         }
     }
 
+    const __half*   c16 = x_domain ? d_centroids16_x_ : d_centroids16_;
+    const int8_t*   c8  = x_domain ? d_centroids8_x_  : d_centroids8_;
+    const unsigned* cs8 = x_domain ? d_cstats8_x_     : d_cstats8_;
+
     for (int start = 0; start < n; start += batch) {
         int nb = std::min(batch, n - start);
         // y is (n x d) row-major, or with y_transposed (n x d) column-major
@@ -1636,13 +1685,13 @@ void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
         if (prec == 32) {
             CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, opB,
                                      nlist_, nb, d_, &one,
-                                     d_centroids_, d_,
+                                     cf, d_,
                                      d_y + yoff, ldb,
                                      &zero, d_dots, nlist_));
         } else if (prec == 19) {
             CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, opB,
                                       nlist_, nb, d_, &one,
-                                      d_centroids_, CUDA_R_32F, d_,
+                                      cf, CUDA_R_32F, d_,
                                       d_y + yoff,   CUDA_R_32F, ldb,
                                       &zero, d_dots, CUDA_R_32F, nlist_,
                                       CUBLAS_COMPUTE_32F_FAST_TF32,
@@ -1652,29 +1701,39 @@ void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
             int* d_dots32 = reinterpret_cast<int*>(d_dots);
             CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
                                       nlist_, nb, d_, &ione,
-                                      d_centroids8_, CUDA_R_8I, d_,
+                                      c8, CUDA_R_8I, d_,
                                       y8 + (long long)start * d_, CUDA_R_8I, d_,
                                       &izero, d_dots32, CUDA_R_32I, nlist_,
                                       CUBLAS_COMPUTE_32I,
                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
             assign_from_dots8_kernel<<<(int)(((long long)nb * 32 + 127) / 128), 128, smem8, stream>>>(
-                d_dots32, d_cent_norms_, d_centroids_, d_y + yoff, y_transposed, ldb,
-                y8_stats + start, d_cstats8_, d_out + start, nlist_, nb, d_,
+                d_dots32, d_cent_norms_, cf, d_y + yoff, y_transposed, ldb,
+                y8_stats + start, cs8, d_out + start, nlist_, nb, d_,
                 check ? d_chk_cnt + 1 : nullptr);
             CUDA_CHECK(cudaGetLastError());
-            if (check) {
+            if (check32) {
+                CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_T, opB,
+                                         nlist_, nb, d_, &one,
+                                         cf, d_, d_y + yoff, ldb,
+                                         &zero, d_chk_dots, nlist_));
+                assign_from_dots_kernel<<<(nb * 32 + 255) / 256, 256, 0, stream>>>(
+                    d_chk_dots, d_cent_norms_, d_chk_out, nlist_, nb);
+                count_mismatch_kernel<<<(nb + 255) / 256, 256, 0, stream>>>(
+                    d_out + start, d_chk_out, nb, d_chk_cnt);
+                CUDA_CHECK(cudaGetLastError());
+            } else if (check) {
                 // The fp16 product's assignment beside it, settled its own
                 // way, and a count of the rows that differ.
                 __half* d_dots16 = reinterpret_cast<__half*>(d_chk_dots);
                 CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, opB,
                                           nlist_, nb, d_, &one,
-                                          d_centroids16_, CUDA_R_16F, d_,
+                                          c16, CUDA_R_16F, d_,
                                           d_y16 + yoff,   CUDA_R_16F, ldb,
                                           &zero, d_dots16, CUDA_R_16F, nlist_,
                                           CUBLAS_COMPUTE_32F,
                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
                 assign_from_dots16_kernel<<<(nb * 32 + 255) / 256, 256, 0, stream>>>(
-                    d_dots16, d_cent_norms_, d_centroids16_, d_y16 + yoff,
+                    d_dots16, d_cent_norms_, c16, d_y16 + yoff,
                     y_transposed, ldb, d_chk_out, nlist_, nb, d_, rel, nullptr);
                 count_mismatch_kernel<<<(nb + 255) / 256, 256, 0, stream>>>(
                     d_out + start, d_chk_out, nb, d_chk_cnt);
@@ -1687,13 +1746,13 @@ void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
             __half* d_dots16 = reinterpret_cast<__half*>(d_dots);
             CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, opB,
                                       nlist_, nb, d_, &one,
-                                      d_centroids16_, CUDA_R_16F, d_,
+                                      c16, CUDA_R_16F, d_,
                                       d_y16 + yoff,   CUDA_R_16F, ldb,
                                       &zero, d_dots16, CUDA_R_16F, nlist_,
                                       CUBLAS_COMPUTE_32F,
                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
             assign_from_dots16_kernel<<<(nb * 32 + 255) / 256, 256, 0, stream>>>(
-                d_dots16, d_cent_norms_, d_centroids16_, d_y16 + yoff,
+                d_dots16, d_cent_norms_, c16, d_y16 + yoff,
                 y_transposed, ldb, d_out + start, nlist_, nb, d_, rel,
                 check ? d_chk_cnt + 1 : nullptr);
             CUDA_CHECK(cudaGetLastError());
@@ -1701,7 +1760,7 @@ void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
                 // The fp32 product beside it, and a count of rows that differ.
                 CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, opB,
                                           nlist_, nb, d_, &one,
-                                          d_centroids16_, CUDA_R_16F, d_,
+                                          c16, CUDA_R_16F, d_,
                                           d_y16 + yoff,   CUDA_R_16F, ldb,
                                           &zero, d_chk_dots, CUDA_R_32F, nlist_,
                                           CUBLAS_COMPUTE_32F,
@@ -1716,7 +1775,7 @@ void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
         } else {
             CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, opB,
                                       nlist_, nb, d_, &one,
-                                      d_centroids16_, CUDA_R_16F, d_,
+                                      c16, CUDA_R_16F, d_,
                                       d_y16 + yoff,   CUDA_R_16F, ldb,
                                       &zero, d_dots, CUDA_R_32F, nlist_,
                                       CUBLAS_COMPUTE_32F,
@@ -1730,8 +1789,9 @@ void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
         int cnt[2] = {0, 0};
         CUDA_CHECK(cudaStreamSynchronize(stream));
         CUDA_CHECK(cudaMemcpy(cnt, d_chk_cnt, 2 * sizeof(int), cudaMemcpyDeviceToHost));
-        std::fprintf(stderr, int8 ? "  [assign check] %d of %d rows differ between the int8 and fp16 products; %d settled exactly\n"
-                                  : "  [assign check] %d of %d rows differ between the fp16 and fp32 products; %d settled exactly\n",
+        std::fprintf(stderr, check32 ? "  [assign check] %d of %d rows differ between the int8 and fp32 products; %d settled exactly\n"
+                           : int8    ? "  [assign check] %d of %d rows differ between the int8 and fp16 products; %d settled exactly\n"
+                                     : "  [assign check] %d of %d rows differ between the fp16 and fp32 products; %d settled exactly\n",
                      cnt[0], n, cnt[1]);
         cudaFree(d_chk_dots); cudaFree(d_chk_out); cudaFree(d_chk_cnt);
         if (int8) cudaFree(y8);
@@ -1931,8 +1991,20 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     }
 
     const float one = 1.f, zero = 0.f;
-    // mode 0: rotate, encode and assign in one pass; 1: rotate and assign;
-    // 2: rotate, encode, scatter into list order.
+    // The first of two passes only assigns, and the assignment does not need
+    // the rotated rows: the rotation is orthogonal, so the nearest centroid
+    // to Rx is found as well against the rotated-back centroids R^T c, from x
+    // as it arrives. That drops the pass's GEMM, 0.6 s of the 17.8M build,
+    // and leaves the pass paced by the product and the copy in.
+    // JHQ_ASSIGN_XDOMAIN=0 rotates first as before.
+    const char* xde = std::getenv("JHQ_ASSIGN_XDOMAIN");
+    const bool assign_x = two_pass && (!xde || xde[0] == '1');
+    if (assign_x) {
+        ensure_assign_centroids(0, 1);
+        CUDA_CHECK(cudaStreamSynchronize(0));
+    }
+    // mode 0: rotate, encode and assign in one pass; 1: assign (in the x
+    // domain, or after rotating); 2: rotate, encode, scatter into list order.
     auto run_pass = [&](int mode) {
     int nbatch = 0;
     for (long long start = 0; start < n; start += AB_rows, ++nbatch) {
@@ -1981,7 +2053,9 @@ void JHQGpuIndex::add(const float* h_x, int n) {
         lap(t0, t_h2d);
 
         CUBLAS_CHECK(cublasSetStream(cublas_, st[cur]));
-        if (y_transposed) {
+        if (mode == 1 && assign_x) {
+            // No rotation: x itself, vector-major as it came, against R^T c.
+        } else if (y_transposed) {
             // The encoders read Ds values of one vector per thread, and with
             // vectors contiguous the threads of a warp land d floats apart --
             // every load its own transaction, measured at 378 GB/s of 1792.
@@ -2056,7 +2130,11 @@ void JHQGpuIndex::add(const float* h_x, int n) {
         lap(t0, t_renc);
         }   // mode != 1
 
-        if (mode != 2) {
+        if (mode == 1 && assign_x) {
+            assign_into(d_xb[cur], nb, d_assign + start, d_dots[cur],
+                        0, st[cur], d_y16[cur], 1);
+            lap(t0, t_asg);
+        } else if (mode != 2) {
             assign_into(d_yb[cur], nb, d_assign + start, d_dots[cur],
                         y_transposed ? 1 : 0, st[cur], d_y16[cur]);
             lap(t0, t_asg);

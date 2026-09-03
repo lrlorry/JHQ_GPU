@@ -1,13 +1,17 @@
 # Index build, train + add, on the RTX 5090. cpu_ref_s is JHQ-CPU-IVF on the 208-core host,
 # first_port_s the first GPU port with the streaming add (v12/v14), train_ms and add_ms the
 # current build: JHQ_GPU_CODEBOOK=1 JHQ_PAPER_CODEBOOK=1 JHQ_Y_TRANSPOSED=1 JHQ_ADD_NBUF=3,
-# fp16 assignment product with exact settlement. One warm run each (page cache holding the
-# base file); stella's first run after another dataset adds 20-25 s of page-cache misses.
-dataset,n,d,M,Br,cpu_ref_s,first_port_s,train_ms,add_ms,pass
-vogue,932328,768,96,8,27.9,26.7,253,187,single
-arxiv-768,2253000,768,96,8,43.1,28.9,244,307,single
-openai3-1536,999000,1536,192,8,55.4,55.2,295,285,single
-openai3-3072,999000,3072,384,8,107.2,112.0,395,622,single
-bge-m3,10091524,1024,128,8,144.4,52.1,340,1850,single
-stella-trec24,17776615,1024,128,4,238.6,48.5,280,3970,single
-stella-trec24,17776615,1024,128,8,238.6,,273,5910,two
+# int8 tensor-core assignment product with exact fp32 settlement of the rows the error bound
+# leaves open (identical lists to the fp32 product, checked with JHQ_ASSIGN_CHECK=32), and
+# for the two-pass add the pass-1 assignment in the unrotated domain (JHQ_ASSIGN_XDOMAIN=1).
+# Times are the median of consecutive warm runs (page cache holding the base file; bge and
+# stella need 2-3 runs after a cold read before the 96 GB cgroup cache is settled, asg17/18
+# 2026-09-03). nlist is the IVF list count; kmeans_iters 5, ivf_iters 8, n_train 100000.
+dataset,n,d,M,Br,nlist,cpu_ref_s,first_port_s,train_ms,add_ms,pass
+vogue,932328,768,96,8,1024,27.9,26.7,190,226,single
+arxiv-768,2253000,768,96,8,1024,43.1,28.9,139,342,single
+openai3-1536,999000,1536,192,8,1024,55.4,55.2,136,323,single
+openai3-3072,999000,3072,384,8,1024,107.2,112.0,240,542,single
+bge-m3,10091524,1024,128,8,8192,144.4,52.1,163,1596,single
+stella-trec24,17776615,1024,128,4,16384,238.6,48.5,232,3666,single
+stella-trec24,17776615,1024,128,8,16384,238.6,,234,5321,two

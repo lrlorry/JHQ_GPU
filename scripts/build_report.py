@@ -234,8 +234,9 @@ def main():
                       "Index build, train plus add, on the six datasets: the CPU reference, "
                       "the first GPU port with the streaming add, and the current build. On "
                       "the right, the 17.8M add phase by phase with the pipeline serialised: "
-                      "the coarse assignment is the fp16 tensor-core product of every vector "
-                      "against 16,384 centroids, and the host-to-device copy and the pinned "
+                      "the coarse assignment is the int8 tensor-core product of every vector "
+                      "against 16,384 centroids with the open rows settled in fp32, and the "
+                      "host-to-device copy and the pinned "
                       "staging run under the GPU work rather than in front of it."),
         buildtable=build_table(),
         cpu=img_tag("fig9_cpu_gpu.png",
@@ -402,12 +403,17 @@ footer{{border-top:1px solid var(--rule);margin-top:44px;padding-top:20px;font-s
   runs on the device end to end. Train is under 0.4 s on every dataset; add
   streams the base vectors through pinned triple-buffered staging, rotates and
   assigns each batch as it lands, and settles the assignment exactly: the
-  coarse product runs on the tensor cores in fp16 with fp32 sums, and any row
-  whose two nearest centroids sit within the product's error bound is
-  recomputed in fp32, so the lists are the ones an fp32 assignment gives. When
-  the single-pass tail would not fit &mdash; the eight-bit setting at 17.8M &mdash;
-  the add assigns first, sorts, and encodes straight into list order on a
-  second pass, which costs the rotation twice and nothing in recall.</p>
+  coarse product runs on the tensor cores in int8 (one scale per row, one for
+  the centroids) with a Cauchy&ndash;Schwarz bound on its rounding, and any row
+  whose two nearest centroids sit within that bound is recomputed in fp32, so
+  the lists are the ones an fp32 assignment gives &mdash; checked row by row
+  against the fp32 product on every batch of BGE-M3 and Stella, zero
+  disagreements. When the single-pass tail would not fit &mdash; the eight-bit
+  setting at 17.8M &mdash; the add assigns first, sorts, and encodes straight
+  into list order on a second pass; the first pass assigns in the unrotated
+  domain against the centroids rotated back once (the rotation is orthogonal,
+  so the argmin is the same), which saves the rotation on that pass and costs
+  nothing in recall.</p>
   {buildtable}
   {build}
 </section>
