@@ -91,6 +91,38 @@ def failures(data):
     return out
 
 
+def build_table():
+    """train + add per dataset from build_gpu.csv, against the two references."""
+    p = os.path.join(D, "build_gpu.csv")
+    if not os.path.exists(p):
+        return ""
+    with open(p) as fh:
+        rows = list(csv.DictReader(l for l in fh if not l.startswith("#")))
+    names = {ds: t for ds, t, _, _ in DATASETS}
+    tr = []
+    for r in rows:
+        train, add = float(r["train_ms"]), float(r["add_ms"])
+        tot = (train + add) / 1000
+        cpu = float(r["cpu_ref_s"]) if r["cpu_ref_s"] else None
+        first = float(r["first_port_s"]) if r["first_port_s"] else None
+        passes = "two passes" if r["pass"] == "two" else "single pass"
+        cells = [f'<td class="t">{names.get(r["dataset"], r["dataset"])}</td>',
+                 f'<td class="num">{int(r["n"]):,}</td><td class="num">{r["d"]}</td>',
+                 f'<td class="num">{r["M"]} / {r["Br"]}</td>',
+                 f'<td class="num">{train:,.0f}</td><td class="num">{add:,.0f}</td>',
+                 f'<td class="num">{tot:.2f} s</td>',
+                 f'<td class="num">{cpu:.1f} s</td>' if cpu else '<td class="num">&mdash;</td>',
+                 f'<td class="num">{first:.1f} s</td>' if first else '<td class="num">&mdash;</td>',
+                 f'<td class="num">{cpu / tot:.0f}&times;</td>' if cpu else '<td class="num">&mdash;</td>',
+                 f'<td class="t">{passes}</td>']
+        tr.append('<tr class="jhq">' + "".join(cells) + "</tr>")
+    return ('<div class="tw"><table><thead><tr><th>dataset</th><th class="num">vectors</th>'
+            '<th class="num">d</th><th class="num">M / Br</th><th class="num">train ms</th>'
+            '<th class="num">add ms</th><th class="num">build</th><th class="num">CPU ref</th>'
+            '<th class="num">first port</th><th class="num">vs CPU</th><th>add</th>'
+            '</tr></thead><tbody>' + "".join(tr) + "</tbody></table></div>")
+
+
 def img_tag(name, cap):
     p = os.path.join(D, name)
     if not os.path.exists(p):
@@ -171,8 +203,9 @@ def main():
                       "7.4 GiB both run -- but they cap at 0.9376 and 0.9425, while the method "
                       "with the higher ceiling cannot be loaded at all, asking 41.3 GiB. JHQ "
                       "holds the least memory of any of them, 6.8 GiB, and is the only one "
-                      "there that reaches 0.95. Our own eight-bit setting fails during add at "
-                      "17.8M, which is shown too."),
+                      "there that reaches 0.95. At 17.8M the eight-bit setting no longer "
+                      "fits the single-pass add and is built in two passes, which is what "
+                      "its bar shows."),
         core3=img_tag("core3_hierarchy.png",
                       "Residual level off, on at four bits, on at eight. Same kernel, same "
                       "IVF, same occupancy and selection -- the gap is the quantiser, not the "
@@ -198,9 +231,13 @@ def main():
                       "alpha*k candidates keeps climbing. The published setting of 100 is "
                       "past the knee."),
         build=img_tag("fig4_build.png",
-                      "Phase timing of the index build. The residual codebook held 80% of it "
-                      "on a single core of 208; the primary codebook, which was blamed first, "
-                      "held 16%."),
+                      "Index build, train plus add, on the six datasets: the CPU reference, "
+                      "the first GPU port with the streaming add, and the current build. On "
+                      "the right, the 17.8M add phase by phase with the pipeline serialised: "
+                      "the coarse assignment is the fp16 tensor-core product of every vector "
+                      "against 16,384 centroids, and the host-to-device copy and the pinned "
+                      "staging run under the GPU work rather than in front of it."),
+        buildtable=build_table(),
         cpu=img_tag("fig9_cpu_gpu.png",
                     "The same index and the same settings on CPU. All-core is only 5.2x "
                     "single-thread on a 208-core host, so the reference search is not "
@@ -312,7 +349,8 @@ footer{{border-top:1px solid var(--rule);margin-top:44px;padding-top:20px;font-s
       <td class="t"><b>Yes, and it strengthens with dimension.</b> JHQ reaches 0.95 on all
       six; no other method does. CAGRA's throughput lead falls from 2.5&times; at 768d to
       below parity at 3072d. On bge-m3's 10.1M vectors JHQ is the only method to reach
-      0.95, and stella-trec24's 17.8M run at 0.9510 and 41,812 QPS.</td></tr>
+      0.95, and on stella-trec24's 17.8M the eight-bit setting reaches 0.9806 at
+      30,040 QPS and 0.9892 at 11,199, on 21.5 GiB of the card's 31.4.</td></tr>
     </tbody>
   </table></div>
 </section>
@@ -354,8 +392,24 @@ footer{{border-top:1px solid var(--rule);margin-top:44px;padding-top:20px;font-s
   {nprobe}
   {bytes}
   {alpha}
-  {build}
   {cpu}
+</section>
+
+<section>
+  <h2>Building the index</h2>
+  <p>The paper's build &mdash; the JL rotation, the analytical primary codebook of
+  eq. 4, the per-dimension residual levels, and an IVF coarse quantiser &mdash;
+  runs on the device end to end. Train is under 0.4 s on every dataset; add
+  streams the base vectors through pinned triple-buffered staging, rotates and
+  assigns each batch as it lands, and settles the assignment exactly: the
+  coarse product runs on the tensor cores in fp16 with fp32 sums, and any row
+  whose two nearest centroids sit within the product's error bound is
+  recomputed in fp32, so the lists are the ones an fp32 assignment gives. When
+  the single-pass tail would not fit &mdash; the eight-bit setting at 17.8M &mdash;
+  the add assigns first, sorts, and encodes straight into list order on a
+  second pass, which costs the rotation twice and nothing in recall.</p>
+  {buildtable}
+  {build}
 </section>
 
 <footer>

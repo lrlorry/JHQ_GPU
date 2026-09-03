@@ -82,6 +82,8 @@ private:
     float*   d_centroids_      = nullptr;
     float*   d_cent_norms_     = nullptr;
     mutable __half* d_centroids16_ = nullptr;   // fp16 copy, built on demand
+    mutable int8_t*  d_centroids8_ = nullptr;   // int8 copy on one scale, built on demand
+    mutable unsigned* d_cstats8_   = nullptr;   // its scale and largest error, as float bits
 
     int*     d_list_offsets_   = nullptr;
     int*     d_list_ids_       = nullptr;
@@ -107,6 +109,9 @@ private:
                        int y_transposed, cudaStream_t stream,
                        __half* d_y16 = nullptr) const;
     int    assign_precision() const;
+    bool   assign_int8() const;
+    void   ensure_assign_centroids(cudaStream_t stream) const;
+    void   requantize_centroids8(cudaStream_t stream) const;
     void   sort_residual_codebook();
     void   alloc_workspace(int batch_size);
 

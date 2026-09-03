@@ -1,0 +1,9 @@
+# The 17.8M x 1024 add with JHQ_ADD_PHASES=1 (serialised, one buffer) so each phase is
+# timed alone; the pipelined add overlaps the last two with the GPU work.
+phase,ms,where
+coarse assign: fp16 GEMM,2750,gpu
+argmin + exact settle,320,gpu
+JL rotation,580,gpu
+encode,70,gpu
+host to device (PCIe 5.0 at 56 GB/s),1290,overlapped
+pinned staging (32 threads at 74 GB/s),990,overlapped

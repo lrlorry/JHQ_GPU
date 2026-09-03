@@ -241,9 +241,17 @@ def run_cuvs(method, ds, grid, k, reps):
 
             t0 = time.time()
             if method == "ivfpq":
+                # kmeans_trainset_fraction defaults to 0.5, so cuVS puts half
+                # the dataset on the device to train: 36.4 GiB at 17.8M x 1024,
+                # which is why the build failed on a 31.4 GiB card. Shrinking it
+                # is the fair thing to try before reporting that IVF-PQ does not
+                # fit at this scale.
+                kp = {}
+                if cfg.get("trainset_fraction"):
+                    kp["kmeans_trainset_fraction"] = cfg["trainset_fraction"]
                 idx = ivf_pq.build(ivf_pq.IndexParams(
                     n_lists=cfg["n_lists"], pq_dim=cfg["pq_dim"],
-                    pq_bits=cfg["pq_bits"]), xb_d)
+                    pq_bits=cfg["pq_bits"], **kp), xb_d)
             else:
                 idx = cagra.build(cagra.IndexParams(
                     graph_degree=cfg["graph_degree"]), xb_d)
@@ -315,6 +323,8 @@ def main():
     ap.add_argument("--method", default="jhq",
                     choices=["jhq", "ivfpq", "cagra", "cagra-int8"])
     ap.add_argument("--pq-dims", default="96,192,384,768")
+    ap.add_argument("--trainset-fraction", type=float, default=0.0,
+                    help="cuVS kmeans_trainset_fraction; 0 leaves the default (0.5)")
     ap.add_argument("--graph-degrees", default="32,64")
     ap.add_argument("--itopk", default="32,64,128,256,512")
     ap.add_argument("--search-width", default="1,2,4")
@@ -337,7 +347,8 @@ def main():
     if a.method != "jhq":
         probes = [int(x) for x in a.nprobe.split(",")]
         if a.method == "ivfpq":
-            grid = [dict(n_lists=a.nlist, pq_dim=pd, pq_bits=8, n_probes=np_)
+            grid = [dict(n_lists=a.nlist, pq_dim=pd, pq_bits=8, n_probes=np_,
+                         trainset_fraction=a.trainset_fraction)
                     for pd in (int(x) for x in a.pq_dims.split(","))
                     for np_ in probes]
         else:

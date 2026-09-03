@@ -88,6 +88,477 @@ __global__ void assign_from_dots_kernel(
     if (lane == 0) assigns[row] = best_id;
 }
 
+// The same argmin over dots the GEMM wrote as fp16. Reading the fp32 product
+// back was 0.7 s of stella-trec24's 3.4 s assignment, at the memory roofline,
+// and this halves it. The rounding is bounded -- half an fp16 ulp, so the
+// distance moves by at most |v|/1024 -- and the bound is used, not assumed:
+// a centroid whose distance cannot reach the best's even with both errors
+// against it is out exactly, and only when some other centroid stays within
+// the bound are the sums in question recomputed in fp32 from the same fp16
+// inputs the GEMM read. The assignment is then the one the fp32 product
+// gave, up to summation order.
+__global__ void assign_from_dots16_kernel(
+    const __half* __restrict__ dots,        // [nb][nlist]
+    const float*  __restrict__ cent_norms,
+    const __half* __restrict__ cent16,      // [nlist][d]
+    const __half* __restrict__ y16,         // rows with ld = ldy, or dimension-major
+    int y_transposed, long long ldy,
+    int*                  assigns,
+    int nlist, int nb, int d, float rel, int* amb_count)
+{
+    const int lane = threadIdx.x & 31;
+    const int row  = (blockIdx.x * blockDim.x + threadIdx.x) >> 5;
+    if (row >= nb) return;
+    const __half* col = dots + (long long)row * nlist;
+    // Half an fp16 ulp is 2^-11 of the value; the distance carries twice the
+    // dot, so 2^-10, with a little over it for the fp32 arithmetic on top and
+    // an absolute floor for values that are subnormal in fp16.
+    const float REL = rel, ABS = 1e-6f;
+
+    // best_e is the best's error bound; second_lo the smallest lower bound of
+    // any other centroid seen. Ties fall through to the exact path.
+    float best = INFINITY, best_e = 0.f, second_lo = INFINITY;
+    int   best_id = 0x7fffffff;
+    auto consider = [&](float v, float q, int c) {
+        const float dd = q - 2.f * v;
+        const float e  = fabsf(v) * REL + ABS;
+        if (dd < best) {
+            second_lo = fminf(second_lo, best - best_e);   // the old best, at its lower bound
+            best = dd; best_e = e; best_id = c;
+        } else {
+            second_lo = fminf(second_lo, dd - e);
+        }
+    };
+    if ((nlist & 7) == 0) {
+        for (int c = lane * 8; c < nlist; c += 256) {
+            const uint4 raw = *reinterpret_cast<const uint4*>(col + c);
+            const __half2* h = reinterpret_cast<const __half2*>(&raw);
+            const float4 q0 = *reinterpret_cast<const float4*>(cent_norms + c);
+            const float4 q1 = *reinterpret_cast<const float4*>(cent_norms + c + 4);
+            const float2 a = __half22float2(h[0]), b = __half22float2(h[1]),
+                         cc = __half22float2(h[2]), dd = __half22float2(h[3]);
+            consider(a.x,  q0.x, c);     consider(a.y,  q0.y, c + 1);
+            consider(b.x,  q0.z, c + 2); consider(b.y,  q0.w, c + 3);
+            consider(cc.x, q1.x, c + 4); consider(cc.y, q1.y, c + 5);
+            consider(dd.x, q1.z, c + 6); consider(dd.y, q1.w, c + 7);
+        }
+    } else {
+        for (int c = lane; c < nlist; c += 32)
+            consider(__half2float(col[c]), cent_norms[c], c);
+    }
+    for (int off = 16; off > 0; off >>= 1) {
+        const float ob  = __shfl_xor_sync(0xffffffffu, best, off);
+        const float oe  = __shfl_xor_sync(0xffffffffu, best_e, off);
+        const float osl = __shfl_xor_sync(0xffffffffu, second_lo, off);
+        const int   oi  = __shfl_xor_sync(0xffffffffu, best_id, off);
+        // Whichever best loses becomes a runner-up, at its lower bound.
+        if (ob < best || (ob == best && oi < best_id)) {
+            second_lo = fminf(fminf(second_lo, osl), best - best_e);
+            best = ob; best_e = oe; best_id = oi;
+        } else {
+            second_lo = fminf(fminf(second_lo, osl), ob - oe);
+        }
+    }
+    const float best_hi = best + best_e;
+    if (second_lo > best_hi) { if (lane == 0) assigns[row] = best_id; return; }
+
+    // Some other centroid could be the true nearest: recompute in fp32 for
+    // every centroid within the bound and settle it exactly. Eight centroids a
+    // lane again, their flags in a byte, and the warp visits each flagged
+    // centroid together.
+    const float T = best_hi;
+    if (amb_count && lane == 0) atomicAdd(amb_count, 1);
+    float ex_best = INFINITY; int ex_id = 0x7fffffff;
+    const __half* yrow = y_transposed ? y16 + row : y16 + (long long)row * ldy;
+    const long long ystride = y_transposed ? ldy : 1;
+    auto exact_dist = [&](int cid) {
+        const __half* cr = cent16 + (long long)cid * d;
+        float dot = 0.f;
+        if ((d & 7) == 0) {
+            for (int j = lane * 8; j < d; j += 256) {
+                const uint4 raw = *reinterpret_cast<const uint4*>(cr + j);
+                const __half2* h = reinterpret_cast<const __half2*>(&raw);
+                float yv[8];
+                if (y_transposed) {
+#pragma unroll
+                    for (int k = 0; k < 8; ++k) yv[k] = __half2float(yrow[(j + k) * ystride]);
+                } else {
+                    const uint4 yraw = *reinterpret_cast<const uint4*>(yrow + j);
+                    const __half2* yh = reinterpret_cast<const __half2*>(&yraw);
+#pragma unroll
+                    for (int k = 0; k < 4; ++k) {
+                        const float2 f = __half22float2(yh[k]);
+                        yv[2 * k] = f.x; yv[2 * k + 1] = f.y;
+                    }
+                }
+#pragma unroll
+                for (int k = 0; k < 4; ++k) {
+                    const float2 f = __half22float2(h[k]);
+                    dot = fmaf(f.x, yv[2 * k], dot);
+                    dot = fmaf(f.y, yv[2 * k + 1], dot);
+                }
+            }
+        } else {
+            for (int j = lane; j < d; j += 32)
+                dot = fmaf(__half2float(cr[j]), __half2float(yrow[j * ystride]), dot);
+        }
+        for (int off = 16; off > 0; off >>= 1) dot += __shfl_xor_sync(0xffffffffu, dot, off);
+        return cent_norms[cid] - 2.f * dot;
+    };
+    for (int base = 0; base < nlist; base += 256) {
+        unsigned mask = 0;
+        const int c0 = base + lane * 8;
+        if ((nlist & 7) == 0) {
+            if (c0 < nlist) {
+                const uint4 raw = *reinterpret_cast<const uint4*>(col + c0);
+                const __half2* h = reinterpret_cast<const __half2*>(&raw);
+                const float4 q0 = *reinterpret_cast<const float4*>(cent_norms + c0);
+                const float4 q1 = *reinterpret_cast<const float4*>(cent_norms + c0 + 4);
+                const float qs[8] = {q0.x, q0.y, q0.z, q0.w, q1.x, q1.y, q1.z, q1.w};
+#pragma unroll
+                for (int k = 0; k < 4; ++k) {
+                    const float2 f = __half22float2(h[k]);
+                    const float v0 = f.x, v1 = f.y;
+                    if (qs[2 * k]     - 2.f * v0 - (fabsf(v0) * REL + ABS) <= T) mask |= 1u << (2 * k);
+                    if (qs[2 * k + 1] - 2.f * v1 - (fabsf(v1) * REL + ABS) <= T) mask |= 1u << (2 * k + 1);
+                }
+            }
+        } else {
+            for (int k = 0; k < 8; ++k) {
+                const int c = c0 + k;
+                if (c < nlist) {
+                    const float v = __half2float(col[c]);
+                    if (cent_norms[c] - 2.f * v - (fabsf(v) * REL + ABS) <= T) mask |= 1u << k;
+                }
+            }
+        }
+        unsigned lm = __ballot_sync(0xffffffffu, mask != 0);
+        while (lm) {
+            const int src = __ffs(lm) - 1; lm &= lm - 1;
+            unsigned m = __shfl_sync(0xffffffffu, mask, src);
+            while (m) {
+                const int k = __ffs(m) - 1; m &= m - 1;
+                const int cid = base + src * 8 + k;
+                const float dex = exact_dist(cid);
+                if (dex < ex_best || (dex == ex_best && cid < ex_id)) { ex_best = dex; ex_id = cid; }
+            }
+        }
+    }
+    if (lane == 0) assigns[row] = ex_id;
+}
+
+// ── int8 assignment ───────────────────────────────────────────────────────────
+// The tensor cores run the int8 product at 2.4x the fp16 rate on this card
+// (552 against 235 TOPS on the 32768 x 16384 x 1024 batch) and its int32 sums
+// are exact. What is not exact is the rounding of the inputs to eight bits,
+// and that is bounded rather than assumed. With y = s_y*y_q + e for a row and
+// c = s*c_q + f for a centroid, Cauchy-Schwarz gives
+//     |y.c - s_y*s*(y_q.c_q)| <= ||y||*||f|| + ||e||*||s*c_q||,
+// and ||s*c_q|| <= ||c|| + ||f||. The row's ||y|| and ||e|| come out of its
+// quantisation; the centroids share one scale s and the largest ||f|| among
+// them, so the argmin still reads one float per centroid, ||c||^2, as before.
+// A centroid whose distance cannot reach the best's within the two bounds is
+// out; otherwise every centroid within them is recomputed in fp32 from the
+// fp32 inputs and the row settled exactly. The assignment is then the fp32
+// one up to summation order -- nearer to it than the fp16 product's, whose
+// inputs were rounded to eleven bits with no settlement against that.
+__device__ __forceinline__ float warp_max(float v) {
+    for (int off = 16; off > 0; off >>= 1) v = fmaxf(v, __shfl_xor_sync(0xffffffffu, v, off));
+    return v;
+}
+__device__ __forceinline__ float warp_sum(float v) {
+    for (int off = 16; off > 0; off >>= 1) v += __shfl_xor_sync(0xffffffffu, v, off);
+    return v;
+}
+// Non-negative floats order as their bit patterns, so their max is an
+// integer atomicMax and needs no host round trip.
+__global__ void absmax_kernel(const float* __restrict__ x, long long n4, unsigned* out) {
+    __shared__ float red[8];
+    float m = 0.f;
+    for (long long i = (long long)blockIdx.x * blockDim.x + threadIdx.x; i < n4;
+         i += (long long)gridDim.x * blockDim.x) {
+        const float4 v = reinterpret_cast<const float4*>(x)[i];
+        m = fmaxf(fmaxf(fabsf(v.x), fabsf(v.y)), fmaxf(fmaxf(fabsf(v.z), fabsf(v.w)), m));
+    }
+    m = warp_max(m);
+    if ((threadIdx.x & 31) == 0) red[threadIdx.x >> 5] = m;
+    __syncthreads();
+    if (threadIdx.x < 32) {
+        m = threadIdx.x < (blockDim.x >> 5) ? red[threadIdx.x] : 0.f;
+        m = warp_max(m);
+        if (threadIdx.x == 0) atomicMax(out, __float_as_uint(m));
+    }
+}
+__device__ __forceinline__ float scale_of(unsigned bits) {
+    const float m = __uint_as_float(bits);
+    return m > 0.f ? m * (1.f / 127.f) : 1.f;
+}
+// Four values to their codes; the error is taken from the code actually
+// written, one rounding, so it is what the bound needs.
+__device__ __forceinline__ char4 quant4(float4 v, float s, float inv, float& sq, float& err2) {
+    const float q0 = fminf(fmaxf(rintf(v.x * inv), -127.f), 127.f);
+    const float q1 = fminf(fmaxf(rintf(v.y * inv), -127.f), 127.f);
+    const float q2 = fminf(fmaxf(rintf(v.z * inv), -127.f), 127.f);
+    const float q3 = fminf(fmaxf(rintf(v.w * inv), -127.f), 127.f);
+    const float e0 = fmaf(-s, q0, v.x), e1 = fmaf(-s, q1, v.y);
+    const float e2 = fmaf(-s, q2, v.z), e3 = fmaf(-s, q3, v.w);
+    sq   = fmaf(v.x, v.x, fmaf(v.y, v.y, fmaf(v.z, v.z, fmaf(v.w, v.w, sq))));
+    err2 = fmaf(e0, e0, fmaf(e1, e1, fmaf(e2, e2, fmaf(e3, e3, err2))));
+    return make_char4((signed char)q0, (signed char)q1, (signed char)q2, (signed char)q3);
+}
+// Warp per centroid, all on the shared scale; ||f|| goes into the max.
+__global__ void quantize_centroids_kernel(const float* __restrict__ c, int nlist, int d,
+                                          const unsigned* __restrict__ absmax_bits,
+                                          int8_t* __restrict__ c8, unsigned* nf_max_bits)
+{
+    const int lane = threadIdx.x & 31;
+    const int row  = (blockIdx.x * blockDim.x + threadIdx.x) >> 5;
+    if (row >= nlist) return;
+    const float s = scale_of(*absmax_bits), inv = 1.f / s;
+    const float* cr = c + (long long)row * d;
+    int8_t* qr = c8 + (long long)row * d;
+    float sq = 0.f, f2 = 0.f;
+    for (int j = lane * 4; j < d; j += 128)
+        *reinterpret_cast<char4*>(qr + j) =
+            quant4(*reinterpret_cast<const float4*>(cr + j), s, inv, sq, f2);
+    f2 = warp_sum(f2);
+    if (lane == 0) atomicMax(nf_max_bits, __float_as_uint(sqrtf(f2)));
+}
+// Warp per row of a row-major y: its own scale, its int8 image, and
+// {s_y, ||y||, ||e||, 0}.
+__global__ void quantize_rows_kernel(const float* __restrict__ y, int n, int d,
+                                     int8_t* __restrict__ y8, float4* __restrict__ stats)
+{
+    const int lane = threadIdx.x & 31;
+    const int row  = (blockIdx.x * blockDim.x + threadIdx.x) >> 5;
+    if (row >= n) return;
+    const float* yr = y + (long long)row * d;
+    float m = 0.f;
+    for (int j = lane * 4; j < d; j += 128) {
+        const float4 v = *reinterpret_cast<const float4*>(yr + j);
+        m = fmaxf(fmaxf(fabsf(v.x), fabsf(v.y)), fmaxf(fmaxf(fabsf(v.z), fabsf(v.w)), m));
+    }
+    m = warp_max(m);
+    const float s = m > 0.f ? m * (1.f / 127.f) : 1.f, inv = 1.f / s;
+    int8_t* qr = y8 + (long long)row * d;
+    float y2 = 0.f, e2 = 0.f;
+    for (int j = lane * 4; j < d; j += 128)
+        *reinterpret_cast<char4*>(qr + j) =
+            quant4(*reinterpret_cast<const float4*>(yr + j), s, inv, y2, e2);
+    y2 = warp_sum(y2); e2 = warp_sum(e2);
+    if (lane == 0) stats[row] = make_float4(s, sqrtf(y2), sqrtf(e2), 0.f);
+}
+// The same for a dimension-major y (ld = n), where a row is a strided column:
+// the lanes take consecutive rows so every load is one line, and a 32-row
+// tile in shared memory turns the int8 image back into contiguous rows. The
+// product then reads y8 the fast way in either layout.
+__global__ void __launch_bounds__(256)
+quantize_cols_kernel(const float* __restrict__ yt, int n, int d,
+                     int8_t* __restrict__ y8, float4* __restrict__ stats)
+{
+    __shared__ float part[8][32], part2[8][32], sc[2][32];
+    __shared__ __align__(16) int8_t tile[32][264];
+    const int lane = threadIdx.x & 31, w = threadIdx.x >> 5;
+    const int row0 = blockIdx.x * 32, row = row0 + lane;
+    const bool ok = row < n;
+    float m = 0.f;
+    if (ok) for (int j = w; j < d; j += 8) m = fmaxf(m, fabsf(yt[(long long)j * n + row]));
+    part[w][lane] = m;
+    __syncthreads();
+    if (w == 0) {
+        float mm = 0.f;
+        for (int k = 0; k < 8; ++k) mm = fmaxf(mm, part[k][lane]);
+        const float s = mm > 0.f ? mm * (1.f / 127.f) : 1.f;
+        sc[0][lane] = s; sc[1][lane] = 1.f / s;
+    }
+    __syncthreads();
+    const float s = sc[0][lane], inv = sc[1][lane];
+    float y2 = 0.f, e2 = 0.f;
+    for (int j0 = 0; j0 < d; j0 += 256) {
+        const int jn = min(256, d - j0);
+        for (int jj = w; jj < jn; jj += 8) {
+            const float v = ok ? yt[(long long)(j0 + jj) * n + row] : 0.f;
+            const float q = fminf(fmaxf(rintf(v * inv), -127.f), 127.f);
+            const float e = fmaf(-s, q, v);
+            y2 = fmaf(v, v, y2); e2 = fmaf(e, e, e2);
+            tile[lane][jj] = (int8_t)q;
+        }
+        __syncthreads();
+        for (int r = w; r < 32; r += 8) {
+            if (row0 + r < n) {
+                int8_t* dst = y8 + (long long)(row0 + r) * d + j0;
+                for (int b = lane * 8; b < jn; b += 256)
+                    *reinterpret_cast<uint2*>(dst + b) =
+                        *reinterpret_cast<const uint2*>(&tile[r][b]);
+            }
+        }
+        __syncthreads();
+    }
+    part[w][lane] = y2; part2[w][lane] = e2;
+    __syncthreads();
+    if (w == 0 && ok) {
+        float Y = 0.f, E = 0.f;
+        for (int k = 0; k < 8; ++k) { Y += part[k][lane]; E += part2[k][lane]; }
+        stats[row] = make_float4(s, sqrtf(Y), sqrtf(E), 0.f);
+    }
+}
+// The argmin over the int32 product, with the bound above, and the exact
+// settlement in fp32 from the fp32 inputs. Four rows a block, and the row
+// that settles is copied once into shared memory: dimension-major y has it
+// strided by ldy, and reading that per candidate would touch a line per
+// element.
+__global__ void __launch_bounds__(128)
+assign_from_dots8_kernel(
+    const int*    __restrict__ dots,        // [nb][nlist]
+    const float*  __restrict__ cent_norms,  // ||c||^2 of the fp32 centroids
+    const float*  __restrict__ cent,        // fp32 centroids [nlist][d]
+    const float*  __restrict__ y,           // fp32 rows with ld = ldy, or dimension-major
+    int y_transposed, long long ldy,
+    const float4* __restrict__ row_stats,   // {s_y, ||y||, ||e||, -}
+    const unsigned* __restrict__ cstats,    // [0] max |c| bits, [1] max ||f|| bits
+    int* assigns, int nlist, int nb, int d, int* amb_count)
+{
+    extern __shared__ float yrow_s[];
+    const int lane = threadIdx.x & 31, w = threadIdx.x >> 5;
+    const int row  = (blockIdx.x * blockDim.x + threadIdx.x) >> 5;
+    if (row >= nb) return;
+    const int* col = dots + (long long)row * nlist;
+    const float4 rs = row_stats[row];
+    const float s_c = scale_of(cstats[0]);
+    const float nf  = __uint_as_float(cstats[1]) * (1.f + 1e-5f);   // its sqrt was approximate
+    const float K   = rs.x * s_c;                                    // dequantises the dot
+    // Half-width of the distance bound: twice the dot's, so
+    // 2*(||y||*||f|| + ||e||*(||c|| + ||f||)), then the fp32 arithmetic on top.
+    const float A = 2.f * nf * (rs.y + rs.z);
+    const float B = 2.f * rs.z * (1.f + 1e-5f);
+    const float REL = 4e-6f, ABS = 1e-7f;
+    auto bound = [&](float v, float q) {
+        return A + B * sqrtf(q) + (q + 2.f * fabsf(v)) * REL + ABS;
+    };
+    float best = INFINITY, best_e = 0.f, second_lo = INFINITY;
+    int   best_id = 0x7fffffff;
+    auto consider = [&](int iv, float q, int c) {
+        const float v  = K * (float)iv;
+        const float dd = q - 2.f * v;
+        const float e  = bound(v, q);
+        if (dd < best) {
+            second_lo = fminf(second_lo, best - best_e);
+            best = dd; best_e = e; best_id = c;
+        } else {
+            second_lo = fminf(second_lo, dd - e);
+        }
+    };
+    if ((nlist & 7) == 0) {
+        for (int c = lane * 8; c < nlist; c += 256) {
+            const int4 r0 = *reinterpret_cast<const int4*>(col + c);
+            const int4 r1 = *reinterpret_cast<const int4*>(col + c + 4);
+            const float4 q0 = *reinterpret_cast<const float4*>(cent_norms + c);
+            const float4 q1 = *reinterpret_cast<const float4*>(cent_norms + c + 4);
+            consider(r0.x, q0.x, c);     consider(r0.y, q0.y, c + 1);
+            consider(r0.z, q0.z, c + 2); consider(r0.w, q0.w, c + 3);
+            consider(r1.x, q1.x, c + 4); consider(r1.y, q1.y, c + 5);
+            consider(r1.z, q1.z, c + 6); consider(r1.w, q1.w, c + 7);
+        }
+    } else {
+        for (int c = lane; c < nlist; c += 32) consider(col[c], cent_norms[c], c);
+    }
+    for (int off = 16; off > 0; off >>= 1) {
+        const float ob  = __shfl_xor_sync(0xffffffffu, best, off);
+        const float oe  = __shfl_xor_sync(0xffffffffu, best_e, off);
+        const float osl = __shfl_xor_sync(0xffffffffu, second_lo, off);
+        const int   oi  = __shfl_xor_sync(0xffffffffu, best_id, off);
+        if (ob < best || (ob == best && oi < best_id)) {
+            second_lo = fminf(fminf(second_lo, osl), best - best_e);
+            best = ob; best_e = oe; best_id = oi;
+        } else {
+            second_lo = fminf(fminf(second_lo, osl), ob - oe);
+        }
+    }
+    const float best_hi = best + best_e;
+    if (second_lo > best_hi) { if (lane == 0) assigns[row] = best_id; return; }
+
+    const float T = best_hi;
+    if (amb_count && lane == 0) atomicAdd(amb_count, 1);
+    float* ys = yrow_s + w * d;
+    if (y_transposed) {
+        const float* yr = y + row;
+        for (int j = lane; j < d; j += 32) ys[j] = yr[(long long)j * ldy];
+    } else {
+        const float* yr = y + (long long)row * ldy;
+        if ((d & 3) == 0)
+            for (int j = lane * 4; j < d; j += 128)
+                *reinterpret_cast<float4*>(ys + j) = *reinterpret_cast<const float4*>(yr + j);
+        else
+            for (int j = lane; j < d; j += 32) ys[j] = yr[j];
+    }
+    __syncwarp();
+    float ex_best = INFINITY; int ex_id = 0x7fffffff;
+    auto exact_dist = [&](int cid) {
+        const float* cr = cent + (long long)cid * d;
+        float dot = 0.f;
+        if ((d & 7) == 0) {
+            for (int j = lane * 8; j < d; j += 256) {
+                const float4 c0 = *reinterpret_cast<const float4*>(cr + j);
+                const float4 c1 = *reinterpret_cast<const float4*>(cr + j + 4);
+                const float4 y0 = *reinterpret_cast<const float4*>(ys + j);
+                const float4 y1 = *reinterpret_cast<const float4*>(ys + j + 4);
+                dot = fmaf(c0.x, y0.x, dot); dot = fmaf(c0.y, y0.y, dot);
+                dot = fmaf(c0.z, y0.z, dot); dot = fmaf(c0.w, y0.w, dot);
+                dot = fmaf(c1.x, y1.x, dot); dot = fmaf(c1.y, y1.y, dot);
+                dot = fmaf(c1.z, y1.z, dot); dot = fmaf(c1.w, y1.w, dot);
+            }
+        } else {
+            for (int j = lane; j < d; j += 32) dot = fmaf(cr[j], ys[j], dot);
+        }
+        dot = warp_sum(dot);
+        return cent_norms[cid] - 2.f * dot;
+    };
+    for (int base = 0; base < nlist; base += 256) {
+        unsigned mask = 0;
+        const int c0 = base + lane * 8;
+        if ((nlist & 7) == 0) {
+            if (c0 < nlist) {
+                const int4 r0 = *reinterpret_cast<const int4*>(col + c0);
+                const int4 r1 = *reinterpret_cast<const int4*>(col + c0 + 4);
+                const float4 q0 = *reinterpret_cast<const float4*>(cent_norms + c0);
+                const float4 q1 = *reinterpret_cast<const float4*>(cent_norms + c0 + 4);
+                const int   iv[8] = {r0.x, r0.y, r0.z, r0.w, r1.x, r1.y, r1.z, r1.w};
+                const float qs[8] = {q0.x, q0.y, q0.z, q0.w, q1.x, q1.y, q1.z, q1.w};
+#pragma unroll
+                for (int k = 0; k < 8; ++k) {
+                    const float v = K * (float)iv[k];
+                    if (qs[k] - 2.f * v - bound(v, qs[k]) <= T) mask |= 1u << k;
+                }
+            }
+        } else {
+            for (int k = 0; k < 8; ++k) {
+                const int c = c0 + k;
+                if (c < nlist) {
+                    const float v = K * (float)col[c], q = cent_norms[c];
+                    if (q - 2.f * v - bound(v, q) <= T) mask |= 1u << k;
+                }
+            }
+        }
+        unsigned lm = __ballot_sync(0xffffffffu, mask != 0);
+        while (lm) {
+            const int src = __ffs(lm) - 1; lm &= lm - 1;
+            unsigned m = __shfl_sync(0xffffffffu, mask, src);
+            while (m) {
+                const int k = __ffs(m) - 1; m &= m - 1;
+                const int cid = base + src * 8 + k;
+                const float dex = exact_dist(cid);
+                if (dex < ex_best || (dex == ex_best && cid < ex_id)) { ex_best = dex; ex_id = cid; }
+            }
+        }
+    }
+    if (lane == 0) assigns[row] = ex_id;
+}
+
+__global__ void count_mismatch_kernel(const int* a, const int* b, int n, int* cnt) {
+    const int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n && a[i] != b[i]) atomicAdd(cnt, 1);
+}
+
 namespace {
 __global__ void f32_to_f16_kernel(const float* __restrict__ src,
                                   __half* __restrict__ dst, long long n)
@@ -171,6 +642,44 @@ __global__ void gather_list_storage_kernel(
     }
 }
 
+// The two-pass build's counterpart: a batch of freshly encoded rows goes
+// straight to its list positions, the primary codes into the transposed
+// [M, N] layout the scan reads, so no list-ordered copy of the whole code
+// array ever exists beside the original.
+__global__ void scatter_list_storage_kernel(
+    const int*     __restrict__ list_pos,     // [nb] sorted position of each row
+    const uint8_t* __restrict__ primary,      // [nb, M]
+    const uint8_t* __restrict__ residual,     // [nb, bpv]
+    const float*   __restrict__ corrections,  // [nb]
+    uint8_t*                    list_primary_t,  // [M, n]
+    uint8_t*                    list_res,        // [n, bpv]
+    float*                      list_corr,       // [n]
+    int nb, long long n, int M, int bpv)
+{
+    const int lane = threadIdx.x & 31;
+    const int r    = (blockIdx.x * blockDim.x + threadIdx.x) >> 5;
+    if (r >= nb) return;
+    const long long pos = list_pos[r];
+    if (lane == 0) list_corr[pos] = corrections[r];
+    const uint8_t* pc = primary + (long long)r * M;
+    for (int m = lane; m < M; m += 32) list_primary_t[(long long)m * n + pos] = pc[m];
+    const uint8_t* rc = residual + (long long)r * bpv;
+    uint8_t* out_rc = list_res + pos * bpv;
+    if ((bpv & 15) == 0) {
+        const uint4* rc4 = reinterpret_cast<const uint4*>(rc);
+        uint4* out_rc4 = reinterpret_cast<uint4*>(out_rc);
+        for (int w = lane; w < (bpv >> 4); w += 32) out_rc4[w] = rc4[w];
+    } else {
+        for (int b = lane; b < bpv; b += 32) out_rc[b] = rc[b];
+    }
+}
+
+__global__ void invert_permutation_kernel(const int* __restrict__ order, int* inv, int n)
+{
+    const int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) inv[order[i]] = i;
+}
+
 // ── Transpose kernel: [N, M] → [M, N] with shared-memory tiling ──────────────
 // TILE=32 avoids bank conflicts (padding +1 on shared dim).
 // Grid: (ceil(N/TILE), ceil(M/TILE)) -- N (millions of vectors) MUST be the
@@ -244,12 +753,35 @@ JHQGpuIndex::JHQGpuIndex(int d, Params p)
         // The first GEMM of a process also loads cuBLAS's kernels; that is
         // resource setup, so it happens here with the handle rather than
         // inside train()'s rotation.
+        // The fp16 tensor-core products the coarse assignment uses are
+        // separate kernels, loaded on their own first call; that call sits in
+        // train(), so they are warmed here too, in both output widths.
         float* d_w = nullptr;
         CUDA_CHECK(cudaMalloc(&d_w, (size_t)3 * 256 * 256 * sizeof(float)));
+        CUDA_CHECK(cudaMemset(d_w, 0, (size_t)3 * 256 * 256 * sizeof(float)));
         const float one = 1.f, zero = 0.f;
         CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_N, CUBLAS_OP_N, 256, 256, 256,
                                  &one, d_w, 256, d_w + 256 * 256, 256,
                                  &zero, d_w + 2 * 256 * 256, 256));
+        CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, CUBLAS_OP_N, 256, 256, 256, &one,
+                                  d_w, CUDA_R_16F, 256, d_w + 256 * 128, CUDA_R_16F, 256,
+                                  &zero, d_w + 2 * 256 * 256, CUDA_R_32F, 256,
+                                  CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+        CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, CUBLAS_OP_N, 256, 256, 256, &one,
+                                  d_w, CUDA_R_16F, 256, d_w + 256 * 128, CUDA_R_16F, 256,
+                                  &zero, d_w + 2 * 256 * 256, CUDA_R_16F, 256,
+                                  CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+        CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, CUBLAS_OP_T, 256, 256, 256, &one,
+                                  d_w, CUDA_R_16F, 256, d_w + 256 * 128, CUDA_R_16F, 256,
+                                  &zero, d_w + 2 * 256 * 256, CUDA_R_16F, 256,
+                                  CUBLAS_COMPUTE_32F, CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+        {
+            const int ione = 1, izero = 0;
+            CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, CUBLAS_OP_N, 256, 256, 256, &ione,
+                                      d_w, CUDA_R_8I, 256, d_w + 256 * 64, CUDA_R_8I, 256,
+                                      &izero, d_w + 2 * 256 * 256, CUDA_R_32I, 256,
+                                      CUBLAS_COMPUTE_32I, CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+        }
         CUDA_CHECK(cudaDeviceSynchronize());
         cudaFree(d_w);
     }
@@ -287,6 +819,8 @@ JHQGpuIndex::~JHQGpuIndex() {
     cudaFree(d_res_c1d_);
     cudaFree(d_centroids_);
     if (d_centroids16_) { cudaFree(d_centroids16_); d_centroids16_ = nullptr; }
+    if (d_centroids8_)  { cudaFree(d_centroids8_);  d_centroids8_  = nullptr; }
+    if (d_cstats8_)     { cudaFree(d_cstats8_);     d_cstats8_     = nullptr; }
     cudaFree(d_cent_norms_);
     cudaFree(d_list_offsets_);
     cudaFree(d_list_ids_);
@@ -442,6 +976,7 @@ void JHQGpuIndex::train_ivf_centroids(
         cudaFree(d_centroids_);  d_centroids_  = nullptr;
         cudaFree(d_cent_norms_); d_cent_norms_ = nullptr;
         if (d_centroids16_) { cudaFree(d_centroids16_); d_centroids16_ = nullptr; }
+        if (d_centroids8_)  { cudaFree(d_centroids8_);  d_centroids8_  = nullptr; }
         CUDA_CHECK(cudaMalloc(&d_centroids_,  (long long)nlist_ * d_ * sizeof(float)));
         CUDA_CHECK(cudaMalloc(&d_cent_norms_, (long long)nlist_ * sizeof(float)));
         {
@@ -473,6 +1008,7 @@ void JHQGpuIndex::train_ivf_centroids(
                     d_centroids_, d_centroids16_, nc);
                 CUDA_CHECK(cudaGetLastError());
             }
+            if (assign_int8()) requantize_centroids8(0);
         };
         for (int iter = 0; iter < ivf_iters_; ++iter) {
             refresh();
@@ -519,6 +1055,7 @@ void JHQGpuIndex::train_ivf_centroids(
         }
         cudaFree(d_centroids_);
         if (d_centroids16_) { cudaFree(d_centroids16_); d_centroids16_ = nullptr; }
+        if (d_centroids8_)  { cudaFree(d_centroids8_);  d_centroids8_  = nullptr; }
         cudaFree(d_cent_norms_);
         d_centroids_ = nullptr;
         d_cent_norms_ = nullptr;
@@ -686,6 +1223,7 @@ void JHQGpuIndex::upload_trained() {
     cudaFree(d_centroids_);
     d_centroids_  = nullptr;
     if (d_centroids16_) { cudaFree(d_centroids16_); d_centroids16_ = nullptr; }
+    if (d_centroids8_)  { cudaFree(d_centroids8_);  d_centroids8_  = nullptr; }
     cudaFree(d_cent_norms_); d_cent_norms_ = nullptr;
     CUDA_CHECK(cudaMalloc(&d_centroids_, (long long)nlist_ * d_ * sizeof(float)));
     CUDA_CHECK(cudaMemcpy(d_centroids_, centroids_.data(),
@@ -974,6 +1512,42 @@ int JHQGpuIndex::assign_precision() const {
     return std::atoi(p) == 16 ? 16 : 32;
 }
 
+// The int8 tensor-core product with the bounded, exactly settled argmin (see
+// assign_from_dots8_kernel). JHQ_ASSIGN_INT8=0 keeps the fp16 product.
+bool JHQGpuIndex::assign_int8() const {
+    if (assign_precision() != 16 || std::getenv("JHQ_ASSIGN_OUT32")) return false;
+    const char* e = std::getenv("JHQ_ASSIGN_INT8");
+    return e ? e[0] == '1' : false;
+}
+
+void JHQGpuIndex::ensure_assign_centroids(cudaStream_t stream) const {
+    const int prec = assign_precision();
+    if (prec == 16 && !d_centroids16_) {
+        CUDA_CHECK(cudaMalloc(&d_centroids16_, (long long)nlist_ * d_ * sizeof(__half)));
+        const long long nc = (long long)nlist_ * d_;
+        f32_to_f16_kernel<<<(int)((nc / 4 + 255) / 256), 256, 0, stream>>>(
+            d_centroids_, d_centroids16_, nc);
+        CUDA_CHECK(cudaGetLastError());
+    }
+    if (assign_int8() && !d_centroids8_) requantize_centroids8(stream);
+}
+
+// The centroids' int8 image on one shared scale, with that scale and the
+// largest per-centroid error kept on the device as float bits, so k-means
+// can refresh it every iteration without a host round trip.
+void JHQGpuIndex::requantize_centroids8(cudaStream_t stream) const {
+    if (d_ % 8 != 0) throw std::runtime_error("assign: the int8 product needs d % 8 == 0");
+    if (!d_cstats8_) CUDA_CHECK(cudaMalloc(&d_cstats8_, 2 * sizeof(unsigned)));
+    if (!d_centroids8_) CUDA_CHECK(cudaMalloc(&d_centroids8_, (long long)nlist_ * d_));
+    CUDA_CHECK(cudaMemsetAsync(d_cstats8_, 0, 2 * sizeof(unsigned), stream));
+    const long long n4 = (long long)nlist_ * d_ / 4;
+    absmax_kernel<<<(int)std::min<long long>((n4 + 255) / 256, 2048), 256, 0, stream>>>(
+        d_centroids_, n4, d_cstats8_);
+    quantize_centroids_kernel<<<(int)(((long long)nlist_ * 32 + 255) / 256), 256, 0, stream>>>(
+        d_centroids_, nlist_, d_, d_cstats8_, d_centroids8_, d_cstats8_ + 1);
+    CUDA_CHECK(cudaGetLastError());
+}
+
 void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
                               float* d_dots, int y_transposed,
                               cudaStream_t stream, __half* d_y16) const {
@@ -987,25 +1561,68 @@ void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
     const int   batch = sb ? std::atoi(sb)
                            : (nlist_ >= 8192 ? 32768 : 8192);
     const int   prec  = assign_precision();
+    // The fp16-stored product with exact settlement (see the kernel), unless
+    // JHQ_ASSIGN_OUT32 asks for the fp32 product; JHQ_ASSIGN_CHECK runs both
+    // and counts the rows on which they disagree.
+    const bool  out16 = (prec == 16) && !std::getenv("JHQ_ASSIGN_OUT32");
+    const bool  int8  = out16 && assign_int8();
+    const bool  check = out16 && std::getenv("JHQ_ASSIGN_CHECK");
+    // The bound's relative term: half an fp16 ulp of the dot is 2^-11, the
+    // distance carries twice the dot, so 2^-10 = 0.000977, with a little over.
+    // JHQ_ASSIGN_REL widens it, to show the disagreements that remain are
+    // summation order and not the bound.
+    const char* re = std::getenv("JHQ_ASSIGN_REL");
+    const float rel = re ? (float)std::atof(re) : 0.00099f;
+    float* d_chk_dots = nullptr; int* d_chk_out = nullptr; int* d_chk_cnt = nullptr;
+    if (check) {
+        CUDA_CHECK(cudaMalloc(&d_chk_dots, (long long)nlist_ * batch * sizeof(float)));
+        CUDA_CHECK(cudaMalloc(&d_chk_out, (long long)batch * sizeof(int)));
+        CUDA_CHECK(cudaMalloc(&d_chk_cnt, 2 * sizeof(int)));
+        CUDA_CHECK(cudaMemsetAsync(d_chk_cnt, 0, 2 * sizeof(int), stream));
+    }
     const float one = 1.f, zero = 0.f;
     CUBLAS_CHECK(cublasSetStream(cublas_, stream));
 
+    int8_t* y8 = nullptr; float4* y8_stats = nullptr; size_t smem8 = 0;
     if (prec == 16) {
         if (!d_y16) throw std::runtime_error("assign_into: fp16 needs a half scratch");
-        if (!d_centroids16_) {
-            CUDA_CHECK(cudaMalloc(&d_centroids16_,
-                                  (long long)nlist_ * d_ * sizeof(__half)));
-            const long long nc = (long long)nlist_ * d_;
-            f32_to_f16_kernel<<<(int)((nc / 4 + 255) / 256), 256, 0, stream>>>(
-                d_centroids_, d_centroids16_, nc);
+        ensure_assign_centroids(stream);
+        const long long ny = (long long)n * d_;
+        if (int8 && !check) {
+            // The int8 image of y, row-major in either layout, and the row
+            // statistics behind it -- both inside the half-sized scratch,
+            // which is twice what the bytes need.
+            y8 = reinterpret_cast<int8_t*>(d_y16);
+            y8_stats = reinterpret_cast<float4*>(y8 + ((ny + 15) / 16) * 16);
+            if ((ny + 15) / 16 * 16 + (long long)n * sizeof(float4) > ny * (long long)sizeof(__half))
+                throw std::runtime_error("assign_into: the int8 scratch does not fit");
+        } else if (int8) {
+            // Checking against the fp16 path needs the fp16 y as well.
+            CUDA_CHECK(cudaMalloc(&y8, ny + 16 + (long long)n * sizeof(float4)));
+            y8_stats = reinterpret_cast<float4*>(y8 + ((ny + 15) / 16) * 16);
+        }
+        if (int8) {
+            if (y_transposed)
+                quantize_cols_kernel<<<(n + 31) / 32, 256, 0, stream>>>(d_y, n, d_, y8, y8_stats);
+            else
+                quantize_rows_kernel<<<(int)(((long long)n * 32 + 255) / 256), 256, 0, stream>>>(
+                    d_y, n, d_, y8, y8_stats);
+            CUDA_CHECK(cudaGetLastError());
+            smem8 = 4 * (size_t)d_ * sizeof(float);
+            static size_t smem8_set = 0;
+            if (smem8 > 48 * 1024 && smem8 > smem8_set) {
+                CUDA_CHECK(cudaFuncSetAttribute(assign_from_dots8_kernel,
+                                                cudaFuncAttributeMaxDynamicSharedMemorySize, (int)smem8));
+                smem8_set = smem8;
+            }
+        }
+        if (!int8 || check) {
+            // The whole batch converts once, so the sub-batch slicing below is
+            // the same in either layout.
+            f32_to_f16_kernel<<<(int)((ny / 4 + 255) / 256), 256, 0, stream>>>(
+                d_y, d_y16, ny);
             CUDA_CHECK(cudaGetLastError());
         }
-        // The whole batch converts once, so the sub-batch slicing below is the
-        // same in either layout.
-        const long long ny = (long long)n * d_;
-        f32_to_f16_kernel<<<(int)((ny / 4 + 255) / 256), 256, 0, stream>>>(
-            d_y, d_y16, ny);
-        CUDA_CHECK(cudaGetLastError());
     }
 
     for (int start = 0; start < n; start += batch) {
@@ -1030,6 +1647,72 @@ void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
                                       &zero, d_dots, CUDA_R_32F, nlist_,
                                       CUBLAS_COMPUTE_32F_FAST_TF32,
                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+        } else if (int8) {
+            const int ione = 1, izero = 0;
+            int* d_dots32 = reinterpret_cast<int*>(d_dots);
+            CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, CUBLAS_OP_N,
+                                      nlist_, nb, d_, &ione,
+                                      d_centroids8_, CUDA_R_8I, d_,
+                                      y8 + (long long)start * d_, CUDA_R_8I, d_,
+                                      &izero, d_dots32, CUDA_R_32I, nlist_,
+                                      CUBLAS_COMPUTE_32I,
+                                      CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+            assign_from_dots8_kernel<<<(int)(((long long)nb * 32 + 127) / 128), 128, smem8, stream>>>(
+                d_dots32, d_cent_norms_, d_centroids_, d_y + yoff, y_transposed, ldb,
+                y8_stats + start, d_cstats8_, d_out + start, nlist_, nb, d_,
+                check ? d_chk_cnt + 1 : nullptr);
+            CUDA_CHECK(cudaGetLastError());
+            if (check) {
+                // The fp16 product's assignment beside it, settled its own
+                // way, and a count of the rows that differ.
+                __half* d_dots16 = reinterpret_cast<__half*>(d_chk_dots);
+                CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, opB,
+                                          nlist_, nb, d_, &one,
+                                          d_centroids16_, CUDA_R_16F, d_,
+                                          d_y16 + yoff,   CUDA_R_16F, ldb,
+                                          &zero, d_dots16, CUDA_R_16F, nlist_,
+                                          CUBLAS_COMPUTE_32F,
+                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+                assign_from_dots16_kernel<<<(nb * 32 + 255) / 256, 256, 0, stream>>>(
+                    d_dots16, d_cent_norms_, d_centroids16_, d_y16 + yoff,
+                    y_transposed, ldb, d_chk_out, nlist_, nb, d_, rel, nullptr);
+                count_mismatch_kernel<<<(nb + 255) / 256, 256, 0, stream>>>(
+                    d_out + start, d_chk_out, nb, d_chk_cnt);
+                CUDA_CHECK(cudaGetLastError());
+            }
+            continue;
+        } else if (out16) {
+            // fp32 sums, stored as fp16: the scratch is sized for floats, so
+            // the half product fits in its first half.
+            __half* d_dots16 = reinterpret_cast<__half*>(d_dots);
+            CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, opB,
+                                      nlist_, nb, d_, &one,
+                                      d_centroids16_, CUDA_R_16F, d_,
+                                      d_y16 + yoff,   CUDA_R_16F, ldb,
+                                      &zero, d_dots16, CUDA_R_16F, nlist_,
+                                      CUBLAS_COMPUTE_32F,
+                                      CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+            assign_from_dots16_kernel<<<(nb * 32 + 255) / 256, 256, 0, stream>>>(
+                d_dots16, d_cent_norms_, d_centroids16_, d_y16 + yoff,
+                y_transposed, ldb, d_out + start, nlist_, nb, d_, rel,
+                check ? d_chk_cnt + 1 : nullptr);
+            CUDA_CHECK(cudaGetLastError());
+            if (check) {
+                // The fp32 product beside it, and a count of rows that differ.
+                CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, opB,
+                                          nlist_, nb, d_, &one,
+                                          d_centroids16_, CUDA_R_16F, d_,
+                                          d_y16 + yoff,   CUDA_R_16F, ldb,
+                                          &zero, d_chk_dots, CUDA_R_32F, nlist_,
+                                          CUBLAS_COMPUTE_32F,
+                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+                assign_from_dots_kernel<<<(nb * 32 + 255) / 256, 256, 0, stream>>>(
+                    d_chk_dots, d_cent_norms_, d_chk_out, nlist_, nb);
+                count_mismatch_kernel<<<(nb + 255) / 256, 256, 0, stream>>>(
+                    d_out + start, d_chk_out, nb, d_chk_cnt);
+                CUDA_CHECK(cudaGetLastError());
+            }
+            continue;
         } else {
             CUBLAS_CHECK(cublasGemmEx(cublas_, CUBLAS_OP_T, opB,
                                       nlist_, nb, d_, &one,
@@ -1042,6 +1725,16 @@ void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
         assign_from_dots_kernel<<<(nb * 32 + 255) / 256, 256, 0, stream>>>(
             d_dots, d_cent_norms_, d_out + start, nlist_, nb);
         CUDA_CHECK(cudaGetLastError());
+    }
+    if (check) {
+        int cnt[2] = {0, 0};
+        CUDA_CHECK(cudaStreamSynchronize(stream));
+        CUDA_CHECK(cudaMemcpy(cnt, d_chk_cnt, 2 * sizeof(int), cudaMemcpyDeviceToHost));
+        std::fprintf(stderr, int8 ? "  [assign check] %d of %d rows differ between the int8 and fp16 products; %d settled exactly\n"
+                                  : "  [assign check] %d of %d rows differ between the fp16 and fp32 products; %d settled exactly\n",
+                     cnt[0], n, cnt[1]);
+        cudaFree(d_chk_dots); cudaFree(d_chk_out); cudaFree(d_chk_cnt);
+        if (int8) cudaFree(y8);
     }
 }
 
@@ -1082,17 +1775,7 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     uint8_t* d_rc = nullptr;      // [n, bpv] residual codes
     float*   d_co = nullptr;      // [n]      residual corrections
     int*     d_assign = nullptr;  // [n]      IVF cluster assignment
-    CUDA_CHECK(cudaMalloc(&d_pc, (long long)n * M_ * sizeof(uint8_t)));
-    CUDA_CHECK(cudaMalloc(&d_rc, (long long)n * bpv_ * sizeof(uint8_t)));
-    CUDA_CHECK(cudaMalloc(&d_co, (long long)n * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&d_assign, (long long)n * sizeof(int)));
-
-    if (std::getenv("JHQ_ADD_PHASES")) {
-        CUDA_CHECK(cudaDeviceSynchronize());
-        t_alloc = std::chrono::duration<double, std::milli>(
-            std::chrono::steady_clock::now() - t_alloc0).count();
-        std::fprintf(stderr, "  [add] device allocations %.1f ms\n", t_alloc);
-    }
 
     const long long AB = add_batch_;
 
@@ -1101,7 +1784,7 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     // the build. Timing the phases rather than guessing which one costs,
     // reported when JHQ_ADD_PHASES is set.
     const bool add_phases = std::getenv("JHQ_ADD_PHASES") != nullptr;
-    double t_h2d = 0, t_rot = 0, t_penc = 0, t_renc = 0, t_asg = 0;
+    double t_h2d = 0, t_rot = 0, t_penc = 0, t_renc = 0, t_asg = 0, t_scatter = 0;
     auto tick = [&]() {
         if (add_phases) CUDA_CHECK(cudaDeviceSynchronize());
         return std::chrono::steady_clock::now();
@@ -1123,12 +1806,18 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     // Phase timing forces a synchronise after every step, so JHQ_ADD_PHASES
     // degenerates this to the serial order on purpose: attribution needs the
     // steps separated, throughput needs them overlapped.
-    const int NBUF = add_phases ? 1 : 2;
-    float*       h_stage[2] = {nullptr, nullptr};
-    float*       d_xb[2]    = {nullptr, nullptr};
-    float*       d_yb[2]    = {nullptr, nullptr};
-    cudaStream_t st[2]      = {nullptr, nullptr};
-    cudaEvent_t  ev[2]      = {nullptr, nullptr};
+    // Two buffers keep one batch of GPU work queued while the host stages the
+    // next; a third keeps two, for when the host is slow to fill -- the
+    // machine is shared, and a stage that takes longer than the GPU's batch
+    // leaves the device idle. Three measured 3% faster than two on the 17.8M
+    // set and the same elsewhere (JHQ_ADD_NBUF overrides).
+    const char* nbe = std::getenv("JHQ_ADD_NBUF");
+    const int NBUF = add_phases ? 1 : std::max(1, std::min(4, nbe ? std::atoi(nbe) : 3));
+    float*       h_stage[4] = {nullptr, nullptr, nullptr, nullptr};
+    float*       d_xb[4]    = {nullptr, nullptr, nullptr, nullptr};
+    float*       d_yb[4]    = {nullptr, nullptr, nullptr, nullptr};
+    cudaStream_t st[4]      = {nullptr, nullptr, nullptr, nullptr};
+    cudaEvent_t  ev[4]      = {nullptr, nullptr, nullptr, nullptr};
     // Size the staging by bytes, not by rows. add_batch is a row count, so at
     // d=3072 each buffer would be 805 MB and the pair 1.6 GB of pinned memory;
     // pinning that much costs a few hundred milliseconds, which is most of what
@@ -1138,11 +1827,13 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     const size_t stage_budget = (size_t)(smb ? std::atoi(smb) : 128) << 20;
     const long long AB_rows = std::max<long long>(
         1, std::min<long long>(AB, (long long)(stage_budget / (sizeof(float) * d_))));
+    size_t pipeline_bytes = 0;   // device memory the pipeline holds and frees before the tail
     for (int b = 0; b < NBUF; ++b) {
         CUDA_CHECK(cudaHostAlloc(&h_stage[b], (size_t)AB_rows * d_ * sizeof(float),
                                  cudaHostAllocDefault));
         CUDA_CHECK(cudaMalloc(&d_xb[b], (long long)AB_rows * d_ * sizeof(float)));
         CUDA_CHECK(cudaMalloc(&d_yb[b], (long long)AB_rows * d_ * sizeof(float)));
+        pipeline_bytes += 2 * (size_t)AB_rows * d_ * sizeof(float);
         CUDA_CHECK(cudaStreamCreate(&st[b]));
         CUDA_CHECK(cudaEventCreateWithFlags(&ev[b], cudaEventDisableTiming));
     }
@@ -1156,7 +1847,7 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     const size_t dots_bytes = (size_t)512 << 20;
     const int dots_rows = (int)std::min<size_t>(dots_bytes / (sizeof(float) * K_),
                                                 (size_t)M_ * AB_rows);
-    float* d_dots_enc[2] = {nullptr, nullptr};
+    float* d_dots_enc[4] = {nullptr, nullptr, nullptr, nullptr};
 
     // One assignment scratch per stream, not one for the loop. Hoisting it out
     // of the batch loop removes a malloc and a free per batch, but a single
@@ -1165,20 +1856,31 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     // 0.9452 to 0.80. Single-threaded staging hid it -- the copy was slow enough
     // that the previous batch's assignment had finished -- so it only appeared
     // once the staging copy got fast.
-    float* d_dots[2] = {nullptr, nullptr};
+    float* d_dots[4] = {nullptr, nullptr, nullptr, nullptr};
     {
         const char* sb = std::getenv("JHQ_ASSIGN_BATCH");
         const int abatch = sb ? std::atoi(sb) : (nlist_ >= 8192 ? 32768 : 8192);
-        for (int b = 0; b < NBUF; ++b)
+        for (int b = 0; b < NBUF; ++b) {
             CUDA_CHECK(cudaMalloc(&d_dots[b],
                                   (long long)nlist_ * abatch * sizeof(float)));
+            pipeline_bytes += (size_t)nlist_ * abatch * sizeof(float);
+        }
     }
-    for (int b = 0; b < NBUF; ++b)
+    for (int b = 0; b < NBUF; ++b) {
         CUDA_CHECK(cudaMalloc(&d_dots_enc[b], (size_t)dots_rows * K_ * sizeof(float)));
-    __half* d_y16[2] = {nullptr, nullptr};
+        pipeline_bytes += (size_t)dots_rows * K_ * sizeof(float);
+    }
+    __half* d_y16[4] = {nullptr, nullptr, nullptr, nullptr};
     if (assign_precision() == 16)
-        for (int b = 0; b < NBUF; ++b)
+        for (int b = 0; b < NBUF; ++b) {
             CUDA_CHECK(cudaMalloc(&d_y16[b], (long long)AB_rows * d_ * sizeof(__half)));
+            pipeline_bytes += (size_t)AB_rows * d_ * sizeof(__half);
+        }
+    // The reduced-precision centroid copies, before any slot's stream can ask
+    // for them: built lazily on one slot's stream, another slot's product
+    // could read them before they were written.
+    ensure_assign_centroids(0);
+    CUDA_CHECK(cudaStreamSynchronize(0));
 
     // Dimension-major y, for the encoders' sake. Only the fused Cartesian
     // encoder and the coarse assignment read y in add(), and both are taught
@@ -1186,12 +1888,60 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     const char* ytr = std::getenv("JHQ_Y_TRANSPOSED");
     const bool y_transposed = ytr ? (ytr[0] == '1') : false;
 
+    // The single pass keeps every code beside its list-ordered copy while the
+    // lists are gathered, so its peak is twice the code array and change. At
+    // Br=8 on 17.8M vectors of 1024 dimensions that is 43 GB against 32 on the
+    // card. Past what is free, the build makes two passes over the input
+    // instead: the first rotates and assigns, the second rotates and encodes
+    // each batch straight into list order. The second pass costs another
+    // rotation and another read of the input; the assignment, which is most
+    // of the work, is not repeated. JHQ_ADD_TWO_PASS=1|0 forces either.
+    // The single pass peaks in the tail, after the pipeline is released, so the
+    // pipeline's share is counted back in as free: on the 17.8M set it is 4 GB,
+    // and without it the 26 GB Br=4 build was sent the slower way.
+    size_t mem_free = 0, mem_total = 0;
+    CUDA_CHECK(cudaMemGetInfo(&mem_free, &mem_total));
+    const size_t peak_single = (size_t)n * (2 * (size_t)bpv_ + 3 * (size_t)M_ + 5 * sizeof(int))
+                             + ((size_t)1 << 30);
+    const size_t free_at_tail = mem_free + pipeline_bytes;
+    const char* tpe = std::getenv("JHQ_ADD_TWO_PASS");
+    const bool two_pass = tpe ? (tpe[0] == '1') : (peak_single > free_at_tail);
+    uint8_t* d_pc_b[4] = {nullptr, nullptr, nullptr, nullptr};
+    uint8_t* d_rc_b[4] = {nullptr, nullptr, nullptr, nullptr};
+    float*   d_co_b[4] = {nullptr, nullptr, nullptr, nullptr};
+    int*     d_inv     = nullptr;   // [n] sorted position of each input row
+    if (two_pass) {
+        std::printf("  [add] two-pass build: single-pass peak %.1f GB, %.1f GB free at the tail\n",
+                    peak_single / 1073741824.0, free_at_tail / 1073741824.0);
+        for (int b = 0; b < NBUF; ++b) {
+            CUDA_CHECK(cudaMalloc(&d_pc_b[b], (size_t)AB_rows * M_));
+            CUDA_CHECK(cudaMalloc(&d_rc_b[b], (size_t)AB_rows * bpv_));
+            CUDA_CHECK(cudaMalloc(&d_co_b[b], (size_t)AB_rows * sizeof(float)));
+        }
+    } else {
+        CUDA_CHECK(cudaMalloc(&d_pc, (long long)n * M_ * sizeof(uint8_t)));
+        CUDA_CHECK(cudaMalloc(&d_rc, (long long)n * bpv_ * sizeof(uint8_t)));
+        CUDA_CHECK(cudaMalloc(&d_co, (long long)n * sizeof(float)));
+    }
+    if (add_phases) {
+        CUDA_CHECK(cudaDeviceSynchronize());
+        t_alloc = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - t_alloc0).count();
+        std::fprintf(stderr, "  [add] device allocations %.1f ms\n", t_alloc);
+    }
+
     const float one = 1.f, zero = 0.f;
+    // mode 0: rotate, encode and assign in one pass; 1: rotate and assign;
+    // 2: rotate, encode, scatter into list order.
+    auto run_pass = [&](int mode) {
     int nbatch = 0;
     for (long long start = 0; start < n; start += AB_rows, ++nbatch) {
         const int nb  = (int)std::min(AB_rows, (long long)n - start);
         const int cur = nbatch % NBUF;
         if (nbatch >= NBUF) CUDA_CHECK(cudaEventSynchronize(ev[cur]));
+        uint8_t* pc_out = mode == 2 ? d_pc_b[cur] : mode == 0 ? d_pc + start * M_   : nullptr;
+        uint8_t* rc_out = mode == 2 ? d_rc_b[cur] : mode == 0 ? d_rc + start * bpv_ : nullptr;
+        float*   co_out = mode == 2 ? d_co_b[cur] : mode == 0 ? d_co + start        : nullptr;
 
         auto t0 = tick();
         // The source is an mmap of the base file, so it cannot be handed to the
@@ -1249,6 +1999,7 @@ void JHQGpuIndex::add(const float* h_x, int n) {
         }
         lap(t0, t_rot);
 
+        if (mode != 1) {
         // Which form wins depends on the subspace width, and the crossover was
         // measured rather than guessed. The GEMM reduces over Ds, so a narrow
         // subspace makes it a product too thin for cuBLAS to fill; the loop
@@ -1271,22 +2022,22 @@ void JHQGpuIndex::add(const float* h_x, int n) {
                 // encode below.
                 launch_encode_fused_cartesian(
                     d_yb[cur], d_levels_, n_levels_, d_res_c1d_,
-                    d_pc + start * M_, d_rc + start * bpv_, d_co + start,
+                    pc_out, rc_out, co_out,
                     nb, d_, M_, Ds_, Kr_, Br_, bpv_, y_transposed ? 1 : 0,
                     st[cur]);
             } else if (use_sep)
                 // Ds*L operations against K*Ds; only the product codebook is
                 // separable, so this needs the paper's construction.
-                launch_primary_encode_cartesian(d_yb[cur], d_pc + start * M_,
+                launch_primary_encode_cartesian(d_yb[cur], pc_out,
                                                 d_levels_, n_levels_,
                                                 nb, d_, M_, Ds_, st[cur]);
             else if (use_gemm)
-                launch_primary_encode_gemm(cublas_, d_yb[cur], d_pc + start * M_,
+                launch_primary_encode_gemm(cublas_, d_yb[cur], pc_out,
                                            d_cent_, d_cent_sqnorm,
                                            d_dots_enc[cur], dots_rows,
                                            nb, d_, M_, Ds_, K_, st[cur]);
             else
-                launch_primary_encode(d_yb[cur], d_pc + start * M_, d_cent_,
+                launch_primary_encode(d_yb[cur], pc_out, d_cent_,
                                       nb, d_, M_, Ds_, K_, st[cur]);
         }
         lap(t0, t_penc);
@@ -1298,20 +2049,31 @@ void JHQGpuIndex::add(const float* h_x, int n) {
             const bool fused = sep_on && d_res_c1d_ && (Br_ == 8 || (Ds_ % 2 == 0))
                              && (!fu || fu[0] == '1');
             if (!fused)
-                launch_residual_encode(d_yb[cur], d_pc + start * M_,
-                                       d_rc + start * bpv_, d_co + start,
+                launch_residual_encode(d_yb[cur], pc_out, rc_out, co_out,
                                        d_cent_, d_res_c1d_,
                                        nb, d_, M_, Ds_, K_, Kr_, Br_, bpv_, st[cur]);
         }
         lap(t0, t_renc);
+        }   // mode != 1
 
-        assign_into(d_yb[cur], nb, d_assign + start, d_dots[cur],
-                    y_transposed ? 1 : 0, st[cur], d_y16[cur]);
+        if (mode != 2) {
+            assign_into(d_yb[cur], nb, d_assign + start, d_dots[cur],
+                        y_transposed ? 1 : 0, st[cur], d_y16[cur]);
+            lap(t0, t_asg);
+        } else {
+            scatter_list_storage_kernel<<<(int)(((long long)nb * 32 + 255) / 256), 256, 0, st[cur]>>>(
+                d_inv + start, pc_out, rc_out, co_out,
+                d_list_primary_t_, d_list_res_, d_list_corr_,
+                nb, (long long)n, M_, bpv_);
+            CUDA_CHECK(cudaGetLastError());
+            lap(t0, t_scatter);
+        }
         CUDA_CHECK(cudaEventRecord(ev[cur], st[cur]));
-        lap(t0, t_asg);
     }
     for (int b = 0; b < NBUF; ++b) CUDA_CHECK(cudaStreamSynchronize(st[b]));
     CUBLAS_CHECK(cublasSetStream(cublas_, 0));
+    };  // run_pass
+    run_pass(two_pass ? 1 : 0);
 
     if (add_phases)
         std::fprintf(stderr,
@@ -1319,14 +2081,20 @@ void JHQGpuIndex::add(const float* h_x, int n) {
             "residual encode %.1f | ivf assign %.1f\n",
             t_h2d, t_rot, t_penc, t_renc, t_asg);
 
-    cudaFree(d_cent_sqnorm);
     for (int b = 0; b < NBUF; ++b) {
-        cudaFree(d_dots[b]);
-        cudaFree(d_dots_enc[b]);
-        if (d_y16[b]) cudaFree(d_y16[b]);
-        cudaFreeHost(h_stage[b]); cudaFree(d_xb[b]); cudaFree(d_yb[b]);
-        cudaStreamDestroy(st[b]); cudaEventDestroy(ev[b]);
+        cudaFree(d_dots[b]); d_dots[b] = nullptr;
+        if (d_y16[b]) { cudaFree(d_y16[b]); d_y16[b] = nullptr; }
     }
+    auto free_pipeline = [&]() {
+        cudaFree(d_cent_sqnorm);
+        for (int b = 0; b < NBUF; ++b) {
+            cudaFree(d_dots_enc[b]);
+            if (d_pc_b[b]) { cudaFree(d_pc_b[b]); cudaFree(d_rc_b[b]); cudaFree(d_co_b[b]); }
+            cudaFreeHost(h_stage[b]); cudaFree(d_xb[b]); cudaFree(d_yb[b]);
+            cudaStreamDestroy(st[b]); cudaEventDestroy(ev[b]);
+        }
+    };
+    if (!two_pass) free_pipeline();
 
     // The tail of add() has never been timed: it is a device sort, a copy of the
     // whole assignment array back to the host, a single-threaded count over it,
@@ -1355,7 +2123,12 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     // boundaries, in place of copying the n keys back and counting them on one
     // host thread (72 ms of the stella-trec24 tail).
     CUDA_CHECK(cudaMalloc(&d_list_offsets_, (long long)(nlist_ + 1) * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&d_list_ids_,     (long long)n * sizeof(int)));
+    if (two_pass) {
+        // The sorted order is the id list itself.
+        d_list_ids_ = d_order; d_order = nullptr;
+    } else {
+        CUDA_CHECK(cudaMalloc(&d_list_ids_, (long long)n * sizeof(int)));
+    }
     CUDA_CHECK(cudaMalloc(&d_list_res_,     (long long)n * bpv_ * sizeof(uint8_t)));
     CUDA_CHECK(cudaMalloc(&d_list_corr_,    (long long)n * sizeof(float)));
     {
@@ -1369,45 +2142,62 @@ void JHQGpuIndex::add(const float* h_x, int n) {
     }
     tail_lap(t_count);
 
-    // Temporary [N, M] primary buffer for gathering, then transposed.
-    uint8_t* d_list_primary_nm = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_list_primary_nm, (long long)n * M_ * sizeof(uint8_t)));
-
-    gather_list_storage_kernel<<<(int)(((long long)n * 32 + 255) / 256), 256>>>(
-        d_order, d_pc, d_rc, d_co,
-        d_list_ids_, d_list_primary_nm, d_list_res_, d_list_corr_,
-        n, M_, bpv_);
-    tail_lap(t_gather);
-    CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
-
-    // Transpose [N, M] → [M, N] for coalesced scan access.
-    // grid.x = N-tiles, grid.y = M-tiles -- see transpose_uint8_kernel's
-    // comment for why N (which can be in the millions) must be on grid.x,
-    // not grid.y (CUDA's 65535 cap on grid.y/z).
-    constexpr int TILE = 32;
     CUDA_CHECK(cudaMalloc(&d_list_primary_t_, (long long)M_ * n * sizeof(uint8_t)));
-    dim3 grid(((long long)n + TILE - 1) / TILE, (M_ + TILE - 1) / TILE);
-    dim3 block(TILE, TILE);
-    transpose_uint8_kernel<TILE><<<grid, block>>>(d_list_primary_nm, d_list_primary_t_,
-                                                   (long long)n, M_);
-    tail_lap(t_transpose);
+    if (two_pass) {
+        cudaFree(d_assign); d_assign = nullptr;
+        CUDA_CHECK(cudaMalloc(&d_inv, (long long)n * sizeof(int)));
+        invert_permutation_kernel<<<(int)(((long long)n + 255) / 256), 256>>>(d_list_ids_, d_inv, n);
+        CUDA_CHECK(cudaGetLastError());
+        CUDA_CHECK(cudaDeviceSynchronize());
+        t_h2d = t_rot = t_penc = t_renc = 0;
+        run_pass(2);
+        if (add_phases)
+            std::fprintf(stderr,
+                "  [add pass 2] h2d %.1f ms | rotate %.1f | primary encode %.1f | "
+                "residual encode %.1f | scatter %.1f\n",
+                t_h2d, t_rot, t_penc, t_renc, t_scatter);
+        free_pipeline();
+        cudaFree(d_inv);
+        tail_lap(t_gather);
+    } else {
+        // Temporary [N, M] primary buffer for gathering, then transposed.
+        uint8_t* d_list_primary_nm = nullptr;
+        CUDA_CHECK(cudaMalloc(&d_list_primary_nm, (long long)n * M_ * sizeof(uint8_t)));
+
+        gather_list_storage_kernel<<<(int)(((long long)n * 32 + 255) / 256), 256>>>(
+            d_order, d_pc, d_rc, d_co,
+            d_list_ids_, d_list_primary_nm, d_list_res_, d_list_corr_,
+            n, M_, bpv_);
+        tail_lap(t_gather);
+        CUDA_CHECK(cudaGetLastError());
+        CUDA_CHECK(cudaDeviceSynchronize());
+
+        // Transpose [N, M] → [M, N] for coalesced scan access.
+        // grid.x = N-tiles, grid.y = M-tiles -- see transpose_uint8_kernel's
+        // comment for why N (which can be in the millions) must be on grid.x,
+        // not grid.y (CUDA's 65535 cap on grid.y/z).
+        constexpr int TILE = 32;
+        dim3 grid(((long long)n + TILE - 1) / TILE, (M_ + TILE - 1) / TILE);
+        dim3 block(TILE, TILE);
+        transpose_uint8_kernel<TILE><<<grid, block>>>(d_list_primary_nm, d_list_primary_t_,
+                                                       (long long)n, M_);
+        tail_lap(t_transpose);
+        CUDA_CHECK(cudaGetLastError());
+        CUDA_CHECK(cudaDeviceSynchronize());
+
+        // Free temporary [N, M] buffer — scan uses d_list_primary_t_ only.
+        cudaFree(d_list_primary_nm);
+        cudaFree(d_assign);
+        cudaFree(d_order);
+        cudaFree(d_pc);
+        cudaFree(d_rc);
+        cudaFree(d_co);
+    }
     if (add_phases)
         std::fprintf(stderr,
             "  [add-tail] sort %.1f ms | offsets %.1f | "
-            "gather %.1f | transpose %.1f\n",
-            t_sort, t_count, t_gather, t_transpose);
-    CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
-
-    // Free temporary [N, M] buffer — scan uses d_list_primary_t_ only.
-    cudaFree(d_list_primary_nm);
-
-    cudaFree(d_assign);
-    cudaFree(d_order);
-    cudaFree(d_pc);
-    cudaFree(d_rc);
-    cudaFree(d_co);
+            "%s %.1f | transpose %.1f\n",
+            t_sort, t_count, two_pass ? "second pass" : "gather", t_gather, t_transpose);
 
     ntotal_ = n;
     alloc_workspace(batch_size_);
