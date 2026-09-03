@@ -313,6 +313,12 @@ def contamination(vram, qpss):
     the runs were not seeing the same machine.
     """
     notes = []
+    # A third signature, from jhq-gpu-d8: the same index configuration measured
+    # twice should hold similar memory, so a reading several times another
+    # measurement of the same (dataset, pq_dim) is doubtful even when it is
+    # positive and the spread looks fine. That is a cross-file comparison, so
+    # it cannot be made here; check_cross_file_memory() below does it over a
+    # directory once the runs are written.
     if vram is not None and vram < 0:
         notes.append(f"negative memory delta ({vram:.0f} MiB): another process "
                      "freed memory between the two reads")
@@ -321,6 +327,41 @@ def contamination(vram, qpss):
         if rel > 5.0:
             notes.append(f"QPS spread {rel:.1f}% against 0.02-0.64% on an idle card")
     return notes
+
+
+def check_cross_file_memory(paths, factor=2.5):
+    """Rows whose memory is far from another measurement of the same index.
+
+    Memory belongs to the index, so the same (dataset, pq_dim) should hold
+    roughly the same amount whatever the search or training settings. A reading
+    several times another one is doubtful even with a positive value and a
+    tight QPS spread -- the case that found this was 15,951 MiB against 3,486
+    for the same configuration at a different training fraction. Returns
+    (path, row_index, note) for each suspect.
+    """
+    import collections
+    seen = collections.defaultdict(list)
+    for path in paths:
+        with open(path) as fh:
+            body = [l for l in fh if not l.startswith("#")]
+        for i, r in enumerate(csv.DictReader(body)):
+            try:
+                p = json.loads(r["params"])
+                v = float(r["vram_mib"])
+            except (ValueError, KeyError):
+                continue
+            if v > 0:
+                seen[(r["dataset"], p.get("pq_dim"), p.get("n_probes"))].append((path, i, v))
+    out = []
+    for key, rows in seen.items():
+        if len(rows) < 2:
+            continue
+        lo = min(v for _, _, v in rows)
+        for path, i, v in rows:
+            if v > lo * factor:
+                out.append((path, i, f"memory {v:.0f} MiB against {lo:.0f} for the same "
+                                     f"{key[0]} pq_dim={key[1]} n_probes={key[2]}"))
+    return out
 
 
 FIELDS = ["method", "variant", "dataset", "d", "N", "params", "env", "n_runs",

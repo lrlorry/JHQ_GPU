@@ -46,7 +46,14 @@ echo "card clear at $(date -u +%FT%TZ), memory.used $(nvidia-smi --query-gpu=mem
 
 export JHQ_INDEX_CACHE=/root/jhq_cache
 R=results/final
+# Four rows across two files carry a contention signature, and one more is
+# doubtful on memory alone (stella f0.05 pq128 np32 read 15,951 MiB against
+# 3,486 for the same configuration at f0.02). Re-measuring whole files rather
+# than single points keeps each file internally consistent.
 python3 scripts/bench_all.py --dataset stella-trec24 --reps 3 --nlist 16384 \
   --method ivfpq --pq-dims 128,256 --nprobe 32,128,256 \
   --trainset-fraction 0.05 --out $R/fair_stella_ivfpq_f0.05.csv
+python3 scripts/bench_all.py --dataset bge-m3 --reps 3 --nlist 8192 \
+  --method ivfpq --pq-dims 128,256 --nprobe 32,128,256 \
+  --trainset-fraction 0.10 --out $R/fair_bge_ivfpq_f0.10.csv
 echo "### P0_FAIR_RERUN_DONE"
