@@ -8,6 +8,18 @@
 # does not create the same problem in the other direction.
 exec 9>/root/.lock_fair_rerun
 flock -n 9 || { echo "another rerun holds the lock"; exit 0; }
+
+# Whole-card mutual exclusion, held for the duration of the measurements.
+#
+# The memory gate stops a job starting while the card is already busy, but it
+# does not stop two waiters passing it in the same instant: both poll, both see
+# an idle card, both start. asg15 and this script share the same gates and
+# neither waits on the other, so that race is live. A lock removes it without
+# either side having to wait on the other's process name -- which would
+# deadlock if both did it.
+exec 8>/root/.gpu_lock
+echo "waiting for the shared GPU lock at $(date -u +%FT%TZ)"
+flock 8
 exec >/root/p0_fair_rerun.log 2>&1
 export PATH=/root/miniconda3/bin:/usr/local/cuda/bin:$PATH
 cd "$(dirname "$0")/.."
