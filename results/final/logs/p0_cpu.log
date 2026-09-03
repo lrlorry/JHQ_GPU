@@ -1,0 +1,125 @@
+=== CPU JHQ, corrected Recall@10 (the demo already calls evaluate_recall) ===
+    Matched to the GPU runs: M=96, B=8, Br=4, alpha=100, k=10.
+    The demo sweeps nprobe internally and reports two methods per build:
+    JHQ-CPU-IVF (primary + residual) and JQ-CPU-IVF (primary only), which
+    is the CPU side of the same hierarchy ablation.
+    Run twice per dataset: OMP_NUM_THREADS=1, then unset. If the two agree
+    the reference search is not threaded and 'all-core' means nothing here.
+cores: 208
+###### vogue-768  threads=1  M=96 nlist=1024
+Index build: 70.44 s
+
+=== JHQ-CPU-IVF ===
+nprobe     Recall@10    Pre-fix      QPS       
+------     ---------    -------      ---       
+1          0.3291       0.8612       936.0     
+2          0.4703       0.9610       768.7     
+4          0.6043       0.9945       662.1     
+8          0.7317       0.9990       432.9     
+16         0.8264       1.0000       172.2     
+32         0.8862       1.0000       308.9     
+64         0.9199       1.0000       204.8     
+128        0.9341       1.0000       126.0     
+
+=== JQ-CPU-IVF ===
+nprobe     Recall@10    Pre-fix      QPS       
+------     ---------    -------      ---       
+1          0.2831       0.7345       3204.5    
+2          0.3827       0.8475       2688.5    
+4          0.4642       0.9095       2046.7    
+8          0.5375       0.9395       1392.3    
+16         0.5866       0.9556       858.1     
+32         0.6138       0.9625       493.1     
+64         0.6290       0.9653       274.0     
+128        0.6344       0.9660       150.1     
+###### vogue-768  threads=all  M=96 nlist=1024
+Index build: 71.59 s
+
+=== JHQ-CPU-IVF ===
+nprobe     Recall@10    Pre-fix      QPS       
+------     ---------    -------      ---       
+1          0.3290       0.8603       1674.2    
+2          0.4701       0.9618       2022.6    
+4          0.6069       0.9945       1979.1    
+8          0.7304       0.9992       1957.9    
+16         0.8276       1.0000       1433.6    
+32         0.8872       1.0000       1227.1    
+64         0.9204       1.0000       998.3     
+128        0.9348       1.0000       658.7     
+
+=== JQ-CPU-IVF ===
+nprobe     Recall@10    Pre-fix      QPS       
+------     ---------    -------      ---       
+1          0.2825       0.7326       4177.0    
+2          0.3822       0.8480       4845.1    
+4          0.4648       0.9083       3360.6    
+8          0.5363       0.9396       3386.8    
+16         0.5863       0.9565       3177.4    
+32         0.6151       0.9627       2458.6    
+64         0.6292       0.9655       1737.5    
+128        0.6346       0.9658       865.4     
+###### arxiv-768  threads=1  M=96 nlist=2048
+Index build: 166.09 s
+
+=== JHQ-CPU-IVF ===
+nprobe     Recall@10    Pre-fix      QPS       
+------     ---------    -------      ---       
+1          0.4376       0.9406       766.1     
+2          0.5929       0.9905       657.0     
+4          0.7181       0.9983       563.4     
+8          0.8107       1.0000       465.1     
+16         0.8690       1.0000       359.3     
+32         0.8996       1.0000       252.3     
+64         0.9127       1.0000       161.3     
+128        0.9205       1.0000       94.3      
+
+=== JQ-CPU-IVF ===
+nprobe     Recall@10    Pre-fix      QPS       
+------     ---------    -------      ---       
+1          0.3135       0.7657       2153.7    
+2          0.3920       0.8411       1796.6    
+4          0.4485       0.8784       1425.7    
+8          0.4834       0.8972       992.3     
+16         0.4979       0.9054       623.3     
+32         0.5081       0.9076       366.5     
+64         0.5111       0.9065       201.7     
+128        0.5129       0.9074       107.6     
+###### arxiv-768  threads=all  M=96 nlist=2048
+Index build: 143.80 s
+
+=== JHQ-CPU-IVF ===
+nprobe     Recall@10    Pre-fix      QPS       
+------     ---------    -------      ---       
+1          0.4379       0.9405       1244.5    
+2          0.5914       0.9905       1480.3    
+4          0.7177       0.9984       1634.5    
+8          0.8115       1.0000       1451.5    
+16         0.8688       1.0000       1369.7    
+32         0.8992       1.0000       1012.6    
+64         0.9122       1.0000       748.0     
+128        0.9203       1.0000       545.4     
+
+=== JQ-CPU-IVF ===
+nprobe     Recall@10    Pre-fix      QPS       
+------     ---------    -------      ---       
+1          0.3134       0.7659       8796.9    
+2          0.3913       0.8421       3412.2    
+4          0.4483       0.8775       3362.0    
+8          0.4832       0.8969       3168.3    
+16         0.4982       0.9049       3346.9    
+32         0.5079       0.9077       1958.6    
+64         0.5112       0.9071       1421.1    
+128        0.5128       0.9075       611.1     
+###### openai3-1536  threads=1  M=96 nlist=1024
+Invalid M=96 for d=1536 B=8: need M>=d/B=192 and d%M==0
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-1536/base.fvecs.raw_f32
+###### openai3-1536  threads=all  M=96 nlist=1024
+Invalid M=96 for d=1536 B=8: need M>=d/B=192 and d%M==0
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-1536/base.fvecs.raw_f32
+###### openai3-3072  threads=1  M=96 nlist=1024
+Invalid M=96 for d=3072 B=8: need M>=d/B=384 and d%M==0
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+###### openai3-3072  threads=all  M=96 nlist=1024
+Invalid M=96 for d=3072 B=8: need M>=d/B=384 and d%M==0
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+### P0_CPU_DONE

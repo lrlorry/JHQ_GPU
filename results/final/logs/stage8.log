@@ -1,0 +1,16 @@
+设置成功!
+注意：
+1. 仅限学术用途和加速访问github/huggingface，不承诺稳定性
+2. 开启加速后对访问其他资源如pip源等会*更慢*
+=== where the 29 s build actually goes ===
+    (OpenMP on the codebook moved the total 27.0 -> 28.9 s, i.e. nothing)
+  [train] estimate_sigma            116.6 ms
+  [train] rotate + D2H              292.8 ms
+  [train] pq codebook kmeans       4151.7 ms
+  [train] primary encode             47.3 ms
+  [train] ivf centroids             396.7 ms
+  [train] residual codebook       23518.1 ms
+  train: 28539.2 ms
+  add:   1137.9 ms
+nproc=208
+### STAGE8_DONE

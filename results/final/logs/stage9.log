@@ -1,0 +1,16 @@
+=== alpha sweep: ck = ceil(alpha*k), so alpha sets both the selection
+    cost (ck passes) and the residual refine cost. CPU data had recall
+    flat from alpha 64 to 100 (0.9349 -> 0.9347); if that holds here,
+    alpha=32 cuts ck from 1000 to 320 for free. np=128, batch 1024. ===
+variant        alpha     ck    recall       QPS
+v16              8.0     80    0.9284     21895
+v21 1/2 k8       8.0     80    0.9286     55363
+v16             16.0    160    0.9417     21067
+v21 1/2 k8      16.0    160    0.9418     53456
+v16             32.0    320    0.9444     21135
+v21 1/2 k8      32.0    320    0.9445     50181
+v16             64.0    640    0.9449     21083
+v21 1/2 k8      64.0    640    0.9449     44734
+v16            100.0   1000    0.9448     20306
+v21 1/2 k8     100.0   1000    0.9450     39464
+### STAGE9_DONE

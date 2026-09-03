@@ -1,0 +1,20 @@
+设置成功!
+注意：
+1. 仅限学术用途和加速访问github/huggingface，不承诺稳定性
+2. 开启加速后对访问其他资源如pip源等会*更慢*
+HEAD: c1a704a Add K_LOCAL variants for the recall-ceiling diagnostic
+nproc=208
+=== build time after parallelising the residual codebook ===
+    before: residual 23518 ms of 28.5 s total; cuVS builds in 4.5 s
+note: ground truth is 100 wide; Recall@10 compares against its first 10 entries.
+  [train] estimate_sigma            117.2 ms
+  [train] rotate + D2H              302.1 ms
+  [train] pq codebook kmeans       4814.0 ms
+  [train] primary encode             46.7 ms
+  [train] ivf centroids             458.0 ms
+  [train] residual codebook       23619.5 ms
+  train: 29375.4 ms
+  add:   1184.1 ms
+Recall@10 : 0.9413     (standard: vs true top-10)
+QPS       : 67549
+### STAGE14_DONE

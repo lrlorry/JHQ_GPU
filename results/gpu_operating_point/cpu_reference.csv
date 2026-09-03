@@ -1,0 +1,39 @@
+# The CPU reference, re-measured 2026-09-04 in one session on an Intel Xeon
+# Platinum 8470Q (208 threads visible), one job on the host at a time. The
+# numbers previously recorded in results/final/build_gpu.csv do not reproduce
+# here -- every dataset comes out 1.5x to 2.7x slower today (vogue 27.9 against
+# 54.19, bge 144.4 against 386.02) -- and the conditions they were taken under
+# are not recorded, so these supersede them.
+#
+# nlist=256 is the reference implementation's own default. S is the number of
+# vectors the codebooks are estimated from; "all" is every vector, which is
+# what equation 5 asks for. The two together separate the protocol differences
+# between this build and the GPU's: nlist 256 -> 4096 costs the CPU 2.2x, while
+# all -> 100k saves it 1-2%. The training set is not where the difference
+# between the two machines lives; the partition count is.
+#
+# stella-trec24 is absent at the GPU's nlist of 16384: the CPU's coarse
+# assignment is O(N*nlist*d), and that cell is 42x the work of arxiv at 4096,
+# which already takes 200 s. The column stops where the machine does rather
+# than being extrapolated. bge-m3 at 8192 did finish, at 1276 s.
+dataset,M,nlist,train_sample,build_s
+arxiv,96,256,100000,87.8
+arxiv,96,256,all,89.78
+arxiv,96,4096,100000,197.09
+arxiv,96,4096,all,199.69
+bge,128,8192,100000,1276.27
+bge-m3,128,256,100000,332.3
+bge-m3,128,256,all,386.02
+openai3-1536,192,1024,100000,105.28
+openai3-1536,192,256,100000,83.49
+openai3-1536,192,256,all,89.87
+openai3-3072,384,1024,100000,173.73
+openai3-3072,384,256,100000,147.99
+openai3-3072,384,256,all,159.41
+stella,128,256,100000,578.29
+stella,128,256,all,684.89
+vogue,96,1024,100000,64.49
+vogue,96,256,100000,53.09
+vogue,96,256,all,54.19
+vogue,96,4096,100000,120.88
+vogue,96,4096,all,120.4

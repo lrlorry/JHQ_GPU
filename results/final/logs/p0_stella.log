@@ -1,0 +1,23 @@
+host mem before: 50 used of 754 GB
+###### IVF-PQ
+env: {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0", "utc": "2026-09-02T03:36:56Z"}
+  ivfpq {'n_lists': 16384, 'pq_dim': 128, 'pq_bits': 8, 'n_probes': 8} -> FAILED R= QPS=±0 vram=MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 128, 'pq_bits': 8, 'n_probes': 32} -> FAILED R= QPS=±0 vram=MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 128, 'pq_bits': 8, 'n_probes': 128} -> FAILED R= QPS=±0 vram=MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 128, 'pq_bits': 8, 'n_probes': 256} -> FAILED R= QPS=±0 vram=MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 256, 'pq_bits': 8, 'n_probes': 8} -> FAILED R= QPS=±0 vram=MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 256, 'pq_bits': 8, 'n_probes': 32} -> FAILED R= QPS=±0 vram=MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 256, 'pq_bits': 8, 'n_probes': 128} -> FAILED R= QPS=±0 vram=MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 256, 'pq_bits': 8, 'n_probes': 256} -> FAILED R= QPS=±0 vram=MiB
+wrote results/final/p0_stella-trec24_ivfpq.csv: 8 rows, 8 failed
+host mem: 55 used of 754 GB
+###### CAGRA int8
+env: {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0", "utc": "2026-09-02T03:38:30Z"}
+/root/JHQ_GPU/scripts/run_p0_stella.sh: line 20: 199951 Killed                  $B --method cagra-int8 --graph-degrees 32 --itopk 64,128,256 --search-width 1 --out $R/p0_stella-trec24_cagra_int8.csv
+host mem: 61 used of 754 GB
+###### CAGRA fp32 -- 17.8M x 1024 fp32 is 72.8 GiB against a 31.4 GiB card,
+       so this is expected to fail; the point is to record it from a run.
+env: {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0", "utc": "2026-09-02T08:42:55Z"}
+  cagra {'graph_degree': 32, 'itopk_size': 64, 'search_width': 1} -> FAILED R= QPS=±0 vram=MiB
+wrote results/final/p0_stella-trec24_cagra.csv: 1 rows, 1 failed
+### P0_STELLA_DONE

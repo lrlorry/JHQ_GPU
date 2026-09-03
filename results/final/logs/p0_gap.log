@@ -1,0 +1,20 @@
+32607 MiB
+############ stella-trec24, 17.8M x 1024 -- the three missing baselines
+env: {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0", "utc": "2026-09-02T03:01:40Z"}
+/root/JHQ_GPU/scripts/run_p0_gap.sh: line 17: 198680 Killed                  $B --method ivfpq --pq-dims 128,256,512 --nprobe 8,32,128,256 --out $R/p0_stella-trec24_ivfpq.csv
+env: {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0", "utc": "2026-09-02T03:11:50Z"}
+/root/JHQ_GPU/scripts/run_p0_gap.sh: line 18: 198790 Killed                  $B --method cagra-int8 --graph-degrees 32 --itopk 64,128,256,512 --search-width 1 --out $R/p0_stella-trec24_cagra_int8.csv
+env: {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0", "utc": "2026-09-02T03:20:36Z"}
+/root/JHQ_GPU/scripts/run_p0_gap.sh: line 19: 198872 Killed                  $B --method cagra --graph-degrees 32 --itopk 64,128 --search-width 1 --out $R/p0_stella-trec24_cagra.csv
+############ bge-m3, fp32 CAGRA -- measured, not assumed
+env: {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0", "utc": "2026-09-02T03:29:34Z"}
+  cagra {'graph_degree': 32, 'itopk_size': 64, 'search_width': 1} -> FAILED R= QPS=±0 vram=MiB
+  cagra {'graph_degree': 32, 'itopk_size': 128, 'search_width': 1} -> FAILED R= QPS=±0 vram=MiB
+wrote results/final/p0_bge-m3_cagra.csv: 2 rows, 2 failed
+############ JHQ Br=8 on stella, so both residual settings exist everywhere
+env: {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0", "utc": "2026-09-02T03:30:07Z"}
+  nprobe=32    FAILED  R= QPS=±0 (0%)
+  nprobe=128   FAILED  R= QPS=±0 (0%)
+  nprobe=256   FAILED  R= QPS=±0 (0%)
+wrote results/final/p0_stella-trec24_jhq_Br8.csv: 3 rows, 3 failed
+### P0_GAP_DONE

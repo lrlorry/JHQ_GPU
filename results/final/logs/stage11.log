@@ -1,0 +1,14 @@
+=== occupancy vs cascade, separated ===
+    The headline compared v21 at BLOCK=1024 against v16 at BLOCK=256 and
+    so moved two things at once. prefix 1/1 is the cascade switched off,
+    which isolates BLOCK; 1/2 against 1/1 at fixed BLOCK isolates the
+    cascade. All untimed, batch 1024, np=128, alpha=100.
+variant                 BLOCK   prefix    recall       QPS
+v16 (BLOCK fixed 256)     256        -    0.9448     19719
+v21 k8                    256      1/1    0.9449     11320
+v21 k8                    256      1/2    0.9433     18400
+v21 k8                    512      1/1    0.9450     19492
+v21 k8                    512      1/2    0.9448     29022
+v21 k8                   1024      1/1    0.9450     30791
+v21 k8                   1024      1/2    0.9450     39607
+### STAGE11_DONE

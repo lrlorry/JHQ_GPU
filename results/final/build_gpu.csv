@@ -7,11 +7,21 @@
 # Times are the median of consecutive warm runs (page cache holding the base file; bge and
 # stella need 2-3 runs after a cold read before the 96 GB cgroup cache is settled, asg17/18
 # 2026-09-03). nlist is the IVF list count; kmeans_iters 5, ivf_iters 8, n_train 100000.
+#
+# cpu_ref_s was re-measured on 2026-09-04 and every value here replaces a smaller one: the
+# figures recorded before (vogue 27.9, arxiv 43.1, openai3-1536 55.4, openai3-3072 107.2,
+# bge 144.4, stella 238.6) do not reproduce on this host, coming out 1.5x to 2.7x faster
+# than anything measurable today, and the conditions they were taken under were not kept.
+# The replacements are one session, one job on the host at a time, at the reference
+# implementation's own nlist of 256, with the load average recorded beside each row in
+# results/gpu_operating_point/cpu_reference.csv. Thread count matters more than core count
+# on this machine -- a large fp32 GEMM peaks at 2.41 TFLOP/s at 32 threads and falls to
+# 1.27 at 208 -- which is enough on its own to explain a 1.9x spread between sessions.
 dataset,n,d,M,Br,nlist,cpu_ref_s,first_port_s,train_ms,add_ms,pass
-vogue,932328,768,96,8,1024,27.9,26.7,190,226,single
-arxiv-768,2253000,768,96,8,1024,43.1,28.9,139,342,single
-openai3-1536,999000,1536,192,8,1024,55.4,55.2,136,323,single
-openai3-3072,999000,3072,384,8,1024,107.2,112.0,240,542,single
-bge-m3,10091524,1024,128,8,8192,144.4,52.1,163,1596,single
-stella-trec24,17776615,1024,128,4,16384,238.6,48.5,232,3666,single
-stella-trec24,17776615,1024,128,8,16384,238.6,,234,5321,two
+vogue,932328,768,96,8,1024,54.19,26.7,190,226,single
+arxiv-768,2253000,768,96,8,1024,89.78,28.9,139,342,single
+openai3-1536,999000,1536,192,8,1024,89.87,55.2,136,323,single
+openai3-3072,999000,3072,384,8,1024,159.41,112.0,240,542,single
+bge-m3,10091524,1024,128,8,8192,386.02,52.1,163,1596,single
+stella-trec24,17776615,1024,128,4,16384,684.89,48.5,232,3666,single
+stella-trec24,17776615,1024,128,8,16384,684.89,,234,5321,two

@@ -1,0 +1,11 @@
+# Where the implementation stops, with the message it stops on. Both were found
+# by running the failures from the front sweep one at a time and keeping the
+# error rather than the exit code; both are properties of this implementation,
+# not of the algorithm, and are stated that way in the paper.
+#
+# The 12 failures in fronts_gpu.csv are the first row: stella at nlist=32768,
+# two Br settings by six nprobe values.
+what,setting,limit,message
+IVF partition count,stella-trec24 nlist=32768,nlist <= 16384 at BLOCK=1024,select_probes_kernel needs 139264 B of shared memory but the device allows 101376
+trained product quantiser,openai3-3072 Ds >= 48,Ds <= 32,launch_pq_kmeans: Ds exceeds the 32-float per-thread buffer
+residual codebook training,S >= 5M at d=1024,S*d floats must fit,rotate_on_gpu allocates the whole sample rotated; equation 4's codebook has no such limit because it reads no data

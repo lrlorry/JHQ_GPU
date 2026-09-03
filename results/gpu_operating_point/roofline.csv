@@ -1,0 +1,23 @@
+# What the build time can be against, on each machine, with both constants
+# measured here rather than read off a spec sheet: 2.41 TFLOP/s for a large
+# fp32 GEMM on this host (its peak, at 32 threads -- 104 and 208 threads give
+# 1.41 and 1.27, so the core count overstates what is available), 88.24 TFLOP/s
+# for the same shape on the card, and 390 TOP/s for the int8 tensor cores the
+# coarse assignment runs on.
+#
+# The build's arithmetic is 2*N*d^2 for the JL rotation plus 2*N*d*nlist for
+# the coarse assignment, and past a few thousand lists the second dominates.
+# Each machine is held to its own bound at its own operating point, so the
+# efficiency column says how much of its own ceiling each implementation
+# reaches -- 50% for the GPU at 17.8M vectors, under 3% for the reference.
+#
+# The GPU is not doing less work: at its own nlist it performs 13.6x the
+# arithmetic of the CPU run it is compared against on stella, and is still
+# 176x faster.
+dataset,N,d,gpu_nlist,gpu_bound_s,gpu_measured_s,gpu_efficiency_pct,cpu_nlist,cpu_bound_s,cpu_measured_s,cpu_efficiency_pct,measured_speedup,gpu_extra_arithmetic
+vogue,932328,768,1024,0.016,0.416,3.9,256,0.6,54.19,1.1,130,1.8
+arxiv-768,2253000,768,1024,0.039,0.481,8.2,256,1.5,89.78,1.6,187,1.8
+openai3-1536,999000,1536,1024,0.061,0.459,13.4,256,2.3,89.87,2.5,196,1.4
+openai3-3072,999000,3072,1024,0.230,0.782,29.4,256,8.5,159.41,5.3,204,1.2
+bge-m3,10091524,1024,8192,0.674,1.759,38.3,256,11.0,386.02,2.8,219,7.2
+stella-trec24,17776615,1024,16384,1.952,3.898,50.1,256,19.3,684.89,2.8,176,13.6

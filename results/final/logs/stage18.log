@@ -1,0 +1,39 @@
+设置成功!
+注意：
+1. 仅限学术用途和加速访问github/huggingface，不承诺稳定性
+2. 开启加速后对访问其他资源如pip源等会*更慢*
+=== A. how far nprobe alone gets us (nlist=1024, so 1024 probes every list) ===
+    If recall reaches 0.98 here the ceiling is IVF pruning; if it stalls
+    near 0.96 the 96 B code is the limit and no amount of probing helps.
+variant     nprobe    recall       QPS
+v22 kl4        128    0.9452     47389
+v22 kl4        256    0.9508     26112
+v22 kl4        512    0.9524     12111
+v22 kl4       1024    0.9528      4642
+
+=== B. per-thread truncation: K_LOCAL keeps K_LOCAL*BLOCK of the candidates ===
+    K_LOCAL=8 needs 73 KB of scratch beside the 48 KB table, so it only
+    fits at BLOCK<=512; 16 only at BLOCK<=256. Blank rows are that limit.
+variant     BLOCK K_LOCAL  nprobe    recall       QPS
+v22           256       2     256    0.9469     10504
+v22           512       2     256    0.9497     19139
+v22          1024       2     256    0.9502     28742
+v22           256       4     256    0.9490      9027
+v22           512       4     256    0.9505     15565
+v22          1024       4     256    0.9508     26129
+v22           256       8     256    0.9489      8464
+v22           512       8     256    0.9505     15502
+v22          1024       8     256                    
+v22           256      16     256    0.9489      8528
+v22           512      16     256                    
+v22          1024      16     256                    
+
+=== C. bytes per vector: M and Br set the code, and the code sets the ceiling ===
+variant        M   Br   bytes  nprobe    recall       QPS
+v22 kl4       96    4     144     256    0.9508     26076
+v22 kl4       96    8     192     256    0.9795     24937
+v22 kl4      192    4     288     256    0.9583     12900
+v22 kl4      192    8     384     256    0.9826     12620
+v22 kl4      384    4     576     256    0.9721      5877
+v22 kl4      384    8     768     256    0.9846      5793
+### STAGE18_DONE

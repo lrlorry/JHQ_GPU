@@ -1,0 +1,36 @@
+###### stella-trec24, IVF-PQ, kmeans_trainset_fraction=0.05
+env: {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0", "utc": "2026-09-03T08:49:05Z"}
+  ivfpq {'n_lists': 16384, 'pq_dim': 128, 'pq_bits': 8, 'n_probes': 32, 'trainset_fraction': 0.05} -> ok R=0.7444 QPS=120198±2580 vram=15951MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 128, 'pq_bits': 8, 'n_probes': 128, 'trainset_fraction': 0.05} -> ok R=0.7437 QPS=31689±5299 vram=11280MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 128, 'pq_bits': 8, 'n_probes': 256, 'trainset_fraction': 0.05} -> ok R=0.7428 QPS=19334±708 vram=-16827MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 256, 'pq_bits': 8, 'n_probes': 32, 'trainset_fraction': 0.05} -> ok R=0.8811 QPS=94437±603 vram=6520MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 256, 'pq_bits': 8, 'n_probes': 128, 'trainset_fraction': 0.05} -> ok R=0.8903 QPS=29930±667 vram=6508MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 256, 'pq_bits': 8, 'n_probes': 256, 'trainset_fraction': 0.05} -> ok R=0.8890 QPS=14630±1674 vram=6518MiB
+wrote results/final/fair_stella_ivfpq_f0.05.csv: 6 rows, 0 failed
+###### stella-trec24, IVF-PQ, kmeans_trainset_fraction=0.02
+env: {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0", "utc": "2026-09-03T08:56:29Z"}
+  ivfpq {'n_lists': 16384, 'pq_dim': 128, 'pq_bits': 8, 'n_probes': 32, 'trainset_fraction': 0.02} -> ok R=0.7408 QPS=118664±1743 vram=3486MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 128, 'pq_bits': 8, 'n_probes': 128, 'trainset_fraction': 0.02} -> ok R=0.7372 QPS=37876±227 vram=3360MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 128, 'pq_bits': 8, 'n_probes': 256, 'trainset_fraction': 0.02} -> ok R=0.7325 QPS=19563±393 vram=3356MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 256, 'pq_bits': 8, 'n_probes': 32, 'trainset_fraction': 0.02} -> ok R=0.8746 QPS=95670±352 vram=6370MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 256, 'pq_bits': 8, 'n_probes': 128, 'trainset_fraction': 0.02} -> ok R=0.8865 QPS=29656±674 vram=6372MiB
+  ivfpq {'n_lists': 16384, 'pq_dim': 256, 'pq_bits': 8, 'n_probes': 256, 'trainset_fraction': 0.02} -> ok R=0.8867 QPS=15207±247 vram=6372MiB
+wrote results/final/fair_stella_ivfpq_f0.02.csv: 6 rows, 0 failed
+###### bge-m3, IVF-PQ at the same fractions, for the same reason
+env: {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0", "utc": "2026-09-03T09:02:11Z"}
+  ivfpq {'n_lists': 8192, 'pq_dim': 128, 'pq_bits': 8, 'n_probes': 32, 'trainset_fraction': 0.1} -> ok R=0.6931 QPS=119011±1453 vram=2048MiB
+  ivfpq {'n_lists': 8192, 'pq_dim': 128, 'pq_bits': 8, 'n_probes': 128, 'trainset_fraction': 0.1} -> ok R=0.7215 QPS=31029±4620 vram=1914MiB
+  ivfpq {'n_lists': 8192, 'pq_dim': 128, 'pq_bits': 8, 'n_probes': 256, 'trainset_fraction': 0.1} -> ok R=0.7308 QPS=18379±317 vram=1918MiB
+  ivfpq {'n_lists': 8192, 'pq_dim': 256, 'pq_bits': 8, 'n_probes': 32, 'trainset_fraction': 0.1} -> ok R=0.7957 QPS=94460±219 vram=3660MiB
+  ivfpq {'n_lists': 8192, 'pq_dim': 256, 'pq_bits': 8, 'n_probes': 128, 'trainset_fraction': 0.1} -> ok R=0.8506 QPS=27491±637 vram=3660MiB
+  ivfpq {'n_lists': 8192, 'pq_dim': 256, 'pq_bits': 8, 'n_probes': 256, 'trainset_fraction': 0.1} -> ok R=0.8695 QPS=13723±97 vram=3658MiB
+wrote results/final/fair_bge_ivfpq_f0.10.csv: 6 rows, 0 failed
+env: {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0", "utc": "2026-09-03T09:05:04Z"}
+  ivfpq {'n_lists': 8192, 'pq_dim': 128, 'pq_bits': 8, 'n_probes': 32, 'trainset_fraction': 0.05} -> ok R=0.6904 QPS=120739±1335 vram=2010MiB
+  ivfpq {'n_lists': 8192, 'pq_dim': 128, 'pq_bits': 8, 'n_probes': 128, 'trainset_fraction': 0.05} -> ok R=0.7204 QPS=36098±201 vram=1872MiB
+  ivfpq {'n_lists': 8192, 'pq_dim': 128, 'pq_bits': 8, 'n_probes': 256, 'trainset_fraction': 0.05} -> ok R=0.7319 QPS=18455±309 vram=1872MiB
+  ivfpq {'n_lists': 8192, 'pq_dim': 256, 'pq_bits': 8, 'n_probes': 32, 'trainset_fraction': 0.05} -> ok R=0.7853 QPS=93125±227 vram=3572MiB
+  ivfpq {'n_lists': 8192, 'pq_dim': 256, 'pq_bits': 8, 'n_probes': 128, 'trainset_fraction': 0.05} -> ok R=0.8487 QPS=27867±692 vram=3586MiB
+  ivfpq {'n_lists': 8192, 'pq_dim': 256, 'pq_bits': 8, 'n_probes': 256, 'trainset_fraction': 0.05} -> ok R=0.8681 QPS=13872±104 vram=3582MiB
+wrote results/final/fair_bge_ivfpq_f0.05.csv: 6 rows, 0 failed
+### P0_FAIR_DONE

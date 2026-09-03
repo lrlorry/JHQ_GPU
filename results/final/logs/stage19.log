@@ -1,0 +1,20 @@
+设置成功!
+注意：
+1. 仅限学术用途和加速访问github/huggingface，不承诺稳定性
+2. 开启加速后对访问其他资源如pip源等会*更慢*
+HEAD: 2b525fe Pass -fopenmp through nvcc; the residual loop was never parallel
+nproc=208
+=== build time with -Xcompiler=-fopenmp reaching the residual loop ===
+    before: residual codebook 23534 ms of a 28.7 s train, one core of 208
+note: ground truth is 100 wide; Recall@10 compares against its first 10 entries.
+  [train] estimate_sigma            119.7 ms
+  [train] rotate + D2H              314.7 ms
+  [train] pq codebook kmeans       3527.6 ms
+  [train] primary encode             46.6 ms
+  [train] ivf centroids             467.6 ms
+  [train] residual codebook        3810.7 ms
+  train: 8304.4 ms
+  add:   1188.2 ms
+Recall@10 : 0.9413     (standard: vs true top-10)
+QPS       : 67434
+### STAGE19_DONE
