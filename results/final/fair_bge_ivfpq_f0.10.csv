@@ -1,0 +1,8 @@
+# {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "Build cuda_13.0.r13.0/compiler.36424714_0", "utc": "2026-09-03T11:25:20Z"}
+method,variant,dataset,d,N,params,env,n_runs,recall,recall_spread,qps_mean,qps_std,qps_rel_std_pct,vram_mib,train_ms,add_ms,status,failures
+cuVS-IVFPQ,128B,bge-m3,1024,10091524,"{""bytes_per_vec"": 128, ""k"": 10, ""n_lists"": 8192, ""n_probes"": 32, ""pq_bits"": 8, ""pq_dim"": 128, ""trainset_fraction"": 0.1}",{},3,0.6879,0.00000,118856,1544,1.30,2060,29704,,ok,
+cuVS-IVFPQ,128B,bge-m3,1024,10091524,"{""bytes_per_vec"": 128, ""k"": 10, ""n_lists"": 8192, ""n_probes"": 128, ""pq_bits"": 8, ""pq_dim"": 128, ""trainset_fraction"": 0.1}",{},3,0.7277,0.00000,36029,251,0.70,1918,19358,,ok,
+cuVS-IVFPQ,128B,bge-m3,1024,10091524,"{""bytes_per_vec"": 128, ""k"": 10, ""n_lists"": 8192, ""n_probes"": 256, ""pq_bits"": 8, ""pq_dim"": 128, ""trainset_fraction"": 0.1}",{},3,0.7300,0.00000,18322,315,1.72,1914,21324,,ok,
+cuVS-IVFPQ,256B,bge-m3,1024,10091524,"{""bytes_per_vec"": 256, ""k"": 10, ""n_lists"": 8192, ""n_probes"": 32, ""pq_bits"": 8, ""pq_dim"": 256, ""trainset_fraction"": 0.1}",{},3,0.7972,0.00000,92793,259,0.28,3652,21174,,ok,
+cuVS-IVFPQ,256B,bge-m3,1024,10091524,"{""bytes_per_vec"": 256, ""k"": 10, ""n_lists"": 8192, ""n_probes"": 128, ""pq_bits"": 8, ""pq_dim"": 256, ""trainset_fraction"": 0.1}",{},3,0.8528,0.00000,27405,609,2.22,3654,21650,,ok,
+cuVS-IVFPQ,256B,bge-m3,1024,10091524,"{""bytes_per_vec"": 256, ""k"": 10, ""n_lists"": 8192, ""n_probes"": 256, ""pq_bits"": 8, ""pq_dim"": 256, ""trainset_fraction"": 0.1}",{},3,0.8679,0.00000,13825,168,1.21,3656,21299,,ok,
