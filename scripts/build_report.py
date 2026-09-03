@@ -228,8 +228,14 @@ def main():
                       "primary code, and costs a fraction of the throughput."),
         alpha=img_tag("fig5_alpha.png",
                       "Recall stops improving at about alpha=32 while the cost of refining "
-                      "alpha*k candidates keeps climbing. The published setting of 100 is "
-                      "past the knee."),
+                      "alpha*k candidates keeps climbing. The paper sweeps alpha over {2, 4, "
+                      "8} and settles on 4, which is the right answer for a CPU, where "
+                      "refinement is a serial loop whose cost is linear in alpha; here it is "
+                      "a parallel gather, and the knee moves to 16-32. Where recall saturates "
+                      "is a property of the quantiser and is the same at every block width "
+                      "and batch size measured; what it costs to get there is the ratio of "
+                      "refinement work to scan work, which ranges from 2.4% to 29.8% of "
+                      "throughput for the same alpha on this one card."),
         build=img_tag("fig4_build.png",
                       "Index build, train plus add, on the six datasets: the CPU reference, "
                       "the first GPU port with the streaming add, and the current build. On "

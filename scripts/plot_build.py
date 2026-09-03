@@ -44,7 +44,8 @@ def main():
     ax = fig.add_subplot(gs[0, 0]); bx = fig.add_subplot(gs[0, 1])
 
     y = np.arange(len(names))[::-1]; h = 0.26
-    ax.barh(y + h, cpu, h, color=SOFT, label="JHQ-CPU-IVF (reference, 208-core host)")
+    ax.barh(y + h, cpu, h, color=SOFT,
+            label="JHQ-CPU-IVF (reference, Xeon 8470Q, 2.41 TFLOP/s at its 32-thread peak)")
     ax.barh(y, first, h, color="#7FA6C2", label="first GPU port (streaming add)")
     ax.barh(y - h, now, h, color=ACC, label="now")
     for yy, v in zip(y + h, cpu):
@@ -66,8 +67,13 @@ def main():
               frameon=False)
     r_cpu = [c / n for c, n in zip(cpu, now)]
     r_first = [f / n for f, n in zip(first, now)]
+    # The ratio alone invites the obvious objection, so the title carries the
+    # part of it that is the machine: at 17.8M the two implementations reach
+    # 50% and 2.8% of their own arithmetic bounds, and the GPU is doing 13.6x
+    # the arithmetic at nlist 16384 against 256. See gpu_operating_point/roofline.csv.
     ax.set_title(f"Build time: {min(r_cpu):.0f}x to {max(r_cpu):.0f}x below the CPU "
-                 f"reference, {min(r_first):.0f}x to {max(r_first):.0f}x below the first port",
+                 f"reference — of which about 10x is the arithmetic bound and the "
+                 f"rest is distance from it",
                  fontsize=11.5, loc="left")
 
     # Stella add, pipelined: what the seconds are, and what runs under them.

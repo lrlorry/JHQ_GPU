@@ -20,10 +20,14 @@ JHQ, CAG, INT8, IVF, JQ = "#12507B", "#2E8B57", "#8A9A2B", "#E07B39", "#9B7FC7"
 CARD_GIB = 31.36
 
 
+# the fairness re-runs name the sets by their short names
+SHORT = {"stella-trec24": "stella", "bge-m3": "bge"}
+
+
 def load(pats, ds):
     out = []
     for pat in pats:
-        for f in sorted(glob.glob(os.path.join(D, pat.format(d=ds)))):
+        for f in sorted(glob.glob(os.path.join(D, pat.format(d=ds, s=SHORT.get(ds, ds))))):
             with open(f) as fh:
                 body = [l for l in fh if not l.startswith("#")]
             for r in csv.DictReader(body):
@@ -118,13 +122,15 @@ def fig_scale():
             ("stella-trec24", "Stella-TREC24\n17.8M × 1024", 17776615)]
     METH = [("JHQ Br=4", JHQ, ["p0_{d}_jhq_Br4.csv"]),
             ("JHQ Br=8", "#3D7FA6", ["p0_{d}_jhq_Br8.csv"]),
-            ("cuVS IVF-PQ", IVF, ["p0_{d}_ivfpq.csv"]),
+            # IVF-PQ at 17.8M fails only at cuVS's default training fraction
+            # (half the set in fp32); at 0.05 it builds, so its bar is measured
+            ("cuVS IVF-PQ", IVF, ["p0_{d}_ivfpq.csv", "fair_{s}_ivfpq_f*.csv"]),
             ("CAGRA int8", INT8, ["p0_{d}_cagra_int8.csv"]),
             ("CAGRA fp32", CAG, ["p0_{d}_cagra.csv"])]
 
     def failure(ds, pats):
         for pat in pats:
-            for f in glob.glob(os.path.join(D, pat.format(d=ds))):
+            for f in glob.glob(os.path.join(D, pat.format(d=ds, s=SHORT.get(ds, ds)))):
                 with open(f) as fh:
                     body = [l for l in fh if not l.startswith("#")]
                 for r in csv.DictReader(body):
