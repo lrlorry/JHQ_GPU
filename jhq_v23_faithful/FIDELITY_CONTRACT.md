@@ -54,15 +54,43 @@ with C^m the Cartesian product of the per-dimension codeword sets, |C^m| = K = 2
 (i+0.5)/K enumerate the same set. **MATCH.**
 
 *Scale* — the paper writes √(2/d); the code writes σ·√2 with σ² = E[‖x‖²]/d,
-the per-dimension variance §3.2 defines. These agree only when E[‖x‖²] = 1,
-i.e. on unit-norm data. The paper's Lemma 2 derives y_i ~ N(0, σ²) with that
-same σ, so √(2/d) reads as the normalised special case of σ·√2 rather than a
-different rule — but the paper states the constant, not the general form.
-**PAPER AMBIGUITY (P1).** Recorded, not resolved. The datasets here are
-embedding sets that are not all unit-norm, so the two differ in practice.
+the per-dimension variance §3.2 defines. `train()` computes exactly that, as
+`sqrt(sum_sq / (n_train·d))`. The two forms coincide when E[‖x‖²] = 1, so the
+question reduces to whether the vectors reaching JHQ are unit-norm.
 
-**Tested by.** Differential test B: codeword table against a fp64 evaluation of
-both forms, reporting which the data satisfies.
+**Measured, not assumed** (`scripts/check_norms.py`). The demo hands what
+`load_fvecs_mmap` returns straight to `train()` and `add()` with no
+transformation, so the files are what JHQ consumes. Reading them, over a
+200,000-vector deterministic stride sample of each base set and every query:
+
+| dataset | d | min ‖x‖ | mean ‖x‖ | max ‖x‖ | std |
+|---|---|---|---|---|---|
+| vogue-768 | 768 | 0.99999973 | 1.00000000 | 1.00000028 | 6.2e-08 |
+| arxiv-768 | 768 | 0.99999989 | 1.00000003 | 1.00000013 | 3.2e-08 |
+| openai3-1536 | 1536 | 0.99999992 | 1.00000003 | 1.00000011 | 2.9e-08 |
+| openai3-3072 | 3072 | 0.99999992 | 1.00000003 | 1.00000011 | 3.0e-08 |
+| bge-m3 | 1024 | 0.99999992 | 1.00000003 | 1.00000011 | 3.0e-08 |
+| stella-trec24 | 1024 | 0.99999993 | 1.00000003 | 1.00000014 | 3.1e-08 |
+
+Queries match their base sets to the same tolerance. Every vector is unit-norm
+to within 3e-7, which is float32 rounding on a sum of d squares.
+
+The two scales therefore agree to fp32 epsilon:
+
+| dataset | σ | σ·√2 | √(2/d) | abs diff | rel diff |
+|---|---|---|---|---|---|
+| vogue-768 | 0.03608439 | 0.05103104 | 0.05103104 | 3.9e-11 | 7.6e-10 |
+| arxiv-768 | 0.03608439 | 0.05103104 | 0.05103104 | 1.3e-09 | 2.5e-08 |
+| openai3-1536 | 0.02551552 | 0.03608439 | 0.03608439 | 9.2e-10 | 2.6e-08 |
+| openai3-3072 | 0.01804220 | 0.02551552 | 0.02551552 | 6.7e-10 | 2.6e-08 |
+| bge-m3 | 0.03125000 | 0.04419418 | 0.04419417 | 1.2e-09 | 2.7e-08 |
+| stella-trec24 | 0.03125000 | 0.04419418 | 0.04419417 | 1.2e-09 | 2.8e-08 |
+
+**Status: RESOLVED FOR OUR EXPERIMENTS.** On this benchmark protocol the
+implementation computes the paper's constant. The general form is kept because
+it is the one Lemma 2 states and it stays correct if a non-normalised set is
+ever indexed; on non-unit-norm data the two would genuinely differ, and that
+is a property of the input, not a defect of either.
 
 ---
 
@@ -74,7 +102,19 @@ defines the case B % Ds ≠ 0**, and its own experiments do not appear to requir
 it.
 
 **Implementation.** `LloydMaxCodebook` throws:
-`"B must be divisible by Ds = d/M"`. With B = 8 this restricts M ≥ d/8.
+`"B must be divisible by Ds = d/M"`, and `cartesian_admissible(B, Ds)` returns
+`Ds > 0 && B % Ds == 0`.
+
+**The exact condition is `Ds = d/M` and `Ds | B`, not `M >= d/8`.** With B = 8
+that means `Ds ∈ {1, 2, 4, 8}` and so `M ∈ {d, d/2, d/4, d/8}` among the M that
+divide d. `M >= d/8` is necessary but not sufficient: at d = 768, M = 128 gives
+Ds = 6, which is larger than d/8 = 96 and still inadmissible because 8 % 6 ≠ 0.
+The smallest valid M is d/8; the valid ones above it are not every integer but
+the three that make Ds a power of two dividing 8.
+
+The executable has always tested the right thing. Earlier fidelity reports
+stated the restriction as `M >= d/8`, which is the weaker necessary condition,
+and that wording was wrong.
 
 **Status: PAPER AMBIGUITY, resolved conservatively.** Refusing to run is the
 choice that does not invent an interpretation, and it is the right one. A
