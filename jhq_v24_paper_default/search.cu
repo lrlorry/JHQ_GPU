@@ -856,14 +856,14 @@ static void capture_graph(
         long long tot  = (long long)B * M * 256;
         int       grid = (int)std::min((tot + BLOCK - 1) / BLOCK, (long long)65535);
         build_byte_lut_kernel<<<grid, BLOCK, 0, ws.stream>>>(
-            ws.d_q_rot, d_cent, (lut_t*)ws.d_byte_lut, B, d, M, Ds, K);
+            ws.d_q_rot, d_cent, ws.d_byte_lut, B, d, M, Ds, K);
     }
 #if JHQ_STEP_TIMING
     CUDA_CHECK(cudaEventRecord(ws.ev_step[4], ws.stream));
 #endif
     // 5. Scan IVF — coalesced via [M, N] list_primary_t
     scan_ivf_coalesced_kernel<<<B, BLOCK, scan_smem, ws.stream>>>(
-        (const lut_t*)ws.d_byte_lut, ws.d_probe_ids, ws.d_probe_offsets, d_list_offsets,
+        ws.d_byte_lut, ws.d_probe_ids, ws.d_probe_offsets, d_list_offsets,
         d_list_primary_t, ws.d_query_total,
         ws.d_topck_primary, ws.d_topck_pos,
         nprobe, M, ntotal, ck, lut_in_smem, pfx_num, pfx_den, tile_m);
