@@ -7,8 +7,14 @@ ignored. A result produced by any other target is a result for that target.
 
 ## A. Commit
 
-Frozen at the commit this file is tagged on; see `git describe --tags`. The
-fidelity work it rests on is `da2d9d7` and its ancestors.
+```
+tag     paper-faithful-v1
+commit  86e38446ff99493f509a8dd4cc68f15e549d4ee2
+branch  fix/recall-eval-v15
+```
+
+The fidelity work this rests on is `da2d9d7` and its ancestors. This file names
+its own commit rather than pointing at whatever is checked out.
 
 ## B. Target
 
@@ -125,6 +131,34 @@ reopen the correctness phase.
 The Equation 4 scale question is **not** on this list: all six datasets measure
 unit-L2-norm to within 3e-7, so `sigma*sqrt(2)` and `sqrt(2/d)` agree to
 between 7.6e-10 and 2.8e-08 relative. Resolved for this protocol.
+
+## Regression at the freeze
+
+Run against this binary, with the existing checkers unextended.
+
+```
+build_rc = 0
+
+guard, each variable launched against the frozen target:
+  JHQ_PFX_DEN=4         -> refused
+  JHQ_EXACT_TOPCK=0     -> refused
+  JHQ_TF32=1            -> refused
+  JHQ_LUT32=0           -> refused
+  JHQ_PAPER_CODEBOOK=0  -> refused
+
+admissibility, d=768 M=128 (Ds=6, above d/8 and inadmissible):
+  refused, naming admissible M: 768, 384, 192, 96
+
+primary code mismatch     = 0   (exact ties: 0)
+residual code mismatch    = 0   (exact ties: 0)
+top-alpha*k mismatch      = 0   at nprobe 32, 128, 256
+final top-k mismatch      = 0   at nprobe 32, 128, 256
+primary distance err      = 0.000e+00
+composite distance err    = 0.000e+00
+```
+
+The guard was exercised rather than assumed: a guard that compiles without
+firing is worth nothing.
 
 ## J. What must not be reported as JHQ-GPU
 
