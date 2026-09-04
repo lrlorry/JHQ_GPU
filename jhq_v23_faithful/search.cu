@@ -1,6 +1,7 @@
 #include "jhq_v23_faithful/search.cuh"
 #include <cuda_fp16.h>
 #include <cstdio>
+#include <string>
 
 // Stage timing is compiled out by default; -DJHQ_STEP_TIMING=1 turns it on.
 #ifndef JHQ_STEP_TIMING
@@ -909,13 +910,53 @@ __global__ void batched_topk_final_kernel(
 // Materialise the residual lookup tables, as the paper's O(d*Kr) per-query
 // construction does, instead of recomputing entries in the refine kernel.
 // Off by default; the switch exists so the two can be diffed.
+// JHQ_PAPER_FAITHFUL locks the semantics the fidelity tests verified. The
+// point is not to pick good defaults -- those already existed -- but to make
+// the properties unreachable from the environment, so a stray variable in a
+// shell cannot turn the binary the paper cites into a different algorithm.
+//
+// Forbidden rather than ignored: silently discarding a variable someone set on
+// purpose hides a misunderstanding, and the cost of stopping is one clear
+// message against a table of numbers that are not what they claim to be.
+#if JHQ_PAPER_FAITHFUL
+static void jhq_faithful_guard() {
+    static const char* const forbidden[] = {
+        "JHQ_PFX_NUM",      // prefix cascade: prunes before the full primary
+        "JHQ_PFX_DEN",      //   distance exists (Algorithm 1 line 3)
+        "JHQ_EXACT_TOPCK",  // would restore the lossy retention buffer
+        "JHQ_TF32",         // 10-bit mantissa can reorder candidates
+        "JHQ_LUT32",        // half table rounds Eq. 6 terms before summing
+        "JHQ_ASSIGN_OUT32", // coarse assignment precision
+    };
+    for (const char* v : forbidden)
+        if (std::getenv(v))
+            throw std::runtime_error(
+                std::string("the paper-faithful target does not read ") + v +
+                ". It is built with the verified semantics compiled in: full "
+                "primary distance over all M subspaces, exact global "
+                "top-alpha*k, no cascade, fp32 primary table, TF32 off. Use "
+                "demo_jhq_v23_cascade or another named variant to vary them, "
+                "and do not report the result as JHQ-GPU.");
+    if (const char* pc = std::getenv("JHQ_PAPER_CODEBOOK"))
+        if (pc[0] == '0')
+            throw std::runtime_error(
+                "JHQ_PAPER_CODEBOOK=0 selects the Lloyd-refined product "
+                "quantiser, not the paper's Cartesian construction of "
+                "equation 4. The faithful target builds equation 4.");
+}
+#endif
+
 // Exact global top-alpha*k instead of the per-thread retention buffer. On by
 // default: Algorithm 1 line 4 is a global selection, and the retention buffer
 // is only equal to it when no thread happens to hold more than K_LOCAL of the
 // answer. JHQ_EXACT_TOPCK=0 selects the old path for measurement.
 static bool exact_topck() {
+#if JHQ_PAPER_FAITHFUL
+    return true;                       // compiled in, not defaulted
+#else
     const char* e = std::getenv("JHQ_EXACT_TOPCK");
     return !(e && e[0] == '0');
+#endif
 }
 
 static bool resid_lut_materialised() {
@@ -966,8 +1007,15 @@ static void capture_graph(
     // costs 89 KB, still one block, but four times the threads. Runtime rather
     // than build-time so one binary sweeps it.
     // Cascade prefix as a fraction of M; 1/1 disables it and restores v19.
+#if JHQ_PAPER_FAITHFUL
+    // PM = M. The exact scan takes no prefix arguments at all, so these only
+    // reach the legacy kernel, which this target never launches; they are
+    // pinned anyway so the values cannot be misread from a log.
+    static const int pfx_num = 1, pfx_den = 1;
+#else
     static const int pfx_num = [] { const char* e = getenv("JHQ_PFX_NUM"); int v = e ? atoi(e) : JHQ_PREFIX_NUM; return v > 0 ? v : 1; }();
     static const int pfx_den = [] { const char* e = getenv("JHQ_PFX_DEN"); int v = e ? atoi(e) : JHQ_PREFIX_DEN; return v > 0 ? v : 4; }();
+#endif
 
     // The v20 grid put TILE_C=1, TILE_M=96 ahead of every tiled shape at equal
     // recall (10.089 ms vs 11.491 at TILE_C=4/TILE_M=8), and TILE_C >= 8 lost
@@ -1228,6 +1276,9 @@ void search_gpu(
     SearchWorkspace& ws,
     float* h_out_dists, int* h_out_ids)
 {
+#if JHQ_PAPER_FAITHFUL
+    jhq_faithful_guard();
+#endif
     if (ws.batch_cap <= 0)
         throw std::runtime_error("v12: workspace not initialised — call add() first");
     if (!ws.stream || !ws.h_q_pinned)

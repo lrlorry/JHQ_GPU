@@ -938,6 +938,37 @@ add_jhq_dir(v23_exact_lut32 ${V23} JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 JHQ_LUT32=1
 add_jhq_dir(v23_casc        ${V23} JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=4 ${TUNED})
 add_jhq_dir(v23_casc_lut32  ${V23} JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=4 JHQ_LUT32=1 ${TUNED})
 
+# ── The paper-faithful target ────────────────────────────────────────────────
+# jhq_v23_faithful_exact is the only build referred to as JHQ-GPU in the paper.
+# Every property the fidelity tests verified is compiled in rather than
+# defaulted, and the environment variables that could undo one are refused with
+# a message instead of silently ignored:
+#
+#   JHQ_PAPER_FAITHFUL=1  locks the semantics and installs the guard
+#   JHQ_PREFIX_NUM/DEN=1  PM = M; the exact scan takes no prefix arguments
+#   JHQ_LUT32=1           fp32 primary table, Equation 6 summed without
+#                         rounding each term to eleven bits first
+#   JHQ_EXACT_TOPCK       not read; exact_topck() returns true unconditionally
+#   JHQ_TF32              not read; the rotation stays fp32
+#
+# K_LOCAL and PREFIX_KEEP are still passed because the legacy kernel is still
+# compiled, but this target never launches it -- exact_topck() is true, so the
+# threshold-compaction selector runs.
+#
+# Approximate variants keep their own names and must not be reported as
+# JHQ-GPU: demo_jhq_v23_cascade below, and the v22/v24 targets.
+add_jhq_dir(v23_faithful_exact ${V23}
+    JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+
+# The cascade, named so it cannot be mistaken for the faithful result.
+add_jhq_dir(v23_cascade ${V23}
+    JHQ_LUT32=1 JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=2
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=8
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+
 set(V24 jhq_v24_paper_default)
 
 # Depth of the per-thread candidate buffer. The scan keeps K_LOCAL candidates

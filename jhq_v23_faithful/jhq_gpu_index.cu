@@ -801,7 +801,11 @@ JHQGpuIndex::JHQGpuIndex(int d, Params p)
     // above its noise. At 3072 the rotation is 17% and the loss is absorbed.
     // JHQ_TF32=0 or 1 overrides.
     {
+#if JHQ_PAPER_FAITHFUL
+        const char* tf = nullptr;      // TF32 off, compiled in
+#else
         const char* tf = std::getenv("JHQ_TF32");
+#endif
         const bool use_tf32 = tf ? (tf[0] == '1') : (d >= 1536);
         if (use_tf32)
             CUBLAS_CHECK(cublasSetMathMode(cublas_, CUBLAS_TF32_TENSOR_OP_MATH));
@@ -1339,7 +1343,35 @@ bool JHQGpuIndex::paper_codebook_selected() const {
     return !(e && e[0] == '0');
 }
 
+// Equation 4 builds C^m as the Cartesian product of K^(1/Ds) Lloyd-Max
+// codewords per dimension, and |C^m| = K = 2^B only when K^(1/Ds) = 2^(B/Ds)
+// is a whole number. So Ds must divide B -- not merely be at most B.
+//
+// At B = 8 the admissible Ds are {1,2,4,8}, giving M in {d, d/2, d/4, d/8}.
+// d/8 is the smallest admissible M and not every M above it works: at d = 768,
+// M = 128 gives Ds = 6, which is larger than d/8 = 96 and still inadmissible
+// because 8 % 6 != 0.
+static void check_eq4_admissible(int d, int M, int B) {
+    if (M <= 0 || d % M != 0)
+        throw std::invalid_argument(
+            "M must divide d: d=" + std::to_string(d) + " M=" + std::to_string(M));
+    const int Ds = d / M;
+    if (B % Ds != 0) {
+        std::string ok;
+        for (int t = 1; t <= B; ++t)
+            if (B % t == 0 && d % (d / t) == 0 && (d / t) > 0 && d % t == 0)
+                ok += (ok.empty() ? "" : ", ") + std::to_string(d / t);
+        throw std::invalid_argument(
+            "equation 4 needs Ds = d/M to divide B. Here d=" + std::to_string(d) +
+            " M=" + std::to_string(M) + " gives Ds=" + std::to_string(Ds) +
+            ", and B=" + std::to_string(B) + " % " + std::to_string(Ds) + " != 0. "
+            "Admissible M for this d and B: " + ok + ". Note that M >= d/8 is "
+            "necessary but not sufficient.");
+    }
+}
+
 void JHQGpuIndex::train(const float* h_x, int n_train) {
+    check_eq4_admissible(d_, M_, B_);
     const bool phase_timing = std::getenv("JHQ_TRAIN_PHASES") != nullptr;
     auto t_phase = std::chrono::high_resolution_clock::now();
 
