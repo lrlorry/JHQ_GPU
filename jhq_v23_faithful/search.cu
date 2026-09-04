@@ -1084,41 +1084,6 @@ static void capture_graph(
             nprobe, M, ntotal, ck, cap, ex_lut, tile_m);
         CUDA_CHECK(cudaGetLastError());
 
-        // JHQ_DUMP_TOPCK=<path> writes, for query 0 of the first batch, every
-        // candidate's complete primary distance and the ck the selector chose.
-        // The differential test reads both and checks the second is the exact
-        // top-ck of the first.
-        if (const char* dp = std::getenv("JHQ_DUMP_TOPCK")) {
-            int h_total = 0;
-            CUDA_CHECK(cudaMemcpyAsync(&h_total, ws.d_query_total, sizeof(int),
-                                       cudaMemcpyDeviceToHost, ws.stream));
-            CUDA_CHECK(cudaStreamSynchronize(ws.stream));
-            float* d_ad = nullptr; int* d_ap = nullptr;
-            CUDA_CHECK(cudaMalloc(&d_ad, (size_t)h_total * sizeof(float)));
-            CUDA_CHECK(cudaMalloc(&d_ap, (size_t)h_total * sizeof(int)));
-            dump_primary_distances_kernel<<<256, 256, 0, ws.stream>>>(
-                ws.d_byte_lut, ws.d_probe_ids, ws.d_probe_offsets, d_list_offsets,
-                d_list_primary_t, ws.d_query_total, d_ad, d_ap, h_total,
-                0, nprobe, M, ntotal);
-            CUDA_CHECK(cudaStreamSynchronize(ws.stream));
-            std::vector<float> ad(h_total), sp(ck);
-            std::vector<int>   ap(h_total), sq(ck);
-            CUDA_CHECK(cudaMemcpy(ad.data(), d_ad, ad.size()*sizeof(float), cudaMemcpyDeviceToHost));
-            CUDA_CHECK(cudaMemcpy(ap.data(), d_ap, ap.size()*sizeof(int),   cudaMemcpyDeviceToHost));
-            CUDA_CHECK(cudaMemcpy(sp.data(), ws.d_topck_primary, sp.size()*sizeof(float), cudaMemcpyDeviceToHost));
-            CUDA_CHECK(cudaMemcpy(sq.data(), ws.d_topck_pos,     sq.size()*sizeof(int),   cudaMemcpyDeviceToHost));
-            if (FILE* f = std::fopen(dp, "wb")) {
-                std::fwrite(&h_total, sizeof(int), 1, f);
-                std::fwrite(&ck,      sizeof(int), 1, f);
-                std::fwrite(ad.data(), sizeof(float), ad.size(), f);
-                std::fwrite(ap.data(), sizeof(int),   ap.size(), f);
-                std::fwrite(sp.data(), sizeof(float), sp.size(), f);
-                std::fwrite(sq.data(), sizeof(int),   sq.size(), f);
-                std::fclose(f);
-                std::fprintf(stderr, "[dump] %d candidates, ck=%d -> %s\n", h_total, ck, dp);
-            }
-            cudaFree(d_ad); cudaFree(d_ap);
-        }
     } else
     scan_ivf_coalesced_kernel<<<B, BLOCK, scan_smem, ws.stream>>>(
         ws.d_byte_lut, ws.d_probe_ids, ws.d_probe_offsets, d_list_offsets,
@@ -1294,6 +1259,42 @@ void search_gpu(
     cudaError_t err;
     do { err = cudaStreamQuery(ws.stream); } while (err == cudaErrorNotReady);
     CUDA_CHECK(err);
+
+    // JHQ_DUMP_TOPCK=<path>: after the work has run and the stream is idle --
+    // a graph capture permits neither allocation nor synchronisation, which is
+    // why this cannot sit beside the kernel it inspects. Writes every
+    // candidate's complete primary distance for query 0 and the ck the
+    // selector returned, for the differential test to compare.
+    if (const char* dp = std::getenv("JHQ_DUMP_TOPCK")) {
+        int h_total = 0;
+        CUDA_CHECK(cudaMemcpy(&h_total, ws.d_query_total, sizeof(int),
+                              cudaMemcpyDeviceToHost));
+        float* d_ad = nullptr; int* d_ap = nullptr;
+        CUDA_CHECK(cudaMalloc(&d_ad, (size_t)h_total * sizeof(float)));
+        CUDA_CHECK(cudaMalloc(&d_ap, (size_t)h_total * sizeof(int)));
+        dump_primary_distances_kernel<<<256, 256>>>(
+            ws.d_byte_lut, ws.d_probe_ids, ws.d_probe_offsets, d_list_offsets,
+            d_list_primary_t, ws.d_query_total, d_ad, d_ap, h_total,
+            0, nprobe, M, ntotal);
+        CUDA_CHECK(cudaDeviceSynchronize());
+        std::vector<float> ad(h_total), sp(ck);
+        std::vector<int>   ap(h_total), sq(ck);
+        CUDA_CHECK(cudaMemcpy(ad.data(), d_ad, ad.size()*sizeof(float), cudaMemcpyDeviceToHost));
+        CUDA_CHECK(cudaMemcpy(ap.data(), d_ap, ap.size()*sizeof(int),   cudaMemcpyDeviceToHost));
+        CUDA_CHECK(cudaMemcpy(sp.data(), ws.d_topck_primary, sp.size()*sizeof(float), cudaMemcpyDeviceToHost));
+        CUDA_CHECK(cudaMemcpy(sq.data(), ws.d_topck_pos,     sq.size()*sizeof(int),   cudaMemcpyDeviceToHost));
+        if (FILE* f = std::fopen(dp, "wb")) {
+            std::fwrite(&h_total, sizeof(int), 1, f);
+            std::fwrite(&ck,      sizeof(int), 1, f);
+            std::fwrite(ad.data(), sizeof(float), ad.size(), f);
+            std::fwrite(ap.data(), sizeof(int),   ap.size(), f);
+            std::fwrite(sp.data(), sizeof(float), sp.size(), f);
+            std::fwrite(sq.data(), sizeof(int),   sq.size(), f);
+            std::fclose(f);
+            std::fprintf(stderr, "[dump] %d candidates, ck=%d -> %s\n", h_total, ck, dp);
+        }
+        cudaFree(d_ad); cudaFree(d_ap);
+    }
 #if JHQ_STEP_TIMING
     report_step_timing(ws, B_full, nprobe, ck);
 #endif
