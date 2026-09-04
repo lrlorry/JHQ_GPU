@@ -2207,6 +2207,54 @@ void JHQGpuIndex::add(const float* h_x, int n) {
                                        nb, d_, M_, Ds_, K_, Kr_, Br_, bpv_, st[cur]);
         }
         lap(t0, t_renc);
+
+        // JHQ_DUMP_ENCODE=<path>: the build stages the search test cannot see.
+        // Writes the rotated vectors, the codes both levels produced, and the
+        // two codebooks, for the first vectors of the first batch. The
+        // reference brute-forces the codes from the same codebooks -- nothing
+        // is retrained, so a mismatch is the encoder.
+        if (const char* de = std::getenv("JHQ_DUMP_ENCODE")) {
+            static bool dumped = false;
+            if (!dumped) {
+                dumped = true;
+                CUDA_CHECK(cudaStreamSynchronize(st[cur]));
+                const int nc = (nb < 512) ? nb : 512;
+                std::vector<float>   y((size_t)nc * d_);
+                std::vector<uint8_t> pc((size_t)nc * M_), rc((size_t)nc * bpv_);
+                std::vector<float>   co(nc), cent((size_t)M_ * K_ * Ds_), rcb((size_t)M_ * Kr_);
+                if (y_transposed) {
+                    // [d][nb]; pull the first nc columns row by row.
+                    std::vector<float> col(nb);
+                    for (int j = 0; j < d_; ++j) {
+                        CUDA_CHECK(cudaMemcpy(col.data(), d_yb[cur] + (size_t)j * nb,
+                                              (size_t)nb * sizeof(float), cudaMemcpyDeviceToHost));
+                        for (int i = 0; i < nc; ++i) y[(size_t)i * d_ + j] = col[i];
+                    }
+                } else {
+                    CUDA_CHECK(cudaMemcpy(y.data(), d_yb[cur],
+                                          y.size() * sizeof(float), cudaMemcpyDeviceToHost));
+                }
+                CUDA_CHECK(cudaMemcpy(pc.data(), pc_out, pc.size(), cudaMemcpyDeviceToHost));
+                CUDA_CHECK(cudaMemcpy(rc.data(), rc_out, rc.size(), cudaMemcpyDeviceToHost));
+                CUDA_CHECK(cudaMemcpy(co.data(), co_out, co.size() * sizeof(float), cudaMemcpyDeviceToHost));
+                CUDA_CHECK(cudaMemcpy(cent.data(), d_cent_, cent.size() * sizeof(float), cudaMemcpyDeviceToHost));
+                if (d_res_c1d_)
+                    CUDA_CHECK(cudaMemcpy(rcb.data(), d_res_c1d_, rcb.size() * sizeof(float), cudaMemcpyDeviceToHost));
+                if (FILE* f = std::fopen(de, "wb")) {
+                    const int hdr[8] = { nc, d_, M_, Ds_, K_, Kr_, Br_, bpv_ };
+                    std::fwrite(hdr, sizeof(int), 8, f);
+                    std::fwrite(y.data(),    sizeof(float),   y.size(),    f);
+                    std::fwrite(pc.data(),   1,               pc.size(),   f);
+                    std::fwrite(rc.data(),   1,               rc.size(),   f);
+                    std::fwrite(co.data(),   sizeof(float),   co.size(),   f);
+                    std::fwrite(cent.data(), sizeof(float),   cent.size(), f);
+                    std::fwrite(rcb.data(),  sizeof(float),   rcb.size(),  f);
+                    std::fclose(f);
+                    std::fprintf(stderr, "[dump-encode] %d vectors, M=%d Ds=%d K=%d Kr=%d -> %s\n",
+                                 nc, M_, Ds_, K_, Kr_, de);
+                }
+            }
+        }
         }   // mode != 1
 
         if (mode == 1 && assign_x) {
