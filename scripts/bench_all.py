@@ -450,8 +450,18 @@ def main():
         return
 
     num, den = a.prefix.split("/")
-    env = {"JHQ_BLOCK": a.block, "JHQ_PFX_NUM": num, "JHQ_PFX_DEN": den,
-           "JHQ_TILE_M_RT": a.M}
+    # Record every JHQ_* the child will actually see, not just the four set
+    # here. The p0 rows carry only those four, and reading them back gives no
+    # way to tell which primary codebook was in force: JHQ_PAPER_CODEBOOK
+    # defaults on, but openai3 at M=96 throws under it, so those rows can only
+    # have been produced with it off -- and nothing in the file says so. Their
+    # recall does not reproduce today either, 0.9729 recorded against 0.9744
+    # measured on vogue at nprobe=128, which is seven times the build's own
+    # spread. A row that cannot say what produced it cannot be re-run.
+    env = dict(os.environ)
+    env = {k: v for k, v in env.items() if k.startswith("JHQ_")}
+    env.update({"JHQ_BLOCK": a.block, "JHQ_PFX_NUM": num, "JHQ_PFX_DEN": den,
+                "JHQ_TILE_M_RT": a.M})
     rows = []
     for np_ in [int(x) for x in a.nprobe.split(",")]:
         params = dict(M=a.M, B=8, Br=a.Br, alpha=a.alpha, k=10, nlist=a.nlist,
