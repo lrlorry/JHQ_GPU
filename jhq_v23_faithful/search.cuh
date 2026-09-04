@@ -22,6 +22,19 @@ namespace jhq_gpu {
 //   - CUDA graph (v5+)
 //   - spin-wait sync (v7)
 
+// Element type of the primary lookup table, and the size the workspace
+// allocates for it. This has to be in the header: search.cu writes the table
+// and jhq_gpu_index.cu allocates it, and a default only one of them can see
+// gives a buffer sized for halves and filled with floats.
+#ifndef JHQ_LUT32
+#define JHQ_LUT32 0
+#endif
+#if JHQ_LUT32
+typedef float jhq_lut_t;
+#else
+typedef __half jhq_lut_t;
+#endif
+
 struct SearchWorkspace {
     int batch_cap = 0, ck_cap = 0, k_cap = 0;
 
@@ -41,7 +54,7 @@ struct SearchWorkspace {
     float*    d_q_batch       = nullptr;
     float*    d_q_rot         = nullptr;
     float*    d_dots          = nullptr;
-    void*     d_byte_lut      = nullptr;   // lut_t*, element type set by JHQ_LUT32   // [B, M, 256], half halves the traffic  // [batch_cap, M, 256]
+    jhq_lut_t* d_byte_lut     = nullptr;   // [batch_cap, M, 256]
     int*      d_probe_ids     = nullptr;
     int*      d_probe_offsets = nullptr;
     int*      d_query_total   = nullptr;

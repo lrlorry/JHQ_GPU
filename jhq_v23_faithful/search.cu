@@ -114,15 +114,11 @@
 // measurement rather than silence. JHQ_LUT32=1 builds the table in float; at
 // M=96 that is 98 KB, past shared memory, so the scan reads it from L2 and the
 // cost of exactness shows up in QPS.
-#ifndef JHQ_LUT32
-#define JHQ_LUT32 0
-#endif
+typedef jhq_gpu::jhq_lut_t lut_t;
 #if JHQ_LUT32
-typedef float lut_t;
 #define LUT_STORE(x) (x)
 #define LUT_LOAD(x)  (x)
 #else
-typedef __half lut_t;
 #define LUT_STORE(x) __float2half(x)
 #define LUT_LOAD(x)  __half2float(x)
 #endif
@@ -841,14 +837,14 @@ static void capture_graph(
         long long tot  = (long long)B * M * 256;
         int       grid = (int)std::min((tot + BLOCK - 1) / BLOCK, (long long)65535);
         build_byte_lut_kernel<<<grid, BLOCK, 0, ws.stream>>>(
-            ws.d_q_rot, d_cent, (lut_t*)ws.d_byte_lut, B, d, M, Ds, K);
+            ws.d_q_rot, d_cent, ws.d_byte_lut, B, d, M, Ds, K);
     }
 #if JHQ_STEP_TIMING
     CUDA_CHECK(cudaEventRecord(ws.ev_step[4], ws.stream));
 #endif
     // 5. Scan IVF — coalesced via [M, N] list_primary_t
     scan_ivf_coalesced_kernel<<<B, BLOCK, scan_smem, ws.stream>>>(
-        (const lut_t*)ws.d_byte_lut, ws.d_probe_ids, ws.d_probe_offsets, d_list_offsets,
+        ws.d_byte_lut, ws.d_probe_ids, ws.d_probe_offsets, d_list_offsets,
         d_list_primary_t, ws.d_query_total,
         ws.d_topck_primary, ws.d_topck_pos,
         nprobe, M, ntotal, ck, lut_in_smem, pfx_num, pfx_den, tile_m);
@@ -865,6 +861,15 @@ static void capture_graph(
     // 6-7. Residual level. The fused kernel recomputes each table entry from
     // the query and the shared codebooks instead of reading it out of a
     // B*d*Kr buffer; JHQ_RESID_LUT=1 restores the materialised path.
+    // The buffer is allocated in add(), which reads JHQ_RESID_LUT then, while
+    // this reads it now. They agree within one process, but a null here would
+    // otherwise be a device-side fault several kernels later rather than a
+    // message, so say so where it can still be understood.
+    if (resid_lut_materialised() && !ws.d_lut_r)
+        throw std::runtime_error(
+            "JHQ_RESID_LUT asks for the materialised residual tables but the "
+            "buffer was not allocated: it is reserved in add(), so the variable "
+            "has to be set before the index is built, not just before the search.");
     if (!resid_lut_materialised()) {
 #if JHQ_STEP_TIMING
         CUDA_CHECK(cudaEventRecord(ws.ev_step[6], ws.stream));

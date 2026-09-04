@@ -880,6 +880,15 @@ static void capture_graph(
     // 6-7. Residual level. The fused kernel recomputes each table entry from
     // the query and the shared codebooks instead of reading it out of a
     // B*d*Kr buffer; JHQ_RESID_LUT=1 restores the materialised path.
+    // The buffer is allocated in add(), which reads JHQ_RESID_LUT then, while
+    // this reads it now. They agree within one process, but a null here would
+    // otherwise be a device-side fault several kernels later rather than a
+    // message, so say so where it can still be understood.
+    if (resid_lut_materialised() && !ws.d_lut_r)
+        throw std::runtime_error(
+            "JHQ_RESID_LUT asks for the materialised residual tables but the "
+            "buffer was not allocated: it is reserved in add(), so the variable "
+            "has to be set before the index is built, not just before the search.");
     if (!resid_lut_materialised()) {
 #if JHQ_STEP_TIMING
         CUDA_CHECK(cudaEventRecord(ws.ev_step[6], ws.stream));
