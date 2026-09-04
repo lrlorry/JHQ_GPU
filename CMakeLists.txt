@@ -899,6 +899,45 @@ target_compile_options(jhq_v22_timed PRIVATE
 add_executable(demo_jhq_v22_timed examples/demo_jhq_v21_cascade.cu)
 target_link_libraries(demo_jhq_v22_timed PRIVATE jhq_v22_timed)
 
+# ── v22: the residual level without materialised lookup tables ───────────────
+# v21 with residual_refine_fused_kernel in place of build_residual_lut plus
+# residual_refine. Same values by Lemma 5; what changes is that B*d*Kr floats
+# are never written. JHQ_RESID_LUT=1 restores v21's path inside this build, so
+# the two are diffable without swapping binaries.
+function(add_jhq_dir TAG DIR)
+    set(tgt jhq_${TAG})
+    add_library(${tgt} STATIC
+        ${DIR}/encode.cu ${DIR}/search.cu ${DIR}/jhq_gpu_index.cu
+        ${DIR}/train_pq_gpu.cu ${DIR}/train_res_gpu.cu)
+    target_include_directories(${tgt} PUBLIC ${CMAKE_SOURCE_DIR})
+    target_link_libraries(${tgt} PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+    target_compile_definitions(${tgt} PRIVATE ${ARGN})
+    target_compile_options(${tgt} PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>)
+    add_executable(demo_${tgt} examples/demo_jhq_v21_cascade.cu)
+    target_link_libraries(demo_${tgt} PRIVATE ${tgt})
+endfunction()
+
+set(V22 jhq_v22_fused_residual)
+set(V23 jhq_v23_faithful)
+set(TUNED JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=8 JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+
+add_jhq_dir(v22_tuned ${V22} JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=4 ${TUNED})
+
+# ── v23: Algorithm 1 as written, and Equation 6 without the rounding ─────────
+# Two departures from the paper are separated here so each can be priced.
+#   *_exact  PM = M, so every candidate gets its full primary distance, which
+#            is what Algorithm 1 step 3 asks for. The prefix cascade ranks on a
+#            partial sum and discards, so it cannot be inside a faithful build.
+#   *_lut32  the primary table in float. Half rounds each per-subspace distance
+#            to eleven mantissa bits before Equation 6 sums it.
+# Retention depth stays at 4: recall is flat from depth 4 to 32, so 4 is
+# already deep enough for the parallel top-k to equal the global top-alpha*k.
+add_jhq_dir(v23_exact       ${V23} JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 ${TUNED})
+add_jhq_dir(v23_exact_lut32 ${V23} JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 JHQ_LUT32=1 ${TUNED})
+add_jhq_dir(v23_casc        ${V23} JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=4 ${TUNED})
+add_jhq_dir(v23_casc_lut32  ${V23} JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=4 JHQ_LUT32=1 ${TUNED})
+
 # JQ-GPU: identical primary quantiser, IVF, cascade, occupancy and selection,
 # with the residual level switched off. Everything that differs between this
 # and demo_jhq_v22_s2b1 is the hierarchy itself.
