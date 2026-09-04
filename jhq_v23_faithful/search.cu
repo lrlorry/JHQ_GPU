@@ -855,6 +855,7 @@ __global__ void batched_topk_final_kernel(
     int*   s_pos   = (int*)(s_dists + ck);
     float* red_val = (float*)(s_pos + ck);
     int*   red_idx = (int*)(red_val + BLOCK);
+    int*   red_id  = (int*)(red_idx + BLOCK);
 
     const float* my_dists = comp_dists + (long long)bqi * ck;
     const int*   my_pos   = topck_pos  + (long long)bqi * ck;
@@ -864,14 +865,33 @@ __global__ void batched_topk_final_kernel(
     float* out_dists = final_dists + (long long)bqi * k;
     int*   out_ids   = final_ids   + (long long)bqi * k;
 
+    // Ties are broken by database id, in both the per-thread scan and the
+    // block reduction. Without it the winner of an exact tie is whichever
+    // candidate the reduction happened to reach first, which varies with block
+    // size and with the order candidates were scanned: on vogue at nprobe=32
+    // the tenth and eleventh composite distances are bit-identical
+    // (1.7044189) and the two residual paths returned different ids for the
+    // same tie. The reference breaks ties the same way, so the two agree.
     for (int r = 0; r < k; ++r) {
-        float bv = INF; int bi = -1;
-        for (int i = tid; i < ck; i += BLOCK)
-            if (s_dists[i] < bv) { bv = s_dists[i]; bi = i; }
-        red_val[tid] = bv; red_idx[tid] = bi; __syncthreads();
+        float bv = INF; int bi = -1; int bid = 0x7FFFFFFF;
+        for (int i = tid; i < ck; i += BLOCK) {
+            const float dv = s_dists[i];
+            if (dv > bv) continue;
+            const int p = s_pos[i];
+            const int id = (p >= 0) ? list_ids[p] : 0x7FFFFFFF;
+            if (dv < bv || id < bid) { bv = dv; bi = i; bid = id; }
+        }
+        red_val[tid] = bv; red_idx[tid] = bi; red_id[tid] = bid; __syncthreads();
         for (int stride = BLOCK >> 1; stride > 0; stride >>= 1) {
-            if (tid < stride && red_val[tid+stride] < red_val[tid]) {
-                red_val[tid] = red_val[tid+stride]; red_idx[tid] = red_idx[tid+stride];
+            if (tid < stride) {
+                const bool take = (red_val[tid+stride] <  red_val[tid]) ||
+                                  (red_val[tid+stride] == red_val[tid] &&
+                                   red_id [tid+stride] <  red_id [tid]);
+                if (take) {
+                    red_val[tid] = red_val[tid+stride];
+                    red_idx[tid] = red_idx[tid+stride];
+                    red_id [tid] = red_id [tid+stride];
+                }
             }
             __syncthreads();
         }
@@ -979,7 +999,8 @@ static void capture_graph(
     if (lut_in_smem)
         CUDA_CHECK(cudaFuncSetAttribute(scan_ivf_coalesced_kernel,
                        cudaFuncAttributeMaxDynamicSharedMemorySize, scan_smem));
-    const int   topk_smem = (2 * ck + 2 * BLOCK) * (int)sizeof(float);
+    // s_dists[ck] + s_pos[ck] + red_val[BLOCK] + red_idx[BLOCK] + red_id[BLOCK]
+    const int   topk_smem = (2 * ck + 3 * BLOCK) * (int)sizeof(float);
 
     {
         int smem_max = smem_optin;
@@ -1290,6 +1311,18 @@ void search_gpu(
             std::fwrite(ap.data(), sizeof(int),   ap.size(), f);
             std::fwrite(sp.data(), sizeof(float), sp.size(), f);
             std::fwrite(sq.data(), sizeof(int),   sq.size(), f);
+            // Stages F and G: the composite distances the refinement produced
+            // for those ck, and the k ids the final selection returned. The
+            // test checks the second is the exact top-k of the first.
+            std::vector<float> cd(ck), fd(k);
+            std::vector<int>   fi(k);
+            CUDA_CHECK(cudaMemcpy(cd.data(), ws.d_comp_dists,  cd.size()*sizeof(float), cudaMemcpyDeviceToHost));
+            CUDA_CHECK(cudaMemcpy(fd.data(), ws.d_final_dists, fd.size()*sizeof(float), cudaMemcpyDeviceToHost));
+            CUDA_CHECK(cudaMemcpy(fi.data(), ws.d_final_ids,   fi.size()*sizeof(int),   cudaMemcpyDeviceToHost));
+            std::fwrite(&k, sizeof(int), 1, f);
+            std::fwrite(cd.data(), sizeof(float), cd.size(), f);
+            std::fwrite(fd.data(), sizeof(float), fd.size(), f);
+            std::fwrite(fi.data(), sizeof(int),   fi.size(), f);
             std::fclose(f);
             std::fprintf(stderr, "[dump] %d candidates, ck=%d -> %s\n", h_total, ck, dp);
         }

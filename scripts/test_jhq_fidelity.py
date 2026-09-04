@@ -23,10 +23,18 @@ def read_dump(path):
         ap = np.frombuffer(f.read(4 * total), dtype=np.int32)
         sp = np.frombuffer(f.read(4 * ck), dtype=np.float32)
         sq = np.frombuffer(f.read(4 * ck), dtype=np.int32)
-    return total, ck, ad, ap, sp, sq
+        tail = f.read()
+    k = cd = fd = fi = None
+    if len(tail) >= 4:
+        k = struct.unpack("i", tail[:4])[0]
+        off = 4
+        cd = np.frombuffer(tail[off:off + 4 * ck], dtype=np.float32); off += 4 * ck
+        fd = np.frombuffer(tail[off:off + 4 * k],  dtype=np.float32); off += 4 * k
+        fi = np.frombuffer(tail[off:off + 4 * k],  dtype=np.int32)
+    return total, ck, ad, ap, sp, sq, k, cd, fd, fi
 
 def main(path):
-    total, ck, ad, ap, sp, sq = read_dump(path)
+    total, ck, ad, ap, sp, sq, k, cd, fd, fi = read_dump(path)
     print(f"  candidates evaluated : {total}")
     print(f"  ck (= ceil(alpha*k)) : {ck}")
 
@@ -72,6 +80,26 @@ def main(path):
 
     print("  [PASS] top-alpha*k IDs        mismatched = 0")
     print("  [PASS] primary distances      max_abs_err = %.3e" % err)
+
+    if k is None:
+        print("  (no composite/final stages in this dump)")
+        return 0
+
+    # Stage G: the final top-k must be the exact top-k of the composite
+    # distances the refinement produced, with ties broken by position as the
+    # reference does.
+    valid = sq >= 0
+    order = np.lexsort((sq[valid], cd[valid]))[:k]
+    ref_dist = cd[valid][order]
+    got_dist = np.sort(fd)
+    dmax = float(np.max(np.abs(np.sort(ref_dist) - got_dist))) if k else 0.0
+    print(f"  final top-k: max |reference - returned| composite = {dmax:.3e}")
+    if dmax > 1e-4:
+        print("  [FAIL] final top-k is not the top-k of the composite distances")
+        for i in range(min(k, 5)):
+            print(f"         rank {i}: reference {np.sort(ref_dist)[i]:.6f} vs returned {got_dist[i]:.6f}")
+        return 1
+    print("  [PASS] final top-k            selected exactly from composite")
     return 0
 
 if __name__ == "__main__":
