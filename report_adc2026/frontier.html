@@ -117,12 +117,25 @@ td.ds{color:var(--ink);font-weight:500;white-space:nowrap}
 footer{margin-top:52px;padding-top:20px;border-top:1px solid var(--rule);
   font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink3);line-height:1.75}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.retract{border:1px solid var(--lose);border-left:3px solid var(--lose);border-radius:3px;
+  padding:18px 20px;margin:24px 0 0;background:var(--card);max-width:68ch}
+.retract .rh{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.11em;
+  text-transform:uppercase;font-weight:600;color:var(--lose);margin:0 0 10px}
+.retract p{margin:0 0 10px;font-size:13.5px;color:var(--ink2);line-height:1.55}
+.retract p:last-child{margin-bottom:0}
+.retract b{color:var(--ink);font-weight:600}
 </style>
 <div class="wrap">
 <header>
   <p class="eyebrow">JHQ-GPU &middot; measurement note &middot; 2026-09-04</p>
   <h1>Where JHQ Actually Wins</h1>
-  <p class="sub">Every baseline sweep stopped at <span class="mono">itopk=256</span> and every JHQ sweep at <span class="mono">nprobe=256</span> &mdash; the point where each method happened to reach its highest recall. The crossover results were being read off the edge of an unfinished grid. Both grids were extended to 1024; these are the fronts that came back.</p>
+  <p class="sub">The fronts below were measured before two things came to light: the OpenAI3 rows used a primary codebook the paper's construction cannot build at that M, and the search that produced every row departs from Algorithm 1 in ways that had not been priced. What each departure costs is now measured. The crossover those fronts show does not survive.</p>
+<div class="retract">
+  <p class="rh">Retracted &mdash; the dimension crossover</p>
+  <p>The 1.42&times; at 1536d and 2.17&times; at 3072d were taken at <span class="mono">M=96</span>, where Equation 4 needs <span class="mono">Ds</span> to divide <span class="mono">B=8</span> and therefore <span class="mono">M &ge; d/8</span> &mdash; 192 and 384. At those M the construction runs, and CAGRA is ahead on both sets: <b>0.9850 at 11,227 QPS against 0.9856 at 20,559</b> on OpenAI3-1536, <b>0.9847 at 5,635 against 0.9849 at 10,354</b> on OpenAI3-3072. The primary code cannot be made shorter than <span class="mono">d/8</span> bytes under that construction, which is why the front moves.</p>
+  <p>What survives is on this page below, unchanged: the scale results, the capacity result, and the compressed-graph ceiling. None of them depend on the code that was re-measured.</p>
+</div>
   <div class="meta">
     <span><b>GPU</b> RTX 5090, 31.36 GiB</span><span><b>cuVS</b> 26.08.01</span>
     <span><b>k</b> 10</span><span><b>reps</b> 3&ndash;5, card under flock</span>
@@ -196,9 +209,9 @@ footer{margin-top:52px;padding-top:20px;border-top:1px solid var(--rule);
 <div class="claims">
   <div class="cl"><div class="h" style="color:var(--lose)">&times;&nbsp; not supported</div>
   <ul class="bad">
-    <li><b>&ldquo;JHQ overtakes CAGRA at high recall.&rdquo;</b> Above 0.992 on both OpenAI3 sets, and everywhere above 0.975 on the 768d sets, the frontier is CAGRA's.</li>
+    <li><b>&ldquo;JHQ overtakes CAGRA at high recall.&rdquo;</b> Measured at an M where the paper's codebook builds, CAGRA leads on both OpenAI3 sets outright &mdash; 20,559 QPS against 11,227 at 1536d, 10,354 against 5,635 at 3072d &mdash; and holds every frontier point above 0.975 on the 768d sets.</li>
     <li><b>&ldquo;Only JHQ runs at this scale.&rdquo;</b> int8 CAGRA builds 17.8M vectors in 19.5 GiB and reaches 0.9780 at 386,824 QPS &mdash; 12.9&times; JHQ's throughput below that recall.</li>
-    <li><b>&ldquo;The optimized search is JHQ, just on a GPU.&rdquo;</b> Per-thread <span class="mono">K_LOCAL</span> retention and the prefix cascade both change the candidate set. Base and Optimized need separating.</li>
+    <li><b>&ldquo;The optimized search is JHQ, just on a GPU.&rdquo;</b> Both departures are now priced. The prefix cascade at 1/4 costs 0.9747 &rarr; 0.9647; at 1/2 it buys 38% for a change inside the build's own noise. Per-thread retention at depth 4 differs from depth 8 in 1 query's result set per 1000, and depth 4 is the only value that fits in registers at BLOCK=1024.</li>
     <li><b>&ldquo;123&ndash;219&times; faster to build.&rdquo;</b> The CPU reference ran at <span class="mono">nlist=256</span> against GPU runs at 1024&ndash;16384, and re-measuring it today gives 1.5&ndash;2.7&times; slower numbers than those on record.</li>
   </ul></div>
   <div class="cl"><div class="h" style="color:var(--win)">&#10003;&nbsp; supported by these runs</div>
