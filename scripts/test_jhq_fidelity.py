@@ -102,5 +102,38 @@ def main(path):
     print("  [PASS] final top-k            selected exactly from composite")
     return 0
 
+def compare_residual_paths(path_fused, path_mater):
+    """Fused against materialised, matched by candidate rather than by slot.
+
+    Both compute Equation 8 for the same candidates, so the comparison is of
+    two implementations of one quantity. It has to match candidates first: the
+    output is ordered by primary distance and equal distances may be ordered
+    either way, so differencing slot by slot reports differences where the sets
+    are identical -- it read 22 on a pair whose sets matched exactly.
+
+    Both runs must also come from one index. Pin it with
+    JHQ_ENCODE_GROUPED_OFF=1 (the grouped encoder accumulates corrections with
+    atomicAdd, whose order is not fixed) and JHQ_INDEX_CACHE. Without that this
+    compares two different databases and any number it reports is meaningless.
+    """
+    _, ck0, _, _, _, s0, k0, c0, _, i0 = read_dump(path_fused)
+    _, ck1, _, _, _, s1, k1, c1, _, i1 = read_dump(path_mater)
+    A = set(int(x) for x in s0 if x >= 0)
+    B = set(int(x) for x in s1 if x >= 0)
+    m0 = {int(p): float(v) for p, v in zip(s0, c0) if p >= 0}
+    m1 = {int(p): float(v) for p, v in zip(s1, c1) if p >= 0}
+    common = sorted(set(m0) & set(m1))
+    err = max((abs(m0[p] - m1[p]) for p in common), default=0.0)
+    print(f"  candidate sets identical      : {A == B}")
+    print(f"  matched candidates            : {len(common)}")
+    print(f"  max |fused - materialised|    : {err:.3e}")
+    print(f"  final top-k identical         : {set(i0.tolist()) == set(i1.tolist())}")
+    ok = (A == B) and err <= 1e-6 and set(i0.tolist()) == set(i1.tolist())
+    print(f"  [{'PASS' if ok else 'FAIL'}] residual paths agree")
+    return 0 if ok else 1
+
+
 if __name__ == "__main__":
+    if len(sys.argv) == 3:
+        sys.exit(compare_residual_paths(sys.argv[1], sys.argv[2]))
     sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else "/root/topck.bin"))
