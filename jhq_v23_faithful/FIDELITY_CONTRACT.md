@@ -99,10 +99,13 @@ the midpoints of the sorted codeword list. This is an identity, not an
 approximation: the squared distance is a sum of per-dimension terms and each is
 minimised independently.
 
-**Status: MATCH.**
+**Status: VERIFIED.** `scripts/test_jhq_encode.py` recomputes the code by
+enumerating all K codewords of the subspace in float64 -- it does not take the
+separable shortcut, which is what makes it a check of that shortcut rather than
+a restatement of it.
 
-**Tested by.** Differential test B: codes against brute force over all K
-codewords for a subset.
+**Result.** 3,440,640 primary codes over 30 configurations (5 seeds x M in
+{96,192,384} x Br in {8,4}, 512 vectors each): **0 mismatches, 0 ties.**
 
 ---
 
@@ -203,8 +206,12 @@ so far, which is ≥ the final ck-th best, so it cannot belong to the final
 top-ck. Exactness does not depend on how candidates are distributed over
 threads.
 
-**Tested by.** Differential test E: top-αk id set against a CPU exact sort,
-required mismatch 0.
+**Status: VERIFIED.** Over 18 search configurations -- both residual paths,
+nprobe in {8,32,128,256}, M in {96,192}, plus arXiv-768 at two nprobe --
+**top-alpha*k mismatch = 0** in every one, with the primary distances the
+selector returned matching a recomputation to **0.000e+00**. The control
+`JHQ_EXACT_TOPCK=0` fails the same test (3 missing/3 extra at nprobe=32, 1/1 at
+128), which is what makes the passes mean something.
 
 ---
 
@@ -219,8 +226,11 @@ candidates. Two paths, both computing the same value: the materialised tables
 from q_JL and C_R^m, which Lemma 5 permits since one codebook is shared across a
 subspace's dimensions. **MATCH.**
 
-**Tested by.** Differential test F: fused against materialised, max absolute
-error and ranking mismatch; and both against the CPU reference.
+**Status: VERIFIED.** Fused against materialised, on one pinned index, matched
+by candidate rather than by slot: candidate sets **identical**, max
+|fused - materialised| composite **1.192e-07** absolute and 6.9e-08 relative --
+fp32 rounding on a quantity computed two different ways -- and final top-k
+identical at both nprobe tested.
 
 ---
 
@@ -250,10 +260,15 @@ computed with the ‖q_JL‖² term, checking the difference is constant per que
 **Implementation.** `batched_topk_final_kernel`, k rounds of a block-wide
 minimum over the ck composite distances. Exact for k ≪ ck.
 
-**Status: MATCH.** Ties are broken by scan order, which is not deterministic
-across block sizes; the reference and the test both break ties by ascending
-database id, and any query with a true tie at the k-th place is reported
-separately rather than counted as a mismatch.
+**Status: VERIFIED, after a fix.** Ties used to go to whichever candidate the
+reduction reached first, which varies with block size and scan order: on vogue
+at nprobe=32 the tenth and eleventh composite distances are bit-identical at
+1.7044189 and the two residual paths returned different tenth neighbours for
+that tie. Ties now go to the lower database id in both the per-thread scan and
+the block reduction, the rule the reference uses.
+
+**Result.** Over 18 configurations, the returned top-k is the exact top-k of
+the composite distances, max |reference - returned| **0.000e+00**.
 
 ---
 
@@ -277,6 +292,8 @@ TF32, PM = M, exact top-αk, and either residual path.
 
 Run on one index — the same Π, codebooks, IVF centroids and encoded database
 for both sides, so nothing is attributable to retraining.
+
+All discrete checks below returned zero mismatch on the runs recorded above.
 
 | Check | Criterion |
 |---|---|
