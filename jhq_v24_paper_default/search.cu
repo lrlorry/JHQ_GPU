@@ -133,7 +133,7 @@
 // left to trade. JHQ_LUT32=0 restores the half table for measurement.
 // JHQ_LUT32 and jhq_lut_t come from search.cuh so the allocation in
 // jhq_gpu_index.cu agrees with what is written here.
-typedef jhq_lut_t lut_t;
+typedef jhq_gpu::jhq_lut_t lut_t;
 #if JHQ_LUT32
 #define LUT_STORE(x) (x)
 #define LUT_LOAD(x)  (x)
