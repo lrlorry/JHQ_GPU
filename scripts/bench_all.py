@@ -221,11 +221,20 @@ def run_cuvs(method, ds, grid, k, reps):
         try:
             cp.get_default_memory_pool().free_all_blocks()
             m_before = _mem_used_mib()
-            # Build from the host array. cuVS accepts host input for ivf_pq,
-            # cagra and the scalar quantiser, and uploading the fp32 set first
-            # is what made 10M x 1024 look like it did not fit: the upload of
-            # 41.3 GiB failed on a 31.4 GiB card while the index it would have
-            # produced is under 4 GiB. Only the queries go to the device.
+            # Build from the host array: cuVS accepts host input for ivf_pq,
+            # cagra and the scalar quantiser, so the build itself no longer
+            # needs the caller to upload the set first. Only the queries go to
+            # the device here.
+            #
+            # This does NOT make a large fp32 set fit. A CAGRA index holds the
+            # dataset on the device for search, because traversal computes real
+            # distances against the vectors; the graph is only the adjacency.
+            # Measured VRAM matches N*d*bytes_per_component + N*degree*4 to
+            # within 0.1% over every dataset and degree here -- bge-m3 int8 for
+            # instance reads 11220 MiB against 11087 predicted -- so fp32
+            # bge-m3 needs 38.50 GiB of vectors plus 1.20 GiB of graph, 39.70
+            # against a 31.36 GiB card. The OOM that path reports is the index
+            # not fitting, not an avoidable staging copy.
             if method == "cagra-int8":
                 from cuvs.preprocessing.quantize import scalar
                 q = scalar.train(scalar.QuantizerParams(quantile=0.99), xb_h)
