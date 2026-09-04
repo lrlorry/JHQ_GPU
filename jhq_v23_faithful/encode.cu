@@ -14,13 +14,45 @@
 
 namespace jhq_gpu {
 
+// The float boundaries put a value in the right cell except when it sits
+// closer to a midpoint than a float can resolve. Checking the neighbours in
+// double settles it: the codewords and the value are floats and convert
+// exactly, so |v-a| and |v-b| are computed without error and the nearer one is
+// determined. Costs two comparisons per dimension and no shared memory, where
+// storing the boundaries in double would have cost up to 16 KB in the grouped
+// kernel.
+__device__ __forceinline__
+int settle_nearest(const float* cb, int n, float v, int i) {
+    const double dv = (double)v;
+    double best = fabs(dv - (double)cb[i]);
+    if (i > 0) {
+        const double dl = fabs(dv - (double)cb[i - 1]);
+        if (dl < best) { best = dl; i = i - 1; }
+    }
+    if (i + 1 < n) {
+        const double dr = fabs(dv - (double)cb[i + 1]);
+        if (dr < best) { i = i + 1; }
+    }
+    return i;
+}
+
 __device__ __forceinline__
 int nearest_sorted_dev(const float* arr, int n, float v) {
     if (n == 1) return 0;
     int lo = 0, hi = n - 1;
     while (lo < hi) {
         int mid = (lo + hi) / 2;
-        if (v < 0.5f * (arr[mid] + arr[mid + 1]))
+        // The midpoint is formed in double. Both codewords and v are floats and
+        // convert exactly, so the sum and the halving are exact, and the
+        // comparison decides even when v sits closer to the midpoint than one
+        // float ULP -- which happens: on vogue at M=384, Br=8 a residual landed
+        // 1.17e-10 above a midpoint of 2.297826926e-03, where the float ULP is
+        // about 1.4e-10, and the float comparison went the other way from the
+        // reference. The two codewords were 2.9e-05 apart in relative squared
+        // distance, so nothing about the reconstruction turned on it, but the
+        // code it produces is a discrete output and the specification says
+        // nearest. Deciding it in float leaves that to rounding.
+        if ((double)v < 0.5 * ((double)arr[mid] + (double)arr[mid + 1]))
             hi = mid;
         else
             lo = mid + 1;
@@ -387,6 +419,7 @@ __global__ void encode_fused_cartesian_kernel(
             int rb = 0;
             for (int w = Kr >> 1; w > 0; w >>= 1)
                 rb += (r > s_rb[rb + w - 1]) ? w : 0;
+            rb = settle_nearest(s_rcb, Kr, r, rb);
             const float rhat = s_rcb[rb];
             dot += yhat * rhat;
 
@@ -472,6 +505,7 @@ __global__ void encode_fused_grouped_kernel(
                 int rbi = 0;
                 for (int w = Kr >> 1; w > 0; w >>= 1)
                     rbi += (r > rb[rbi + w - 1]) ? w : 0;
+                rbi = settle_nearest(rcb, Kr, r, rbi);
                 dot += yhat * rcb[rbi];
                 // residual code of dimension idx of the group, packed as the
                 // per-subspace kernel lays it out: a byte per dimension at
