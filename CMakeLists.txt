@@ -938,6 +938,26 @@ add_jhq_dir(v23_exact_lut32 ${V23} JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 JHQ_LUT32=1
 add_jhq_dir(v23_casc        ${V23} JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=4 ${TUNED})
 add_jhq_dir(v23_casc_lut32  ${V23} JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=4 JHQ_LUT32=1 ${TUNED})
 
+set(V24 jhq_v24_paper_default)
+
+# Depth of the per-thread candidate buffer. The scan keeps K_LOCAL candidates
+# per thread and merges them; that equals the global top-alpha*k only if no
+# thread ever holds more than K_LOCAL of it. With ck=1000 over BLOCK=1024
+# threads the expected load is about one per thread, so 4 is four times the
+# mean -- but expectation is not proof, and recall being flat across depths is
+# not proof either, since two different result sets can share a recall. These
+# targets exist to diff the returned ids themselves, at a fixed BLOCK: BLOCK
+# changes which candidates land on which thread, so it has to be held still.
+add_jhq_dir(v24_kl4  ${V24} JHQ_LUT32=1 JHQ_K_LOCAL=4  JHQ_PREFIX_KEEP=4  JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+add_jhq_dir(v24_kl8  ${V24} JHQ_LUT32=1 JHQ_K_LOCAL=8  JHQ_PREFIX_KEEP=8  JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+add_jhq_dir(v24_kl16 ${V24} JHQ_LUT32=1 JHQ_K_LOCAL=16 JHQ_PREFIX_KEEP=16 JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+
+# v24 defaults: float table, PM = M. The cascade variant opts back in.
+add_jhq_dir(v24        ${V24} JHQ_LUT32=1 ${TUNED})
+add_jhq_dir(v24_casc   ${V24} JHQ_LUT32=1 JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=2 ${TUNED})
+# The half table, to re-price it now that both files agree on its size.
+add_jhq_dir(v24_half   ${V24} JHQ_LUT32=0 ${TUNED})
+
 # JQ-GPU: identical primary quantiser, IVF, cascade, occupancy and selection,
 # with the residual level switched off. Everything that differs between this
 # and demo_jhq_v22_s2b1 is the hierarchy itself.
