@@ -271,6 +271,198 @@ __global__ void build_byte_lut_kernel(
 // kernel reads from global as before.
 #define LUT_AT(p, i) LUT_LOAD((p)[(i)])
 
+// Exact top-ck selection, independent of how candidates fall across threads.
+//
+// Algorithm 1 line 4 selects the top-alpha*k of 𝒵 by complete primary distance,
+// a global selection. The per-thread retention this replaces is not that: a
+// thread holding more than K_LOCAL of the true top-ck drops the excess before
+// the block ever merges, and whether that happens is a property of the data.
+// Measured on vogue, depth 4 against depth 8 at BLOCK=512 differs in 1 query's
+// result set per 1000.
+//
+// This keeps one shared buffer of capacity 2*ck for the whole block. A
+// candidate is appended when its distance is below the current threshold; when
+// the buffer fills, it is sorted, the best ck are kept, and the threshold
+// becomes the ck-th value.
+//
+// Correctness: a candidate is discarded only if its distance is >= the ck-th
+// best seen so far. The threshold is non-increasing as more candidates arrive,
+// so it is always >= the ck-th best over the whole set. A discarded candidate
+// therefore has at least ck candidates strictly better than it and cannot be
+// in the final top-ck. Nothing here depends on the distribution over threads,
+// on K_LOCAL, or on the order candidates are visited in.
+//
+// Cost: 2*ck*(4+4) bytes of shared memory -- 16 KB at ck=1000 -- and a sort
+// each time the buffer fills. The buffer only fills when ck candidates have
+// beaten the threshold, so on a set where most candidates are poor it fills
+// rarely.
+__device__ __forceinline__ void jhq_compact_topck(
+    float* s_val, int* s_pos, int* s_cnt, float* s_thresh, int ck, int cap, int tid, int BLOCK)
+{
+    // Bitonic sort of the whole buffer, then keep the best ck.
+    const int n = *s_cnt;
+    const float INF = __int_as_float(0x7F800000);
+    for (int i = n + tid; i < cap; i += BLOCK) { s_val[i] = INF; s_pos[i] = -1; }
+    __syncthreads();
+    for (int k2 = 2; k2 <= cap; k2 <<= 1)
+        for (int j = k2 >> 1; j > 0; j >>= 1) {
+            for (int i = tid; i < cap; i += BLOCK) {
+                const int ixj = i ^ j;
+                if (ixj > i) {
+                    const bool up = ((i & k2) == 0);
+                    if ((s_val[i] > s_val[ixj]) == up) {
+                        float t = s_val[i]; s_val[i] = s_val[ixj]; s_val[ixj] = t;
+                        int   p = s_pos[i]; s_pos[i] = s_pos[ixj]; s_pos[ixj] = p;
+                    }
+                }
+            }
+            __syncthreads();
+        }
+    if (tid == 0) {
+        *s_cnt    = (n < ck) ? n : ck;
+        *s_thresh = (n >= ck) ? s_val[ck - 1] : INF;
+    }
+    __syncthreads();
+}
+
+// Debug dump for the differential test: every candidate's complete primary
+// distance for one query, written in scan order. The test recomputes the exact
+// top-ck from this and compares it against what the selector returned, so the
+// selection is checked against the same distances the selector saw. A
+// disagreement is then the selection, not arithmetic.
+__global__ void dump_primary_distances_kernel(
+    const lut_t*   __restrict__ d_byte_lut,
+    const int*     __restrict__ probe_ids,
+    const int*     __restrict__ probe_offsets,
+    const int*     __restrict__ list_offsets,
+    const uint8_t* __restrict__ list_primary_t,
+    const int*     __restrict__ query_total,
+    float* out_dist, int* out_pos, int cap_out,
+    int bqi, int nprobe, int M, int N)
+{
+    const int total = query_total[bqi];
+    const lut_t* g_lut = d_byte_lut + (long long)bqi * M * 256;
+    const int* my_ids  = probe_ids     + bqi * nprobe;
+    const int* my_offs = probe_offsets + bqi * (nprobe + 1);
+    for (int lt = blockIdx.x * blockDim.x + threadIdx.x; lt < total;
+         lt += gridDim.x * blockDim.x) {
+        if (lt >= cap_out) return;
+        int p = 0;
+        while (p + 1 < nprobe && lt >= my_offs[p + 1]) ++p;
+        const int pos = list_offsets[my_ids[p]] + (lt - my_offs[p]);
+        float a = 0.0f;
+        for (int m = 0; m < M; ++m) {
+            const uint8_t cm = __ldg(&list_primary_t[(long long)m * N + pos]);
+            a += LUT_LOAD(g_lut[m * 256 + cm]);
+        }
+        out_dist[lt] = a;
+        out_pos[lt]  = pos;
+    }
+}
+
+// The faithful scan: Algorithm 1 lines 2-4 with nothing between them.
+//
+// Every candidate gets its complete primary distance over all M subspaces --
+// no prefix, no early discard -- and the top-ck is selected exactly by the
+// threshold-compaction buffer above.
+//
+// The buffer holds ck + BLOCK entries, rounded up to a power of two for the
+// sort. That size makes overflow structurally impossible rather than merely
+// unlikely: the block processes candidates BLOCK at a time and compacts
+// whenever the count exceeds ck, so at the start of a chunk the count is at
+// most ck, at most BLOCK are appended, and the total cannot exceed ck + BLOCK.
+// No candidate is ever dropped for want of room.
+__global__ void scan_ivf_exact_kernel(
+    const lut_t*   __restrict__ d_byte_lut,
+    const int*     __restrict__ probe_ids,
+    const int*     __restrict__ probe_offsets,
+    const int*     __restrict__ list_offsets,
+    const uint8_t* __restrict__ list_primary_t,
+    const int*     __restrict__ query_total,
+    float*                      topck_primary,
+    int*                        topck_pos,
+    int nprobe, int M, int N, int ck, int cap, bool lut_in_smem, int tile_m)
+{
+    const float INF   = __int_as_float(0x7F800000);
+    const int   BLOCK = blockDim.x;
+    const int   bqi   = blockIdx.x;
+    const int   tid   = threadIdx.x;
+
+    extern __shared__ char shm[];
+    float* s_val    = (float*)shm;
+    int*   s_pos    = (int*)(s_val + cap);
+    int*   s_cnt    = (int*)(s_pos + cap);
+    float* s_thresh = (float*)(s_cnt + 1);
+    lut_t* s_lut    = (lut_t*)(s_thresh + 1);
+
+    const lut_t* g_lut = d_byte_lut + (long long)bqi * M * 256;
+    if (lut_in_smem) {
+        for (int i = tid; i < M * 256; i += BLOCK) s_lut[i] = g_lut[i];
+    }
+    if (tid == 0) { *s_cnt = 0; *s_thresh = INF; }
+    __syncthreads();
+
+    const int  total   = query_total[bqi];
+    const int* my_ids  = probe_ids     + bqi * nprobe;
+    const int* my_offs = probe_offsets + bqi * (nprobe + 1);
+    const int  TILE_M  = tile_m;
+
+    // The probe a candidate belongs to only moves forward as lt grows, so the
+    // search for it is carried across chunks instead of restarting at 0 for
+    // every candidate.
+    int p = 0;
+    for (int chunk = 0; chunk < total; chunk += BLOCK) {
+        const int lt = chunk + tid;
+        float dist = INF;
+        int   pos  = -1;
+        if (lt < total) {
+            int pp = p;
+            while (pp + 1 < nprobe && lt >= my_offs[pp + 1]) ++pp;
+            pos = list_offsets[my_ids[pp]] + (lt - my_offs[pp]);
+            float a = 0.0f;
+            for (int m0 = 0; m0 < M; m0 += TILE_M) {
+                const int mhi = (m0 + TILE_M < M) ? (m0 + TILE_M) : M;
+                for (int m = m0; m < mhi; ++m) {
+                    const uint8_t cm = __ldg(&list_primary_t[(long long)m * N + pos]);
+                    a += lut_in_smem ? LUT_AT(s_lut, m * 256 + cm)
+                                     : LUT_LOAD(g_lut[m * 256 + cm]);
+                }
+            }
+            dist = a;
+        }
+        // Advance the shared probe cursor to where this chunk ended.
+        if (tid == BLOCK - 1 || lt == total - 1) {
+            int pp = p;
+            const int last = (total - 1 < chunk + BLOCK - 1) ? total - 1 : chunk + BLOCK - 1;
+            while (pp + 1 < nprobe && last >= my_offs[pp + 1]) ++pp;
+            p = pp;
+        }
+        __syncthreads();
+
+        if (lt < total && dist < *s_thresh) {
+            const int slot = atomicAdd(s_cnt, 1);
+            s_val[slot] = dist;      // slot < cap by the sizing argument above
+            s_pos[slot] = pos;
+        }
+        __syncthreads();
+
+        if (*s_cnt > ck)
+            jhq_compact_topck(s_val, s_pos, s_cnt, s_thresh, ck, cap, tid, BLOCK);
+    }
+
+    // One final ordering so the output is sorted by primary distance.
+    jhq_compact_topck(s_val, s_pos, s_cnt, s_thresh, ck, cap, tid, BLOCK);
+
+    const int  n   = *s_cnt;
+    float* out_pri = topck_primary + (long long)bqi * ck;
+    int*   out_pos = topck_pos     + (long long)bqi * ck;
+    for (int c = tid; c < ck; c += BLOCK) {
+        const bool have = (c < n);
+        out_pri[c] = have ? s_val[c] : INF;
+        out_pos[c] = have ? s_pos[c] : -1;
+    }
+}
+
 __global__ void scan_ivf_coalesced_kernel(
     const lut_t*   __restrict__ d_byte_lut,     // [B, M, 256]
     const int*     __restrict__ probe_ids,
@@ -697,6 +889,15 @@ __global__ void batched_topk_final_kernel(
 // Materialise the residual lookup tables, as the paper's O(d*Kr) per-query
 // construction does, instead of recomputing entries in the refine kernel.
 // Off by default; the switch exists so the two can be diffed.
+// Exact global top-alpha*k instead of the per-thread retention buffer. On by
+// default: Algorithm 1 line 4 is a global selection, and the retention buffer
+// is only equal to it when no thread happens to hold more than K_LOCAL of the
+// answer. JHQ_EXACT_TOPCK=0 selects the old path for measurement.
+static bool exact_topck() {
+    const char* e = std::getenv("JHQ_EXACT_TOPCK");
+    return !(e && e[0] == '0');
+}
+
 static bool resid_lut_materialised() {
     const char* e = std::getenv("JHQ_RESID_LUT");
     return e && e[0] == '1';
@@ -859,6 +1060,66 @@ static void capture_graph(
     CUDA_CHECK(cudaEventRecord(ws.ev_step[4], ws.stream));
 #endif
     // 5. Scan IVF — coalesced via [M, N] list_primary_t
+    if (exact_topck()) {
+        // cap = ck + BLOCK rounded up to a power of two, which is what makes
+        // overflow impossible and what the bitonic sort needs.
+        int cap = 1; while (cap < ck + BLOCK) cap <<= 1;
+        const int ex_base = cap * (int)(sizeof(float) + sizeof(int))
+                          + (int)sizeof(int) + (int)sizeof(float);
+        const bool ex_lut = (ex_base + lut_bytes) <= smem_optin;
+        const int  ex_smem = ex_lut ? (ex_base + lut_bytes) : ex_base;
+        if (ex_smem > smem_optin)
+            throw std::runtime_error(
+                "scan_ivf_exact_kernel needs " + std::to_string(ex_smem) +
+                " B of shared memory for ck=" + std::to_string(ck) +
+                " at BLOCK=" + std::to_string(BLOCK) +
+                "; the device allows " + std::to_string(smem_optin) +
+                ". Lower alpha or BLOCK.");
+        CUDA_CHECK(cudaFuncSetAttribute(scan_ivf_exact_kernel,
+                       cudaFuncAttributeMaxDynamicSharedMemorySize, ex_smem));
+        scan_ivf_exact_kernel<<<B, BLOCK, ex_smem, ws.stream>>>(
+            ws.d_byte_lut, ws.d_probe_ids, ws.d_probe_offsets, d_list_offsets,
+            d_list_primary_t, ws.d_query_total,
+            ws.d_topck_primary, ws.d_topck_pos,
+            nprobe, M, ntotal, ck, cap, ex_lut, tile_m);
+        CUDA_CHECK(cudaGetLastError());
+
+        // JHQ_DUMP_TOPCK=<path> writes, for query 0 of the first batch, every
+        // candidate's complete primary distance and the ck the selector chose.
+        // The differential test reads both and checks the second is the exact
+        // top-ck of the first.
+        if (const char* dp = std::getenv("JHQ_DUMP_TOPCK")) {
+            int h_total = 0;
+            CUDA_CHECK(cudaMemcpyAsync(&h_total, ws.d_query_total, sizeof(int),
+                                       cudaMemcpyDeviceToHost, ws.stream));
+            CUDA_CHECK(cudaStreamSynchronize(ws.stream));
+            float* d_ad = nullptr; int* d_ap = nullptr;
+            CUDA_CHECK(cudaMalloc(&d_ad, (size_t)h_total * sizeof(float)));
+            CUDA_CHECK(cudaMalloc(&d_ap, (size_t)h_total * sizeof(int)));
+            dump_primary_distances_kernel<<<256, 256, 0, ws.stream>>>(
+                ws.d_byte_lut, ws.d_probe_ids, ws.d_probe_offsets, d_list_offsets,
+                d_list_primary_t, ws.d_query_total, d_ad, d_ap, h_total,
+                0, nprobe, M, ntotal);
+            CUDA_CHECK(cudaStreamSynchronize(ws.stream));
+            std::vector<float> ad(h_total), sp(ck);
+            std::vector<int>   ap(h_total), sq(ck);
+            CUDA_CHECK(cudaMemcpy(ad.data(), d_ad, ad.size()*sizeof(float), cudaMemcpyDeviceToHost));
+            CUDA_CHECK(cudaMemcpy(ap.data(), d_ap, ap.size()*sizeof(int),   cudaMemcpyDeviceToHost));
+            CUDA_CHECK(cudaMemcpy(sp.data(), ws.d_topck_primary, sp.size()*sizeof(float), cudaMemcpyDeviceToHost));
+            CUDA_CHECK(cudaMemcpy(sq.data(), ws.d_topck_pos,     sq.size()*sizeof(int),   cudaMemcpyDeviceToHost));
+            if (FILE* f = std::fopen(dp, "wb")) {
+                std::fwrite(&h_total, sizeof(int), 1, f);
+                std::fwrite(&ck,      sizeof(int), 1, f);
+                std::fwrite(ad.data(), sizeof(float), ad.size(), f);
+                std::fwrite(ap.data(), sizeof(int),   ap.size(), f);
+                std::fwrite(sp.data(), sizeof(float), sp.size(), f);
+                std::fwrite(sq.data(), sizeof(int),   sq.size(), f);
+                std::fclose(f);
+                std::fprintf(stderr, "[dump] %d candidates, ck=%d -> %s\n", h_total, ck, dp);
+            }
+            cudaFree(d_ad); cudaFree(d_ap);
+        }
+    } else
     scan_ivf_coalesced_kernel<<<B, BLOCK, scan_smem, ws.stream>>>(
         ws.d_byte_lut, ws.d_probe_ids, ws.d_probe_offsets, d_list_offsets,
         d_list_primary_t, ws.d_query_total,
