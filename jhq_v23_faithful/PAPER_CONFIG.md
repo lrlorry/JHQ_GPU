@@ -9,9 +9,12 @@ ignored. A result produced by any other target is a result for that target.
 
 ```
 tag     paper-faithful-v1
-commit  86e38446ff99493f509a8dd4cc68f15e549d4ee2
 branch  fix/recall-eval-v15
 ```
+
+Resolve it with `git rev-parse paper-faithful-v1`. The tag is the identifier
+rather than a SHA written into the file: a SHA committed here can only ever be
+the SHA of the parent commit, since writing it changes the commit it names.
 
 The fidelity work this rests on is `da2d9d7` and its ancestors. This file names
 its own commit rather than pointing at whatever is checked out.
