@@ -1,4 +1,4 @@
-#include "jhq_v21_cascade/train_res_gpu.cuh"
+#include "jhq_v22_fused_residual/train_res_gpu.cuh"
 
 #include <cub/cub.cuh>
 

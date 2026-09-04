@@ -1,4 +1,4 @@
-#include "jhq_v21_cascade/jhq_gpu_index.cuh"
+#include "jhq_v23_faithful/jhq_gpu_index.cuh"
 
 // Ablation switch for the residual codebook layout. The official
 // get_scalar_codebook_ptr(subspace_idx, level) keeps one scalar codebook per
@@ -10,10 +10,10 @@
 #ifndef JHQ_GLOBAL_RESIDUAL_CB
 #define JHQ_GLOBAL_RESIDUAL_CB 0
 #endif
-#include "jhq_v21_cascade/encode.cuh"
-#include "jhq_v21_cascade/train_pq_gpu.cuh"
-#include "jhq_v21_cascade/train_res_gpu.cuh"
-#include "jhq_v21_cascade/search.cuh"
+#include "jhq_v23_faithful/encode.cuh"
+#include "jhq_v23_faithful/train_pq_gpu.cuh"
+#include "jhq_v23_faithful/train_res_gpu.cuh"
+#include "jhq_v23_faithful/search.cuh"
 #include "common/cuda_utils.cuh"
 
 #include <thrust/device_ptr.h>
@@ -1887,7 +1887,7 @@ void JHQGpuIndex::assign_into(const float* d_y, int n, int* d_out,
 // while accumulating into a single set of outputs. Everything from the
 // thrust::sort_by_key onward is untouched from v12_transposed: it already
 // only allocates n-sized compressed arrays, which comfortably fit (see
-// jhq_v21_cascade/jhq_gpu_index.cuh's Params::add_batch comment for
+// jhq_v23_faithful/jhq_gpu_index.cuh's Params::add_batch comment for
 // the full VRAM accounting).
 void JHQGpuIndex::add(const float* h_x, int n) {
     if (!cb_) throw std::runtime_error("call train() before add()");

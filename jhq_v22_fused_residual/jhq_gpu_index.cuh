@@ -10,7 +10,7 @@
 #include "cpu/codebook.h"      // train_1d_kmeans, for the residual level
 #include "cpu/pq_codebook.h"
 #include "cpu/jl_transform.h"
-#include "jhq_v21_cascade/search.cuh"
+#include "jhq_v22_fused_residual/search.cuh"
 
 namespace jhq_gpu {
 

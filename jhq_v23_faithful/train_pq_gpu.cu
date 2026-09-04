@@ -1,4 +1,4 @@
-#include "jhq_v21_cascade/train_pq_gpu.cuh"
+#include "jhq_v23_faithful/train_pq_gpu.cuh"
 
 #include <algorithm>
 #include <cstdio>

@@ -1,4 +1,4 @@
-#include "jhq_v21_cascade/search.cuh"
+#include "jhq_v22_fused_residual/search.cuh"
 #include <cuda_fp16.h>
 #include <cstdio>
 

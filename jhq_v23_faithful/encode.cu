@@ -1,4 +1,4 @@
-#include "jhq_v21_cascade/encode.cuh"
+#include "jhq_v23_faithful/encode.cuh"
 
 #include <algorithm>
 #include <cstdint>
