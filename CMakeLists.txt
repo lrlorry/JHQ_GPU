@@ -876,6 +876,29 @@ foreach(TC 2 4 8)
     add_jhq_strided(${TC} 1)
 endforeach()
 
+# ── Step-timed build of the current cascade ──────────────────────────────────
+# The v18 timed target below predates the cascade, so it cannot say where time
+# goes in the code that is actually measured. This one compiles the same
+# sources as demo_jhq_v22_s2b1 with the event instrumentation on. Graph capture
+# is skipped in this build -- events cannot be read from inside a graph -- so
+# the totals run slower than the real path; the split between stages is what
+# it is for.
+add_library(jhq_v22_timed STATIC
+    jhq_v21_cascade/encode.cu
+    jhq_v21_cascade/search.cu
+    jhq_v21_cascade/jhq_gpu_index.cu
+    jhq_v21_cascade/train_pq_gpu.cu
+    jhq_v21_cascade/train_res_gpu.cu
+)
+target_include_directories(jhq_v22_timed PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_v22_timed PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+target_compile_definitions(jhq_v22_timed PRIVATE JHQ_STEP_TIMING=1)
+target_compile_options(jhq_v22_timed PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>
+)
+add_executable(demo_jhq_v22_timed examples/demo_jhq_v21_cascade.cu)
+target_link_libraries(demo_jhq_v22_timed PRIVATE jhq_v22_timed)
+
 # JQ-GPU: identical primary quantiser, IVF, cascade, occupancy and selection,
 # with the residual level switched off. Everything that differs between this
 # and demo_jhq_v22_s2b1 is the hierarchy itself.
