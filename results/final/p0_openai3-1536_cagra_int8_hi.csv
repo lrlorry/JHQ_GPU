@@ -1,0 +1,4 @@
+# {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "", "utc": "2026-09-04T03:30:49Z"}
+method,variant,dataset,d,N,params,env,n_runs,recall,recall_spread,qps_mean,qps_std,qps_rel_std_pct,vram_mib,train_ms,add_ms,status,failures
+cuVS-CAGRA-int8,1664B,openai3-1536,1536,999000,"{""bytes_per_vec"": 1664, ""graph_degree"": 32, ""itopk_size"": 512, ""k"": 10, ""search_width"": 1}",{},3,0.9631,0.00000,69182,594,0.86,1722,6654,,ok,
+cuVS-CAGRA-int8,1664B,openai3-1536,1536,999000,"{""bytes_per_vec"": 1664, ""graph_degree"": 32, ""itopk_size"": 1024, ""k"": 10, ""search_width"": 1}",{},3,0.9704,0.00000,37974,110,0.29,1584,6666,,ok,

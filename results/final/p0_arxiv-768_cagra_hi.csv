@@ -1,0 +1,6 @@
+# {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "", "utc": "2026-09-04T03:29:37Z"}
+method,variant,dataset,d,N,params,env,n_runs,recall,recall_spread,qps_mean,qps_std,qps_rel_std_pct,vram_mib,train_ms,add_ms,status,failures
+cuVS-CAGRA,3200B,arxiv-768,768,2253000,"{""bytes_per_vec"": 3200, ""graph_degree"": 32, ""itopk_size"": 512, ""k"": 10, ""search_width"": 1}",{},3,0.9984,0.00000,40030,166,0.41,7012,10097,,ok,
+cuVS-CAGRA,3200B,arxiv-768,768,2253000,"{""bytes_per_vec"": 3200, ""graph_degree"": 32, ""itopk_size"": 1024, ""k"": 10, ""search_width"": 1}",{},3,1.0000,0.00000,16967,15,0.09,6876,9328,,ok,
+cuVS-CAGRA,3328B,arxiv-768,768,2253000,"{""bytes_per_vec"": 3328, ""graph_degree"": 64, ""itopk_size"": 512, ""k"": 10, ""search_width"": 1}",{},3,0.9994,0.00000,20177,65,0.32,7152,13112,,ok,
+cuVS-CAGRA,3328B,arxiv-768,768,2253000,"{""bytes_per_vec"": 3328, ""graph_degree"": 64, ""itopk_size"": 1024, ""k"": 10, ""search_width"": 1}",{},3,0.9999,0.00000,8826,4,0.05,7152,13127,,ok,
