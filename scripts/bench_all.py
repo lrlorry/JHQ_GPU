@@ -216,6 +216,28 @@ def run_cuvs(method, ds, grid, k, reps):
     from cuvs.neighbors import ivf_pq, cagra
     base, query, gt_path, d, N = DATASETS[ds]
     xb_h, xq_h, gt = _fvecs(base), _fvecs(query), _ivecs(gt_path)
+
+    # Quantise once, not once per configuration. Only the dataset decides the
+    # quantiser, never the search parameters, and doing it inside the loop
+    # meant re-reading and re-writing the whole set for every itopk: at
+    # 17.8M x 1024 that is 73 GiB of fp32 through scalar.transform each time,
+    # which is what made the stella int8 sweep exceed a 90 minute limit
+    # without finishing a single row. The fp32 array is dropped afterwards --
+    # nothing below needs it, and holding both it and the int8 copy is 91 GiB
+    # against a 96.6 GiB cgroup.
+    xb_q8 = xq_q8 = None
+    if method == "cagra-int8":
+        from cuvs.preprocessing.quantize import scalar
+        q = scalar.train(scalar.QuantizerParams(quantile=0.99), xb_h)
+        _b, _q = scalar.transform(q, xb_h), scalar.transform(q, xq_h)
+        xb_q8 = _b[0] if isinstance(_b, tuple) else _b
+        xq_q8 = _q[0] if isinstance(_q, tuple) else _q
+        n_queries = len(xq_h)
+        del xb_h
+        import gc; gc.collect()
+    else:
+        n_queries = len(xq_h)
+
     rows = []
     for cfg in grid:
         try:
@@ -236,12 +258,7 @@ def run_cuvs(method, ds, grid, k, reps):
             # against a 31.36 GiB card. The OOM that path reports is the index
             # not fitting, not an avoidable staging copy.
             if method == "cagra-int8":
-                from cuvs.preprocessing.quantize import scalar
-                q = scalar.train(scalar.QuantizerParams(quantile=0.99), xb_h)
-                xb_q = scalar.transform(q, xb_h)
-                xq_q = scalar.transform(q, xq_h)
-                xb_in = xb_q[0] if isinstance(xb_q, tuple) else xb_q
-                xq_in = xq_q[0] if isinstance(xq_q, tuple) else xq_q
+                xb_in, xq_in = xb_q8, xq_q8
                 bytes_vec = d + 4 * cfg["graph_degree"]
             else:
                 xb_in, xq_in = xb_h, xq_h
@@ -280,7 +297,7 @@ def run_cuvs(method, ds, grid, k, reps):
                 call = lambda: cagra.search(sp, idx, xq_d, k)
             ts, out = _timed(call, reps)
             I = cp.asnumpy(out[1])
-            qps = [len(xq_h) / t for t in ts]
+            qps = [n_queries / t for t in ts]
             rec = _recall_at_k(I, gt, k)
             rows.append(aggregate(
                 {"ivfpq": "cuVS-IVFPQ", "cagra": "cuVS-CAGRA",

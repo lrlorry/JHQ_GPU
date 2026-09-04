@@ -1,0 +1,6 @@
+# {"commit": "305e763", "cuvs": "26.08.01", "dirty": "yes", "driver": "595.71.05", "gpu": "NVIDIA GeForce RTX 5090", "host_cores": "208", "nvcc": "", "utc": "2026-09-04T05:34:00Z"}
+method,variant,dataset,d,N,params,env,n_runs,recall,recall_spread,qps_mean,qps_std,qps_rel_std_pct,vram_mib,train_ms,add_ms,status,failures
+cuVS-CAGRA-int8,1152B,stella-trec24,1024,17776615,"{""bytes_per_vec"": 1152, ""graph_degree"": 32, ""itopk_size"": 64, ""k"": 10, ""search_width"": 1}",{},3,0.9692,0.00000,618859,40871,6.60,19658,73297,,CONTAMINATED,"[[-2, [""QPS spread 6.6% against 0.02-0.64% on an idle card""]]]"
+cuVS-CAGRA-int8,1152B,stella-trec24,1024,17776615,"{""bytes_per_vec"": 1152, ""graph_degree"": 32, ""itopk_size"": 128, ""k"": 10, ""search_width"": 1}",{},3,0.9762,0.00000,386824,6293,1.63,19522,76940,,ok,
+cuVS-CAGRA-int8,1152B,stella-trec24,1024,17776615,"{""bytes_per_vec"": 1152, ""graph_degree"": 32, ""itopk_size"": 256, ""k"": 10, ""search_width"": 1}",{},3,0.9771,0.00000,219320,2477,1.13,19522,74734,,ok,
+cuVS-CAGRA-int8,1152B,stella-trec24,1024,17776615,"{""bytes_per_vec"": 1152, ""graph_degree"": 32, ""itopk_size"": 512, ""k"": 10, ""search_width"": 1}",{},3,0.9780,0.00000,95575,1583,1.66,19522,74306,,ok,
