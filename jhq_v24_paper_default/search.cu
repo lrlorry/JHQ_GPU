@@ -131,15 +131,13 @@
 // __half2float on every lookup and the occupancy the 49 KB staging cost.
 // Being also the arithmetic Equation 6 actually specifies, there is nothing
 // left to trade. JHQ_LUT32=0 restores the half table for measurement.
-#ifndef JHQ_LUT32
-#define JHQ_LUT32 1
-#endif
+// JHQ_LUT32 and jhq_lut_t come from search.cuh so the allocation in
+// jhq_gpu_index.cu agrees with what is written here.
+typedef jhq_lut_t lut_t;
 #if JHQ_LUT32
-typedef float lut_t;
 #define LUT_STORE(x) (x)
 #define LUT_LOAD(x)  (x)
 #else
-typedef __half lut_t;
 #define LUT_STORE(x) __float2half(x)
 #define LUT_LOAD(x)  __half2float(x)
 #endif

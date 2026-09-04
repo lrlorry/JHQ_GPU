@@ -871,14 +871,9 @@ void JHQGpuIndex::alloc_workspace(int batch_size) {
     CUDA_CHECK(cudaMalloc(&ws_.d_probe_ids,      B * nprobe_          * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_probe_offsets,  B * (nprobe_ + 1)   * sizeof(int)));
     CUDA_CHECK(cudaMalloc(&ws_.d_query_total,    B                    * sizeof(int)));
-    {
-#if defined(JHQ_LUT32) && JHQ_LUT32
-        const size_t lut_elem = sizeof(float);
-#else
-        const size_t lut_elem = sizeof(__half);
-#endif
-        CUDA_CHECK(cudaMalloc(&ws_.d_byte_lut, B * M_ * 256 * lut_elem));
-    }
+    // jhq_lut_t is the header's, so this cannot disagree with what search.cu
+    // stores into the table.
+    CUDA_CHECK(cudaMalloc(&ws_.d_byte_lut, B * M_ * 256 * sizeof(jhq_lut_t)));
     // Only materialised when JHQ_RESID_LUT=1 asks for the paper's per-query
     // construction; the fused refine kernel recomputes the entries. The buffer
     // is B*d*Kr floats -- 3.0 GB at B=1024, d=3072, Kr=256 -- and it counts
