@@ -982,6 +982,17 @@ add_jhq_dir(v23_cascade ${V23}
 # Same arithmetic (N*d*(G*Ds) flops over M/G groups is N*d*d), same exact
 # sorted 1-D k-means per subspace. What multiplies is reading the base, M/G
 # times. Search semantics are v23's, unchanged.
+# v26: the residual subtraction on the device. v25 copied y, the codes and the
+# codebook back and subtracted in a host loop -- 4.1 billion subtractions
+# single-threaded at n_res=4M, 388 s of a 388 s training phase -- for data that
+# was already on the GPU. Same values, same estimator, same grouping.
+set(V26 jhq_v26_gpu_residual)
+add_jhq_dir(v26_exp ${V26}
+    JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+
 set(V25 jhq_v25_streamed_residual)
 add_jhq_dir(v25_exp ${V25}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
