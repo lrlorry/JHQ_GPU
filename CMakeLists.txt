@@ -1145,6 +1145,33 @@ target_compile_definitions(demo_jhq_v36_exp PRIVATE
     JHQ_INDEX_HEADER="${V36}/jhq_gpu_index.cuh" ${V36_DEFS})
 target_link_libraries(demo_jhq_v36_exp PRIVATE jhq_v36_exp)
 
+# v37: the residuals stop going to disk, and the transpose stops being a host
+# loop.
+#
+# v36 measured 172 s for stella's equation-5 pass, of which the GPU did 10.
+# The rest was host-side and single-threaded: a pageable D2H, a transpose done
+# as nb*M memcpys of Ds floats (25.6 million 32-byte copies), and a write and a
+# read of a 67.8 GiB spill file, 128 fseek+fwrite pairs a batch.
+#
+# The kernel now stores subspace-major, so the transpose is free and the copy
+# out lands in pinned memory. The residuals stay in host memory up to three
+# quarters of the cgroup limit and only the tail spills, so the traffic falls
+# from 203 GiB to roughly one base read. A smaller machine spills more rather
+# than failing.
+set(V37 jhq_v37_host_resid)
+add_library(jhq_v37_exp STATIC
+    ${V37}/encode.cu ${V37}/search.cu ${V37}/jhq_gpu_index.cu
+    ${V37}/train_pq_gpu.cu ${V37}/train_res_gpu.cu)
+target_include_directories(jhq_v37_exp PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_v37_exp PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+target_compile_definitions(jhq_v37_exp PRIVATE ${V36_DEFS})
+target_compile_options(jhq_v37_exp PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>)
+add_executable(demo_jhq_v37_exp examples/demo_jhq_v36.cu)
+target_compile_definitions(demo_jhq_v37_exp PRIVATE
+    JHQ_INDEX_HEADER="${V37}/jhq_gpu_index.cuh" ${V36_DEFS})
+target_link_libraries(demo_jhq_v37_exp PRIVATE jhq_v37_exp)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
