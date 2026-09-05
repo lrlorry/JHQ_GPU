@@ -1013,6 +1013,26 @@ add_jhq_dir(v30_exp ${V30}
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
 
+# v31: Lloyd's own arbitrariness, made measurable.
+#
+# v30 settled that training the residual codebook on all of Y rather than a
+# 100K sample moves recall by +2e-4, +8e-4 and -3e-4 -- but +/-2e-4 is what
+# build nondeterminism alone produces, so those numbers only say "small", not
+# "smaller than what". The reference they need is how far exact Lloyd moves
+# when the two things the paper does not specify are changed: where the Kr
+# seeds start (JHQ_RES_SEED, 0 = the quantile placement every version so far
+# used, anything else draws positions at random) and how many iterations run
+# (JHQ_RES_ITER, default 25). Defaults reproduce v30 bit for bit.
+#
+# The histogram estimator is gone from this directory; it was measured at 2048
+# and 8192 buckets and keeps jhq_v29_hist_wide.
+set(V31 jhq_v31_init_spread)
+add_jhq_dir(v31_exp ${V31}
+    JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
