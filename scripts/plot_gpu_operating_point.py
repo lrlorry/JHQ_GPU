@@ -11,7 +11,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 D = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                 "results", "gpu_operating_point")
+                 "results", "archive", "gpu_operating_point")
 ACC, MUTED, NO, SOFT = "#1F5F8B", "#5C6773", "#A2452E", "#9AA5B1"
 SERIES = ["#12507B", "#3D7FA6", "#7FA6C2", "#B3C7D6"]
 LABEL = {"vogue-768": "Vogue-768", "arxiv-768": "arXiv-768",
