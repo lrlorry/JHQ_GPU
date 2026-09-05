@@ -1155,41 +1155,114 @@ void JHQGpuIndex::train_residual_codebook_from(const float* all_resid, int n)
 
 void JHQGpuIndex::train_residual_codebook_streamed(const float* h_x, int n)
 {
+    // Equation 5 over a set too large to hold rotated.
+    //
+    // Two things were making ALL impossible at 10.1M and 17.8M, and only one
+    // of them was real.
+    //
+    // The rotated set does not belong on the device at all: a vector's
+    // residual depends on that vector and the primary codebook and nothing
+    // else, so it is consumed once, per vector. Rotating whole put 38.5 GB
+    // (bge-m3) and 67.8 GB (stella) on a 31.4 GB card.
+    //
+    // The residuals do have to be held, because the exact 1-D k-means sorts
+    // them -- but only for the subspaces being fitted right now. Equation 5
+    // builds one R^m per subspace and they are independent. Holding all M at
+    // once is O(N*d); holding a group of G is O(N*G*Ds), which at G=8 is
+    // 4.2 GB against 67.8 for stella. Fitting a group and freeing it before
+    // the next is what makes the whole dataset reachable.
+    //
+    // The price is re-reading the base M/G times, and only the reading: the
+    // rotation is a d-by-(G*Ds) slice of Pi per group, so N*d*(G*Ds) flops
+    // times M/G groups is N*d*d -- the same arithmetic as one full rotation.
+    //
+    // The estimator is untouched. Each subspace still gets the exact sorted
+    // 1-D k-means over every one of its residual values.
+    const char* ge = std::getenv("JHQ_RES_GROUP");
+    int G = ge ? std::atoi(ge) : 8;
+    if (G < 1) G = 1;
+    if (G > M_) G = M_;
     const int batch = std::min(n, 200000);
-    std::vector<float>   h_y   ((size_t)batch * d_);
-    std::vector<uint8_t> h_code((size_t)batch * M_);
-    std::vector<float>   yhat  (d_);
 
-    // The one array whose size follows N. 38.5 GB at bge-m3, 67.8 at stella,
-    // against a 96.6 GB budget -- which is why this is host memory.
-    std::vector<float> all_resid((size_t)n * d_);
-
-    uint8_t* d_code = nullptr;
-    CUDA_CHECK(cudaMalloc(&d_code, (size_t)batch * M_));
-
-    for (int off = 0; off < n; off += batch) {
-        const int nb = std::min(batch, n - off);
-        float* d_y = rotate_on_gpu(h_x + (size_t)off * d_, nb, nullptr);
-        launch_primary_encode(d_y, d_code, d_cent_, nb, d_, M_, Ds_, K_);
-        CUDA_CHECK(cudaDeviceSynchronize());
-        CUDA_CHECK(cudaMemcpy(h_y.data(), d_y, (size_t)nb * d_ * sizeof(float),
-                              cudaMemcpyDeviceToHost));
-        CUDA_CHECK(cudaMemcpy(h_code.data(), d_code, (size_t)nb * M_,
-                              cudaMemcpyDeviceToHost));
-        cudaFree(d_y);
-        for (int i = 0; i < nb; ++i) {
-            cb_->reconstruct(h_code.data() + (size_t)i * M_, yhat.data());
-            const float* yi = h_y.data() + (size_t)i * d_;
-            float* ri = all_resid.data() + (size_t)(off + i) * d_;
-            for (int j = 0; j < d_; ++j) ri[j] = yi[j] - yhat[j];
-        }
-    }
-    cudaFree(d_code);
-
-    // Same per-subspace 1-D k-means the non-streamed path runs, on the same
-    // values it would have produced.
+    const float* h_cent = cb_->data();          // [M][K][Ds]
     res_c1d_.assign((size_t)M_ * Kr_, 0.f);
-    train_residual_codebook_from(all_resid.data(), n);
+
+    float*   d_x    = nullptr;
+    float*   d_yg   = nullptr;
+    uint8_t* d_code = nullptr;
+    CUDA_CHECK(cudaMalloc(&d_x,    (size_t)batch * d_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_yg,   (size_t)batch * G * Ds_ * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_code, (size_t)batch * G));
+    std::vector<float>   h_yg((size_t)batch * G * Ds_);
+    std::vector<uint8_t> h_code((size_t)batch * G);
+
+    const float one = 1.f, zero = 0.f;
+
+    for (int m0 = 0; m0 < M_; m0 += G) {
+        const int gm = std::min(G, M_ - m0);    // subspaces in this group
+        const int gd = gm * Ds_;                // dimensions in this group
+        const int r0 = m0 * Ds_;                // first rotated dimension
+
+        // The one array that follows N, and it follows G*Ds rather than d.
+        std::vector<float> R_group((size_t)n * gd);
+
+        for (int off = 0; off < n; off += batch) {
+            const int nb = std::min(batch, n - off);
+            staged_h2d(d_x, h_x + (size_t)off * d_, (size_t)nb * d_ * sizeof(float));
+
+            // Rows r0..r0+gd of Pi. cuBLAS is column-major, so offsetting the
+            // pointer by r0 with the leading dimension left at d_ is exactly
+            // that row slice: y_group = Pi[r0:r0+gd, :] * x.
+            CUBLAS_CHECK(cublasSgemm(cublas_, CUBLAS_OP_N, CUBLAS_OP_N,
+                                     gd, nb, d_,
+                                     &one, d_Pi_ + r0, d_,
+                                           d_x,        d_,
+                                     &zero, d_yg,      gd));
+
+            // The group's own centroids, seen as a codebook of gm subspaces
+            // over gd dimensions.
+            launch_primary_encode(d_yg, d_code,
+                                  d_cent_ + (size_t)m0 * K_ * Ds_,
+                                  nb, gd, gm, Ds_, K_);
+            CUDA_CHECK(cudaDeviceSynchronize());
+            CUDA_CHECK(cudaMemcpy(h_yg.data(), d_yg,
+                                  (size_t)nb * gd * sizeof(float), cudaMemcpyDeviceToHost));
+            CUDA_CHECK(cudaMemcpy(h_code.data(), d_code, (size_t)nb * gm,
+                                  cudaMemcpyDeviceToHost));
+
+            for (int i = 0; i < nb; ++i) {
+                const float* yi = h_yg.data() + (size_t)i * gd;
+                float*       ri = R_group.data() + (size_t)(off + i) * gd;
+                for (int g = 0; g < gm; ++g) {
+                    const float* c = h_cent
+                                   + ((size_t)(m0 + g) * K_ + h_code[(size_t)i * gm + g]) * Ds_;
+                    for (int k = 0; k < Ds_; ++k)
+                        ri[g * Ds_ + k] = yi[g * Ds_ + k] - c[k];
+                }
+            }
+        }
+
+        // Exact sorted 1-D k-means, one subspace at a time, as before.
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
+        for (int g = 0; g < gm; ++g) {
+            std::vector<float> resid_m;
+            resid_m.reserve((size_t)n * Ds_);
+            for (int i = 0; i < n; ++i) {
+                const float* ri = R_group.data() + (size_t)i * gd + (size_t)g * Ds_;
+                resid_m.insert(resid_m.end(), ri, ri + Ds_);
+            }
+            std::vector<float> cb = train_1d_kmeans(resid_m.data(), (int)resid_m.size(), Kr_);
+            std::copy(cb.begin(), cb.end(), res_c1d_.begin() + (size_t)(m0 + g) * Kr_);
+        }
+        std::fprintf(stderr, "[res-train] subspaces %d-%d of %d done "
+                             "(group buffer %.2f GB)\n",
+                     m0, m0 + gm - 1, M_,
+                     (double)n * gd * 4.0 / (1024.0*1024.0*1024.0));
+    }
+
+    cudaFree(d_x); cudaFree(d_yg); cudaFree(d_code);
 }
 
 void JHQGpuIndex::train_residual_codebook(
