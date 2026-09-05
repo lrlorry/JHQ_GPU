@@ -1108,6 +1108,43 @@ add_jhq_dir(v35_exp ${V35}
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
 
+# v36: equation 5 as written -- all of Y -- plus the two things that has to fix.
+#
+# The reference implementation (github.com/jiabhan/JHQ, IndexJHQ.h) samples
+# 20,000 scalar values a subspace for the residual codebook and runs 5 Lloyd
+# iterations. The paper says "∀y ∈ Y" and O(n·K_r). Since v30 showed all of Y
+# is reachable at every scale, all of Y is what this builds, and the sampling
+# path stays only because results/v30_disk_stage/ measured what it costs.
+#
+# Two consequences. First, the chunk count is derived from a device budget
+# rather than fixed at 8: a chunk is C*n*Ds*20 bytes and Ds = d/M, so stella at
+# M=64 -- inside the paper's own 1024-d sweep -- wanted 33.9 GiB of a 31.4 GiB
+# card and overran cub's 32-bit segment offsets. Smaller chunks cost launches
+# and not I/O, since each reads its own contiguous slice of the spill file.
+# Second, JHQ_RES_MAX_ITER, JHQ_RES_SEED and JHQ_RES_TOL join the index cache
+# key: a sweep over the iteration cap moves recall by 7e-3, and with a cache
+# directory set it would have loaded the first cap's codebook ten times.
+#
+# It carries its own demo, since the shared one defaults the residual set to
+# the primary training sample and jhq_v23_faithful is frozen against that.
+set(V36 jhq_v36_all_default)
+add_library(jhq_v36_exp STATIC
+    ${V36}/encode.cu ${V36}/search.cu ${V36}/jhq_gpu_index.cu
+    ${V36}/train_pq_gpu.cu ${V36}/train_res_gpu.cu)
+target_include_directories(jhq_v36_exp PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_v36_exp PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+set(V36_DEFS JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+target_compile_definitions(jhq_v36_exp PRIVATE ${V36_DEFS})
+target_compile_options(jhq_v36_exp PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>)
+add_executable(demo_jhq_v36_exp examples/demo_jhq_v36.cu)
+target_compile_definitions(demo_jhq_v36_exp PRIVATE
+    JHQ_INDEX_HEADER="${V36}/jhq_gpu_index.cuh" ${V36_DEFS})
+target_link_libraries(demo_jhq_v36_exp PRIVATE jhq_v36_exp)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
