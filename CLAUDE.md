@@ -27,6 +27,30 @@ Afterwards `git status --porcelain jhq_v<prev>_<name>` must be empty.
 Editing it makes the working tree stop matching the tag the paper cites. If a
 change is needed there, it is a new version directory instead.
 
+## Syncing to the GPU box
+
+The box reaches GitHub only after `source /etc/network_turbo` (AutoDL's proxy).
+With it, `git fetch` works and the box can be put at a known commit in one
+step. Without it the fetch dies with a GnuTLS error and the temptation is to
+ship files by hand.
+
+**Do not ship files by hand.** Push, then on the box:
+
+```sh
+source /etc/network_turbo
+cd /root/JHQ_GPU
+git fetch https://github.com/lrlorry/JHQ_GPU.git <branch> && git reset --hard FETCH_HEAD
+```
+
+Run it detached (`setsid nohup ... &`) and read a log: the ssh connection
+drops often enough that an interactive fetch gets cut off half way.
+
+Piecemeal shipping is what produced the worst bug of this session. `cpu/` was
+never sent while `jhq_v2*/` was, so every test ran against a codebook from
+before the uneven-bit-split commit, and a finding about which M are admissible
+turned out to be a finding about code that had been superseded. The box must
+be at a commit, not at a mixture.
+
 ## Two other rules that have cost time here
 
 **The working tree is shared with other Claude sessions.** Stage explicit
