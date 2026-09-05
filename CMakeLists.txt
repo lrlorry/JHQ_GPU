@@ -1172,6 +1172,57 @@ target_compile_definitions(demo_jhq_v37_exp PRIVATE
     JHQ_INDEX_HEADER="${V37}/jhq_gpu_index.cuh" ${V36_DEFS})
 target_link_libraries(demo_jhq_v37_exp PRIVATE jhq_v37_exp)
 
+# Step 1 of sizing the refine stage: the same v37, with the residual term
+# compiled out. d_res goes unused so the whole per-candidate loop and the
+# list_res reads fold away, and the QPS difference against demo_jhq_v37_exp is
+# the entire cost of residual refinement. Its recall is meaningless by
+# construction -- it is the primary level alone -- and is not to be reported.
+add_library(jhq_v37_nores STATIC
+    ${V37}/encode.cu ${V37}/search.cu ${V37}/jhq_gpu_index.cu
+    ${V37}/train_pq_gpu.cu ${V37}/train_res_gpu.cu)
+target_include_directories(jhq_v37_nores PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_v37_nores PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+target_compile_definitions(jhq_v37_nores PRIVATE ${V36_DEFS} JHQ_NO_RESIDUAL=1)
+target_compile_options(jhq_v37_nores PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>)
+add_executable(demo_jhq_v37_nores examples/demo_jhq_v36.cu)
+target_compile_definitions(demo_jhq_v37_nores PRIVATE
+    JHQ_INDEX_HEADER="${V37}/jhq_gpu_index.cuh" ${V36_DEFS} JHQ_NO_RESIDUAL=1)
+target_link_libraries(demo_jhq_v37_nores PRIVATE jhq_v37_nores)
+
+# v38: three ways to stop the residual codebook being evicted from L1, one
+# directory, one target each, all four measured against each other in a single
+# run. Written before step 1 said whether the stage is worth optimising; not
+# built until it does.
+#
+#   base  the control, identical to v37
+#   ldcs  __ldcs on the residual-code loads: they are read once and never
+#         reused, so marking them evict-first leaves L1 to the codebook
+#   smem  opt in to 101,376 bytes of shared and put the codebook there. Fits
+#         vogue exactly (3072 + 98304) and not M=128 (135,168). One block per
+#         SM afterwards, so the occupancy that hides L2 latency is the price
+#   l1    the opposite carveout: smallest shared partition, largest L1
+set(V38 jhq_v38_refine_cache)
+foreach(variant base ldcs smem l1)
+  set(vdefs "")
+  if(NOT variant STREQUAL base)
+    string(TOUPPER ${variant} VUP)
+    set(vdefs JHQ_REFINE_${VUP}=1)
+  endif()
+  add_library(jhq_v38_${variant} STATIC
+      ${V38}/encode.cu ${V38}/search.cu ${V38}/jhq_gpu_index.cu
+      ${V38}/train_pq_gpu.cu ${V38}/train_res_gpu.cu)
+  target_include_directories(jhq_v38_${variant} PUBLIC ${CMAKE_SOURCE_DIR})
+  target_link_libraries(jhq_v38_${variant} PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+  target_compile_definitions(jhq_v38_${variant} PRIVATE ${V36_DEFS} ${vdefs})
+  target_compile_options(jhq_v38_${variant} PRIVATE
+      $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>)
+  add_executable(demo_jhq_v38_${variant} examples/demo_jhq_v36.cu)
+  target_compile_definitions(demo_jhq_v38_${variant} PRIVATE
+      JHQ_INDEX_HEADER="${V38}/jhq_gpu_index.cuh" ${V36_DEFS} ${vdefs})
+  target_link_libraries(demo_jhq_v38_${variant} PRIVATE jhq_v38_${variant})
+endforeach()
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
