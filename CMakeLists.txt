@@ -1033,6 +1033,27 @@ add_jhq_dir(v31_exp ${V31}
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
 
+# v32: Lloyd runs to its fixed point.
+#
+# v31 measured 25 iterations against 800 and found recall still climbing:
+# 25 -> 200 gains 4.8e-3, 4.4e-3 and 3.8e-3 on vogue, bge-m3 and stella, and
+# train time does not move, because the segmented sort is 16M operations and an
+# iteration is 5120. A Lloyd-Max quantizer is the fixed point of the Lloyd
+# conditions, so a fixed count was the departure and stopping when the
+# partition stops moving is the repair.
+#
+# The test is exact and has no tolerance to pick: with the values sorted, the
+# partition is the Kr-1 boundaries, so boundaries that hold mean the update
+# writes back the centroids it read. JHQ_RES_MAX_ITER is the cap, reported in
+# the run when it is hit; JHQ_RES_ITER is gone, since a count is no longer what
+# decides how long the loop runs.
+set(V32 jhq_v32_lloyd_converge)
+add_jhq_dir(v32_exp ${V32}
+    JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
