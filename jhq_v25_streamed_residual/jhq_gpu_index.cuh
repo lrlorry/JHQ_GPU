@@ -10,7 +10,7 @@
 #include "cpu/codebook.h"      // train_1d_kmeans, for the residual level
 #include "cpu/pq_codebook.h"
 #include "cpu/jl_transform.h"
-#include "jhq_v23_faithful/search.cuh"
+#include "jhq_v25_streamed_residual/search.cuh"
 
 namespace jhq_gpu {
 
@@ -45,7 +45,13 @@ public:
     JHQGpuIndex(int d, Params p);
     ~JHQGpuIndex();
 
-    void train(const float* h_x, int n_train);
+    // h_res_x / n_res_train train the residual codebook alone. Everything the
+    // primary level needs -- sigma, the equation 4 codebook, the IVF centroids
+    // -- still comes from h_x and n_train, so a sweep over n_res_train varies
+    // the residual training set and nothing else. Defaults reproduce the
+    // single-sample behaviour exactly.
+    void train(const float* h_x, int n_train,
+               const float* h_res_x = nullptr, int n_res_train = 0);
     void add  (const float* h_x, int n);
     void search(const float* h_q, int nq, int k,
                 float* h_dists, int* h_labels) const;
@@ -104,6 +110,13 @@ private:
     mutable cublasHandle_t  cublas_;
 
     float* rotate_on_gpu(const float* h_x, int n, double* sum_sq = nullptr) const;
+    // Streams the rotation and primary encoding a batch at a time, so the
+    // device holds one batch rather than the whole set. The residuals
+    // themselves are O(N*Ds) per subspace -- that is what equation 5 collects
+    // and it cannot be avoided without approximating -- but they belong in
+    // host memory, not in VRAM.
+    void   train_residual_codebook_from(const float* all_resid, int n);
+    void   train_residual_codebook_streamed(const float* h_x, int n);
     void   train_residual_codebook(const float* d_y_train,
                                    const uint8_t* d_codes_train, int n_train);
     void   train_ivf_centroids(const float* h_y_train,

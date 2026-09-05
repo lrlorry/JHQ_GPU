@@ -972,6 +972,23 @@ add_jhq_dir(v23_cascade ${V23}
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=8
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
 
+# ── v25: the residual level trained without holding the set rotated ──────────
+# v23 frozen as paper-faithful-v1 rotates the residual training set whole, so
+# all of Y needed 38.5 GB (bge-m3) and 67.8 GB (stella) of VRAM on a 31.4 GB
+# card and could not run. v25 walks subspace groups: a group's rotation is a
+# d-by-(G*Ds) row slice of Pi, so the device holds one batch and the host holds
+# O(N*G*Ds) rather than O(N*d) -- 4.2 GB at G=8 against 67.8.
+#
+# Same arithmetic (N*d*(G*Ds) flops over M/G groups is N*d*d), same exact
+# sorted 1-D k-means per subspace. What multiplies is reading the base, M/G
+# times. Search semantics are v23's, unchanged.
+set(V25 jhq_v25_streamed_residual)
+add_jhq_dir(v25_exp ${V25}
+    JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+
 set(V24 jhq_v24_paper_default)
 
 # Depth of the per-thread candidate buffer. The scan keeps K_LOCAL candidates
