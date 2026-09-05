@@ -1223,6 +1223,31 @@ foreach(variant base ldcs smem l1)
   target_link_libraries(demo_jhq_v38_${variant} PRIVATE jhq_v38_${variant})
 endforeach()
 
+# v39: the one of v38's three that won, with no flag left behind.
+#
+# Measured three times on three datasets, against v38_base:
+#   __ldcs on list_res   +14.4% / +8.8% / +14.6%   worse, and instructively so
+#   codebook to shared    -3.1% /  0    /  0       only where it fits
+#   carveout toward L1    -2.3% / -2.2% / -2.2%    everywhere
+#
+# So v39 puts the codebook in opt-in shared when it fits -- 3072 + 98304 is
+# exactly this card's 101,376 at M=96 -- and otherwise asks for the smallest
+# shared partition so the unified block stays L1. Refinement is 7% of search,
+# and this is about a third of it.
+set(V39 jhq_v39_refine_l1)
+add_library(jhq_v39_exp STATIC
+    ${V39}/encode.cu ${V39}/search.cu ${V39}/jhq_gpu_index.cu
+    ${V39}/train_pq_gpu.cu ${V39}/train_res_gpu.cu)
+target_include_directories(jhq_v39_exp PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(jhq_v39_exp PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+target_compile_definitions(jhq_v39_exp PRIVATE ${V36_DEFS})
+target_compile_options(jhq_v39_exp PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>)
+add_executable(demo_jhq_v39_exp examples/demo_jhq_v36.cu)
+target_compile_definitions(demo_jhq_v39_exp PRIVATE
+    JHQ_INDEX_HEADER="${V39}/jhq_gpu_index.cuh" ${V36_DEFS})
+target_link_libraries(demo_jhq_v39_exp PRIVATE jhq_v39_exp)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
