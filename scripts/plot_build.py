@@ -2,8 +2,8 @@
 """The index build: train + add on six datasets against the CPU reference and
 the first GPU port, and where the largest add's time goes.
 
-Reads results/final/build_gpu.csv and build_stella_add_phases.csv, writes
-results/final/fig4_build.png.
+Reads results/pre_freeze_v22_s2b1/build_gpu.csv and build_stella_add_phases.csv, writes
+results/pre_freeze_v22_s2b1/fig4_build.png.
 """
 import csv, os
 import matplotlib

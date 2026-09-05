@@ -112,8 +112,8 @@ def fig_crossover():
     fig.suptitle("The same comparison at three dimensions: JHQ's distance work is O(M) with M "
                  "fixed, CAGRA's is O(d)", fontsize=13, y=.99)
     fig.tight_layout(rect=[0, 0, 1, .95])
-    fig.savefig(os.path.join(D, "core1_crossover.png"), dpi=155)
-    print("core1_crossover.png")
+    fig.savefig(os.path.join(D, "fig_core1_crossover.png"), dpi=155)
+    print("fig_core1_crossover.png")
 
 
 # ── 2. scale: what fits on one card ──────────────────────────────────────────
@@ -191,8 +191,8 @@ def fig_scale():
     fig.suptitle("At ten million vectors everything but fp32 CAGRA fits — and only JHQ still "
                  "reaches 0.95", fontsize=13)
     fig.tight_layout(rect=[0, 0, 1, .94])
-    fig.savefig(os.path.join(D, "core2_scale.png"), dpi=155)
-    print("core2_scale.png")
+    fig.savefig(os.path.join(D, "fig_core2_scale.png"), dpi=155)
+    print("fig_core2_scale.png")
 
 
 # ── 3. the hierarchy, three settings of the same index ───────────────────────
@@ -224,8 +224,8 @@ def fig_hierarchy():
     fig.suptitle("Same kernel, same IVF, same occupancy and selection — only the residual level "
                  "differs.  Without it nothing reaches 0.95.", fontsize=12.5)
     fig.tight_layout(rect=[0, 0, 1, .93])
-    fig.savefig(os.path.join(D, "core3_hierarchy.png"), dpi=155)
-    print("core3_hierarchy.png")
+    fig.savefig(os.path.join(D, "fig_core3_hierarchy.png"), dpi=155)
+    print("fig_core3_hierarchy.png")
 
 
 if __name__ == "__main__":

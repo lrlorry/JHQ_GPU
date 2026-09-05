@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the results report from results/final/p0_*.csv.
+"""Generate the results report from results/pre_freeze_v22_s2b1/p0_*.csv.
 
 The previous report was written by hand and one of its tables carried a row
 copied from the wrong dataset. Everything data-dependent here is computed from
@@ -192,12 +192,12 @@ def main():
                        "the lines cross near 0.97 and at 3072 JHQ is above it from 0.96 on. "
                        "JQ never exceeds 0.774, so it has no line in this range and its "
                        "ceiling is noted in each panel instead."),
-        core1=img_tag("core1_crossover.png",
+        core1=img_tag("fig_core1_crossover.png",
                       "The same comparison at three dimensions. JHQ's distance work is O(M) "
                       "with M fixed at 96 subspaces; CAGRA scores against the stored vectors, "
                       "so its work grows with d. The recall at which JHQ passes fp32 CAGRA is "
                       "marked: absent at 768, 0.979 at 1536, 0.968 at 3072."),
-        core2=img_tag("core2_scale.png",
+        core2=img_tag("fig_core2_scale.png",
                       "Device memory held after the build, against the card. Everything except "
                       "fp32 CAGRA fits at 10.1M vectors -- int8 CAGRA at 11.1 GiB and IVF-PQ at "
                       "7.4 GiB both run -- but they cap at 0.9376 and 0.9425, while the method "
@@ -206,7 +206,7 @@ def main():
                       "there that reaches 0.95. At 17.8M the eight-bit setting no longer "
                       "fits the single-pass add and is built in two passes, which is what "
                       "its bar shows."),
-        core3=img_tag("core3_hierarchy.png",
+        core3=img_tag("fig_core3_hierarchy.png",
                       "Residual level off, on at four bits, on at eight. Same kernel, same "
                       "IVF, same occupancy and selection -- the gap is the quantiser, not the "
                       "kernel work. Nothing without the residual level reaches 0.95 on any "

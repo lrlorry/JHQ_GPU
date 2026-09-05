@@ -17,7 +17,7 @@ dataset's numbers onto another. So:
   * nothing is transcribed by hand -- the CSV is the only output.
 
 Usage:
-  bench_all.py --suite front --dataset vogue-768 --out results/final/front.csv
+  bench_all.py --suite front --dataset vogue-768 --out results/pre_freeze_v22_s2b1/front.csv
 """
 import argparse, csv, json, os, re, subprocess, statistics, sys, time
 

@@ -5,7 +5,7 @@ These runs predate the harness and their output is a printed table, not a CSV.
 Parsing them here keeps the same rule the rest of the results follow: every
 number a figure draws comes from a file, and nothing is retyped by hand.
 
-Writes, under results/final/:
+Writes, under results/pre_freeze_v22_s2b1/:
   abl_occupancy_cascade.csv   BLOCK and prefix separated (stage11)
   abl_alpha.csv               ck = alpha*k against recall and QPS (stage9)
   abl_klocal.csv              K_LOCAL against BLOCK, the shared-memory wall (stage18 B)

@@ -6,7 +6,7 @@ produced that and where the design is pinned: the three changes that made the
 scan faster, where the build time went, what the two selection parameters buy,
 and the shared-memory wall that stops the obvious next step.
 
-Everything is read from results/final/*.csv, including the sweeps that predate
+Everything is read from results/pre_freeze_v22_s2b1/*.csv, including the sweeps that predate
 the harness -- scripts/parse_stage_logs.py turns those logs into CSVs first.
 """
 import csv, os

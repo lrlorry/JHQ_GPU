@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The three things the re-measurement found, one figure each.
 
-Reads results/gpu_operating_point/{fronts_gpu,alpha_mechanism,codebook_across_ds,
+Reads results/archive/gpu_operating_point/{fronts_gpu,alpha_mechanism,codebook_across_ds,
 residual_sample_size}.csv and writes fig_alpha.png, fig_codebook_ds.png and
 fig_fronts_gpu.png beside them.
 """
