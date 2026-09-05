@@ -1207,14 +1207,23 @@ void JHQGpuIndex::train_residual_codebook_streamed(const float* h_x, int n)
     // so M/G passes -- and G=8 meant sixteen of them over 67.8 GB at stella,
     // which is most of the cost. The buffers are R_group at n*G*Ds and one
     // gather at n*Ds, so the budget decides G rather than a fixed default.
-    // JHQ_RES_GROUP_GB caps it; 40 GB leaves room under a 90 GB cgroup for the
-    // page cache the mmap'd base wants.
+    // The budget is not "whatever is left". The base is mmap'd, so the pages it
+    // touches sit in the page cache and are re-read from disk if evicted --
+    // and R competes with them for the same cgroup. At stella the base is
+    // 67.8 GB of a 90 GB budget, so a group large enough to cut the pass count
+    // to two takes 33.9 GB, leaves 54.5 GB, and evicts the base: two passes
+    // that both read from disk, which is slower than four that read from
+    // memory. Holding every subspace at once is worse still.
+    //
+    // 18 GB is the knee. It gives G=32 and four passes at stella, with 71 GB
+    // left -- enough for the whole base -- so only the first pass touches the
+    // disk. JHQ_RES_GROUP_GB overrides it, and JHQ_RES_GROUP sets G directly.
     int G;
     if (const char* ge = std::getenv("JHQ_RES_GROUP")) {
         G = std::atoi(ge);
     } else {
         const char* bg = std::getenv("JHQ_RES_GROUP_GB");
-        const double budget = (bg ? std::atof(bg) : 40.0) * 1073741824.0;
+        const double budget = (bg ? std::atof(bg) : 18.0) * 1073741824.0;
         const double per_g  = (double)n * Ds_ * 4.0;       // R_group per subspace
         G = (int)((budget - per_g) / per_g);               // minus the gather
         if (G < 1) G = 1;
