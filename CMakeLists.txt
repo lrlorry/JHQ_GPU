@@ -995,6 +995,17 @@ add_jhq_dir(v23_cascade ${V23}
 # group, so G decides the pass count: 8 meant sixteen passes over 67.8 GB at
 # stella, which dominated the cost. Freeing the duplicate gather leaves room for
 # a much larger group -- at 40 GB the whole of M fits in one or two passes.
+# v29: histogram buckets raised from 2048 to 8192, which the opt-in shared
+# memory allows. The bucket count bounds this estimator's error -- at most
+# Kr-1 buckets straddle a cell boundary, each carrying 1/nbuckets of the mass,
+# so 12% of buckets straddle at 2048 against 256 cells and 3% at 8192.
+set(V29 jhq_v29_hist_wide)
+add_jhq_dir(v29_exp ${V29}
+    JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+
 set(V28 jhq_v28_single_pass)
 add_jhq_dir(v28_exp ${V28}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
