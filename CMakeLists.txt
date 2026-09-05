@@ -999,6 +999,20 @@ add_jhq_dir(v23_cascade ${V23}
 # memory allows. The bucket count bounds this estimator's error -- at most
 # Kr-1 buckets straddle a cell boundary, each carrying 1/nbuckets of the mass,
 # so 12% of buckets straddle at 2048 against 256 cells and 3% at 8192.
+# v30: one pass over the base, residuals spilled to disk, and the device
+# estimator on them. launch_residual_codebook already sorts once, prefix-sums
+# once and runs Lloyd in O(Kr log n) an iteration -- 5120 operations against
+# 6.4 million, identically -- but derived its segments from the rotated set,
+# which has to be resident. Taking the residuals directly frees that, and
+# spilling them (67.8 GB at stella, against 265 GB free on autodl-tmp) means
+# one pass over the base instead of one per subspace chunk.
+set(V30 jhq_v30_disk_stage)
+add_jhq_dir(v30_exp ${V30}
+    JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
