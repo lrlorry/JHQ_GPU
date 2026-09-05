@@ -915,6 +915,9 @@ function(add_jhq_dir TAG DIR)
     target_compile_options(${tgt} PRIVATE
         $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>)
     add_executable(demo_${tgt} examples/demo_jhq_v21_cascade.cu)
+    # The caller must see the same header the library was built from.
+    target_compile_definitions(demo_${tgt} PRIVATE
+        JHQ_INDEX_HEADER="${DIR}/jhq_gpu_index.cuh" ${ARGN})
     target_link_libraries(demo_${tgt} PRIVATE ${tgt})
 endfunction()
 

@@ -19,7 +19,15 @@
 //   * Returned ids are dumped to <prefix>.ivecs and the run to <prefix>.json,
 //     so the next metric change costs a re-parse instead of a re-search.
 
-#include "jhq_v21_cascade/jhq_gpu_index.cuh"
+// One demo serves nine targets, each linking a different version's library.
+// The header it saw was hard-coded to v21 regardless, so a target compiled its
+// caller against v21's declarations and linked v22/v23/v24's definitions --
+// which only worked while the signatures happened to agree, and stopped the
+// moment one changed. add_jhq_dir passes the matching header.
+#ifndef JHQ_INDEX_HEADER
+#define JHQ_INDEX_HEADER "jhq_v21_cascade/jhq_gpu_index.cuh"
+#endif
+#include JHQ_INDEX_HEADER
 #include "common/fvecs_io.cuh"
 #include "common/fvecs_mmap_io.cuh"
 #include "common/recall.cuh"
