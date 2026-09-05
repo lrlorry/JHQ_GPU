@@ -990,6 +990,18 @@ add_jhq_dir(v23_cascade ${V23}
 # it a 100K run and an ALL run hash to the same key and the second loads the
 # first's residual codebook, so a sweep over that parameter compares a result
 # against itself.
+# v28: one gather buffer instead of one per subspace, and the group size chosen
+# from a memory budget rather than fixed at 8. The base is re-read once per
+# group, so G decides the pass count: 8 meant sixteen passes over 67.8 GB at
+# stella, which dominated the cost. Freeing the duplicate gather leaves room for
+# a much larger group -- at 40 GB the whole of M fits in one or two passes.
+set(V28 jhq_v28_single_pass)
+add_jhq_dir(v28_exp ${V28}
+    JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+
 set(V27 jhq_v27_cache_key)
 add_jhq_dir(v27_exp ${V27}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
