@@ -27,6 +27,32 @@ Afterwards `git status --porcelain jhq_v<prev>_<name>` must be empty.
 Editing it makes the working tree stop matching the tag the paper cites. If a
 change is needed there, it is a new version directory instead.
 
+## A version replaces, it does not accommodate
+
+A new version directory carries **one** way of doing each thing. When it
+supersedes an approach, the superseded path is deleted, not kept alive beside
+it behind a flag.
+
+Keeping both is what produces code that cannot be reasoned about:
+
+- The uneven bit split was added to `cpu/pq_codebook.cpp` so equation 4 could
+  be built at any Ds, while the GPU encoders continued to assume one shared
+  level array. Both paths existed; only one worked; nothing said which. It
+  corrupted the heap the first time the two met, and in the meantime an
+  admissibility rule written into three documents described the dead one.
+- Every extra flag doubles what a result can mean. `JHQ_RES_HIST`,
+  `JHQ_ENCODE_GEMM`, `JHQ_ENCODE_SEPARABLE` and the rest each make a CSV row
+  ambiguous unless the row records them — which is why the harness now records
+  every `JHQ_*` the child saw.
+
+So: an option earns its place only when both settings are **measured and
+reported**, like `JHQ_RESID_LUT`, where fused and materialised were shown equal
+to 1.192e-07 and the switch exists to reproduce that. An option that exists
+"in case" is dead weight, and dead weight here has been actively misleading.
+
+If an old path is worth keeping for comparison, it keeps its own version
+directory. That is what they are for.
+
 ## Syncing to the GPU box
 
 The box reaches GitHub only after `source /etc/network_turbo` (AutoDL's proxy).
