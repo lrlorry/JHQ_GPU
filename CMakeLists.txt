@@ -986,6 +986,17 @@ add_jhq_dir(v23_cascade ${V23}
 # codebook back and subtracted in a host loop -- 4.1 billion subtractions
 # single-threaded at n_res=4M, 388 s of a 388 s training phase -- for data that
 # was already on the GPU. Same values, same estimator, same grouping.
+# v27: the trained-state cache key carries the residual training size. Without
+# it a 100K run and an ALL run hash to the same key and the second loads the
+# first's residual codebook, so a sweep over that parameter compares a result
+# against itself.
+set(V27 jhq_v27_cache_key)
+add_jhq_dir(v27_exp ${V27}
+    JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+
 set(V26 jhq_v26_gpu_residual)
 add_jhq_dir(v26_exp ${V26}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
