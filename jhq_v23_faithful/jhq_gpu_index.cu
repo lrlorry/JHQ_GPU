@@ -1370,7 +1370,8 @@ static void check_eq4_admissible(int d, int M, int B) {
     }
 }
 
-void JHQGpuIndex::train(const float* h_x, int n_train) {
+void JHQGpuIndex::train(const float* h_x, int n_train,
+                        const float* h_res_x, int n_res_train) {
     check_eq4_admissible(d_, M_, B_);
     const bool phase_timing = std::getenv("JHQ_TRAIN_PHASES") != nullptr;
     auto t_phase = std::chrono::high_resolution_clock::now();
@@ -1518,6 +1519,26 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
     CUDA_CHECK(cudaDeviceSynchronize());
     JHQ_TRAIN_PHASE("primary encode");
 
+    // A separate, larger set for the residual level only. It is rotated by the
+    // Pi already built and encoded against the codebook already built, so the
+    // only thing that varies with n_res_train is which residuals equation 5
+    // collects. sigma, the primary codebook and the IVF centroids above are
+    // untouched by it.
+    float*   d_y_res     = d_y_train;
+    uint8_t* d_codes_res = d_codes_train;
+    int      n_res       = n_train;
+    if (h_res_x && n_res_train > 0 && n_res_train != n_train) {
+        n_res   = n_res_train;
+        d_y_res = rotate_on_gpu(h_res_x, n_res, nullptr);
+        CUDA_CHECK(cudaMalloc(&d_codes_res, (long long)n_res * M_));
+        launch_primary_encode(d_y_res, d_codes_res, d_cent_,
+                              n_res, d_, M_, Ds_, K_);
+        CUDA_CHECK(cudaDeviceSynchronize());
+        std::fprintf(stderr, "[res-train] residual codebook on %d vectors "
+                             "(primary/IVF/sigma still from %d)\n", n_res, n_train);
+        JHQ_TRAIN_PHASE("residual training set");
+    }
+
     train_ivf_centroids(h_y_train.empty() ? nullptr : h_y_train.data(),
                         d_y_train, n_train);
     JHQ_TRAIN_PHASE("ivf centroids");
@@ -1537,12 +1558,12 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
         if (rh && rh[0] == '1') {
             const char* nbe = std::getenv("JHQ_RES_BUCKETS");
             const int nbuckets = nbe ? std::atoi(nbe) : 2048;
-            launch_residual_codebook_hist(d_y_train, d_codes_train, d_cent_,
-                                          n_train, d_, M_, Ds_, K_, Kr_, 25,
+            launch_residual_codebook_hist(d_y_res, d_codes_res, d_cent_,
+                                          n_res, d_, M_, Ds_, K_, Kr_, 25,
                                           nbuckets, d_res_c1d_);
         } else {
-            launch_residual_codebook(d_y_train, d_codes_train, d_cent_,
-                                     n_train, d_, M_, Ds_, K_, Kr_, 25, d_res_c1d_);
+            launch_residual_codebook(d_y_res, d_codes_res, d_cent_,
+                                     n_res, d_, M_, Ds_, K_, Kr_, 25, d_res_c1d_);
         }
         CUDA_CHECK(cudaMemcpy(res_c1d_.data(), d_res_c1d_,
                               (size_t)M_ * Kr_ * sizeof(float), cudaMemcpyDeviceToHost));
@@ -1550,7 +1571,7 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
         // in add(); only the codebook moved.
         JHQ_TRAIN_PHASE("residual codebook (device)");
     } else {
-        train_residual_codebook(d_y_train, d_codes_train, n_train);
+        train_residual_codebook(d_y_res, d_codes_res, n_res);
         JHQ_TRAIN_PHASE("residual codebook");
     }
 
@@ -1559,6 +1580,7 @@ void JHQGpuIndex::train(const float* h_x, int n_train) {
     if (cache_dir) { save_trained(cpath); JHQ_TRAIN_PHASE("cache write"); }
 
     cudaFree(d_y_train);
+    if (d_codes_res != d_codes_train) { cudaFree(d_codes_res); cudaFree(d_y_res); }
     cudaFree(d_codes_train);
 }
 
@@ -2281,6 +2303,17 @@ void JHQGpuIndex::add(const float* h_x, int n) {
                     std::fwrite(co.data(),   sizeof(float),   co.size(),   f);
                     std::fwrite(cent.data(), sizeof(float),   cent.size(), f);
                     std::fwrite(rcb.data(),  sizeof(float),   rcb.size(),  f);
+                    // The IVF centroids too, so a sweep over the residual
+                    // training size can be shown to have left them alone
+                    // rather than merely asserted to.
+                    {
+                        std::vector<float> ivf((size_t)nlist_ * d_);
+                        CUDA_CHECK(cudaMemcpy(ivf.data(), d_centroids_,
+                                              ivf.size() * sizeof(float),
+                                              cudaMemcpyDeviceToHost));
+                        std::fwrite(&nlist_, sizeof(int), 1, f);
+                        std::fwrite(ivf.data(), sizeof(float), ivf.size(), f);
+                    }
                     std::fclose(f);
                     std::fprintf(stderr, "[dump-encode] %d vectors, M=%d Ds=%d K=%d Kr=%d -> %s\n",
                                  nc, M_, Ds_, K_, Kr_, de);

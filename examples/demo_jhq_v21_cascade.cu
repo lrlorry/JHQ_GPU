@@ -130,8 +130,31 @@ int main(int argc, char** argv) {
                         (size_t)d * sizeof(float));
         train_src = sample.data();
     }
+    // JHQ_RES_TRAIN_N sizes the residual codebook's training set alone, for
+    // the sensitivity study of equation 5's "all y in Y". Same deterministic
+    // stride as the primary sample. Unset, or equal to n_train, reproduces the
+    // single-sample behaviour exactly.
+    std::vector<float> res_sample;
+    const float* res_src = nullptr;
+    int n_res_train = 0;
+    if (const char* rt = std::getenv("JHQ_RES_TRAIN_N")) {
+        n_res_train = std::atoi(rt);
+        if (n_res_train <= 0 || n_res_train > nb) n_res_train = nb;
+        if (n_res_train == nb) {
+            res_src = base.data;                 // every vector; no gather
+        } else {
+            res_sample.resize((size_t)n_res_train * d);
+            const long long rstride = (long long)nb / n_res_train;
+            for (int i = 0; i < n_res_train; ++i)
+                std::memcpy(res_sample.data() + (size_t)i * d,
+                            base.data + (size_t)(i * rstride) * d,
+                            (size_t)d * sizeof(float));
+            res_src = res_sample.data();
+        }
+        printf("residual codebook trains on %d vectors\n", n_res_train);
+    }
     auto t0 = Clock::now();
-    idx.train(train_src, n_train);
+    idx.train(train_src, n_train, res_src, n_res_train);
     double train_ms = Ms(Clock::now() - t0).count();
     printf("  train: %.1f ms\n", train_ms);
 

@@ -45,7 +45,13 @@ public:
     JHQGpuIndex(int d, Params p);
     ~JHQGpuIndex();
 
-    void train(const float* h_x, int n_train);
+    // h_res_x / n_res_train train the residual codebook alone. Everything the
+    // primary level needs -- sigma, the equation 4 codebook, the IVF centroids
+    // -- still comes from h_x and n_train, so a sweep over n_res_train varies
+    // the residual training set and nothing else. Defaults reproduce the
+    // single-sample behaviour exactly.
+    void train(const float* h_x, int n_train,
+               const float* h_res_x = nullptr, int n_res_train = 0);
     void add  (const float* h_x, int n);
     void search(const float* h_q, int nq, int k,
                 float* h_dists, int* h_labels) const;
