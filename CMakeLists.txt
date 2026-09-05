@@ -1054,6 +1054,23 @@ add_jhq_dir(v32_exp ${V32}
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
 
+# v33: the convergence test v32 needed.
+#
+# v32 tested the fixed point exactly, on the bin boundaries, and hit its cap of
+# 1000 on all three datasets. At 96 * 257 boundaries over 800k sorted values a
+# subspace, one boundary flipping between two values a float apart never stops,
+# while the codebook it describes has stood still for hundreds of iterations.
+# v33 tests the centroids instead, relative: converged when no centroid moves by
+# more than JHQ_RES_TOL (1e-6) of the largest, which is below float32's own
+# resolution. The still-moving boundary count is reported so the distinction is
+# in the run record rather than in this comment.
+set(V33 jhq_v33_lloyd_tol)
+add_jhq_dir(v33_exp ${V33}
+    JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
