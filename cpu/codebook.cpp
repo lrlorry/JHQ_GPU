@@ -169,3 +169,52 @@ void LloydMaxCodebook::reconstruct(const uint8_t* code, float* out) const {
         }
     }
 }
+
+std::vector<float> train_1d_kmeans_hold(const float* vals, int n, int Kr,
+                                        int max_iter, float tol) {
+    if (n <= 0 || Kr <= 0) return {};
+    if (n < Kr) Kr = n;
+
+    std::vector<float> sorted(vals, vals + n);
+    std::sort(sorted.begin(), sorted.end());
+
+    std::vector<float> c(Kr);
+    for (int i = 0; i < Kr; i++) {
+        int idx = std::min((int)((i + 0.5f) / Kr * n), n - 1);
+        c[i] = sorted[idx];
+    }
+
+    std::vector<double> sum(Kr);
+    std::vector<int>    cnt(Kr);
+
+    for (int iter = 0; iter < max_iter; iter++) {
+        std::fill(sum.begin(), sum.end(), 0.0);
+        std::fill(cnt.begin(), cnt.end(), 0);
+
+        for (int i = 0; i < n; i++) {
+            float v = vals[i];
+            int lo = 0, hi = Kr - 1;
+            while (lo < hi) {
+                int mid = (lo + hi) / 2;
+                if (v < 0.5f * (c[mid] + c[mid + 1])) hi = mid;
+                else lo = mid + 1;
+            }
+            sum[lo] += v;
+            cnt[lo]++;
+        }
+
+        // Empty cell holds; that is the whole difference from train_1d_kmeans,
+        // and it is what lets the loop stop on a tolerance instead of a count.
+        float maxdelta = 0.f, maxabs = 0.f;
+        for (int i = 0; i < Kr; i++) {
+            const float new_c = (cnt[i] == 0) ? c[i] : (float)(sum[i] / cnt[i]);
+            maxdelta = std::max(maxdelta, std::fabs(new_c - c[i]));
+            maxabs   = std::max(maxabs,   std::fabs(new_c));
+            c[i] = new_c;
+        }
+        // Held cells keep c ordered, so this only guards float edge cases.
+        std::sort(c.begin(), c.end());
+        if (maxabs > 0.f && maxdelta <= tol * maxabs) break;
+    }
+    return c;
+}

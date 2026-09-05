@@ -1071,6 +1071,28 @@ add_jhq_dir(v33_exp ${V33}
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
 
+# v34: an empty cell holds, and Lloyd converges.
+#
+# v33 relaxed the fixed-point test to a relative tolerance and still hit its cap
+# at 20,000 iterations with max |dc| at 2.5e-5 of the largest centroid -- 250x
+# what float32 can jitter by. The cause was in the update, not the test: a cell
+# that drew nothing was reseeded to the quantile position sorted[(i+0.5)/Kr*n],
+# a dense part of the data, so it took points from a neighbour, emptied another
+# cell, and was thrown back again forever. It also put c out of order, which
+# made the bitonic sort permute it and the position-wise test read a permutation
+# as motion.
+#
+# Holding the cell keeps c ordered and distortion non-increasing, which is the
+# standard Lloyd-Max convention and the only one under which "run to
+# convergence" means anything. The empty-cell count is reported, since a held
+# cell is a wasted codeword.
+set(V34 jhq_v34_empty_hold)
+add_jhq_dir(v34_exp ${V34}
+    JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1

@@ -8,6 +8,17 @@
 // because the residual distribution is a mixture of truncated Gaussians.
 std::vector<float> train_1d_kmeans(const float* vals, int n, int Kr, int max_iter = 25);
 
+// The same 1-D Lloyd, except that a cell which draws nothing keeps the centroid
+// it had rather than being reseeded to a quantile of the data. The reseed is a
+// jump into a dense region, so the cell takes points from a neighbour, empties
+// another, and is thrown back again: on GPU that never settled in 20,000
+// iterations. Held in place, distortion cannot increase and the iteration
+// reaches a fixed point, which is what a Lloyd-Max quantizer is defined as.
+// train_1d_kmeans keeps the old rule because jhq_v23_faithful is frozen against
+// it; from jhq_v34_empty_hold on, this is the one to call.
+std::vector<float> train_1d_kmeans_hold(const float* vals, int n, int Kr,
+                                        int max_iter, float tol = 1e-6f);
+
 // Lloyd-Max codebook for JQ (paper §3.2, Equations 3 & 4).
 //
 // Because the JL transform makes each dimension independently N(0,σ²),
