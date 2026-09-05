@@ -69,3 +69,21 @@ cap 1000 (`v34.log`). The iterations are noise there -- the cost is the 67.8 GB
 written and read back -- and recall is 0.9921 against 0.9920 for the 100K
 sample at the same cap. Consistent with v30: **sampling is still not what
 matters.** The iteration count is.
+
+## v35 confirms the default
+
+`v35_confirm.log` -- `jhq_v35_iters_2000` with no environment variable set at
+all, so 2000 comes from the source:
+
+| | Recall@10 | vs v34 at cap 2000 | QPS | train | add |
+|---|---|---|---|---|---|
+| vogue-768 | 0.9848 | 0.9846 | 21229 | 6440.6 ms* | 416.4 ms |
+| bge-m3 | 0.9589 | 0.9585 | 8182 | 306.8 ms | 2168.3 ms |
+| stella | 0.9914 | 0.9915 | 11504 | 325.5 ms | 5530.0 ms |
+
+All three inside repeat-run noise. QPS is unchanged, as it must be -- the
+codebook changed, not the search.
+
+\* the first configuration in the script again pays ~6 s of one-time CUDA
+context and cuBLAS setup; bge and stella run later in the same script and show
+the real 307 and 326 ms.
