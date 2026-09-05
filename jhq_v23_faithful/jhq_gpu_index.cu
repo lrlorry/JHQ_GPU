@@ -1117,6 +1117,81 @@ void JHQGpuIndex::train_ivf_centroids(
 }
 
 // ── Residual codebook training ────────────────────────────────────────────────
+// Equation 5 over a set too large to rotate in one piece.
+//
+// The device never needs the whole rotated set: the residual of a vector
+// depends on that vector and the primary codebook, nothing else. Rotating and
+// encoding a batch at a time keeps VRAM at O(batch * d) regardless of N, which
+// is what made ALL fail before -- rotate_on_gpu allocated N*d*4 twice, 38.5 GB
+// at bge-m3 and 67.8 at stella against a 31.4 GB card, for data that is
+// consumed once and per-vector.
+//
+// The residuals themselves stay O(N*d). That is not an artefact: equation 5
+// collects every one-dimensional residual value and the exact 1-D k-means
+// below sorts them. The histogram path approximates to avoid it; this does
+// not approximate, it just puts the array in host memory where it fits.
+// The per-subspace 1-D k-means, shared by the streamed and non-streamed
+// paths so both run the same estimator on the same values. This loop, not the
+// primary codebook, is the index build: phase timing put it at 23.5 s of a
+// 28.5 s train against the PQ k-means's 4.2 s. Each subspace reads its own
+// stride and writes its own slice, so the axis parallelises -- resid moves
+// inside so each thread has its own scratch.
+void JHQGpuIndex::train_residual_codebook_from(const float* all_resid, int n)
+{
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
+    for (int m = 0; m < M_; ++m) {
+        std::vector<float> resid_m;
+        resid_m.reserve((size_t)n * Ds_);
+        for (int i = 0; i < n; i++) {
+            const float* ri = all_resid + (size_t)i * d_ + (size_t)m * Ds_;
+            resid_m.insert(resid_m.end(), ri, ri + Ds_);
+        }
+        std::vector<float> cb = train_1d_kmeans(resid_m.data(), (int)resid_m.size(), Kr_);
+        std::copy(cb.begin(), cb.end(), res_c1d_.begin() + (size_t)m * Kr_);
+    }
+}
+
+void JHQGpuIndex::train_residual_codebook_streamed(const float* h_x, int n)
+{
+    const int batch = std::min(n, 200000);
+    std::vector<float>   h_y   ((size_t)batch * d_);
+    std::vector<uint8_t> h_code((size_t)batch * M_);
+    std::vector<float>   yhat  (d_);
+
+    // The one array whose size follows N. 38.5 GB at bge-m3, 67.8 at stella,
+    // against a 96.6 GB budget -- which is why this is host memory.
+    std::vector<float> all_resid((size_t)n * d_);
+
+    uint8_t* d_code = nullptr;
+    CUDA_CHECK(cudaMalloc(&d_code, (size_t)batch * M_));
+
+    for (int off = 0; off < n; off += batch) {
+        const int nb = std::min(batch, n - off);
+        float* d_y = rotate_on_gpu(h_x + (size_t)off * d_, nb, nullptr);
+        launch_primary_encode(d_y, d_code, d_cent_, nb, d_, M_, Ds_, K_);
+        CUDA_CHECK(cudaDeviceSynchronize());
+        CUDA_CHECK(cudaMemcpy(h_y.data(), d_y, (size_t)nb * d_ * sizeof(float),
+                              cudaMemcpyDeviceToHost));
+        CUDA_CHECK(cudaMemcpy(h_code.data(), d_code, (size_t)nb * M_,
+                              cudaMemcpyDeviceToHost));
+        cudaFree(d_y);
+        for (int i = 0; i < nb; ++i) {
+            cb_->reconstruct(h_code.data() + (size_t)i * M_, yhat.data());
+            const float* yi = h_y.data() + (size_t)i * d_;
+            float* ri = all_resid.data() + (size_t)(off + i) * d_;
+            for (int j = 0; j < d_; ++j) ri[j] = yi[j] - yhat[j];
+        }
+    }
+    cudaFree(d_code);
+
+    // Same per-subspace 1-D k-means the non-streamed path runs, on the same
+    // values it would have produced.
+    res_c1d_.assign((size_t)M_ * Kr_, 0.f);
+    train_residual_codebook_from(all_resid.data(), n);
+}
+
 void JHQGpuIndex::train_residual_codebook(
     const float* d_y_train, const uint8_t* d_codes_train, int n_train)
 {
@@ -1163,19 +1238,7 @@ void JHQGpuIndex::train_residual_codebook(
     // subspace reads its own stride of all_resid and writes its own slice of
     // res_c1d_, so the axis parallelises the same way -- resid moves inside so
     // each thread has its own scratch.
-#ifdef _OPENMP
-#pragma omp parallel for schedule(dynamic)
-#endif
-    for (int m = 0; m < M_; ++m) {
-        std::vector<float> resid_m;
-        resid_m.reserve((size_t)n_train * Ds_);
-        for (int i = 0; i < n_train; i++) {
-            const float* ri = all_resid.data() + (size_t)i * d_ + (size_t)m * Ds_;
-            resid_m.insert(resid_m.end(), ri, ri + Ds_);
-        }
-        std::vector<float> cb = train_1d_kmeans(resid_m.data(), (int)resid_m.size(), Kr_);
-        std::copy(cb.begin(), cb.end(), res_c1d_.begin() + (size_t)m * Kr_);
-    }
+    train_residual_codebook_from(all_resid.data(), n_train);
 #endif
 
     CUDA_CHECK(cudaMalloc(&d_res_c1d_, (size_t)M_ * Kr_ * sizeof(float)));
@@ -1527,16 +1590,35 @@ void JHQGpuIndex::train(const float* h_x, int n_train,
     float*   d_y_res     = d_y_train;
     uint8_t* d_codes_res = d_codes_train;
     int      n_res       = n_train;
+    bool     streamed    = false;
     if (h_res_x && n_res_train > 0 && n_res_train != n_train) {
-        n_res   = n_res_train;
-        d_y_res = rotate_on_gpu(h_res_x, n_res, nullptr);
-        CUDA_CHECK(cudaMalloc(&d_codes_res, (long long)n_res * M_));
-        launch_primary_encode(d_y_res, d_codes_res, d_cent_,
-                              n_res, d_, M_, Ds_, K_);
-        CUDA_CHECK(cudaDeviceSynchronize());
-        std::fprintf(stderr, "[res-train] residual codebook on %d vectors "
-                             "(primary/IVF/sigma still from %d)\n", n_res, n_train);
-        JHQ_TRAIN_PHASE("residual training set");
+        n_res = n_res_train;
+        // Whether the rotated set would fit on the device is not the question
+        // -- it never needed to be there. The residual of a vector depends on
+        // that vector and the primary codebook alone, so rotating a batch at a
+        // time keeps VRAM at O(batch*d) whatever N is. Rotating the whole set
+        // is what made ALL fail at 10.1M and 17.8M: 38.5 and 67.8 GB against a
+        // 31.4 GB card, for data consumed once and per-vector.
+        //
+        // Above the size where the whole-set path is comfortably in range, take
+        // the streamed one. Both compute the same residuals and hand them to
+        // the same estimator; only where the rotation happens differs.
+        const double whole_gb = (double)n_res * d_ * 4.0 / (1024.0*1024.0*1024.0);
+        streamed = whole_gb > 4.0;
+        std::fprintf(stderr, "[res-train] residual codebook on %d vectors, %s "
+                             "(primary/IVF/sigma still from %d; rotated set "
+                             "would be %.1f GB)\n",
+                     n_res, streamed ? "streamed" : "whole-set", n_train, whole_gb);
+        if (streamed) {
+            JHQ_TRAIN_PHASE("residual training set");
+        } else {
+            d_y_res = rotate_on_gpu(h_res_x, n_res, nullptr);
+            CUDA_CHECK(cudaMalloc(&d_codes_res, (long long)n_res * M_));
+            launch_primary_encode(d_y_res, d_codes_res, d_cent_,
+                                  n_res, d_, M_, Ds_, K_);
+            CUDA_CHECK(cudaDeviceSynchronize());
+            JHQ_TRAIN_PHASE("residual training set");
+        }
     }
 
     train_ivf_centroids(h_y_train.empty() ? nullptr : h_y_train.data(),
@@ -1554,22 +1636,37 @@ void JHQGpuIndex::train(const float* h_x, int n_train,
         // Two ways to the same codebook. The sorted path is exact; the
         // histogram path drops the O(n log n) sort for one O(n) pass and places
         // values by bucket instead of by magnitude. JHQ_RES_HIST picks it.
-        const char* rh = std::getenv("JHQ_RES_HIST");
-        if (rh && rh[0] == '1') {
-            const char* nbe = std::getenv("JHQ_RES_BUCKETS");
-            const int nbuckets = nbe ? std::atoi(nbe) : 2048;
-            launch_residual_codebook_hist(d_y_res, d_codes_res, d_cent_,
-                                          n_res, d_, M_, Ds_, K_, Kr_, 25,
-                                          nbuckets, d_res_c1d_);
+        if (streamed) {
+            // The device estimators want the rotated set whole, which is the
+            // thing being avoided, so the streamed path uses the host one. It
+            // is the same 1-D k-means over the same residuals; only where the
+            // rotation happened differs.
+            train_residual_codebook_streamed(h_res_x, n_res);
+            CUDA_CHECK(cudaMemcpy(d_res_c1d_, res_c1d_.data(),
+                                  (size_t)M_ * Kr_ * sizeof(float),
+                                  cudaMemcpyHostToDevice));
+            JHQ_TRAIN_PHASE("residual codebook (streamed)");
         } else {
-            launch_residual_codebook(d_y_res, d_codes_res, d_cent_,
-                                     n_res, d_, M_, Ds_, K_, Kr_, 25, d_res_c1d_);
+            const char* rh = std::getenv("JHQ_RES_HIST");
+            if (rh && rh[0] == '1') {
+                const char* nbe = std::getenv("JHQ_RES_BUCKETS");
+                const int nbuckets = nbe ? std::atoi(nbe) : 2048;
+                launch_residual_codebook_hist(d_y_res, d_codes_res, d_cent_,
+                                              n_res, d_, M_, Ds_, K_, Kr_, 25,
+                                              nbuckets, d_res_c1d_);
+            } else {
+                launch_residual_codebook(d_y_res, d_codes_res, d_cent_,
+                                         n_res, d_, M_, Ds_, K_, Kr_, 25, d_res_c1d_);
+            }
+            CUDA_CHECK(cudaMemcpy(res_c1d_.data(), d_res_c1d_,
+                                  (size_t)M_ * Kr_ * sizeof(float), cudaMemcpyDeviceToHost));
+            // The correction term per vector still comes from the host encode
+            // path in add(); only the codebook moved.
+            JHQ_TRAIN_PHASE("residual codebook (device)");
         }
-        CUDA_CHECK(cudaMemcpy(res_c1d_.data(), d_res_c1d_,
-                              (size_t)M_ * Kr_ * sizeof(float), cudaMemcpyDeviceToHost));
-        // The correction term per vector still comes from the host encode path
-        // in add(); only the codebook moved.
-        JHQ_TRAIN_PHASE("residual codebook (device)");
+    } else if (streamed) {
+        train_residual_codebook_streamed(h_res_x, n_res);
+        JHQ_TRAIN_PHASE("residual codebook (streamed)");
     } else {
         train_residual_codebook(d_y_res, d_codes_res, n_res);
         JHQ_TRAIN_PHASE("residual codebook");
