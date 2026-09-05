@@ -1,0 +1,875 @@
+=== build 2026-09-05T00:55:35Z ===
+-- Configuring done (0.1s)
+-- Generating done (0.4s)
+-- Build files have been written to: /root/JHQ_GPU/build
+[ 50%] Built target jhq_cpu
+[100%] Built target jhq_v23_faithful_exact
+[100%] Building CUDA object CMakeFiles/demo_jhq_v23_faithful_exact.dir/examples/demo_jhq_v21_cascade.cu.o
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_fvecs(const char*, std::vector<float>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:13:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   13 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:26:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   26 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:27:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   27 |         fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_ivecs(const char*, std::vector<int>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:39:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   39 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:52:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   52 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:53:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   53 |         fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable demo_jhq_v23_faithful_exact
+[100%] Built target demo_jhq_v23_faithful_exact
+build_rc=0
+--- vogue_Br8_nt10000_np32 ---
+[res-train] residual codebook on 10000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 10000 vectors
+  train: 108.0 ms
+  add:   269.1 ms
+Recall@10 : 0.9203     (standard: vs true top-10)
+QPS       : 45592
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt10000_np128 ---
+[res-train] residual codebook on 10000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 10000 vectors
+  train: 96.9 ms
+  add:   236.9 ms
+Recall@10 : 0.9763     (standard: vs true top-10)
+QPS       : 20859
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt10000_np256 ---
+[res-train] residual codebook on 10000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 10000 vectors
+  train: 96.3 ms
+  add:   236.2 ms
+Recall@10 : 0.9829     (standard: vs true top-10)
+QPS       : 13961
+VRAM used : 1465.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt50000_np32 ---
+[res-train] residual codebook on 50000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 50000 vectors
+  train: 138.3 ms
+  add:   256.0 ms
+Recall@10 : 0.9204     (standard: vs true top-10)
+QPS       : 44944
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt50000_np128 ---
+[res-train] residual codebook on 50000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 50000 vectors
+  train: 151.9 ms
+  add:   241.3 ms
+Recall@10 : 0.9773     (standard: vs true top-10)
+QPS       : 21271
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt50000_np256 ---
+[res-train] residual codebook on 50000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 50000 vectors
+  train: 204.2 ms
+  add:   242.5 ms
+Recall@10 : 0.9837     (standard: vs true top-10)
+QPS       : 14135
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt100000_np32 ---
+residual codebook trains on 100000 vectors
+  train: 129.3 ms
+  add:   246.2 ms
+Recall@10 : 0.9201     (standard: vs true top-10)
+QPS       : 44591
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt100000_np128 ---
+residual codebook trains on 100000 vectors
+  train: 134.6 ms
+  add:   249.4 ms
+Recall@10 : 0.9770     (standard: vs true top-10)
+QPS       : 21460
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt100000_np256 ---
+residual codebook trains on 100000 vectors
+  train: 119.5 ms
+  add:   253.3 ms
+Recall@10 : 0.9836     (standard: vs true top-10)
+QPS       : 14421
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt250000_np32 ---
+[res-train] residual codebook on 250000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 250000 vectors
+  train: 234.2 ms
+  add:   273.0 ms
+Recall@10 : 0.9191     (standard: vs true top-10)
+QPS       : 45041
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt250000_np128 ---
+[res-train] residual codebook on 250000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 250000 vectors
+  train: 224.9 ms
+  add:   237.9 ms
+Recall@10 : 0.9752     (standard: vs true top-10)
+QPS       : 21397
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt250000_np256 ---
+[res-train] residual codebook on 250000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 250000 vectors
+  train: 225.6 ms
+  add:   241.7 ms
+Recall@10 : 0.9822     (standard: vs true top-10)
+QPS       : 13959
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt500000_np32 ---
+[res-train] residual codebook on 500000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 500000 vectors
+  train: 306.4 ms
+  add:   288.3 ms
+Recall@10 : 0.9190     (standard: vs true top-10)
+QPS       : 45100
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt500000_np128 ---
+[res-train] residual codebook on 500000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 500000 vectors
+  train: 303.6 ms
+  add:   258.2 ms
+Recall@10 : 0.9747     (standard: vs true top-10)
+QPS       : 21031
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt500000_np256 ---
+[res-train] residual codebook on 500000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 500000 vectors
+  train: 360.9 ms
+  add:   242.8 ms
+Recall@10 : 0.9816     (standard: vs true top-10)
+QPS       : 13910
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt932328_np32 ---
+[res-train] residual codebook on 932328 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 932328 vectors
+  train: 399.3 ms
+  add:   237.5 ms
+Recall@10 : 0.9206     (standard: vs true top-10)
+QPS       : 44602
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt932328_np128 ---
+[res-train] residual codebook on 932328 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 932328 vectors
+  train: 391.3 ms
+  add:   299.9 ms
+Recall@10 : 0.9772     (standard: vs true top-10)
+QPS       : 20971
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br8_nt932328_np256 ---
+[res-train] residual codebook on 932328 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 932328 vectors
+  train: 386.8 ms
+  add:   246.4 ms
+Recall@10 : 0.9839     (standard: vs true top-10)
+QPS       : 14234
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt10000_np32 ---
+[res-train] residual codebook on 10000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 10000 vectors
+  train: 97.8 ms
+  add:   241.5 ms
+Recall@10 : 0.8909     (standard: vs true top-10)
+QPS       : 45465
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt10000_np128 ---
+[res-train] residual codebook on 10000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 10000 vectors
+  train: 97.7 ms
+  add:   251.0 ms
+Recall@10 : 0.9393     (standard: vs true top-10)
+QPS       : 21370
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt10000_np256 ---
+[res-train] residual codebook on 10000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 10000 vectors
+  train: 97.2 ms
+  add:   242.5 ms
+Recall@10 : 0.9450     (standard: vs true top-10)
+QPS       : 14064
+VRAM used : 1123.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt50000_np32 ---
+[res-train] residual codebook on 50000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 50000 vectors
+  train: 154.9 ms
+  add:   242.7 ms
+Recall@10 : 0.8899     (standard: vs true top-10)
+QPS       : 46113
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt50000_np128 ---
+[res-train] residual codebook on 50000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 50000 vectors
+  train: 153.3 ms
+  add:   255.1 ms
+Recall@10 : 0.9370     (standard: vs true top-10)
+QPS       : 21356
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt50000_np256 ---
+[res-train] residual codebook on 50000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 50000 vectors
+  train: 134.7 ms
+  add:   258.2 ms
+Recall@10 : 0.9422     (standard: vs true top-10)
+QPS       : 13963
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt100000_np32 ---
+residual codebook trains on 100000 vectors
+  train: 143.2 ms
+  add:   252.0 ms
+Recall@10 : 0.8898     (standard: vs true top-10)
+QPS       : 44499
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt100000_np128 ---
+residual codebook trains on 100000 vectors
+  train: 108.4 ms
+  add:   250.0 ms
+Recall@10 : 0.9377     (standard: vs true top-10)
+QPS       : 21616
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt100000_np256 ---
+residual codebook trains on 100000 vectors
+  train: 111.9 ms
+  add:   247.7 ms
+Recall@10 : 0.9433     (standard: vs true top-10)
+QPS       : 14348
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt250000_np32 ---
+[res-train] residual codebook on 250000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 250000 vectors
+  train: 225.7 ms
+  add:   249.0 ms
+Recall@10 : 0.8890     (standard: vs true top-10)
+QPS       : 45307
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt250000_np128 ---
+[res-train] residual codebook on 250000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 250000 vectors
+  train: 224.7 ms
+  add:   244.2 ms
+Recall@10 : 0.9365     (standard: vs true top-10)
+QPS       : 21813
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt250000_np256 ---
+[res-train] residual codebook on 250000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 250000 vectors
+  train: 225.1 ms
+  add:   236.5 ms
+Recall@10 : 0.9421     (standard: vs true top-10)
+QPS       : 14543
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt500000_np32 ---
+[res-train] residual codebook on 500000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 500000 vectors
+  train: 291.2 ms
+  add:   236.0 ms
+Recall@10 : 0.8890     (standard: vs true top-10)
+QPS       : 46319
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt500000_np128 ---
+[res-train] residual codebook on 500000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 500000 vectors
+  train: 330.6 ms
+  add:   240.1 ms
+Recall@10 : 0.9372     (standard: vs true top-10)
+QPS       : 21491
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt500000_np256 ---
+[res-train] residual codebook on 500000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 500000 vectors
+  train: 293.8 ms
+  add:   241.5 ms
+Recall@10 : 0.9423     (standard: vs true top-10)
+QPS       : 14199
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt932328_np32 ---
+[res-train] residual codebook on 932328 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 932328 vectors
+  train: 387.2 ms
+  add:   249.1 ms
+Recall@10 : 0.8905     (standard: vs true top-10)
+QPS       : 46303
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt932328_np128 ---
+[res-train] residual codebook on 932328 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 932328 vectors
+  train: 383.5 ms
+  add:   275.0 ms
+Recall@10 : 0.9395     (standard: vs true top-10)
+QPS       : 21158
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- vogue_Br4_nt932328_np256 ---
+[res-train] residual codebook on 932328 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 932328 vectors
+  train: 382.9 ms
+  add:   273.9 ms
+Recall@10 : 0.9445     (standard: vs true top-10)
+QPS       : 14192
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt10000_np32 ---
+[res-train] residual codebook on 10000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 10000 vectors
+  train: 367.8 ms
+  add:   688.0 ms
+Recall@10 : 0.9103     (standard: vs true top-10)
+QPS       : 15202
+VRAM used : 4309.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt10000_np128 ---
+[res-train] residual codebook on 10000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 10000 vectors
+  train: 256.6 ms
+  add:   665.4 ms
+Recall@10 : 0.9691     (standard: vs true top-10)
+QPS       : 5171
+VRAM used : 4309.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt10000_np256 ---
+[res-train] residual codebook on 10000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 10000 vectors
+  train: 254.5 ms
+  add:   652.2 ms
+Recall@10 : 0.9843     (standard: vs true top-10)
+QPS       : 2804
+VRAM used : 4311.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt50000_np32 ---
+[res-train] residual codebook on 50000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 50000 vectors
+  train: 318.8 ms
+  add:   686.7 ms
+Recall@10 : 0.9102     (standard: vs true top-10)
+QPS       : 15128
+VRAM used : 4309.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt50000_np128 ---
+[res-train] residual codebook on 50000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 50000 vectors
+  train: 309.9 ms
+  add:   668.3 ms
+Recall@10 : 0.9689     (standard: vs true top-10)
+QPS       : 5186
+VRAM used : 4309.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt50000_np256 ---
+[res-train] residual codebook on 50000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 50000 vectors
+  train: 312.5 ms
+  add:   663.6 ms
+Recall@10 : 0.9840     (standard: vs true top-10)
+QPS       : 2817
+VRAM used : 4311.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt100000_np32 ---
+residual codebook trains on 100000 vectors
+  train: 259.8 ms
+  add:   691.1 ms
+Recall@10 : 0.9101     (standard: vs true top-10)
+QPS       : 15063
+VRAM used : 4309.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt100000_np128 ---
+residual codebook trains on 100000 vectors
+  train: 252.9 ms
+  add:   590.9 ms
+Recall@10 : 0.9689     (standard: vs true top-10)
+QPS       : 5187
+VRAM used : 4309.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt100000_np256 ---
+residual codebook trains on 100000 vectors
+  train: 256.4 ms
+  add:   793.9 ms
+Recall@10 : 0.9837     (standard: vs true top-10)
+QPS       : 2824
+VRAM used : 4311.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt250000_np32 ---
+[res-train] residual codebook on 250000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 250000 vectors
+  train: 570.2 ms
+  add:   698.7 ms
+Recall@10 : 0.9097     (standard: vs true top-10)
+QPS       : 15207
+VRAM used : 4309.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt250000_np128 ---
+[res-train] residual codebook on 250000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 250000 vectors
+  train: 545.9 ms
+  add:   641.5 ms
+Recall@10 : 0.9691     (standard: vs true top-10)
+QPS       : 5197
+VRAM used : 4309.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt250000_np256 ---
+[res-train] residual codebook on 250000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 250000 vectors
+  train: 544.6 ms
+  add:   648.7 ms
+Recall@10 : 0.9839     (standard: vs true top-10)
+QPS       : 2813
+VRAM used : 4311.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt500000_np32 ---
+[res-train] residual codebook on 500000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 500000 vectors
+  train: 832.4 ms
+  add:   682.0 ms
+Recall@10 : 0.9097     (standard: vs true top-10)
+QPS       : 15106
+VRAM used : 4309.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt500000_np128 ---
+[res-train] residual codebook on 500000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 500000 vectors
+  train: 903.6 ms
+  add:   652.5 ms
+Recall@10 : 0.9686     (standard: vs true top-10)
+QPS       : 5156
+VRAM used : 4309.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt500000_np256 ---
+[res-train] residual codebook on 500000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 500000 vectors
+  train: 876.0 ms
+  add:   687.9 ms
+Recall@10 : 0.9834     (standard: vs true top-10)
+QPS       : 2809
+VRAM used : 4311.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt999000_np32 ---
+[res-train] residual codebook on 999000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 999000 vectors
+  train: 1488.8 ms
+  add:   647.0 ms
+Recall@10 : 0.9101     (standard: vs true top-10)
+QPS       : 15101
+VRAM used : 4309.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt999000_np128 ---
+[res-train] residual codebook on 999000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 999000 vectors
+  train: 1483.2 ms
+  add:   660.3 ms
+Recall@10 : 0.9692     (standard: vs true top-10)
+QPS       : 5181
+VRAM used : 4309.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br8_nt999000_np256 ---
+[res-train] residual codebook on 999000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 999000 vectors
+  train: 1562.6 ms
+  add:   655.3 ms
+Recall@10 : 0.9840     (standard: vs true top-10)
+QPS       : 2818
+VRAM used : 4311.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt10000_np32 ---
+[res-train] residual codebook on 10000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 10000 vectors
+  train: 257.8 ms
+  add:   677.3 ms
+Recall@10 : 0.9015     (standard: vs true top-10)
+QPS       : 16949
+VRAM used : 2845.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt10000_np128 ---
+[res-train] residual codebook on 10000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 10000 vectors
+  train: 255.8 ms
+  add:   662.2 ms
+Recall@10 : 0.9559     (standard: vs true top-10)
+QPS       : 5410
+VRAM used : 2845.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt10000_np256 ---
+[res-train] residual codebook on 10000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 10000 vectors
+  train: 256.4 ms
+  add:   683.1 ms
+Recall@10 : 0.9693     (standard: vs true top-10)
+QPS       : 2875
+VRAM used : 2847.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt50000_np32 ---
+[res-train] residual codebook on 50000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 50000 vectors
+  train: 309.0 ms
+  add:   668.5 ms
+Recall@10 : 0.9011     (standard: vs true top-10)
+QPS       : 17077
+VRAM used : 2845.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt50000_np128 ---
+[res-train] residual codebook on 50000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 50000 vectors
+  train: 309.9 ms
+  add:   666.4 ms
+Recall@10 : 0.9563     (standard: vs true top-10)
+QPS       : 5411
+VRAM used : 2845.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt50000_np256 ---
+[res-train] residual codebook on 50000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 50000 vectors
+  train: 308.6 ms
+  add:   657.2 ms
+Recall@10 : 0.9697     (standard: vs true top-10)
+QPS       : 2876
+VRAM used : 2847.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt100000_np32 ---
+residual codebook trains on 100000 vectors
+  train: 250.0 ms
+  add:   664.2 ms
+Recall@10 : 0.9010     (standard: vs true top-10)
+QPS       : 17019
+VRAM used : 2845.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt100000_np128 ---
+residual codebook trains on 100000 vectors
+  train: 276.4 ms
+  add:   662.7 ms
+Recall@10 : 0.9569     (standard: vs true top-10)
+QPS       : 5397
+VRAM used : 2845.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt100000_np256 ---
+residual codebook trains on 100000 vectors
+  train: 252.1 ms
+  add:   662.1 ms
+Recall@10 : 0.9705     (standard: vs true top-10)
+QPS       : 2867
+VRAM used : 2847.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt250000_np32 ---
+[res-train] residual codebook on 250000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 250000 vectors
+  train: 589.7 ms
+  add:   675.7 ms
+Recall@10 : 0.9008     (standard: vs true top-10)
+QPS       : 17071
+VRAM used : 2845.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt250000_np128 ---
+[res-train] residual codebook on 250000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 250000 vectors
+  train: 545.5 ms
+  add:   693.9 ms
+Recall@10 : 0.9565     (standard: vs true top-10)
+QPS       : 5428
+VRAM used : 2845.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt250000_np256 ---
+[res-train] residual codebook on 250000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 250000 vectors
+  train: 580.7 ms
+  add:   700.8 ms
+Recall@10 : 0.9698     (standard: vs true top-10)
+QPS       : 2897
+VRAM used : 2847.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt500000_np32 ---
+[res-train] residual codebook on 500000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 500000 vectors
+  train: 877.7 ms
+  add:   625.3 ms
+Recall@10 : 0.9015     (standard: vs true top-10)
+QPS       : 17055
+VRAM used : 2845.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt500000_np128 ---
+[res-train] residual codebook on 500000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 500000 vectors
+  train: 846.6 ms
+  add:   679.9 ms
+Recall@10 : 0.9577     (standard: vs true top-10)
+QPS       : 5382
+VRAM used : 2845.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt500000_np256 ---
+[res-train] residual codebook on 500000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 500000 vectors
+  train: 924.7 ms
+  add:   674.1 ms
+Recall@10 : 0.9712     (standard: vs true top-10)
+QPS       : 2887
+VRAM used : 2847.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt999000_np32 ---
+[res-train] residual codebook on 999000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 999000 vectors
+  train: 1512.3 ms
+  add:   709.6 ms
+Recall@10 : 0.9014     (standard: vs true top-10)
+QPS       : 17022
+VRAM used : 2845.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt999000_np128 ---
+[res-train] residual codebook on 999000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 999000 vectors
+  train: 1504.4 ms
+  add:   690.3 ms
+Recall@10 : 0.9576     (standard: vs true top-10)
+QPS       : 5429
+VRAM used : 2845.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+--- o3072_Br4_nt999000_np256 ---
+[res-train] residual codebook on 999000 vectors (primary/IVF/sigma still from 100000)
+residual codebook trains on 999000 vectors
+  train: 1514.8 ms
+  add:   699.8 ms
+Recall@10 : 0.9710     (standard: vs true top-10)
+QPS       : 2883
+VRAM used : 2847.2 MiB  (of 32111 MiB total, measured after build)
+  rc=0
+[dump-encode] 512 vectors, M=96 Ds=8 K=256 Kr=256 -> /root/rtout/cb_vogue_Br8_100000.bin
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+base=932328×768  query=1000×768  gt=1000×100
+M=96  B=8  Br=8  alpha=100.0  k=10  nlist=1024  nprobe=32  ivf_iters=8  batch_size=1024  kmeans_iters=5
+primary: Ds=8  K=256  code=96 B/vec (1.000 bit/dim)
+note: ground truth is 100 wide; Recall@10 compares against its first 10 entries.
+Training on 100000 vectors...
+residual codebook trains on 100000 vectors
+  train: 134.7 ms
+Adding 932328 vectors...
+  add:   262.4 ms
+
+Recall@10 : 0.9203     (standard: vs true top-10)
+Pre-v15 score : 1.0000  (old metric: vs true top-100 -- for lining up against existing results/*.csv only)
+Latency   : 22.24 ms  (1000 queries)
+QPS       : 44968
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+rep_ms    : 21.803 22.054 22.863 22.816 21.654
+wrote     : .ivecs  .json
+[res-train] residual codebook on 932328 vectors (primary/IVF/sigma still from 100000)
+[dump-encode] 512 vectors, M=96 Ds=8 K=256 Kr=256 -> /root/rtout/cb_vogue_Br8_932328.bin
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+base=932328×768  query=1000×768  gt=1000×100
+M=96  B=8  Br=8  alpha=100.0  k=10  nlist=1024  nprobe=32  ivf_iters=8  batch_size=1024  kmeans_iters=5
+primary: Ds=8  K=256  code=96 B/vec (1.000 bit/dim)
+note: ground truth is 100 wide; Recall@10 compares against its first 10 entries.
+Training on 100000 vectors...
+residual codebook trains on 932328 vectors
+  train: 390.3 ms
+Adding 932328 vectors...
+  add:   259.0 ms
+
+Recall@10 : 0.9204     (standard: vs true top-10)
+Pre-v15 score : 1.0000  (old metric: vs true top-100 -- for lining up against existing results/*.csv only)
+Latency   : 22.36 ms  (1000 queries)
+QPS       : 44717
+VRAM used : 1463.2 MiB  (of 32111 MiB total, measured after build)
+rep_ms    : 22.884 22.380 22.617 21.968 21.964
+wrote     : .ivecs  .json
+[dump-encode] 512 vectors, M=384 Ds=8 K=256 Kr=256 -> /root/rtout/cb_o3072_Br8_100000.bin
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+base=999000×3072  query=1000×3072  gt=1000×20
+M=384  B=8  Br=8  alpha=100.0  k=10  nlist=1024  nprobe=32  ivf_iters=8  batch_size=1024  kmeans_iters=5
+primary: Ds=8  K=256  code=384 B/vec (1.000 bit/dim)
+note: ground truth is 20 wide; Recall@10 compares against its first 10 entries.
+Training on 100000 vectors...
+residual codebook trains on 100000 vectors
+  train: 252.8 ms
+Adding 999000 vectors...
+  add:   652.2 ms
+
+Recall@10 : 0.9100     (standard: vs true top-10)
+Pre-v15 score : 0.9981  (old metric: vs true top-20 -- for lining up against existing results/*.csv only)
+Latency   : 66.56 ms  (1000 queries)
+QPS       : 15025
+VRAM used : 4309.2 MiB  (of 32111 MiB total, measured after build)
+rep_ms    : 66.603 66.047 65.840 66.666 67.623
+wrote     : .ivecs  .json
+[res-train] residual codebook on 999000 vectors (primary/IVF/sigma still from 100000)
+[dump-encode] 512 vectors, M=384 Ds=8 K=256 Kr=256 -> /root/rtout/cb_o3072_Br8_999000.bin
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+base=999000×3072  query=1000×3072  gt=1000×20
+M=384  B=8  Br=8  alpha=100.0  k=10  nlist=1024  nprobe=32  ivf_iters=8  batch_size=1024  kmeans_iters=5
+primary: Ds=8  K=256  code=384 B/vec (1.000 bit/dim)
+note: ground truth is 20 wide; Recall@10 compares against its first 10 entries.
+Training on 100000 vectors...
+residual codebook trains on 999000 vectors
+  train: 1477.1 ms
+Adding 999000 vectors...
+  add:   681.6 ms
+
+Recall@10 : 0.9102     (standard: vs true top-10)
+Pre-v15 score : 0.9981  (old metric: vs true top-20 -- for lining up against existing results/*.csv only)
+Latency   : 66.30 ms  (1000 queries)
+QPS       : 15084
+VRAM used : 4309.2 MiB  (of 32111 MiB total, measured after build)
+rep_ms    : 66.779 65.844 65.619 66.695 66.551
+wrote     : .ivecs  .json
+[dump-encode] 512 vectors, M=96 Ds=8 K=256 Kr=16 -> /root/rtout/cb_vogue_Br4_100000.bin
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+base=932328×768  query=1000×768  gt=1000×100
+M=96  B=8  Br=4  alpha=100.0  k=10  nlist=1024  nprobe=32  ivf_iters=8  batch_size=1024  kmeans_iters=5
+primary: Ds=8  K=256  code=96 B/vec (1.000 bit/dim)
+note: ground truth is 100 wide; Recall@10 compares against its first 10 entries.
+Training on 100000 vectors...
+residual codebook trains on 100000 vectors
+  train: 114.8 ms
+Adding 932328 vectors...
+  add:   256.7 ms
+
+Recall@10 : 0.8899     (standard: vs true top-10)
+Pre-v15 score : 1.0000  (old metric: vs true top-100 -- for lining up against existing results/*.csv only)
+Latency   : 21.92 ms  (1000 queries)
+QPS       : 45612
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+rep_ms    : 21.738 22.036 22.024 21.897 21.925
+wrote     : .ivecs  .json
+[res-train] residual codebook on 932328 vectors (primary/IVF/sigma still from 100000)
+[dump-encode] 512 vectors, M=96 Ds=8 K=256 Kr=16 -> /root/rtout/cb_vogue_Br4_932328.bin
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+base=932328×768  query=1000×768  gt=1000×100
+M=96  B=8  Br=4  alpha=100.0  k=10  nlist=1024  nprobe=32  ivf_iters=8  batch_size=1024  kmeans_iters=5
+primary: Ds=8  K=256  code=96 B/vec (1.000 bit/dim)
+note: ground truth is 100 wide; Recall@10 compares against its first 10 entries.
+Training on 100000 vectors...
+residual codebook trains on 932328 vectors
+  train: 385.0 ms
+Adding 932328 vectors...
+  add:   257.5 ms
+
+Recall@10 : 0.8907     (standard: vs true top-10)
+Pre-v15 score : 1.0000  (old metric: vs true top-100 -- for lining up against existing results/*.csv only)
+Latency   : 21.65 ms  (1000 queries)
+QPS       : 46185
+VRAM used : 1121.2 MiB  (of 32111 MiB total, measured after build)
+rep_ms    : 21.702 21.610 21.690 21.617 21.640
+wrote     : .ivecs  .json
+[dump-encode] 512 vectors, M=384 Ds=8 K=256 Kr=16 -> /root/rtout/cb_o3072_Br4_100000.bin
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+base=999000×3072  query=1000×3072  gt=1000×20
+M=384  B=8  Br=4  alpha=100.0  k=10  nlist=1024  nprobe=32  ivf_iters=8  batch_size=1024  kmeans_iters=5
+primary: Ds=8  K=256  code=384 B/vec (1.000 bit/dim)
+note: ground truth is 20 wide; Recall@10 compares against its first 10 entries.
+Training on 100000 vectors...
+residual codebook trains on 100000 vectors
+  train: 252.2 ms
+Adding 999000 vectors...
+  add:   703.7 ms
+
+Recall@10 : 0.9010     (standard: vs true top-10)
+Pre-v15 score : 0.9980  (old metric: vs true top-20 -- for lining up against existing results/*.csv only)
+Latency   : 58.72 ms  (1000 queries)
+QPS       : 17030
+VRAM used : 2845.2 MiB  (of 32111 MiB total, measured after build)
+rep_ms    : 59.436 59.117 58.752 57.856 58.437
+wrote     : .ivecs  .json
+[res-train] residual codebook on 999000 vectors (primary/IVF/sigma still from 100000)
+[dump-encode] 512 vectors, M=384 Ds=8 K=256 Kr=16 -> /root/rtout/cb_o3072_Br4_999000.bin
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+base=999000×3072  query=1000×3072  gt=1000×20
+M=384  B=8  Br=4  alpha=100.0  k=10  nlist=1024  nprobe=32  ivf_iters=8  batch_size=1024  kmeans_iters=5
+primary: Ds=8  K=256  code=384 B/vec (1.000 bit/dim)
+note: ground truth is 20 wide; Recall@10 compares against its first 10 entries.
+Training on 100000 vectors...
+residual codebook trains on 999000 vectors
+  train: 1475.9 ms
+Adding 999000 vectors...
+  add:   744.2 ms
+
+Recall@10 : 0.9015     (standard: vs true top-10)
+Pre-v15 score : 0.9980  (old metric: vs true top-20 -- for lining up against existing results/*.csv only)
+Latency   : 58.65 ms  (1000 queries)
+QPS       : 17050
+VRAM used : 2845.2 MiB  (of 32111 MiB total, measured after build)
+rep_ms    : 58.515 59.588 59.156 58.035 57.969
+wrote     : .ivecs  .json
+=== RT_DONE 2026-09-05T01:02:11Z ===
