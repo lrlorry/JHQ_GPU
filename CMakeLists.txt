@@ -1093,6 +1093,21 @@ add_jhq_dir(v34_exp ${V34}
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
 
+# v35: 2000 residual iterations, which is where recall plateaus.
+#
+# v32 and v33 both tried to stop on convergence and both ran to their caps;
+# v34 showed why the obvious cause was not the cause. Exact convergence is not
+# reachable, so the count is the protocol, and results/v34_lloyd_iterations/
+# puts it at 2000: +7.6e-3, +7.1e-3 and +6.3e-3 over the 25 used through v31,
+# for +22, +30 and +20 ms of residual training. RESIDUAL_TRAINING.md in the
+# directory is the frozen protocol.
+set(V35 jhq_v35_iters_2000)
+add_jhq_dir(v35_exp ${V35}
+    JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
