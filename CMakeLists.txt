@@ -1287,6 +1287,21 @@ add_jhq_variant(v39_lut16 ${V39} ${V39_NOLUT32})
 add_jhq_variant(v40_exp   ${V40} ${V36_DEFS})
 add_jhq_variant(v40_lut16 ${V40} ${V39_NOLUT32})
 
+# v41: the scan kernel split into gather, lookup and compaction, by removing
+# them rather than by counting them. ncu is unusable on this box --
+# RmProfilingAdminOnly=1 comes from a driver the container cannot reload, so
+# every counter returns ERR_NVGPUCTRPERM -- and compile-out already agreed with
+# nsys to a point and a half on the refine stage.
+#
+# Four builds, two switches: lookup = full - nolut = nocompact - neither, and
+# compaction = full - nocompact = nolut - neither. Both halves of each equality
+# are measured, so a mismatch says the removal changed something else.
+set(V41 jhq_v41_scan_split)
+add_jhq_variant(v41_full     ${V41} ${V36_DEFS})
+add_jhq_variant(v41_nolut    ${V41} ${V36_DEFS} JHQ_SCAN_NO_LUT=1)
+add_jhq_variant(v41_nocomp   ${V41} ${V36_DEFS} JHQ_SCAN_NO_COMPACT=1)
+add_jhq_variant(v41_neither  ${V41} ${V36_DEFS} JHQ_SCAN_NO_LUT=1 JHQ_SCAN_NO_COMPACT=1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
