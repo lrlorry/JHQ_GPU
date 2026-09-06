@@ -1,3 +1,24 @@
+<div style="max-width:900px;margin:0 auto 28px;padding:18px 22px;border:2px solid #8c4a2f;
+background:#f7ece6;color:#3a1f13;font:15px/1.6 -apple-system,system-ui,sans-serif">
+<div style="font:600 12px/1 ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;
+color:#8c4a2f;margin-bottom:10px">Superseded &mdash; do not cite</div>
+<p style="margin:0 0 10px">Every JHQ curve on this page was produced by
+<code>demo_jhq_v22_s2b1</code> at commit <code>7298f5c</code>. At that commit the sources contained
+no <code>build_analytical_cartesian</code>: <strong>the primary codebook was the reference
+implementation&rsquo;s Lloyd-refined product quantiser, not equation&nbsp;4</strong>, which arrived
+two days later in <code>384de5c</code>. The runs also used the prefix cascade at 1/2 &mdash; a P0
+departure from Algorithm&nbsp;1 lines&nbsp;2&ndash;3 &mdash; a <code>__half</code> primary table,
+and a residual codebook trained for 25 Lloyd iterations on 100K vectors.</p>
+<p style="margin:0 0 10px">Two of its configurations cannot exist on the frozen path at all:
+openai3-1536 and openai3-3072 at M=96 give D<sub>s</sub>&nbsp;=&nbsp;16 and 32, and equation&nbsp;4
+requires D<sub>s</sub> to divide B=8. The ownership verdicts on both OpenAI3 panels rest partly on
+those points.</p>
+<p style="margin:0">Re-measured on the frozen path, the conclusion the paper rests on is
+<em>stronger</em> &mdash; reachable recall rises to 0.9932 on bge-m3 and 0.9960 on stella, and
+openai3-3072 gains an exclusive point this page does not have. The cuVS baselines here are
+unaffected and were not re-run. Current results:
+<code>results/frontier_v39/</code>.</p>
+</div>
 <title>Where JHQ Actually Wins</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
