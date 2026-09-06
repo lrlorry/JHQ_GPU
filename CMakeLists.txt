@@ -1302,6 +1302,23 @@ add_jhq_variant(v41_nolut    ${V41} ${V36_DEFS} JHQ_SCAN_NO_LUT=1)
 add_jhq_variant(v41_nocomp   ${V41} ${V36_DEFS} JHQ_SCAN_NO_COMPACT=1)
 add_jhq_variant(v41_neither  ${V41} ${V36_DEFS} JHQ_SCAN_NO_LUT=1 JHQ_SCAN_NO_COMPACT=1)
 
+# v42: the two cells of v41's 2x2 that mean anything, with its two faults out.
+#
+# The (nolut, compact) cell measured nothing -- replacing the lookup changes
+# every distance, which changes how often the compaction fires, and the variant
+# came out 16-41% slower than the full kernel. So the lookup is removed only
+# where the compaction is already gone. And v41's no-compact path summed
+# candidate positions into the output, which overflowed into the refine stage
+# and faulted; v42 emits a scattered in-range position so every variant leaves
+# the same work behind it.
+#
+#   lookup     = nocompact - neither
+#   compaction = full - nocompact
+set(V42 jhq_v42_scan_split_fixed)
+add_jhq_variant(v42_full    ${V42} ${V36_DEFS})
+add_jhq_variant(v42_nocomp  ${V42} ${V36_DEFS} JHQ_SCAN_NO_COMPACT=1)
+add_jhq_variant(v42_neither ${V42} ${V36_DEFS} JHQ_SCAN_NO_LUT=1 JHQ_SCAN_NO_COMPACT=1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
