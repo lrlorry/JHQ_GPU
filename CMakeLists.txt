@@ -1302,6 +1302,21 @@ add_jhq_variant(v41_nolut    ${V41} ${V36_DEFS} JHQ_SCAN_NO_LUT=1)
 add_jhq_variant(v41_nocomp   ${V41} ${V36_DEFS} JHQ_SCAN_NO_COMPACT=1)
 add_jhq_variant(v41_neither  ${V41} ${V36_DEFS} JHQ_SCAN_NO_LUT=1 JHQ_SCAN_NO_COMPACT=1)
 
+# JHQ-GPU-Cascade, priced on today's code rather than on v22's. Same v39
+# sources; what comes off is JHQ_PAPER_FAITHFUL, which pins the prefix at 1/1
+# and refuses to start if JHQ_PFX_NUM is set. KEEP goes back to 8, the value
+# the published rows used.
+#
+# Two approximations live in this kernel, not one. The prefix cascade discards
+# a candidate before its full primary distance exists; the per-thread retention
+# keeps only KEEP of them per thread whatever the prefix is, so 1/1 here is
+# still not the exact path. The ladder separates them: v39_exp is exact,
+# v39_casc at 1/1 adds retention alone, and 1/2, 1/4, 1/8 add the cascade.
+add_jhq_variant(v39_casc ${V39}
+    JHQ_LUT32=1 JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=2
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=8
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+
 # v42: the two cells of v41's 2x2 that mean anything, with its two faults out.
 #
 # The (nolut, compact) cell measured nothing -- replacing the lookup changes
