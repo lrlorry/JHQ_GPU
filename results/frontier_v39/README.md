@@ -20,8 +20,8 @@ that dataset -- the region where no other method produces a point at all.
 | arxiv-768 | 1.0000 | 0.9928 | 0 | 0.9920 | 0 |
 | **bge-m3** | **0.9425** | 0.9881 | **5** | **0.9932** | **5** |
 | **stella-trec24** | **0.9780** | 0.9936 | **5** | **0.9960** | **5** |
-| openai3-1536 | 0.9971 | 0.9941 | 0 | 0.9651\* | 0 |
-| openai3-3072 | 0.9970 | 0.9921 | 0 | 0.9719\* | 0 |
+| openai3-1536 | 0.9971 | 0.9941 | 0 | 0.9966 | 0 |
+| **openai3-3072** | 0.9970 | 0.9921 | **0** | **0.9973** | **1** |
 
 **The claim the paper rests on is stronger, not weaker.** On the two largest
 sets JHQ's reachable recall rises (0.9881 -> 0.9932, 0.9936 -> 0.9960) and it
@@ -31,15 +31,33 @@ where fp32 CAGRA needs 39.70 GiB of a 31.4 GiB card and IVF-PQ tops out, and
 
 The two 768-d sets held nothing before and hold nothing now.
 
-\* openai3 is not comparable: see below.
+openai3-3072 **gains an exclusive point the old runs never had**: 0.9973 at
+1298 QPS, above every baseline's ceiling of 0.9970. openai3-1536 loses the
+three frontier points it held; its reachable recall is comparable (0.9966
+against 0.9941) but the throughput at those recalls now sits under the
+baselines.
 
-## The openai3 rows are a grid that collapsed, not a regression
+## Equation 4 forces large M at high d, and that is what openai3 pays
 
 The old openai3 fronts were built on **M=96**, which equation 4 rejects at both
-dimensions -- Ds = 16 at d=1536 and Ds = 32 at d=3072, and B=8 divides neither.
-Copying the old grid onto the frozen path therefore left only `M=192 Br=4` and
-`M=384 Br=4`: four residual bits, and the ceiling that implies. `Br=8` at the
-admissible M was never in the old grid and so was never run. It is running now.
+dimensions: `Ds | B` with B=8 caps Ds at 8, so `M >= d/8`.
+
+| d | admissible M | what the old runs used |
+|---|---|---|
+| 768 | 96, 192, 384, 768 | 96 |
+| 1024 | 128, 256, 512, 1024 | 128 |
+| **1536** | **192**, 384, 768, 1536 | **96 -- inadmissible** |
+| **3072** | **384**, 768, 1536, 3072 | **96 -- inadmissible** |
+
+So at d=1536 and d=3072 the faithful path must scan two and four times as many
+subspaces per candidate as the published rows did. That is not an
+implementation cost; it is what the paper's own Cartesian construction
+requires, and it only bites above 1024 dimensions. Nothing in the paper or in
+the reference implementation measures it.
+
+Copying the old grid also left both panels at `Br=4` -- four residual bits --
+because `Br=8` at an admissible M was never in that grid. Adding it lifts
+openai3-1536 from 0.9651 to 0.9966 and openai3-3072 from 0.9719 to 0.9973.
 
 ## Throughput is dataset-dependent, and one earlier reading of it was wrong
 
