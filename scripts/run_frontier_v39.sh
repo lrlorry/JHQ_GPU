@@ -28,6 +28,7 @@ run(){ # ds nlist M Br nprobes tag
   echo "###### $1  M=$3 Br=$4 nlist=$2  nprobe=$5" >> $L
   python3 scripts/bench_all.py --dataset $1 --reps 3 --nlist $2 \
       --method jhq --binary $BIN --M $3 --Br $4 --nprobe $5 --block 1024 \
+      --prefix 1/1 \
       --out $R/f_$1_M$3Br$4.csv >> $L 2>&1
   echo "  rc=$?" >> $L; }
 

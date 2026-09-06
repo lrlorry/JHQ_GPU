@@ -460,8 +460,15 @@ def main():
     # spread. A row that cannot say what produced it cannot be re-run.
     env = dict(os.environ)
     env = {k: v for k, v in env.items() if k.startswith("JHQ_")}
-    env.update({"JHQ_BLOCK": a.block, "JHQ_PFX_NUM": num, "JHQ_PFX_DEN": den,
-                "JHQ_TILE_M_RT": a.M})
+    env.update({"JHQ_BLOCK": a.block, "JHQ_TILE_M_RT": a.M})
+    # A paper-faithful target aborts if JHQ_PFX_NUM is set at all -- it refuses
+    # to have an environment variable it ignores be reported as JHQ-GPU, which
+    # is the right guard and is why every row of the first frontier re-run came
+    # back FAILED with SIGABRT. 1/1 is what such a target compiles in, so there
+    # the variables carry nothing; any other prefix needs a target that reads
+    # them, and setting them says so.
+    if (num, den) != ("1", "1"):
+        env.update({"JHQ_PFX_NUM": num, "JHQ_PFX_DEN": den})
     rows = []
     for np_ in [int(x) for x in a.nprobe.split(",")]:
         params = dict(M=a.M, B=8, Br=a.Br, alpha=a.alpha, k=10, nlist=a.nlist,
