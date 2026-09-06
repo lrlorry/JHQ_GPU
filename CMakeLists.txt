@@ -1264,25 +1264,28 @@ set(V39_NOLUT32 JHQ_PAPER_FAITHFUL=1
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
 set(V40 jhq_v40_scan_l1)
-foreach(cfg v39_lut16:${V39}:${V39_NOLUT32} v40_exp:${V40}:${V36_DEFS} v40_lut16:${V40}:${V39_NOLUT32})
-  string(REPLACE ":" ";" parts ${cfg})
-  list(GET parts 0 tgt)
-  list(GET parts 1 dir)
-  list(GET parts 2 defs)
-  string(REPLACE " " ";" defs "${defs}")
+
+# Spelled out rather than looped: a foreach over "tag:dir:defs" triples breaks
+# the moment defs is a CMake list, because the semicolons in it are the same
+# separator the triple is split on.
+function(add_jhq_variant tgt dir)
   add_library(jhq_${tgt} STATIC
       ${dir}/encode.cu ${dir}/search.cu ${dir}/jhq_gpu_index.cu
       ${dir}/train_pq_gpu.cu ${dir}/train_res_gpu.cu)
   target_include_directories(jhq_${tgt} PUBLIC ${CMAKE_SOURCE_DIR})
   target_link_libraries(jhq_${tgt} PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
-  target_compile_definitions(jhq_${tgt} PRIVATE ${defs})
+  target_compile_definitions(jhq_${tgt} PRIVATE ${ARGN})
   target_compile_options(jhq_${tgt} PRIVATE
       $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>)
   add_executable(demo_jhq_${tgt} examples/demo_jhq_v36.cu)
   target_compile_definitions(demo_jhq_${tgt} PRIVATE
-      JHQ_INDEX_HEADER="${dir}/jhq_gpu_index.cuh" ${defs})
+      JHQ_INDEX_HEADER="${dir}/jhq_gpu_index.cuh" ${ARGN})
   target_link_libraries(demo_jhq_${tgt} PRIVATE jhq_${tgt})
-endforeach()
+endfunction()
+
+add_jhq_variant(v39_lut16 ${V39} ${V39_NOLUT32})
+add_jhq_variant(v40_exp   ${V40} ${V36_DEFS})
+add_jhq_variant(v40_lut16 ${V40} ${V39_NOLUT32})
 
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
