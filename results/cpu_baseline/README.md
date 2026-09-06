@@ -64,19 +64,43 @@ inferred from the API, and the API points two ways at once.
 
 ## What this means for the paper
 
-**There is currently no same-protocol CPU baseline.** The 238.55 s figure
-cannot be attributed to the paper's implementation, and the authors' code
-cannot be run without editing it. Two options:
+**The authors' artifact cannot be run. That does not leave the paper without a
+CPU baseline.**
 
-1. **Patch their sources** — the include, and whichever `scan_codes` overload a
-   chosen FAISS wants — and state exactly what was changed. What is then
-   measured is their algorithm through a modified build.
-2. **Drop the same-protocol CPU comparison** and say why, citing this. The
-   GPU-versus-GPU comparison against cuVS does not depend on it.
+`JHQ_repro` (`github.com/lrlorry/JHQ_repro`) is a from-scratch C++17
+reimplementation, it builds, and every CPU number in `results/` came from it. It
+implements equation 4 the way the paper states it:
 
-Both are defensible; the first is more work and the second is a smaller claim.
-The one thing that is not defensible is quoting 238.55 s as the paper's CPU
-implementation.
+```cpp
+// Analytical 1D Lloyd-Max codewords (paper Eq. 3 / 4):
+//   c_i = sigma*sqrt(2) * erfinv((2i-1)/K_1D)
+c1d_[i] = sigma_ * float(M_SQRT2) * erfinv_f(2.0f * q_i - 1.0f);
+```
 
-Raw logs: the build attempts are `/root/cpubuild*.log` and `/root/cpu[5-10].log`
-on the box; the sequence and their outcomes are recorded above.
+which is the same construction the GPU port uses, and `src/codebook.cpp` shares
+its lineage with `cpu/codebook.cpp` here — `train_1d_kmeans` has the same
+signature in both. As a baseline it is sound, and it is better documented than
+the authors' code because its protocol can be stated.
+
+**What is wrong is only that the recorded numbers are at the old protocol.**
+`src/jhq_ivf_index.cpp:96` calls
+
+```cpp
+res_c1d_ = train_1d_kmeans(residuals.data(), (int)residuals.size(), Kr_);
+```
+
+with no `max_iter`, so it takes `codebook.h`'s default of **25** — the setting
+this project measured as costing 6-8e-3 of recall against 2000. There is also a
+`max_train_n` cap on the residual training set. So 238.55 s and the recall
+beside it describe a 25-iteration codebook, and the GPU rows they would be
+compared against describe a 2000-iteration one.
+
+The fix is to re-run `JHQ_repro` with `max_iter` passed at that call site and
+the residual training set matched, not to drop the comparison. Then both sides
+are equation 4 plus 2000 residual Lloyd iterations and the only difference left
+is CPU against GPU.
+
+One more thing has to be right in that re-run: `results/` records that the CPU
+timings do not reproduce without pinned threads — 32 threads beat 208 by 1.9x
+on this host — so the thread count belongs in the protocol alongside the
+iteration count.
