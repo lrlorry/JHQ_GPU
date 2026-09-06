@@ -16,7 +16,7 @@ sed -i '' 's|jhq_v<prev>_<name>/|jhq_v<next>_<newname>/|g' \
 
 Afterwards `git status --porcelain jhq_v<prev>_<name>` must be empty.
 
-**Highest version: v25** (`jhq_v25_streamed_residual`). The next change is v26.
+**Highest version: v40** (`jhq_v40_scan_l1`). The next change is v41.
 
 ### Frozen, never to be modified
 
