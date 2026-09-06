@@ -67,3 +67,44 @@ The cascade at the per-dataset optimum: +110%, +38%, +23% for 2e-4, 3e-4 and 0
 of recall. It is partial-distance search, which is not new; what is measured
 here is where its optimum sits on a GPU and that going past it loses on both
 axes at once.
+
+---
+
+# JHQ_BITONIC_SELECT, re-measured
+
+The flag is read inside `scan_ivf_coalesced_kernel` and nowhere else, so **the
+faithful path never sees it**. Its recorded claim -- "holds recall to four
+decimal places ... and lifts QPS 46% at nprobe=128, 77% at 32 and 90% at 8" --
+is a property of the cascade variant.
+
+The technique is in the faithful path regardless: `jhq_compact_topck` is a
+bitonic sort of the whole candidate buffer, and `scan_ivf_exact_kernel` calls
+it unconditionally. What that costs there is in `results/v42_scan_split/`: 44%
+of vogue's search time, 9-10% on the two large sets. There is no A/B for it
+without writing the ck-reduction alternative into the exact kernel.
+
+On the variant it does govern, two repeats each, spread under 0.5%:
+
+| dataset | nprobe | bitonic on | off | gain | recall |
+|---|---|---|---|---|---|
+| vogue-768 | 8 | 212,745 | 85,476 | **+149%** | identical |
+| vogue-768 | 32 | 144,492 | 70,760 | **+104%** | identical |
+| vogue-768 | 128 | 76,997 | 40,727 | **+89%** | identical |
+| bge-m3 | 8 | 62,850 | 59,901 | +4.9% | identical |
+| bge-m3 | 32 | 35,443 | 33,658 | +5.3% | identical |
+| bge-m3 | 128 | 21,507 | 14,568 | **+48%** | identical |
+| stella | 8 | 68,963 | 61,900 | +11.4% | identical |
+| stella | 32 | 37,258 | 36,699 | +1.5% | identical |
+| stella | 128 | 23,908 | 16,655 | **+44%** | identical |
+
+Recall is **exactly equal to four decimals in all eighteen pairs**, which is a
+stronger statement than the record's "holds to four decimal places".
+
+The recorded 46/77/90% understates today's code: vogue gives 89/104/149%. But
+the recorded *explanation* -- "the gain is largest where there is least to scan
+because the cost it removes, ck block-wide reductions, does not scale with
+nprobe" -- fits vogue and inverts on the two large sets, where nprobe=8 gains
+5-11% and nprobe=128 gains 44-48%. A plausible reason is that the scan itself
+dominates on 10-18M vectors and the selection does not, which is the direction
+`results/v42_scan_split/` reports for the exact kernel. That is an explanation
+and not a measurement; it is not tested here.
