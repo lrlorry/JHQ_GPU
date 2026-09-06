@@ -1248,6 +1248,42 @@ target_compile_definitions(demo_jhq_v39_exp PRIVATE
     JHQ_INDEX_HEADER="${V39}/jhq_gpu_index.cuh" ${V36_DEFS})
 target_link_libraries(demo_jhq_v39_exp PRIVATE jhq_v39_exp)
 
+# The scan kernel is 91% of search, and with a float lut_t its M*256 table is
+# 131,072 B against 101,376 of opt-in shared, so ex_lut is false on every
+# dataset and every one of stella's 1.11e9 lookups a repeat comes from global
+# memory. A __half table is 65,536 and fits everywhere. That comparison was
+# made once before and retracted, because the run that produced it had d_lut_r
+# sized for halves and filled with floats; this is it made properly, and the
+# recall column is half the answer since __half carries ~11 mantissa bits and
+# M=128 of them are summed.
+#
+# v40 is the other half: when the table cannot be in shared, take the same L1
+# carveout that won for the refine kernel.
+set(V39_NOLUT32 JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+set(V40 jhq_v40_scan_l1)
+foreach(cfg v39_lut16:${V39}:${V39_NOLUT32} v40_exp:${V40}:${V36_DEFS} v40_lut16:${V40}:${V39_NOLUT32})
+  string(REPLACE ":" ";" parts ${cfg})
+  list(GET parts 0 tgt)
+  list(GET parts 1 dir)
+  list(GET parts 2 defs)
+  string(REPLACE " " ";" defs "${defs}")
+  add_library(jhq_${tgt} STATIC
+      ${dir}/encode.cu ${dir}/search.cu ${dir}/jhq_gpu_index.cu
+      ${dir}/train_pq_gpu.cu ${dir}/train_res_gpu.cu)
+  target_include_directories(jhq_${tgt} PUBLIC ${CMAKE_SOURCE_DIR})
+  target_link_libraries(jhq_${tgt} PUBLIC jhq_cpu CUDA::cublas CUDA::cudart)
+  target_compile_definitions(jhq_${tgt} PRIVATE ${defs})
+  target_compile_options(jhq_${tgt} PRIVATE
+      $<$<COMPILE_LANGUAGE:CUDA>:-O3 --expt-relaxed-constexpr --use_fast_math -Xcompiler=-fopenmp>)
+  add_executable(demo_jhq_${tgt} examples/demo_jhq_v36.cu)
+  target_compile_definitions(demo_jhq_${tgt} PRIVATE
+      JHQ_INDEX_HEADER="${dir}/jhq_gpu_index.cuh" ${defs})
+  target_link_libraries(demo_jhq_${tgt} PRIVATE jhq_${tgt})
+endforeach()
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
