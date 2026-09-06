@@ -1317,6 +1317,18 @@ add_jhq_variant(v39_casc ${V39}
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=8
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
 
+# The same with the bitonic selection off, which is the only place
+# JHQ_BITONIC_SELECT reaches: it is read inside scan_ivf_coalesced_kernel and
+# nowhere else, so the faithful path never sees it. The technique is in that
+# path regardless -- jhq_compact_topck is a bitonic sort and the exact scan
+# calls it unconditionally -- and results/v42_scan_split/ already prices that
+# at 44% of vogue's search time. This target prices the flag itself, on the
+# variant it actually governs.
+add_jhq_variant(v39_casc_nobito ${V39}
+    JHQ_LUT32=1 JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=2
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=8
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=0)
+
 # v42: the two cells of v41's 2x2 that mean anything, with its two faults out.
 #
 # The (nolut, compact) cell measured nothing -- replacing the lookup changes
