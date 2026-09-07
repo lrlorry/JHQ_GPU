@@ -92,3 +92,50 @@ is worth on the same dataset. Its 65536 was reasoned from memory footprint
 Everything above should go through `bench_all.py` so the rows record what
 produced them; the standalone-log category above is how a measurement becomes
 unciteable a month later.
+
+---
+
+## Why M matters more than it looks: L, and equation 3's placement
+
+`M` is not a free knob. It sets `Ds = d/M`, which sets
+
+```
+L = K^(1/Ds) = 2^(B/Ds)      scalar levels per dimension
+```
+
+At B=8 the four admissible M give four very different quantisers:
+
+| M | Ds | **L** | primary code |
+|---|---|---|---|
+| d/8 | 8 | **2** | d/8 bytes — 1 bit/dim |
+| d/4 | 4 | **4** | d/4 bytes — 2 bit/dim |
+| d/2 | 2 | **16** | d/2 bytes — 4 bit/dim |
+| d | 1 | **256** | d bytes — 8 bit/dim, the product structure gone |
+
+Every measurement in this repository is at **L = 2**, the coarsest of the four.
+
+There is a second reason that matters. Equation 3 places the levels at
+
+```
+c_i = sigma * sqrt(2) * erfinv(2*q_i - 1),   q_i = (i - 0.5)/L
+```
+
+which is the **(i-0.5)/L quantile** — the median of each equiprobable cell. The
+paper calls these Lloyd-Max codewords, but the Lloyd-Max optimum is the
+conditional *mean* of each cell. At L=2 on a standard normal:
+
+| | level | MSE |
+|---|---|---|
+| equation 3, quantile | ±0.6745 sigma | 0.3786 sigma^2 |
+| true Lloyd-Max, conditional mean | ±0.7979 sigma | 0.3634 sigma^2 |
+| | | **+4.19%** |
+
+The two coincide asymptotically in L and diverge most at L=2, which is exactly
+where everything here was measured. So the -0.027 attributed to equation 4 has
+two components that have not been separated: the Cartesian product's restricted
+codeword set, and the quantile-rather-than-centroid placement of the levels
+inside it. Both should shrink as L grows.
+
+Sweeping M therefore tests three things at once: the recall/code-size trade,
+whether equation 4's price is an artefact of L=2, and whether the placement gap
+matters at the settings the paper actually reports.
