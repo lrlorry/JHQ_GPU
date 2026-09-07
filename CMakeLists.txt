@@ -1376,6 +1376,23 @@ set(V44 jhq_v44_probe_stream)
 add_jhq_variant(v44_exp  ${V44} ${V36_DEFS})
 add_jhq_variant(v44_diag ${V44} ${V36_DEFS} JHQ_HAS_DIAG=1)
 
+# v45: compact when the buffer is full, not when it passes the target.
+#
+# Both selection buffers -- select_probes' top-nprobe and the scan's top-ck --
+# fired their bitonic sort as soon as the count passed the target. cap is the
+# power of two at or above target + BLOCK, so after each compaction the count
+# sits at the target and the very next chunk pushes it past again: a full
+# cap-element sort per chunk, to absorb however few candidates beat a threshold
+# that is by then quite tight. The buffer only needs cnt + BLOCK <= cap.
+#
+# The selection stays exact either way -- a looser threshold admits more, never
+# fewer -- so this is a pure scheduling change and the results must be
+# identical. results/block_sweep/ put the scan's compaction at 19-31% and
+# growing with the block size, which is the shape this predicts.
+set(V45 jhq_v45_compact_full)
+add_jhq_variant(v45_exp  ${V45} ${V36_DEFS})
+add_jhq_variant(v45_diag ${V45} ${V36_DEFS} JHQ_HAS_DIAG=1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
