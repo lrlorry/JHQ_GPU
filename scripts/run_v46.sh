@@ -11,7 +11,13 @@ set -u
 exec 9>/root/.lock_v46; flock -n 9 || { echo "already running"; exit 0; }
 export PATH=/root/miniconda3/bin:/usr/local/cuda/bin:$PATH
 cd "$(dirname "$0")/.."
-export JHQ_INDEX_CACHE=${JHQ_INDEX_CACHE:-/root/jhq_cache}
+# One cache per binary. cache_path() keys on the data and the parameters, not
+# on the code, so a version that changes what training produces gets a hit on
+# its predecessor's state and the fix never runs. That is exactly what happened
+# on the first attempt: v46 loaded v45's sigma=0 codebook and reported the same
+# 0.477, which reads as "the fix does not work".
+CACHE_ROOT=${CACHE_ROOT:-/root/jhq_cache_by_bin}
+mkdir -p $CACHE_ROOT
 D=${DATA_ROOT:-/root/autodl-tmp}; V=${VOGUE_DIR:-/root/data}
 L=${LOG:-/root/v46.log}; : > $L
 say(){ echo "$(date -u +%H:%M:%S) $*" >> $L; }
@@ -29,7 +35,8 @@ BG="$D/bge-m3/base.fvecs $D/bge-m3/query.fvecs $D/bge-m3/groundtruth.ivecs"
 E="JHQ_GPU_CODEBOOK=1 JHQ_ENCODE_GROUPED_OFF=1 JHQ_Y_TRANSPOSED=1 JHQ_RES_TRAIN_N=100000 JHQ_BLOCK=1024"
 
 run(){ # bin paths M nlist nprobe ntrain diag tag
-  env $E JHQ_TILE_M_RT=$3 JHQ_N_TRAIN=$6 ${7:+JHQ_DIAG=1} timeout 5000 \
+  mkdir -p $CACHE_ROOT/$1
+  env $E JHQ_INDEX_CACHE=$CACHE_ROOT/$1 JHQ_TILE_M_RT=$3 JHQ_N_TRAIN=$6 ${7:+JHQ_DIAG=1} timeout 5000 \
       build/$1 $2 $3 8 8 100.0 10 $4 $5 8 1024 "" 3 >/tmp/v46.$$ 2>/tmp/v46e.$$
   local rc=$?
   printf "  %-18s %-8s nlist=%-7s np=%-4s nt=%-8s recall=%-8s qps=%-9s cand=%-9s ivf=%-8s rc=%s\n" \
