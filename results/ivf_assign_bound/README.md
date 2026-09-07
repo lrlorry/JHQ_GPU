@@ -83,3 +83,21 @@ not as a change to the default:
 That last point matters: the useful result is the size of the trade, not a
 faster default. If the probabilistic bound moves 3 rows in 16359 and saves 35%
 of add time, that is worth stating; adopting it silently is not.
+
+## Report the assignment delta, not the recall delta
+
+The recall impact of a looser bound is almost certainly unmeasurable, and the
+existing evidence says so from the wrong direction: the fp16 path settles
+nothing at all and still moves only 0-6 rows in 14838-31748, with "recall the
+same to the third decimal". A probabilistic bound is strictly better than that.
+
+But "the same to the third decimal" is the resolution of the report, not a
+value. Build nondeterminism alone is +/-2e-4, so recall cannot separate these
+configurations at all — the same limit this project has now hit four times
+(91% of residual codes rewritten for 1.5e-3 of recall, 174 of 1000 top-ck wrong
+for 3e-4, 96.8% of codes rewritten for 2e-4).
+
+So the number that belongs in a write-up is **rows whose assignment differs,
+out of rows assigned** — 0/14838, 6/31748, 3/16359 for the unsettled path. That
+has resolution. A recall delta quoted at this magnitude would imply a certainty
+the measurement does not have.
