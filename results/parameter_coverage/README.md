@@ -139,3 +139,61 @@ inside it. Both should shrink as L grows.
 Sweeping M therefore tests three things at once: the recall/code-size trade,
 whether equation 4's price is an artefact of L=2, and whether the placement gap
 matters at the settings the paper actually reports.
+
+---
+
+## Equation 4 puts a floor under the primary code length
+
+`Ds | B` is usually stated as a restriction on which M are admissible. It is
+also a restriction on **code length**, and that is the more consequential
+reading.
+
+At B=8 the primary code is M bytes, and `Ds | B` forces `Ds <= 8`, so
+
+```
+M >= d/8   ->   primary code >= d/8 bytes = d bits = 1 bit per dimension
+```
+
+**The primary level of JHQ cannot be made shorter than one bit per dimension**,
+whatever M is chosen. A freely trained product quantiser has no such floor: at
+d=1024, M=32, Ds=32 it produces a 32-byte code, 0.25 bit/dim, four times
+shorter than anything equation 4 can reach.
+
+This is where the paper's own grid runs into its own equation. For 1024-d
+datasets it lists `M ∈ {64, 128, 256}`; M=64 is 0.5 bit/dim, and equation 4
+rejects it. The reference implementation's documented "refusal of M < d/B" is
+the same rule seen from the implementation side.
+
+### Three encoders, and which configurations can reach them
+
+| Ds \| B ? | Ds | encoder | per-subspace cost |
+|---|---|---|---|
+| yes | ≤ 8 | **separable** — per-dimension binary search | `Ds` |
+| no | < 32 | hand loop over K codewords | `K·Ds` |
+| no | ≥ 32 | GEMM, `‖c‖² − 2yᵀc` via cuBLAS | `K·Ds` at tensor-core rate |
+
+The branches are mutually exclusive. Every configuration measured in this
+repository takes the first, so the other two are unexercised — which is why
+they are marked "not validated" in the source.
+
+The crossover between the two general encoders was measured in `832c84d`
+(primary encode, milliseconds, loop against GEMM): Ds=8 vogue 98 vs 247, Ds=16
+openai3-1536 219 vs 263, Ds=32 openai3-3072 439 vs 272. The hand loop keeps a
+subspace's Ds floats in registers per thread, and at Ds=32 that register
+pressure costs the occupancy hiding its shared-memory traffic — the same wall
+the scan kernel hit in `results/v40_scan_lut/`. **Those numbers compare two
+general encoders on a free codebook; neither was ever compared against the
+separable path, because at those Ds the separable path does not exist.**
+
+### The untested region
+
+`M < d/8` is not a gap in the sweep, it is a region equation 4 structurally
+cannot enter. Reaching it means turning equation 4 off, which also gives up the
+separable encoder and the O(MK) construction. The question that has never been
+asked is the one that matters for short codes:
+
+> at a fixed bit budget below 1 bit/dim, how does a freely trained product
+> quantiser compare with JHQ's shortest admissible configuration?
+
+Nothing here answers it. The 98/219/439-against-247/263/272 numbers are encoder
+wall-times, not a recall-against-code-length trade.
