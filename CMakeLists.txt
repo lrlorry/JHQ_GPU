@@ -1406,6 +1406,28 @@ set(V46 jhq_v46_sigma_i64)
 add_jhq_variant(v46_exp  ${V46} ${V36_DEFS})
 add_jhq_variant(v46_diag ${V46} ${V36_DEFS} JHQ_HAS_DIAG=1)
 
+# v47: the primary LUT factorised along equation 4's Cartesian product.
+#
+# T_m[c] = Thi_m[c>>4] + Tlo_m[c&15] exactly, whenever K=256 and Ds is even.
+# 32 entries a subspace instead of 256: 8x less table, 16x less work to build
+# it, and a bank pattern with no conflicts where the 256-entry table took up to
+# 8-way. It also ends the __half question -- 32 floats a subspace fit in shared
+# at every M this project runs, so there is nothing left to buy by giving up
+# mantissa, and JHQ_LUT32 is gone with the second table type.
+#
+# The identity is verified against the centroids at train time, not inferred
+# from which construction was requested: a Lloyd-refined product quantiser
+# does not have the property and the check is what stops it being used.
+set(V47 jhq_v47_split_lut)
+add_jhq_variant(v47_exp  ${V47} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+add_jhq_variant(v47_diag ${V47} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_HAS_DIAG=1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
