@@ -62,3 +62,58 @@ cache hypotheses are now both disproved. What remains untested is whether it is
 bound by the strided `list_primary_t` gather, by the threshold compaction that
 shares the same block, or by instruction issue. `ncu` is installed on the box
 and would answer it directly; nothing here should be guessed at again.
+
+---
+
+## The shared-memory result was measured at one BLOCK, and it is the worst one
+
+`v39_lut16` put a `__half` table in shared memory and came out 65-89% slower.
+That run set `JHQ_GPU_CODEBOOK`, `JHQ_ENCODE_GROUPED_OFF` and
+`JHQ_Y_TRANSPOSED` and **not `JHQ_BLOCK`**, so it ran at the default of 256.
+The frontier runs at 1024.
+
+When shared memory is what limits residency, a larger block is strictly better:
+the SM has 100 KB, a block asking 82 KB leaves room for exactly one block
+either way, so the threads per SM are the block size.
+
+| BLOCK | blocks/SM at 82 KB | threads/SM | of 1536 |
+|---|---|---|---|
+| **256** | 1 | 256 | **17%** |
+| 512 | 1 | 512 | 33% |
+| **1024** | 1 | 1024 | **67%** |
+
+So the configuration that was measured is the one where a shared-memory table
+costs the most occupancy, by a factor of four against the one the fronts
+actually use. **The conclusion "the scan wants occupancy, and shared memory
+takes it away" is supported only at BLOCK=256.**
+
+### Where the table fits at all
+
+`scan_base = cap*8 + 8` with `cap` the power of two at or above `ck + BLOCK`,
+and the table has to fit in what is left of 101,376 B:
+
+| alpha | ck | BLOCK | scan_base | left for LUT | max M, fp32 | max M, half |
+|---|---|---|---|---|---|---|
+| 100 | 1000 | 256 / 512 / 1024 | 16.0 K | 83.0 K | **82** | 165 |
+| 8 | 80 | **256** | **4.0 K** | **95.0 K** | **94** | 189 |
+| 8 | 80 | 512 | 8.0 K | 91.0 K | 90 | 181 |
+| 8 | 80 | 1024 | 16.0 K | 83.0 K | 82 | 165 |
+
+The measured configurations are M=96 (vogue) and M=128 (bge-m3, stella), so an
+fp32 table never fits. At the paper's `alpha=8` with BLOCK=256, vogue's M=96
+**misses by two subspaces** — 96 against a ceiling of 94.
+
+`ck = alpha*k` is therefore a second lever on this question, and alpha has never
+been run at the paper's range either (`results/parameter_coverage/`).
+
+### What is untested
+
+| | measured | result |
+|---|---|---|
+| half table, shared, **BLOCK=256** | yes | 65-89% slower |
+| half table, shared, **BLOCK=1024** | **no** | — |
+| fp32 table, shared (needs M ≤ 82, or a smaller ck) | **no** | — |
+
+Re-running `demo_jhq_v39_lut16` with `JHQ_BLOCK=1024` closes the first gap and
+takes about ten minutes. Until then the shared-memory verdict should be quoted
+with its block size attached.
