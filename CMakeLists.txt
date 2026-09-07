@@ -1393,6 +1393,19 @@ set(V45 jhq_v45_compact_full)
 add_jhq_variant(v45_exp  ${V45} ${V36_DEFS})
 add_jhq_variant(v45_diag ${V45} ${V36_DEFS} JHQ_HAS_DIAG=1)
 
+# v46: sigma stops being zero above 2.1M training rows.
+#
+# rotate_on_gpu passed n * d_ to cublasSdot as an int. At d=1024 that wraps
+# negative above 2,097,152 rows, BLAS returns without writing the result, and
+# sigma comes out 0 -- so equation 4 places every primary centroid at the
+# origin and the ADC ranks every candidate identically. Nothing errors. The
+# nlist sweep read it as an nlist problem: at JHQ_N_TRAIN=2,600,000 recall was
+# 0.64-0.73 with ivf_recall at 0.99, which is exactly "routing fine,
+# everything after it broken", and routing does not use sigma.
+set(V46 jhq_v46_sigma_i64)
+add_jhq_variant(v46_exp  ${V46} ${V36_DEFS})
+add_jhq_variant(v46_diag ${V46} ${V36_DEFS} JHQ_HAS_DIAG=1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
