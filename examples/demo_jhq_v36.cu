@@ -103,7 +103,16 @@ int main(int argc, char** argv) {
                "first %d entries.\n", d_gt, k, k);
 
     jhq_gpu::JHQGpuIndex::Params p;
-    p.M = M; p.B = B; p.Br = Br; p.alpha = alpha;
+    p.M = M;
+    // add_batch and the assignment batch have never been swept and never
+    // recorded (results/parameter_coverage/). add() is 95% of the build, and
+    // 65536 was reasoned from footprint rather than throughput, so make it
+    // reachable. Unset keeps the header's default exactly.
+    if (const char* ab = std::getenv("JHQ_ADD_BATCH")) {
+        const int v = std::atoi(ab);
+        if (v > 0) p.add_batch = v;
+    }
+    p.B = B; p.Br = Br; p.alpha = alpha;
     p.nlist = nlist; p.nprobe = nprobe;
     p.ivf_iters = ivf_iters;
     p.batch_size = batch_size;

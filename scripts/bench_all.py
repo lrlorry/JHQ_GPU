@@ -225,6 +225,19 @@ def run_cuvs(method, ds, grid, k, reps):
     # without finishing a single row. The fp32 array is dropped afterwards --
     # nothing below needs it, and holding both it and the int8 copy is 91 GiB
     # against a 96.6 GiB cgroup.
+    # fp16 sits between the two the fronts already carry, and it is the one
+    # configuration that decides whether the BGE-M3 claim holds: 2*d + 4*deg is
+    # 2176 B a vector, 20.5 GiB at 10.1M x 1024, which fits the 31.4 GiB card
+    # that 4*d + 4*deg (39.7 GiB) does not. On Stella it is 36 GiB and does not
+    # fit either, so that panel is unaffected. Converting once, as for int8.
+    xb_h16 = xq_h16 = None
+    if method == "cagra-fp16":
+        xb_h16 = xb_h.astype(np.float16)
+        xq_h16 = xq_h.astype(np.float16)
+        n_queries = len(xq_h)
+        del xb_h
+        import gc; gc.collect()
+
     xb_q8 = xq_q8 = None
     if method == "cagra-int8":
         from cuvs.preprocessing.quantize import scalar
@@ -235,7 +248,7 @@ def run_cuvs(method, ds, grid, k, reps):
         n_queries = len(xq_h)
         del xb_h
         import gc; gc.collect()
-    else:
+    elif method != "cagra-fp16":
         n_queries = len(xq_h)
 
     rows = []
@@ -260,6 +273,9 @@ def run_cuvs(method, ds, grid, k, reps):
             if method == "cagra-int8":
                 xb_in, xq_in = xb_q8, xq_q8
                 bytes_vec = d + 4 * cfg["graph_degree"]
+            elif method == "cagra-fp16":
+                xb_in, xq_in = xb_h16, xq_h16
+                bytes_vec = 2 * d + 4 * cfg["graph_degree"]
             else:
                 xb_in, xq_in = xb_h, xq_h
                 bytes_vec = (cfg.get("pq_dim") or d) if method == "ivfpq" \
@@ -301,7 +317,8 @@ def run_cuvs(method, ds, grid, k, reps):
             rec = _recall_at_k(I, gt, k)
             rows.append(aggregate(
                 {"ivfpq": "cuVS-IVFPQ", "cagra": "cuVS-CAGRA",
-                 "cagra-int8": "cuVS-CAGRA-int8"}[method],
+                 "cagra-int8": "cuVS-CAGRA-int8",
+                 "cagra-fp16": "cuVS-CAGRA-fp16"}[method],
                 f"{bytes_vec}B", ds, dict(cfg, bytes_per_vec=bytes_vec, k=k),
                 {}, qps, [rec] * len(qps), m_after - m_before,
                 build_s * 1000, None, []))
@@ -411,7 +428,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", required=True, choices=sorted(DATASETS))
     ap.add_argument("--method", default="jhq",
-                    choices=["jhq", "ivfpq", "cagra", "cagra-int8"])
+                    choices=["jhq", "ivfpq", "cagra", "cagra-int8", "cagra-fp16"])
     ap.add_argument("--pq-dims", default="96,192,384,768")
     ap.add_argument("--trainset-fraction", type=float, default=0.0,
                     help="cuVS kmeans_trainset_fraction; 0 leaves the default (0.5)")
