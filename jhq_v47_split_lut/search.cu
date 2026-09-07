@@ -105,23 +105,59 @@
 // merely nearby. It doubles the shared footprint, which is why half was chosen;
 // if the scan gets faster despite that, conflicts are the mechanism.
 //   -DJHQ_SMEM_LUT_FLOAT=1
-// Element type of the primary lookup table.
+// Element type of the primary lookup table: float, and no longer a choice.
 //
-// Equation 6 sums the per-subspace distances d(q^m, yhat^(m)) exactly. Storing
-// each as a half rounds it to eleven mantissa bits before it is ever added --
-// an error term the paper's bound does not carry. Half stays the default: it
-// halves the table traffic and lets M*256 entries sit in shared memory. But it
-// is a departure from the paper's arithmetic, so it gets a switch and a
-// measurement rather than silence. JHQ_LUT32=1 builds the table in float; at
-// M=96 that is 98 KB, past shared memory, so the scan reads it from L2 and the
-// cost of exactness shows up in QPS.
-typedef jhq_gpu::jhq_lut_t lut_t;   // float; see search.cuh
+// Equation 6 sums the per-subspace distances exactly, and storing each as a
+// half rounded it to eleven mantissa bits before it was ever added -- an error
+// term the paper's bound does not carry. That was tolerated because 256
+// entries a subspace only fit in shared memory as halves. Factorised, a
+// subspace is 32 entries, which fits in float at every M here, so the reason
+// for the half is gone and so is the switch. search.cuh has the identity.
+typedef jhq_gpu::jhq_lut_t lut_t;
 
 // The factorised table is float, so store and load are identity. Kept as
 // names because the scan reads them in three places and a bare index there
 // hides which array is meant.
 #define LUT_STORE(x) (x)
 #define LUT_LOAD(x)  (x)
+
+// Per-thread candidate slots kept by scan_ivf_coalesced_kernel. Compile-time
+// so ld[]/lp[] stay in registers.
+//
+// This is a lossy step, and here is what it costs. Each thread keeps only its
+// own best K_LOCAL, so when more than K_LOCAL of the true top-ck land in one
+// thread's stride class the rest are dropped before the block-wide selection
+// sees them.
+//
+// Measured by diffing the returned ids, not by watching recall: recall is an
+// aggregate over a thousand queries and two different result sets can share
+// one, so a flat recall across depths proves nothing. With the index pinned
+// (JHQ_ENCODE_GROUPED_OFF=1, JHQ_INDEX_CACHE) and BLOCK held at 512, depth 4
+// against depth 8 on vogue at nprobe=128 differs in 11 of 10,000 id positions,
+// touching 4 queries in 1000, of which 1 gets a genuinely different set. So
+// the top-alpha*k this produces is not always the global top-alpha*k.
+//
+// BLOCK=512 is the harder case on purpose: the expected number of the true
+// top-ck per thread is ck/BLOCK, 1.95 there against 0.98 at the production
+// BLOCK=1024. The production setting cannot be measured the same way, because
+// depth is capped by registers, not by shared memory -- pd/pp/ld/lp are
+// 4*K_LOCAL registers per thread against the 64 available when 1024 of them
+// are resident, so K_LOCAL=8 does not launch at BLOCK=1024 at all. Four is not
+// a tuning choice there; it is the only value that fits.
+//
+// Shared memory is (2*K_LOCAL + 2) * BLOCK floats -- 10KB at 4, 34KB at 16,
+// past the 48KB default at 32. capture_graph() checks before launching.
+#ifndef JHQ_K_LOCAL
+#define JHQ_K_LOCAL 4
+#endif
+#include "common/cuda_utils.cuh"
+
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <cstdlib>
+#include <stdexcept>
 
 namespace jhq_gpu {
 
