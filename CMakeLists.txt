@@ -1428,6 +1428,41 @@ add_jhq_variant(v47_diag ${V47} JHQ_PAPER_FAITHFUL=1
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_HAS_DIAG=1)
 
+# v48: stop a candidate as soon as it provably cannot make the top-ck.
+#
+# Every table entry is a squared distance, so a partial sum over the first few
+# subspaces is a lower bound on the complete one. Once it exceeds the ck-th
+# best seen so far, the candidate is out, and the subspaces left need be
+# neither gathered nor looked up. That attacks the gather as well as the
+# lookup: results/block_sweep/ measured "gather + rest" at 53-66% of the scan
+# at BLOCK=1024, and JHQ_SCAN_NO_LUT keeps the byte read, so the gather is
+# inside that figure.
+#
+# It is exact -- the same argument the compaction already makes, applied one
+# subspace at a time -- and it is not the discarded prefix cascade, which
+# guessed from an incomplete score which candidates were worth keeping.
+#
+# The exit granularity is the one free parameter, so three are built and
+# measured. JHQ_EXIT_EVERY >= M disables the exit and must reproduce v47 bit
+# for bit, which is the control.
+set(V48 jhq_v48_early_exit)
+add_jhq_variant(v48_e8   ${V48} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_EXIT_EVERY=8)
+add_jhq_variant(v48_e16  ${V48} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_EXIT_EVERY=16)
+add_jhq_variant(v48_e32  ${V48} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_EXIT_EVERY=32)
+add_jhq_variant(v48_off  ${V48} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_EXIT_EVERY=4096)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
