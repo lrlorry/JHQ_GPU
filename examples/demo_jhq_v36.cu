@@ -234,6 +234,52 @@ int main(int argc, char** argv) {
     for (double v : rep_ms) printf(" %.3f", v);
     printf("\n");
 
+#ifdef JHQ_HAS_DIAG
+    // JHQ_DIAG=1: the two numbers that say whether a low recall is a routing
+    // failure or a ranking one. Off by default -- the readbacks sit inside
+    // the timed region, so a diag run's QPS is not comparable.
+    {
+        const jhq_gpu::SearchDiag& dg = jhq_gpu::search_diag();
+        if (dg.on && !dg.cand.empty()) {
+            double sum = 0; long long mn = dg.cand[0], mx = dg.cand[0];
+            for (int v : dg.cand) { sum += v; mn = std::min<long long>(mn, v); mx = std::max<long long>(mx, v); }
+            const double mean = sum / (double)nq;
+            const double uniform = (double)nb * p.nprobe / (double)p.nlist;
+            printf("cand_mean : %.0f   (min %lld, max %lld; "
+                   "N*nprobe/nlist estimate = %.0f, ratio %.2fx)\n",
+                   mean, mn, mx, uniform, mean / uniform);
+
+            std::vector<int> vlist;
+            idx.vector_lists(vlist);
+            std::vector<char> opened((size_t)p.nlist, 0);
+            long long hit = 0, tot = 0;
+            for (int q = 0; q < nq; ++q) {
+                for (int j = 0; j < dg.nprobe; ++j) {
+                    int l = dg.probes[(size_t)q * dg.nprobe + j];
+                    if (l >= 0 && l < p.nlist) opened[l] = 1;
+                }
+                for (int j = 0; j < k; ++j) {
+                    int id = gt[(size_t)q * d_gt + j];
+                    if (id < 0 || id >= nb) continue;
+                    ++tot;
+                    int l = vlist[id];
+                    if (l >= 0 && opened[l]) ++hit;
+                }
+                for (int j = 0; j < dg.nprobe; ++j) {
+                    int l = dg.probes[(size_t)q * dg.nprobe + j];
+                    if (l >= 0 && l < p.nlist) opened[l] = 0;
+                }
+            }
+            const double ivf_rec = tot ? (double)hit / (double)tot : 0.0;
+            printf("ivf_recall: %.4f  (of the true top-%d, the share coarse "
+                   "routing brought in at all)\n", ivf_rec, k);
+            printf("lost_route: %.4f  lost_rank: %.4f  (the two ways the "
+                   "%.4f that is missing was lost)\n",
+                   1.0 - ivf_rec, ivf_rec - rec.recall, 1.0 - rec.recall);
+        }
+    }
+#endif
+
     if (out_prefix) {
         char path[4096];
         snprintf(path, sizeof(path), "%s.ivecs", out_prefix);

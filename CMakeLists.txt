@@ -1346,6 +1346,18 @@ add_jhq_variant(v42_full    ${V42} ${V36_DEFS})
 add_jhq_variant(v42_nocomp  ${V42} ${V36_DEFS} JHQ_SCAN_NO_COMPACT=1)
 add_jhq_variant(v42_neither ${V42} ${V36_DEFS} JHQ_SCAN_NO_LUT=1 JHQ_SCAN_NO_COMPACT=1)
 
+# v43: the two numbers every table in results/ has been estimating.
+#
+# `cand` has always been reported as N*nprobe/nlist, which assumes equal list
+# lengths. select_probes_kernel already sums the exact figure to bound its own
+# loop, so measuring it costs one copy. `ivf_recall` -- the share of the true
+# top-k that coarse routing opened a list for -- splits a low recall into
+# "never routed in" and "routed in and then lost", which nprobe fixes and does
+# not fix respectively. Both are behind JHQ_DIAG=1 because the readbacks are
+# inside the timed region.
+set(V43 jhq_v43_diag)
+add_jhq_variant(v43_exp ${V43} ${V36_DEFS} JHQ_HAS_DIAG=1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
