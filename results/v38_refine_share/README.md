@@ -113,3 +113,22 @@ Interleaved with `v38_base`, three repeats each, so drift cannot read as a win:
 
 Recall unchanged. v39 carries one policy and no flag: shared where the codebook
 fits, the L1 carveout where it does not.
+
+---
+
+## At BLOCK=1024 the ceiling is 9%, not 6%
+
+Everything above ran at `JHQ_BLOCK`'s default of 256. The fronts run at 1024,
+where the scan gains 39-46% and `residual_refine_fused_kernel` -- launched with
+a hard-coded 256 threads -- does not keep up:
+
+| | BLOCK=256 | BLOCK=1024 |
+|---|---|---|
+| vogue-768 | 3.08 ms = 6.6% | 2.45 ms = **9.0%** |
+| bge-m3 | 4.10 ms = 3.4% | 3.15 ms = **4.9%** |
+| stella | 3.59 ms = 4.2% | 3.25 ms = **6.3%** |
+
+So the cache work is capped at 9% on vogue rather than 6%, and the hard-coded
+`<<<B, 256, ...>>>` in the refine launch is itself now the more interesting
+target: it is the only kernel in the search path that does not scale with
+`JHQ_BLOCK`. Raw and method in `results/block_sweep/`.

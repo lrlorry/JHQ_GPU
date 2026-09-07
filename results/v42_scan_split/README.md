@@ -21,6 +21,12 @@ vogue and 79.34 ms on stella, against nsys's 42.49 and 79.50 -- **2.0% and
 
 ## The lookup is the largest single component at scale
 
+> **At BLOCK=256 only.** These runs did not set `JHQ_BLOCK` and so took its
+> default of 256; the fronts run at 1024, where the lookup is 14-15% rather
+> than 42-52% and is the *best*-scaling part of the kernel (-79 to -84% from
+> 256 to 1024). The divergence described below is real -- its cost is latency,
+> and warps hide latency. `results/block_sweep/` has the split at both sizes.
+
 `g_lut[m * 256 + cm]` with `cm` a data-dependent byte. Across a warp the 32
 threads read 32 unrelated 4-byte positions inside one 1 KB row, so a single
 instruction becomes up to 32 separate 32-byte transactions, and it repeats M

@@ -1,5 +1,13 @@
 # The scan kernel wants occupancy, not locality
 
+> **Superseded. This file's verdict was an artefact of `JHQ_BLOCK`'s default
+> of 256, which is not the block size the fronts run.** Re-measured at 1024,
+> the `__half` table in shared memory is **8% FASTER**, not 65-89% slower, at
+> identical recall. See `results/block_sweep/`. The L1 carveout row below
+> survives as a negative at both block sizes. Everything below is kept because
+> the mechanism it names is the one that turned out to be operating -- read it
+> with "at BLOCK=256" attached to every number.
+
 `scan_ivf_exact_kernel` is 91% of search (`results/v38_refine_share/`), and it
 reads its per-query table out of global memory: with a float `lut_t` the table
 is `M*256*4` = 131,072 B against this card's 101,376 of opt-in shared, so
