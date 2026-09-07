@@ -1358,6 +1358,24 @@ add_jhq_variant(v42_neither ${V42} ${V36_DEFS} JHQ_SCAN_NO_LUT=1 JHQ_SCAN_NO_COM
 set(V43 jhq_v43_diag)
 add_jhq_variant(v43_exp ${V43} ${V36_DEFS} JHQ_HAS_DIAG=1)
 
+# v44: select_probes without the nlist-sized shared buffer.
+#
+# v10's kernel held all nlist scores resident and ran nprobe full argmin
+# passes. 4*nlist bytes stopped it at 16384 lists on this card -- 32768 wants
+# 139,264 B against 101,376 -- so nlist above that could not be measured at
+# all, and the empty rows were twice blamed on the training set before the
+# exception text was read. Streaming the centroids against a running threshold
+# is the same exact selection in cap*8 + 8 bytes, independent of nlist, and
+# O(nlist) instead of O(nprobe * nlist).
+#
+# v44_diag carries JHQ_HAS_DIAG so cand_mean and ivf_recall can be compared
+# against v43 on the same configuration: the probe set is what both measure,
+# so an identical cand_mean is a direct check that the rewrite selects the
+# same lists.
+set(V44 jhq_v44_probe_stream)
+add_jhq_variant(v44_exp  ${V44} ${V36_DEFS})
+add_jhq_variant(v44_diag ${V44} ${V36_DEFS} JHQ_HAS_DIAG=1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
