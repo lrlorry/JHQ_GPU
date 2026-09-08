@@ -1559,6 +1559,32 @@ add_jhq_variant(v51_on  ${V51} JHQ_PAPER_FAITHFUL=1
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_PROBE_CURSOR=1)
 
+# v52: read the primary code a word at a time.
+#
+# The scan reads list_primary_t[m * N + pos], one byte a thread, so a warp asks
+# for 32 consecutive bytes and the memory system moves a 128-byte transaction
+# to serve them -- three quarters discarded. results/block_sweep/ puts the
+# gather at 53-66% of the scan and a roofline against this card's 1792 GB/s
+# puts it at 47-50% of peak, which is what that looks like.
+#
+# Ds=8 and B=8 make the primary code 1 bit a dimension, so four subspaces are
+# 32 dimensions and fit one uint32. Stored grouped by dimension rather than by
+# vector, 32 threads read 32 consecutive words: one full transaction. Same
+# bytes, same codes, same distances. The repack runs once after add(), so
+# neither encoder has to know.
+#
+# v51's probe cursor is on by default from here; it was +2.5 to +148.5% at
+# identical recall.
+set(V52 jhq_v52_word)
+add_jhq_variant(v52_byte ${V52} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+add_jhq_variant(v52_word ${V52} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_WORD_LAYOUT=1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
