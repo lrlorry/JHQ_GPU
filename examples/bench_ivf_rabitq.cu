@@ -223,6 +223,21 @@ int main(int argc, char** argv) {
             std::printf("dbg |q0-gt0|^2 = %.6f  (id %lld)\n", l2(g0), g0);
             std::printf("dbg |q0-r0|^2  = %.6f  (id %lld)\n", l2(r0), r0);
         }
+        // cuVS reported a first distance of 0.0223 on vogue while the ground
+        // truth's own first neighbour measures 0.63 here. A distance below the
+        // true minimum is impossible, so one of the two datasets is not what
+        // the other thinks. Brute-force query 0 over the whole base on the
+        // host -- a second at 1M x 768 -- and see which one it agrees with.
+        {
+            double best = 1e30; long long besti = -1;
+            for (long long i = 0; i < nb; ++i) {
+                double a = 0.0;
+                const float* r = xb.data() + (size_t)i * d;
+                for (int j = 0; j < d; ++j) { const double t = (double)xq[j] - (double)r[j]; a += t * t; }
+                if (a < best) { best = a; besti = i; }
+            }
+            std::printf("dbg host brute force NN of q0: id %lld at %.6f\n", besti, best);
+        }
         long long nz = 0, neg = 0;
         for (size_t i = 0; i < h_id.size(); ++i) { if (h_id[i] != 0) ++nz; if (h_id[i] < 0) ++neg; }
         std::printf("\ndbg nonzero ids %lld / %zu, negative %lld\n", nz, h_id.size(), neg);
