@@ -59,6 +59,18 @@ if [ $need_new -eq 1 ]; then
   say "using $($CM --version | head -1) at $CM"
 fi
 
+# rapids_logger hard-codes SPDLOG_USE_STD_FORMAT ON when it fetches spdlog, so
+# passing -DSPDLOG_USE_STD_FORMAT=OFF at the top level does nothing -- the
+# define lands on the spdlog target directly. std::format needs libstdc++ 13
+# and this box has GCC 12, with no g++-13 in the default repositories. Patch
+# the option to OFF in the CPM copy, which puts spdlog back on its bundled fmt
+# and changes nothing cuVS relies on.
+RL=$(ls -d $CPM_SOURCE_CACHE/rapids_logger/*/ 2>/dev/null | head -1)
+if [ -n "${RL:-}" ] && grep -q 'SPDLOG_USE_STD_FORMAT ON' "$RL/CMakeLists.txt"; then
+  sed -i 's/SPDLOG_USE_STD_FORMAT ON/SPDLOG_USE_STD_FORMAT OFF/' "$RL/CMakeLists.txt"
+  say "patched rapids_logger to leave spdlog on bundled fmt"
+fi
+
 say "configuring"
 "$CM" -S cpp -B build_sm120 \
   -DCMAKE_BUILD_TYPE=Release \
