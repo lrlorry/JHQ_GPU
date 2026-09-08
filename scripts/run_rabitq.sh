@@ -26,22 +26,29 @@ git reset --hard FETCH_HEAD >>$L 2>&1
 say "HEAD $(git log --oneline -1)"
 
 SP=/root/miniconda3/lib/python3.12/site-packages
-# Every installed package that ships headers. rapids_logger is the one that
-# is easy to miss: raft/core/logger_macros.hpp includes
-# <rapids_logger/log_levels.h> and it lives in its own wheel.
-# The RAPIDS wheels vendor CCCL 3.4.3 under <pkg>/include/rapids, and RMM
-# refuses to build against anything below 3.3. The CUDA 13.0 toolkit on this
-# box ships 3.0.1, so that directory has to come before everything else --
-# user -I paths are searched ahead of nvcc's own.
+# Four things this needs that are not obvious:
+#   - every wheel that ships headers, including rapids_logger, which raft's
+#     logger_macros.hpp includes and which lives in its own package;
+#   - the CCCL the RAPIDS wheels vendor under <pkg>/include/rapids (3.4.3),
+#     ahead of the toolkit's, since RMM refuses anything below 3.3 and CUDA
+#     13.0 here ships 3.0.1;
+#   - g++-12 as the host compiler, because GCC 11's <atomic> rejects a type
+#     CCCL passes to std::atomic;
+#   - librmm.so as well as libcuvs.so; the RMM symbols raft pulls in are not
+#     in libcuvs.
 INC="-I$SP/libraft/include/rapids"
 for p in $SP/*/include; do [ -d "$p" ] && INC="$INC -I$p"; done
-LIBD="$SP/libcuvs/lib64"
+LD=""
+for p in $SP/*/lib64 $SP/*/lib; do
+  [ -d "$p" ] && LD="$LD -L$p -Xlinker -rpath -Xlinker $p"
+done
 say "compiling"
-nvcc -O3 -std=c++20 --expt-relaxed-constexpr --extended-lambda \
+export DEBIAN_FRONTEND=noninteractive
+command -v g++-12 >/dev/null || apt-get install -y g++-12 >>$L 2>&1
+nvcc -O3 -std=c++20 -ccbin g++-12 --expt-relaxed-constexpr --extended-lambda \
      -arch=sm_120 $INC \
      examples/bench_ivf_rabitq.cu -o build/bench_ivf_rabitq \
-     -L$LIBD -lcuvs -lcudart -lcublas \
-     -Xlinker -rpath -Xlinker $LIBD >>$L 2>&1
+     $LD -lcuvs -lrmm -lcudart -lcublas >>$L 2>&1
 rc=$?; say "compile_rc=$rc"
 [ $rc -ne 0 ] && { say "=== RABITQ""_DONE compile failed ==="; exit 1; }
 
