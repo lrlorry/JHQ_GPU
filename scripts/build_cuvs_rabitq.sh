@@ -6,6 +6,10 @@
 # -- see results/rabitq/README.md for what that rules out. The artifact the
 # paper names is a fork, so build that.
 #
+# spdlog is told to use its bundled fmt: rapids-cmake turns on
+# SPDLOG_USE_STD_FORMAT, which needs libstdc++ 13's <format>, and this box has
+# GCC 12.
+#
 # Only sm_120 and only the C++ library: the wheel carries six architectures
 # and a full build of all of them is what makes cuVS take hours. No tests, no
 # benchmarks, no Python.
@@ -63,7 +67,8 @@ say "configuring"
   -DBUILD_CUVS_BENCH=OFF -DBUILD_SHARED_LIBS=ON \
   -DCUVS_COMPILE_LIBRARY=ON \
   -DCMAKE_CUDA_HOST_COMPILER=g++-12 \
-  -DCMAKE_C_COMPILER=gcc-12 -DCMAKE_CXX_COMPILER=g++-12 >>$L 2>&1
+  -DCMAKE_C_COMPILER=gcc-12 -DCMAKE_CXX_COMPILER=g++-12 \
+  -DSPDLOG_USE_STD_FORMAT=OFF -DSPDLOG_FMT_EXTERNAL=OFF >>$L 2>&1
 rc=$?; say "configure_rc=$rc"
 [ $rc -ne 0 ] && { grep -iE "error|CMake Error" $L | tail -20 >>$L; say "=== CUVSBUILD""_DONE configure failed ==="; exit 1; }
 
