@@ -1463,6 +1463,40 @@ add_jhq_variant(v48_off  ${V48} JHQ_PAPER_FAITHFUL=1
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_EXIT_EVERY=4096)
 
+# v49: three separable changes, so the refine stage's 9% can be attributed.
+#
+#   refine width   residual_refine_fused_kernel launched at a hard-coded 256
+#                  while every other search kernel took JHQ_BLOCK. Its loop is
+#                  `for (c = tid; c < ck; c += blockDim.x)` over ck=1000, so
+#                  256 threads make four passes where 1024 make one -- which is
+#                  why its share rose from 5-6% to 9% when the rest went to
+#                  1024. JHQ_REFINE_BLOCK=0 keeps 256 for the A/B.
+#   Br template    the nibble unpack was a runtime ternary on a kernel argument
+#                  in the innermost loop, executed d*ck times a query.
+#   exit bound     v48 bounded the unvisited subspaces by zero and lost 1-3%,
+#                  because the warp-wide exit needs all 32 lanes done and the
+#                  maximum over 32 lanes is far above the mean. Bounding them
+#                  by their smallest table entry is strictly tighter and still
+#                  exact, and the factorised table makes the minimum cost 32
+#                  reads a subspace instead of 256.
+set(V49 jhq_v49_refine)
+add_jhq_variant(v49_base ${V49} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+add_jhq_variant(v49_e8   ${V49} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_EXIT_BOUND=1 JHQ_EXIT_EVERY=8)
+add_jhq_variant(v49_e16  ${V49} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_EXIT_BOUND=1 JHQ_EXIT_EVERY=16)
+add_jhq_variant(v49_e32  ${V49} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_EXIT_BOUND=1 JHQ_EXIT_EVERY=32)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
