@@ -1,4 +1,4 @@
-# Four changes that were measured and did not pay
+# Five changes that were measured and did not pay
 
 Written down because the reasoning behind each still looks right, and the next
 person to have the same idea should find the measurement rather than the idea.
@@ -6,6 +6,11 @@ Every row is at identical recall to its baseline unless noted — these are
 execution changes, not search changes.
 
 Raw logs: `v48.log` (in `results/v48_early_exit/`), `v49b.log`, `v53.log`.
+
+The fifth, v54's table-free primary distance, has its own page:
+`V54_SIGN_IP.md`. It is the largest loss here, −30 to −52%, and the most
+informative: the identity it rests on is confirmed to four decimals of recall,
+and it still lost on the one dataset whose occupancy it tripled.
 
 ## 1. A bigger selection buffer, sorted less often (v53, `JHQ_CAP_MULT`)
 
@@ -113,10 +118,14 @@ fix is one line:
 if (live) dist = pruned ? INF : a;
 ```
 
-## What the four have in common
+## What they have in common
 
 Three of them trade a memory saving for shared memory or registers, and lose.
 On this card, at these sizes, **occupancy is worth more than the traffic these
-changes remove.** The two changes that did pay in the same period — v51's
+changes remove.** v54 is the mirror image and completes the picture: it spent
+instructions to buy occupancy, tripled it on openai3-3072, and lost 30-50%.
+Neither resource is the one to trade against; the scan is bound by the
+instructions in its inner loop, and only v51 and v52 -- which removed
+instructions and memory requests without spending anything -- moved it. The two changes that did pay in the same period — v51's
 probe cursor (+2.5 to +148%) and v52's word layout (+30 to +48%) — cost
 nothing in either.

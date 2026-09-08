@@ -18,8 +18,8 @@ Afterwards `git status --porcelain jhq_v<prev>_<name>` must be empty.
 
 **Highest version: v54** (`jhq_v54_sign_ip`). The next change is v55.
 The head for search is **v53** (`jhq_v53_cap`, at `JHQ_CAP_MULT=1`); v48, v49's
-bound, v50 and v53's larger buffer are measured negatives kept for the record
-(`results/front6/NEGATIVES.md`).
+bound, v50, v53's larger buffer and v54's table-free distance are measured
+negatives kept for the record (`results/front6/NEGATIVES.md`).
 
 ### Frozen, never to be modified
 
