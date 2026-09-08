@@ -197,6 +197,12 @@ def _mem_used_mib():
     return (total - free) / 2**20
 
 
+# Which cuVS timing the `qps_mean` column carries. "xfer" matches what JHQ's
+# own number measures -- host queries in, host results out. Both are recorded
+# in the params column either way.
+TIMING_MODE = os.environ.get("CUVS_TIMING", "xfer")
+
+
 def _timed(fn, reps):
     """Warm up, drain, then time `reps` calls and drain again."""
     import cupy as cp
@@ -304,14 +310,40 @@ def run_cuvs(method, ds, grid, k, reps):
             build_s = time.time() - t0
             m_after = _mem_used_mib()
 
+            # JHQ's timed region is idx.search(host_queries, ...), which carries
+            # the queries up and the results back. cuVS's was the kernel alone:
+            # xq_d is already resident and cp.asnumpy() ran after the clock
+            # stopped. On a 50 ms search that gap is under 1%; on CAGRA at
+            # 618,859 QPS the whole call is 1.6 ms and a 4 MB upload is 10% of
+            # it, all of it in cuVS's favour.
+            #
+            # So both are timed, and both are reported. `xfer` matches JHQ:
+            # host queries in, host results out. `device` is the original,
+            # kept because a system that already holds its queries on the GPU
+            # is a real deployment and the number belongs to it.
             if method == "ivfpq":
                 sp = ivf_pq.SearchParams(n_probes=cfg["n_probes"])
-                call = lambda: ivf_pq.search(sp, idx, xq_d, k)
+                srch = lambda q: ivf_pq.search(sp, idx, q, k)
             else:
                 sp = cagra.SearchParams(itopk_size=cfg["itopk_size"],
                                         search_width=cfg.get("search_width", 1))
-                call = lambda: cagra.search(sp, idx, xq_d, k)
-            ts, out = _timed(call, reps)
+                srch = lambda q: cagra.search(sp, idx, q, k)
+
+            def call_device():
+                return srch(xq_d)
+
+            def call_xfer():
+                # xq_in is the host array for this method -- fp32, fp16 or the
+                # int8 transform -- unless the quantiser already handed back a
+                # device array, in which case there is nothing to upload and
+                # the two timings coincide.
+                q = cp.asarray(xq_in) if not hasattr(xq_in, "__cuda_array_interface__") else xq_in
+                o = srch(q)
+                return (cp.asnumpy(o[0]), cp.asnumpy(o[1]))
+
+            ts_dev, out = _timed(call_device, reps)
+            ts_xfr, _   = _timed(call_xfer, reps)
+            ts = ts_xfr if TIMING_MODE == "xfer" else ts_dev
             I = cp.asnumpy(out[1])
             qps = [n_queries / t for t in ts]
             rec = _recall_at_k(I, gt, k)
@@ -319,7 +351,10 @@ def run_cuvs(method, ds, grid, k, reps):
                 {"ivfpq": "cuVS-IVFPQ", "cagra": "cuVS-CAGRA",
                  "cagra-int8": "cuVS-CAGRA-int8",
                  "cagra-fp16": "cuVS-CAGRA-fp16"}[method],
-                f"{bytes_vec}B", ds, dict(cfg, bytes_per_vec=bytes_vec, k=k),
+                f"{bytes_vec}B", ds,
+                dict(cfg, bytes_per_vec=bytes_vec, k=k, timing=TIMING_MODE,
+                     qps_device=round(n_queries / (sum(ts_dev)/len(ts_dev))),
+                     qps_xfer=round(n_queries / (sum(ts_xfr)/len(ts_xfr)))),
                 {}, qps, [rec] * len(qps), m_after - m_before,
                 build_s * 1000, None, []))
             del idx, xq_d
