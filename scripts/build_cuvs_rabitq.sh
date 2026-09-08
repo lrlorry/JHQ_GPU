@@ -33,8 +33,20 @@ say "HEAD $(git log --oneline -1)"
 export CPM_SOURCE_CACHE=/root/autodl-tmp/cpm_cache
 mkdir -p "$CPM_SOURCE_CACHE"
 
+# The fork asks for CMake >= 3.30.4 and this box has 3.27.9. pip carries a
+# self-contained one, which is less invasive than replacing the system cmake
+# that everything else here builds against.
+CM=$(command -v cmake)
+if ! $CM --version | head -1 | awk '{split($3,v,"."); exit !(v[1]>3 || (v[1]==3 && v[2]>=31))}'; then
+  say "cmake $($CM --version | head -1) too old, installing a newer one"
+  pip install -q --upgrade "cmake>=3.31" >>$L 2>&1
+  hash -r
+  CM=$(command -v cmake)
+  say "now $($CM --version | head -1) at $CM"
+fi
+
 say "configuring"
-cmake -S cpp -B build_sm120 \
+"$CM" -S cpp -B build_sm120 \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CUDA_ARCHITECTURES=120-real \
   -DBUILD_TESTS=OFF -DBUILD_C_LIBRARY=OFF -DBUILD_C_TESTS=OFF \
@@ -46,7 +58,7 @@ rc=$?; say "configure_rc=$rc"
 [ $rc -ne 0 ] && { grep -iE "error|CMake Error" $L | tail -20 >>$L; say "=== CUVSBUILD""_DONE configure failed ==="; exit 1; }
 
 say "building with $(nproc) cores"
-cmake --build build_sm120 -j "$(nproc)" >>$L 2>&1
+"$CM" --build build_sm120 -j "$(nproc)" >>$L 2>&1
 rc=$?; say "build_rc=$rc"
 [ $rc -ne 0 ] && { grep -iE " error" $L | tail -25 >>$L; say "=== CUVSBUILD""_DONE build failed ==="; exit 1; }
 
