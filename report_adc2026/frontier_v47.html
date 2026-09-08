@@ -135,7 +135,7 @@ footer{color:var(--muted); font-size:13px; font-family:"IBM Plex Mono",ui-monosp
 
 <div class="wrap">
 <header style="display:flex;flex-direction:column;gap:15px">
-  <p class="eyebrow">JHQ on GPU &middot; 8 September 2026 &middot; RTX 5090 &middot; 204 measured points</p>
+  <p class="eyebrow">JHQ on GPU &middot; 8 September 2026 &middot; RTX 5090 &middot; 450 measured points</p>
   <h1>Bytes, bugs and a parameter</h1>
   <p class="lede">At the same bytes per vector, JHQ reaches a recall ceiling
     <strong>1.8 to 5.5 points</strong> above int8 CAGRA on all six datasets &mdash; and it is
@@ -341,6 +341,71 @@ footer{color:var(--muted); font-size:13px; font-family:"IBM Plex Mono",ui-monosp
     nprobe sweep started higher.</p>
 </section>
 
+
+<section>
+  <h2>nlist has an optimum, and it moves</h2>
+  <p>Four values per dataset, each with a training set at ~39 points a centroid.
+    The value the fronts above use is best on two of six; elsewhere it leaves 5 to 139% on
+    the table, and on four of six the best value at the top of the front is not the best in
+    the middle.</p>
+  <div class="tblwrap">
+  <table>
+    <caption>Best nlist by region, and what the report's choice cost. 120 rows, none failed.</caption>
+    <thead><tr><th scope="col" style="text-align:left">Dataset</th><th scope="col">used</th>
+      <th scope="col">best mid-front</th><th scope="col">best at top</th><th scope="col">cost of the choice</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Vogue-768</th><td>4,096</td><td>4,096</td><td>2,048</td><td>+7% at the top</td></tr>
+      <tr><th scope="row">arXiv-768</th><td>8,192</td><td>8,192</td><td>16,384</td><td class="gain">+38% at the top</td></tr>
+      <tr><th scope="row">BGE-M3</th><td>16,384</td><td>32,768</td><td>32,768</td><td>+5 to 9% throughout</td></tr>
+      <tr><th scope="row">Stella-TREC24</th><td>32,768</td><td>32,768</td><td>65,536</td><td class="gain">+139% at the top</td></tr>
+      <tr><th scope="row">OpenAI3-1536</th><td>4,096</td><td>8,192</td><td>8,192</td><td>+4 to 7%</td></tr>
+      <tr><th scope="row">OpenAI3-3072</th><td>4,096</td><td>8,192</td><td>4,096</td><td>+8% at the low end</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="pull"><b>More lists is not monotonically better.</b> Vogue at nlist=8,192 runs
+    <b>2.2&times; slower at identical recall</b> than at 4,096 &mdash; 1M vectors over 8,192
+    lists is 122 vectors each, and there the per-probe overhead costs more than the scan it
+    directs. BGE-M3's optimum is at or above 32,768 and was not bracketed.</p>
+  <p>Stella at nlist=65,536 trains on 2,555,904 rows, past the <code>2<sup>31</sup>/d</code>
+    wrap, and returns 0.9952. The sigma fix is verified in a configuration that needs it.</p>
+</section>
+
+<section>
+  <h2>The top of the front cannot be interpolated</h2>
+  <p>At high recall the front is nearly vertical, and recall varies between builds by up to
+    1e-3. In a vertical region that is worth 2&ndash;3&times; of apparent QPS, so interpolating
+    one front against another there reads noise as a result &mdash; which produced a spurious
+    "0.32&times; regression" on Vogue and "0.19&times;" on arXiv, both from comparing an
+    endpoint against an interpolation.</p>
+  <div class="tblwrap">
+  <table>
+    <caption>Median of three independent builds against the published single build, at matched
+      nlist and nprobe. No interpolation. nlist and n_train held at the published values, so
+      this is the code speedup alone.</caption>
+    <thead><tr><th scope="col" style="text-align:left">Dataset</th><th scope="col">nlist / np</th>
+      <th scope="col">v39 recall</th><th scope="col">v39 QPS</th><th scope="col">v47 recall</th>
+      <th scope="col">v47 QPS</th><th scope="col">speedup</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Vogue-768</th><td>1,024 / 512</td><td>0.9950</td><td>11,536</td><td>0.9944</td><td>14,566</td><td class="gain">1.26&times;</td></tr>
+      <tr><th scope="row">Vogue-768</th><td>1,024 / 1,024</td><td>0.9954</td><td>3,776</td><td>0.9948</td><td>4,272</td><td class="gain">1.13&times;</td></tr>
+      <tr><th scope="row">arXiv-768</th><td>2,048 / 512</td><td>0.9918</td><td>7,465</td><td>0.9902</td><td>8,849</td><td class="gain">1.19&times;</td></tr>
+      <tr><th scope="row">arXiv-768</th><td>2,048 / 1,024</td><td>0.9920</td><td>2,838</td><td>0.9899</td><td>3,130</td><td class="gain">1.10&times;</td></tr>
+      <tr><th scope="row">OpenAI3-1536</th><td>1,024 / 512</td><td>0.9959</td><td>6,273</td><td>0.9951</td><td>7,343</td><td class="gain">1.17&times;</td></tr>
+      <tr><th scope="row">OpenAI3-1536</th><td>1,024 / 1,024</td><td>0.9966</td><td>2,593</td><td>0.9959</td><td>2,881</td><td class="gain">1.11&times;</td></tr>
+      <tr><th scope="row">Stella-TREC24</th><td>16,384 / 512</td><td>0.9958</td><td>4,688</td><td>0.9954</td><td>5,240</td><td class="gain">1.12&times;</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="pull"><b>The 4e-4 to 1.6e-3 recall deficit in every cell is equation 4, not a
+    regression.</b> The published fronts were built before
+    <code>build_analytical_cartesian</code> existed, so their primary level is a Lloyd-refined
+    product quantiser rather than equation 4's Cartesian product &mdash; measured at 0.027
+    better on its own, closed to about 0.004 once the 2000-iteration residual codebook runs.
+    So this is the faithful codebook against a stronger non-paper one, and the faithful one is
+    1.10 to 1.26&times; faster for that difference.</p>
+</section>
+
 <section>
   <h2>What the diagnostics say to do next</h2>
   <p>v43 measured where recall is lost. Across three datasets and a 32&times; range of nprobe,
@@ -370,8 +435,10 @@ footer{color:var(--muted); font-size:13px; font-family:"IBM Plex Mono",ui-monosp
     <li><b>One alpha.</b> alpha=100 throughout, matching the published sweep. The ranking loss
       saturates at alpha=20 on Stella and 50 on Vogue, so a per-dataset alpha is unmeasured on
       the other four.</li>
-    <li><b>nlist has two values per dataset.</b> The envelope shows the two crossing, so the
-      optimum is between them and depends on the operating point. Not swept.</li>
+    <li><b>The fronts plotted are not at the best nlist.</b> They predate the sweep two
+      sections up: on BGE-M3, Stella and OpenAI3-1536 a larger nlist is better, by up to 139%
+      at Stella's top. The charts understate the method by that much, and BGE-M3's optimum is
+      still unbracketed.</li>
     <li><b>n_train and nlist are separated only on Stella.</b> Elsewhere they moved together,
       so "+50 to +96% from the training set" is established on one dataset and jointly
       attributed on the rest.</li>
