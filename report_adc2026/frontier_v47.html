@@ -135,7 +135,7 @@ footer{color:var(--muted); font-size:13px; font-family:"IBM Plex Mono",ui-monosp
 
 <div class="wrap">
 <header style="display:flex;flex-direction:column;gap:15px">
-  <p class="eyebrow">JHQ on GPU &middot; 8 September 2026 &middot; RTX 5090 &middot; 450 measured points</p>
+  <p class="eyebrow">JHQ on GPU &middot; 8 September 2026 &middot; RTX 5090 &middot; 536 measured points</p>
   <h1>Bytes, bugs and a parameter</h1>
   <p class="lede">At the same bytes per vector, JHQ reaches a recall ceiling
     <strong>1.8 to 5.5 points</strong> above int8 CAGRA on all six datasets &mdash; and it is
@@ -290,9 +290,11 @@ footer{color:var(--muted); font-size:13px; font-family:"IBM Plex Mono",ui-monosp
     <dt>config</dt>
     <dd>The coarse quantizer had been trained on <code>JHQ_N_TRAIN=100000</code> at every
       nlist &mdash; 6.1 points per centroid on Stella, against the 39 FAISS treats as a floor.
-      Better centroids partition more evenly, so a fixed nprobe touches fewer vectors:
-      candidates at nprobe=128 fall from 226,410 to 146,535 at <em>higher</em> recall.</dd>
-    <dd class="res pos">+5 to +96%</dd>
+      Below about ten points per centroid k-means is degenerate &mdash; most centroids never
+      move far from initialisation and the partition is wildly uneven &mdash; and repairing it
+      cuts candidates at nprobe=128 from 226,410 to 146,535 at <em>higher</em> recall. The
+      effect is monotone in points per centroid and crosses zero around twenty; see below.</dd>
+    <dd class="res pos">+42 to +96% on the two largest;<br>&minus;47% on Vogue</dd>
     <dt>v48</dt>
     <dd>Squared-distance entries are non-negative, so a partial sum past the ck-th best cannot
       reach the top-ck and the remaining subspaces need be neither gathered nor looked up.
@@ -371,6 +373,47 @@ footer{color:var(--muted); font-size:13px; font-family:"IBM Plex Mono",ui-monosp
     wrap, and returns 0.9952. The sigma fix is verified in a configuration that needs it.</p>
 </section>
 
+
+<section>
+  <h2>The training set matters below 20 points a centroid, and costs above it</h2>
+  <p>The first version of this report took +50 to +96% from Stella and implied it generally.
+    Separated at fixed <code>nlist</code> on the other five, it does not generalise &mdash;
+    and on Vogue it reverses.</p>
+  <div class="tblwrap">
+  <table>
+    <caption>Matched-recall QPS at <code>JHQ_N_TRAIN</code> 640,000 against 100,000, nlist
+      held fixed. Ordered by how much training each centroid received at 100K.</caption>
+    <thead><tr><th scope="col" style="text-align:left">Dataset</th><th scope="col">N</th>
+      <th scope="col">nlist</th><th scope="col">pts / centroid<br>at 100K</th>
+      <th scope="col">low recall</th><th scope="col">mid</th><th scope="col">high</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Vogue-768</th><td>1.0M</td><td>4,096</td><td>24.4</td><td style="color:var(--bad);font-weight:600">&minus;47%</td><td style="color:var(--bad);font-weight:600">&minus;39%</td><td style="color:var(--bad)">&minus;8%</td></tr>
+      <tr><th scope="row">OpenAI3-1536</th><td>999K</td><td>4,096</td><td>24.4</td><td>+9%</td><td>+9%</td><td>+14%</td></tr>
+      <tr><th scope="row">OpenAI3-3072</th><td>999K</td><td>4,096</td><td>24.4</td><td>+4%</td><td>+9%</td><td>+14%</td></tr>
+      <tr><th scope="row">arXiv-768</th><td>2.25M</td><td>8,192</td><td>12.2</td><td>+19%</td><td>+19%</td><td class="gain">+53%</td></tr>
+      <tr><th scope="row">BGE-M3</th><td>10.1M</td><td>16,384</td><td>6.1</td><td class="gain">+42%</td><td class="gain">+60%</td><td class="gain">+58%</td></tr>
+      <tr><th scope="row">Stella-TREC24</th><td>17.8M</td><td>32,768</td><td>3.1</td><td class="gain">+50%</td><td class="gain">+96%</td><td class="gain">+75%</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="pull"><b>The candidate counts run both ways, and they are the whole effect.</b>
+    On Stella at 6.1 points a centroid, more training cuts candidates scanned from 226,410 to
+    146,535 &mdash; <b>&minus;35% at higher recall</b>. On Vogue at 24.4, it raises them from
+    46,541 to 90,578 &mdash; <b>+95%</b>. Same knob, opposite directions, at matched recall.</p>
+  <p>Below roughly ten points a centroid, k-means is degenerate: most centroids never receive
+    enough data to move far from where initialisation put them, so the partition is
+    pathologically uneven and a query that opens <code>nprobe</code> lists opens some enormous
+    ones. Repairing that is worth a great deal. Above about twenty, the quantizer is already
+    reasonable and more training only makes it follow the density more sharply &mdash; more,
+    smaller centroids where the data is dense, which is precisely where queries land. So it is
+    not that a better-trained quantizer is faster; it is that an under-trained one is
+    pathologically uneven, and the fix pays until the pathology is gone.</p>
+  <p style="font-size:14px;color:var(--muted)">BGE-M3's nlist optimum stays unbracketed for a
+    memory reason: 65,536 and 131,072 both fail in <code>add()</code> at the
+    <code>n &times; bpv</code> residual buffer &mdash; 10.09M rows at 1,024 B is 10.3 GiB, and
+    the extra centroid copies push past the 32 GiB card.</p>
+</section>
+
 <section>
   <h2>The top of the front cannot be interpolated</h2>
   <p>At high recall the front is nearly vertical, and recall varies between builds by up to
@@ -440,8 +483,8 @@ footer{color:var(--muted); font-size:13px; font-family:"IBM Plex Mono",ui-monosp
       at Stella's top. The charts understate the method by that much, and BGE-M3's optimum is
       still unbracketed.</li>
     <li><b>n_train and nlist are separated only on Stella.</b> Elsewhere they moved together,
-      so "+50 to +96% from the training set" is established on one dataset and jointly
-      attributed on the rest.</li>
+      &mdash; now separated on all six, which narrowed the claim rather than confirming it:
+      see the section on points per centroid.</li>
     <li><b>The sigma overflow did not reach the published results.</b> Audited: the demo
       defaults to <code>min(N, 100000)</code> training rows and no recorded run set
       <code>JHQ_N_TRAIN</code>, so every historical row sits far below the
