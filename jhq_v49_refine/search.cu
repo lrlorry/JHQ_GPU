@@ -581,8 +581,9 @@ __global__ void scan_ivf_exact_kernel(
             // never below the final cut, which makes either value safe.
             const float  thr = *s_thresh;
             const lut_t* t   = lut_in_smem ? s_lut : g_lut;
-            float a    = 0.0f;
-            bool  done = !live;
+            float a      = 0.0f;
+            bool  done   = !live;
+            bool  pruned = false;
             for (int m0 = 0; m0 < M; m0 += JHQ_EXIT_EVERY) {
                 if (!done) {
                     const int mhi = (m0 + JHQ_EXIT_EVERY < M) ? (m0 + JHQ_EXIT_EVERY) : M;
@@ -591,17 +592,24 @@ __global__ void scan_ivf_exact_kernel(
                         a += LUT_LOAD(t[m * JHQ_SPLIT_LUT + (cm >> 4)])
                            + LUT_LOAD(t[m * JHQ_SPLIT_LUT + 16 + (cm & 15)]);
                     }
-                    if (a + s_suf[mhi] > thr) done = true;
+                    if (a + s_suf[mhi] > thr) { done = true; pruned = true; }
                 }
                 // Uniform across the warp, which is why the loop sits outside
                 // the live test: every lane has to reach the vote, including
                 // those past `total` in the final chunk, which enter done.
                 if (__all_sync(0xffffffffu, done)) break;
             }
-            // A candidate that stopped early has a partial sum already past
-            // thr, and thr only falls, so the append below rejects it for the
-            // same reason the exit fired.
-            if (live) dist = a;
+            // A pruned candidate must not carry its partial sum out of here.
+            //
+            // v48 could: its bound was `a > thr` on its own, so the partial
+            // sum was already past the threshold and the append below rejected
+            // it for the same reason the exit fired. That reasoning does not
+            // survive a tighter bound. Here only `a + s_suf[mhi]` is known to
+            // exceed thr, and `a` alone may sit well under it -- so writing
+            // the partial sum out let pruned candidates into the buffer at a
+            // distance that understated them, displacing real ones. Measured:
+            // recall 0.08 against 0.98.
+            if (live) dist = pruned ? INF : a;
         }
 #else
         if (live) {
