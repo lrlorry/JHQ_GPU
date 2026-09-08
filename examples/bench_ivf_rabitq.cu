@@ -81,8 +81,10 @@ int main(int argc, char** argv) {
     if (argc < 8) {
         std::fprintf(stderr,
             "usage: %s <base.fvecs> <query.fvecs> <gt.ivecs> <n_lists> "
-            "<bits_per_dim> <n_probes> <k> [mode] [reps]\n"
-            "  mode: 0=LUT16 1=LUT32 2=QUANT4 3=QUANT8 (default 2)\n", argv[0]);
+            "<bits_per_dim> <n_probes> <k> [mode] [reps] [metric]\n"
+            "  mode:   0=LUT16 1=LUT32 2=QUANT4 3=QUANT8 (default 2)\n"
+            "  metric: cuvs::distance::DistanceType, 0=L2Expanded (default)\n",
+            argv[0]);
         return 1;
     }
     const char* base_p = argv[1];
@@ -94,6 +96,14 @@ int main(int argc, char** argv) {
     const int      k        = std::atoi(argv[7]);
     const int      mode_i   = (argc > 8) ? std::atoi(argv[8]) : 2;
     const int      reps     = (argc > 9) ? std::atoi(argv[9]) : 5;
+    // cuvs::neighbors::index_params carries a metric and this benchmark left
+    // it at whatever the default is. The first run returned ids that were
+    // plausible -- in range, distinct, distances ascending from 0.65 -- and
+    // matched the ground truth exactly zero times out of ten thousand, which
+    // is what a different metric looks like rather than what low recall looks
+    // like. 0 = L2Expanded, 1 = L2SqrtExpanded, 2 = CosineExpanded,
+    // 3 = InnerProduct, following cuvs::distance::DistanceType.
+    const int      metric_i = (argc > 10) ? std::atoi(argv[10]) : 0;
 
     int nb = 0, d = 0, nq = 0, dq = 0, ng = 0, dgt = 0;
     auto xb = read_fvecs(base_p, nb, d);
@@ -101,8 +111,8 @@ int main(int argc, char** argv) {
     auto gt = read_ivecs(gt_p,   ng, dgt);
     if (dq != d) { std::fprintf(stderr, "query dim %d != base dim %d\n", dq, d); return 1; }
     std::printf("base=%dx%d  query=%dx%d  gt=%dx%d\n", nb, d, nq, dq, ng, dgt);
-    std::printf("n_lists=%u  bits_per_dim=%u  n_probes=%u  k=%d  mode=%d\n",
-                n_lists, bits, n_probes, k, mode_i);
+    std::printf("n_lists=%u  bits_per_dim=%u  n_probes=%u  k=%d  mode=%d  metric=%d\n",
+                n_lists, bits, n_probes, k, mode_i, metric_i);
 
     raft::device_resources res;
 
@@ -112,6 +122,7 @@ int main(int argc, char** argv) {
     cuvs::neighbors::ivf_rabitq::index_params ip;
     ip.n_lists      = n_lists;
     ip.bits_per_dim = bits;
+    ip.metric       = static_cast<cuvs::distance::DistanceType>(metric_i);
     // The dataset stays on the host; cuVS streams it in, which is what a
     // 12 GiB base at d=3072 needs on a 32 GiB card.
     auto xb_host = raft::make_host_matrix_view<const float, int64_t>(xb.data(), nb, d);
