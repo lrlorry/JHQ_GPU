@@ -16,7 +16,7 @@ cd "$(dirname "$0")/.."
 # its predecessor's state and the fix never runs. That is exactly what happened
 # on the first attempt: v46 loaded v45's sigma=0 codebook and reported the same
 # 0.477, which reads as "the fix does not work".
-CACHE_ROOT=${CACHE_ROOT:-/root/jhq_cache_by_bin}
+CACHE_ROOT=${CACHE_ROOT:-/root/autodl-tmp/jhq_cache_by_bin}
 mkdir -p $CACHE_ROOT
 D=${DATA_ROOT:-/root/autodl-tmp}; V=${VOGUE_DIR:-/root/data}
 L=${LOG:-/root/v46.log}; : > $L

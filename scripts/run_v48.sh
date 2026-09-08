@@ -8,7 +8,7 @@ set -u
 exec 9>/root/.lock_v48; flock -n 9 || { echo "already running"; exit 0; }
 export PATH=/root/miniconda3/bin:/usr/local/cuda/bin:$PATH
 cd "$(dirname "$0")/.."
-CACHE_ROOT=${CACHE_ROOT:-/root/jhq_cache_by_bin}; mkdir -p $CACHE_ROOT
+CACHE_ROOT=${CACHE_ROOT:-/root/autodl-tmp/jhq_cache_by_bin}; mkdir -p $CACHE_ROOT
 D=${DATA_ROOT:-/root/autodl-tmp}; V=${VOGUE_DIR:-/root/data}
 L=${LOG:-/root/v48.log}; : > $L
 say(){ echo "$(date -u +%H:%M:%S) $*" >> $L; }

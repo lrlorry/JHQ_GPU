@@ -28,7 +28,7 @@ ST="$D/stella-trec24/base.fvecs $D/stella-trec24/query.fvecs $D/stella-trec24/gr
 E="JHQ_GPU_CODEBOOK=1 JHQ_ENCODE_GROUPED_OFF=1 JHQ_Y_TRANSPOSED=1 JHQ_RES_TRAIN_N=100000 JHQ_BLOCK=1024 JHQ_DIAG=1"
 
 run(){ # tag paths M nlist nprobe rep
-  local C=/root/det_cache_$1_$6; rm -rf $C; mkdir -p $C
+  local C=/root/autodl-tmp/det_cache_$1_$6; rm -rf $C; mkdir -p $C
   env $E JHQ_INDEX_CACHE=$C JHQ_TILE_M_RT=$3 JHQ_N_TRAIN=100000 timeout 5000 \
       build/demo_jhq_v47_diag $2 $3 8 8 100.0 10 $4 $5 8 1024 "" 3 >/tmp/det.$$ 2>/dev/null
   printf "  %-8s nlist=%-7s np=%-4s rep=%s  recall=%-8s cand=%-9s ivf=%-8s qps=%s\n" \
@@ -46,7 +46,7 @@ for r in 1 2 3; do
   run stella "$ST" 128 16384 128 $r
 done
 say "########## and three times off ONE warm cache ##########"
-C=/root/det_warm; rm -rf $C; mkdir -p $C
+C=/root/autodl-tmp/det_warm; rm -rf $C; mkdir -p $C
 for r in 1 2 3; do
   env $E JHQ_INDEX_CACHE=$C JHQ_TILE_M_RT=128 JHQ_N_TRAIN=100000 timeout 5000 \
       build/demo_jhq_v47_diag $ST 128 8 8 100.0 10 16384 128 8 1024 "" 3 >/tmp/dw.$$ 2>/dev/null
