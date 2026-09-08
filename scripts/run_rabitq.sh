@@ -29,7 +29,11 @@ SP=/root/miniconda3/lib/python3.12/site-packages
 # Every installed package that ships headers. rapids_logger is the one that
 # is easy to miss: raft/core/logger_macros.hpp includes
 # <rapids_logger/log_levels.h> and it lives in its own wheel.
-INC=""
+# The RAPIDS wheels vendor CCCL 3.4.3 under <pkg>/include/rapids, and RMM
+# refuses to build against anything below 3.3. The CUDA 13.0 toolkit on this
+# box ships 3.0.1, so that directory has to come before everything else --
+# user -I paths are searched ahead of nvcc's own.
+INC="-I$SP/libraft/include/rapids"
 for p in $SP/*/include; do [ -d "$p" ] && INC="$INC -I$p"; done
 LIBD="$SP/libcuvs/lib64"
 say "compiling"
