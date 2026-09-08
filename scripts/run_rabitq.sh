@@ -26,10 +26,11 @@ git reset --hard FETCH_HEAD >>$L 2>&1
 say "HEAD $(git log --oneline -1)"
 
 SP=/root/miniconda3/lib/python3.12/site-packages
-INC="-I$SP/libcuvs/include -I$SP/libraft/include"
-for extra in librmm libcudss libcublas nvidia; do
-  for p in $SP/$extra*/include; do [ -d "$p" ] && INC="$INC -I$p"; done
-done
+# Every installed package that ships headers. rapids_logger is the one that
+# is easy to miss: raft/core/logger_macros.hpp includes
+# <rapids_logger/log_levels.h> and it lives in its own wheel.
+INC=""
+for p in $SP/*/include; do [ -d "$p" ] && INC="$INC -I$p"; done
 LIBD="$SP/libcuvs/lib64"
 say "compiling"
 nvcc -O3 -std=c++20 --expt-relaxed-constexpr --extended-lambda \
