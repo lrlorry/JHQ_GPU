@@ -170,6 +170,22 @@ int main(int argc, char** argv) {
     }
     const double recall = (double)hit / ((double)nq * k);
 
+    // Recall came back 0.0000 on the first run at every configuration while
+    // the search itself ran and timed. Either the ids are not what the ground
+    // truth indexes, or they never left the device. Print enough of query 0 to
+    // tell those apart rather than guessing.
+    if (std::getenv("JHQ_RQ_DEBUG")) {
+        std::printf("dbg gt[0][0..4] :");
+        for (int j = 0; j < 5 && j < dgt; ++j) std::printf(" %d", gt[j]);
+        std::printf("\ndbg id[0][0..4] :");
+        for (int i = 0; i < 5 && i < k; ++i) std::printf(" %lld", (long long)h_id[i]);
+        std::printf("\ndbg di[0][0..4] :");
+        for (int i = 0; i < 5 && i < k; ++i) std::printf(" %.4f", h_di[i]);
+        long long nz = 0, neg = 0;
+        for (size_t i = 0; i < h_id.size(); ++i) { if (h_id[i] != 0) ++nz; if (h_id[i] < 0) ++neg; }
+        std::printf("\ndbg nonzero ids %lld / %zu, negative %lld\n", nz, h_id.size(), neg);
+    }
+
     std::printf("\nRecall@%d : %.4f\n", k, recall);
     std::printf("Latency   : %.2f ms  (%d queries)\n", ms, nq);
     std::printf("QPS       : %.0f\n", nq / (ms / 1000.0));
