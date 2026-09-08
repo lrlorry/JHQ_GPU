@@ -33,19 +33,20 @@ say "HEAD $(git log --oneline -1)"
 export CPM_SOURCE_CACHE=/root/autodl-tmp/cpm_cache
 mkdir -p "$CPM_SOURCE_CACHE"
 
-# The fork asks for CMake >= 3.30.4 and this box has 3.27.9. pip cannot reach
+# The fork asks for 3.30.4 and rapids-cmake, which it pulls in, asks for
+# 4.0. This box has 3.27.9. pip cannot reach
 # PyPI once network_turbo is sourced -- it reports "from versions: none" -- so
 # take the binary tarball from GitHub, which is what the proxy is for. Nothing
 # system-wide is replaced; everything else here keeps building against 3.27.
 CM=$(command -v cmake)
 need_new=1
-$CM --version | head -1 | awk '{split($3,v,"."); exit !(v[1]>3 || (v[1]==3 && v[2]>=31))}' && need_new=0
+$CM --version | head -1 | awk '{split($3,v,"."); exit !(v[1]>=4)}' && need_new=0
 if [ $need_new -eq 1 ]; then
-  CMDIR=/root/autodl-tmp/cmake-3.31.6
+  CMDIR=/root/autodl-tmp/cmake-4.0.3
   if [ ! -x "$CMDIR/bin/cmake" ]; then
-    say "cmake $($CM --version | head -1) too old, fetching 3.31.6"
+    say "cmake $($CM --version | head -1) too old, fetching 4.0.3"
     mkdir -p "$CMDIR"
-    curl -fsSL https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-linux-x86_64.tar.gz \
+    curl -fsSL https://github.com/Kitware/CMake/releases/download/v4.0.3/cmake-4.0.3-linux-x86_64.tar.gz \
       | tar xz -C "$CMDIR" --strip-components=1 >>$L 2>&1
     rc=$?; say "cmake_fetch_rc=$rc"
     [ $rc -ne 0 ] && { say "=== CUVSBUILD""_DONE cmake fetch failed ==="; exit 1; }
