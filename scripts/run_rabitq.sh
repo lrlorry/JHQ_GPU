@@ -55,7 +55,8 @@ rc=$?; say "compile_rc=$rc"
 # librapids_logger.so lives in the rapids_logger wheel's own lib dir, which
 # the rpath list above covers only if that dir is named lib64 or lib. Set the
 # search path explicitly rather than guessing at wheel layouts.
-export LD_LIBRARY_PATH="$(ls -d $SP/*/lib64 $SP/*/lib 2>/dev/null | tr '\n' ':')$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="$(ls -d $SP/*/lib64 $SP/*/lib 2>/dev/null | tr '
+' ':')${LD_LIBRARY_PATH:-}"
 say "LD_LIBRARY_PATH set"
 ldd build/bench_ivf_rabitq 2>&1 | grep -i "not found" | sed 's/^/      ! /' >> $L
 
