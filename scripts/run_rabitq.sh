@@ -52,6 +52,13 @@ nvcc -O3 -std=c++20 -ccbin g++-12 --expt-relaxed-constexpr --extended-lambda \
 rc=$?; say "compile_rc=$rc"
 [ $rc -ne 0 ] && { say "=== RABITQ""_DONE compile failed ==="; exit 1; }
 
+# librapids_logger.so lives in the rapids_logger wheel's own lib dir, which
+# the rpath list above covers only if that dir is named lib64 or lib. Set the
+# search path explicitly rather than guessing at wheel layouts.
+export LD_LIBRARY_PATH="$(ls -d $SP/*/lib64 $SP/*/lib 2>/dev/null | tr '\n' ':')$LD_LIBRARY_PATH"
+say "LD_LIBRARY_PATH set"
+ldd build/bench_ivf_rabitq 2>&1 | grep -i "not found" | sed 's/^/      ! /' >> $L
+
 exec 8>/root/.gpu_lock; flock 8
 say "got the GPU"
 O30="$D/openai3-3072/base.fvecs $D/openai3-3072/query.fvecs $D/openai3-3072/groundtruth.ivecs"
