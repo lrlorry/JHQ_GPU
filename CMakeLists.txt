@@ -1612,6 +1612,42 @@ add_jhq_variant(v53_x4 ${V53} JHQ_PAPER_FAITHFUL=1
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=4)
 
+# v54: the primary distance as an inner product, with no table at all.
+#
+# Equation 4 builds the K codewords as a Cartesian product of equation 3's
+# per-dimension levels, and L = 2^(B/Ds). Every configuration here runs at
+# Ds = B = 8, so L = 2 and the two levels are +/- sigma*sqrt(2)*erfinv(0.5) --
+# symmetric, because equation 3 puts them at the quantiles of a zero-mean
+# Gaussian. Then
+#
+#     D_P(q,y) = ||q'||^2 + d*a^2 - 2a<q', s_y>,   s_y in {-1,+1}^d
+#
+# is an identity: same candidates, same distances, a different summation
+# order. What changes is what has to be resident per query -- the table's
+# M*32 floats become the query's M*8. At M=384 that is 49,152 B against
+# 12,288, and results/front6/NEGATIVES.md prices the difference at 17-26%
+# wherever occupancy is not already pinned at one block. openai3-3072 is
+# where it is pinned, by that very table, and so is where this is aimed.
+#
+# The cost is instructions: 32 predicated adds a word against the table's 8
+# loads and 8 adds. results/block_sweep/ puts the scan at about 7% of this
+# card's arithmetic throughput, so there is headroom on paper; the two builds
+# are what say whether there is headroom in practice.
+#
+# verify_sign_levels() checks the centroids really are +/-a and reads the
+# encoder's bit order off them, refusing to run if either fails -- the same
+# treatment v47 gives the factorised table.
+set(V54 jhq_v54_sign_ip)
+add_jhq_variant(v54_lut  ${V54} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+add_jhq_variant(v54_sign ${V54} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1
+    JHQ_SIGN_IP=1)
+
 # A probe of the cluster-centric premise, before writing the kernel for it.
 #
 # Sharing one list's codes across the queries that probe it only pays if those
