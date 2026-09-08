@@ -123,12 +123,27 @@ int main(int argc, char** argv) {
     ip.n_lists      = n_lists;
     ip.bits_per_dim = bits;
     ip.metric       = static_cast<cuvs::distance::DistanceType>(metric_i);
-    // The dataset stays on the host; cuVS streams it in, which is what a
-    // 12 GiB base at d=3072 needs on a 32 GiB card.
-    auto xb_host = raft::make_host_matrix_view<const float, int64_t>(xb.data(), nb, d);
+
+    // Build from device memory, not host.
+    //
+    // A host matrix sends cuVS down its streaming path -- it logs "Using
+    // streaming construction: dataset size (2.67 GB) exceeds comfortable GPU
+    // memory limit" even for a 2.7 GB set on a 32 GiB card -- and that path
+    // returns neighbour ids that do not index the dataset: 65% of them come
+    // back as 0, the distances beside them look like genuine near-neighbour
+    // distances, and recomputing the distance to the id that was returned
+    // gives 1.03 where the ground truth's own first neighbour is at 0.63. The
+    // header says streaming is not applicable once the data is resident, so
+    // it is uploaded first. 11.4 GiB at d=3072 fits the card.
+    auto d_base = raft::make_device_matrix<float, int64_t>(res, nb, d);
+    raft::copy(d_base.data_handle(), xb.data(), (size_t)nb * d,
+               raft::resource::get_cuda_stream(res));
+    raft::resource::sync_stream(res);
+    auto xb_dev = raft::make_device_matrix_view<const float, int64_t>(
+        d_base.data_handle(), nb, d);
 
     auto t0 = clk::now();
-    auto idx = cuvs::neighbors::ivf_rabitq::build(res, ip, xb_host);
+    auto idx = cuvs::neighbors::ivf_rabitq::build(res, ip, xb_dev);
     raft::resource::sync_stream(res);
     const double build_ms = ms_since(t0);
 
