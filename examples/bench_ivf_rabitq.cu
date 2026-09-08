@@ -147,6 +147,13 @@ int main(int argc, char** argv) {
     raft::resource::sync_stream(res);
     const double build_ms = ms_since(t0);
 
+    // Ask the index what it actually holds. There is no extend() in this API,
+    // so build() is meant to have added every row; if size() disagrees with
+    // nb the vectors never went in, which is what 65% zero ids would look
+    // like from the search side.
+    std::printf("index: size=%lld dim=%u  (base rows %d, dim %d)\n",
+                (long long)idx.size(), idx.dim(), nb, d);
+
     size_t free1 = 0, total1 = 0;
     cudaMemGetInfo(&free1, &total1);
 
