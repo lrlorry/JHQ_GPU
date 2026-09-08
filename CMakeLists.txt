@@ -1535,6 +1535,30 @@ add_jhq_variant(v50_both  ${V50} JHQ_PAPER_FAITHFUL=1
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_REGROUP=1 JHQ_FUSE_REFINE=1)
 
+# v51: the probe cursor, which never worked.
+#
+# scan_ivf_exact_kernel keeps `p`, a per-thread register holding how far into
+# the probe list the scan has reached, and its comment says the search "is
+# carried across chunks instead of restarting at 0 for every candidate". Only
+# the thread holding a chunk's last candidate ever wrote to it, so the other
+# 1023 kept p = 0 and re-walked the boundaries from zero every chunk: about
+# nprobe/2 tests per candidate instead of nprobe over the whole scan. On
+# stella at nprobe=128 that is 14,308 boundary tests a thread against 128,
+# roughly 30% of the inner loop's instructions.
+#
+# Each thread owns lt = chunk + tid, which grows by BLOCK a chunk, so its probe
+# index is monotone and a private cursor is exact -- same candidates, same
+# distances, same order.
+set(V51 jhq_v51_cursor)
+add_jhq_variant(v51_off ${V51} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+add_jhq_variant(v51_on  ${V51} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_PROBE_CURSOR=1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
