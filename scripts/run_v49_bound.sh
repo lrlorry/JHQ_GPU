@@ -61,4 +61,61 @@ for b in v49_base v49_e8 v49_e16; do
     rm -f /tmp/vb.$$
   done
 done
+say "########## the materialised residual table, all six ##########"
+# +7.3% to +21.4% on vogue, at bit-identical recall, from a switch that has
+# existed since v22 and was only ever checked for numerical agreement. vogue
+# is one dataset and the buffer is B*d*Kr*4 -- 805 MB there, 1.07 GB at
+# d=1024, 3.2 GB at d=3072 -- so both the gain and the cost need the rest.
+rl(){ # bin paths M Br nlist nt np tag lut
+  local C=$CACHE/rl_${8}_${4}_${9}; mkdir -p $C
+  env $E JHQ_INDEX_CACHE=$C JHQ_RESID_LUT=$9 JHQ_TILE_M_RT=$3 JHQ_N_TRAIN=$6 timeout 9000 \
+      build/$1 $2 $3 8 $4 100.0 10 $5 $7 8 1024 "" 3 >/tmp/rl.$$ 2>/tmp/rle.$$
+  local rc=$?
+  printf "  RESID_LUT=%s %-12s Br=%-3s np=%-5s recall=%-8s qps=%-9s vram=%-9s rc=%s\n" \
+    "$9" "$8" "$4" "$7" \
+    "$(awk '/^Recall@10/{print $3;exit}' /tmp/rl.$$)" \
+    "$(awk '/^QPS/{print $3;exit}' /tmp/rl.$$)" \
+    "$(awk '/^VRAM used/{print $4;exit}' /tmp/rl.$$)" "$rc" >> $L
+  [ $rc -ne 0 ] && head -2 /tmp/rle.$$|sed 's/^/      ! /' >>$L
+  rm -f /tmp/rl.$$ /tmp/rle.$$
+}
+AX="$D/arxiv-abstracts-768/base.fvecs $D/arxiv-abstracts-768/query.fvecs $D/arxiv-abstracts-768/groundtruth.ivecs"
+O15="$D/openai3-1536/base.fvecs $D/openai3-1536/query.fvecs $D/openai3-1536/groundtruth.ivecs"
+O30="$D/openai3-3072/base.fvecs $D/openai3-3072/query.fvecs $D/openai3-3072/groundtruth.ivecs"
+for lut in 0 1; do
+  for np in 32 128; do
+    rl demo_jhq_v49_base "$VG"  96  8 4096  159744  $np vogue        $lut
+    rl demo_jhq_v49_base "$AX"  96  8 8192  319488  $np arxiv        $lut
+    rl demo_jhq_v49_base "$BG"  128 8 32768 1277952 $np bge          $lut
+    rl demo_jhq_v49_base "$ST"  128 8 32768 1277952 $np stella       $lut
+    rl demo_jhq_v49_base "$O15" 192 8 8192  319488  $np openai3-1536 $lut
+    rl demo_jhq_v49_base "$O30" 384 8 4096  159744  $np openai3-3072 $lut
+  done
+done
+
+say "########## refine width against cb_smem, all six ##########"
+# The 256 -> 1024 change was +3.3% on stella and -25.3% on vogue. vogue is the
+# only configuration whose residual codebook fits in shared: M*Kr*4 + d*4 is
+# 101,376 at M=96 and exactly the opt-in limit, while M>=128 exceeds it and
+# falls back to global. One data point for each side is not a policy.
+rw(){ # paths M nlist nt np tag width
+  local C=$CACHE/rw_${6}; mkdir -p $C
+  env $E JHQ_INDEX_CACHE=$C JHQ_REFINE_BLOCK=$7 JHQ_TILE_M_RT=$2 JHQ_N_TRAIN=$4 timeout 9000 \
+      build/demo_jhq_v49_base $1 $2 8 8 100.0 10 $3 $5 8 1024 "" 3 >/tmp/rw.$$ 2>/dev/null
+  printf "  REFINE_BLOCK=%-5s %-12s M=%-4s np=%-5s recall=%-8s qps=%s\n" \
+    "$7" "$6" "$2" "$5" \
+    "$(awk '/^Recall@10/{print $3;exit}' /tmp/rw.$$)" \
+    "$(awk '/^QPS/{print $3;exit}' /tmp/rw.$$)" >> $L
+  rm -f /tmp/rw.$$
+}
+for w in 0 1024; do
+  for np in 32 128; do
+    rw "$VG"  96  4096  159744  $np vogue        $w
+    rw "$AX"  96  8192  319488  $np arxiv        $w
+    rw "$BG"  128 32768 1277952 $np bge          $w
+    rw "$ST"  128 32768 1277952 $np stella       $w
+    rw "$O15" 192 8192  319488  $np openai3-1536 $w
+    rw "$O30" 384 4096  159744  $np openai3-3072 $w
+  done
+done
 say "=== V49B""_DONE ==="
