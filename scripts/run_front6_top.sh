@@ -9,12 +9,12 @@
 #
 # nprobe scaled by the nlist ratio and then past it: 512, 1024, 2048.
 set -u
-exec 9>/root/.lock_f6top; flock -n 9 || { echo "already running"; exit 0; }
+exec 9>/root/.lock_f6top2; flock -n 9 || { echo "already running"; exit 0; }
 export PATH=/root/miniconda3/bin:/usr/local/cuda/bin:$PATH
 cd "$(dirname "$0")/.."
-CACHE=${CACHE:-/root/autodl-tmp/f6top_cache}; rm -rf $CACHE; mkdir -p $CACHE
+CACHE=${CACHE:-/root/autodl-tmp/f6top2_cache}; rm -rf $CACHE; mkdir -p $CACHE
 D=${DATA_ROOT:-/root/autodl-tmp}; V=${VOGUE_DIR:-/root/data}
-L=${LOG:-/root/f6top.log}; : > $L
+L=${LOG:-/root/f6top2.log}; : > $L
 say(){ echo "$(date -u +%H:%M:%S) $*" >> $L; }
 source /etc/network_turbo 2>/dev/null
 git fetch https://github.com/lrlorry/JHQ_GPU.git fix/recall-eval-v15 >>$L 2>&1 && git reset --hard FETCH_HEAD >>$L 2>&1
@@ -59,4 +59,16 @@ sweep bge-m3       "$BG"  128 16384  638976  512 1024 2048
 sweep stella       "$ST"  128 32768  1277952 512 1024 2048
 sweep openai3-1536 "$O15" 192 4096   159744  512 1024 2048
 sweep openai3-3072 "$O30" 384 4096   159744  512 1024 2048
+
+# And the same for the published configuration. Extending only one arm leaves
+# the envelope missing its better leg exactly where the new configuration is
+# weakest -- at the top, where a larger nlist buys nothing and costs a coarse
+# search over four to thirty-two times as many centroids.
+say "########## nprobe past 256, published configurations ##########"
+sweep vogue-768-old    "$VG"  96  1024  100000 512 1024 2048
+sweep arxiv-768-old    "$AX"  96  2048  100000 512 1024 2048
+sweep bge-m3-old       "$BG"  128 8192  100000 512 1024 2048
+sweep stella-old       "$ST"  128 16384 100000 512 1024 2048
+sweep openai3-1536-old "$O15" 192 1024  100000 512 1024 2048
+sweep openai3-3072-old "$O30" 384 1024  100000 512 1024 2048
 say "=== F6TOP""_DONE ==="
