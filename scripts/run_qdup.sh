@@ -19,7 +19,11 @@
 set -u
 exec 9>/root/.lock_qdup; flock -n 9 || { echo "already running"; exit 0; }
 export PATH=/root/miniconda3/bin:/usr/local/cuda/bin:$PATH
-cd "$(dirname "$0")/.."
+# The script is copied out of the tree before launching -- it resets the tree
+# below, and bash reads a script incrementally, so a script that rewrites
+# itself mid-run corrupts. The copy cannot find the repo from $0, so it is
+# named explicitly.
+cd "${JHQ_REPO:-$(dirname "$0")/..}"
 CACHE=${CACHE:-/root/autodl-tmp/qdup_cache}; mkdir -p $CACHE
 D=${DATA_ROOT:-/root/autodl-tmp}; V=${VOGUE_DIR:-/root/data}
 L=${LOG:-/root/qdup.log}; : > $L
