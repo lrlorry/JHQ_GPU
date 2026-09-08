@@ -16,7 +16,9 @@ sed -i '' 's|jhq_v<prev>_<name>/|jhq_v<next>_<newname>/|g' \
 
 Afterwards `git status --porcelain jhq_v<prev>_<name>` must be empty.
 
-**Highest version: v40** (`jhq_v40_scan_l1`). The next change is v41.
+**Highest version: v48** (`jhq_v48_early_exit`). The next change is v49.
+The head for search is **v47** (`jhq_v47_split_lut`); v48 is a measured
+negative kept for the record.
 
 ### Frozen, never to be modified
 
@@ -52,6 +54,23 @@ to 1.192e-07 and the switch exists to reproduce that. An option that exists
 
 If an old path is worth keeping for comparison, it keeps its own version
 directory. That is what they are for.
+
+## The trained-state cache is keyed on data and parameters, not on code
+
+`cache_path(cache_dir, h_x, n_train)`. A version that changes what training
+produces gets a hit on its predecessor's state and the change never runs -- v46
+fixed a sigma that was silently zero and reported its predecessor's broken
+recall to the digit, which reads as "the fix does not work". Give each binary
+its own cache directory when the versions differ in training.
+
+**And put it on `/root/autodl-tmp`.** One directory per binary on `/root`
+filled the 30 GB system overlay: 7.2 GB of trained state across ten variants,
+on a box whose data disk has 264 GB free.
+
+Training is also not reproducible. Three cold-cache runs of one binary gave
+0.9852 / 0.9842 / 0.9849 on vogue with an identical `cand`, so coarse
+assignment is deterministic and the codebooks differ in their last bits.
+**Recall differences below 1e-3 between two builds mean nothing.**
 
 ## Syncing to the GPU box
 
