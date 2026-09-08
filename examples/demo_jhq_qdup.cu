@@ -108,15 +108,14 @@ int main(int argc, char** argv) {
     int qdup = 1;
     if (const char* e = std::getenv("JHQ_QUERY_DUP")) qdup = atoi(e);
     if (qdup > 1) {
-        if (nq % qdup != 0) {
-            fprintf(stderr, "JHQ_QUERY_DUP=%d does not divide nq=%d\n", qdup, nq);
-            return 1;
-        }
         if (ng < nq) {
             fprintf(stderr, "ground truth has %d rows, need %d\n", ng, nq);
             return 1;
         }
-        const int nu = nq / qdup;
+        // stella has nq = 999, so requiring qdup | nq lost the one dataset the
+        // fronts are actually reported on. The last group just gets fewer
+        // copies; nq, and so every count downstream, is untouched.
+        const int nu = (nq + qdup - 1) / qdup;
         std::vector<float> q2((size_t)nq * d_query);
         std::vector<int>   g2((size_t)nq * d_gt);
         for (int i = 0; i < nq; ++i) {
