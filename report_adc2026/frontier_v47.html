@@ -1,0 +1,394 @@
+<title>Two Bugs and a Parameter</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#f7f8fa; --panel:#ffffff; --ink:#111620; --ink-2:#39424f; --muted:#646d7c;
+  --grid:#e6e9ef; --frame:#ccd2dc; --rule:#dfe3ea; --quote:#eef1f6;
+  --s-jhq:#1f6fd0; --s-pub:#98a3b4; --s-c32:#e2622e; --s-c8:#0d9268; --s-ivf:#6244bd;
+  --ok:#0d9268; --warn:#b3541e; --warn-bg:#fbf0e8; --bad:#c0392b;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0f1217; --panel:#161a21; --ink:#e9edf3; --ink-2:#c3cbd6; --muted:#8b95a4;
+  --grid:#232830; --frame:#2f3742; --rule:#252b34; --quote:#1b2028;
+  --s-jhq:#4f97ee; --s-pub:#6f7c8e; --s-c32:#ef7f4d; --s-c8:#1cb583; --s-ivf:#9a86ea;
+  --ok:#1cb583; --warn:#e2925f; --warn-bg:#241a12; --bad:#e0705f;
+}}
+:root[data-theme="dark"]{
+  --ground:#0f1217; --panel:#161a21; --ink:#e9edf3; --ink-2:#c3cbd6; --muted:#8b95a4;
+  --grid:#232830; --frame:#2f3742; --rule:#252b34; --quote:#1b2028;
+  --s-jhq:#4f97ee; --s-pub:#6f7c8e; --s-c32:#ef7f4d; --s-c8:#1cb583; --s-ivf:#9a86ea;
+  --ok:#1cb583; --warn:#e2925f; --warn-bg:#241a12; --bad:#e0705f;
+}
+*{box-sizing:border-box}
+body{background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15.5px; line-height:1.62; -webkit-font-smoothing:antialiased}
+.wrap{max-width:900px; margin:0 auto; padding:44px 26px 80px; display:flex; flex-direction:column; gap:36px}
+.wide{max-width:1240px; margin:0 auto; padding:0 26px}
+
+.eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11.5px; font-weight:500;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:0}
+h1{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif; font-weight:700;
+  font-size:clamp(31px,4.4vw,46px); line-height:1.06; letter-spacing:-.014em; margin:0;
+  text-wrap:balance}
+h2{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif; font-weight:600;
+  font-size:25px; letter-spacing:-.008em; margin:0 0 4px; text-wrap:balance}
+h3{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif; font-weight:600;
+  font-size:18.5px; margin:0 0 3px; color:var(--ink)}
+p{margin:0; max-width:68ch}
+section{display:flex; flex-direction:column; gap:14px}
+section > p + p{margin-top:-2px}
+.lede{font-size:17px; color:var(--ink-2)}
+code{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.9em; color:var(--ink-2)}
+strong{font-weight:600}
+hr{border:0; border-top:1px solid var(--rule); margin:0}
+
+.pull{background:var(--quote); border-left:2px solid var(--s-jhq); padding:14px 18px;
+  border-radius:0 4px 4px 0; font-size:15px; color:var(--ink-2); max-width:68ch}
+.pull b{color:var(--ink)}
+
+table{border-collapse:collapse; width:100%; font-size:13.5px;
+  font-variant-numeric:tabular-nums}
+caption{text-align:left; color:var(--muted); font-size:12.5px; padding-bottom:8px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace}
+th,td{padding:9px 11px; text-align:right; border-bottom:1px solid var(--rule)}
+thead th{color:var(--muted); font-weight:500; font-size:11.5px; letter-spacing:.07em;
+  text-transform:uppercase; border-bottom:1px solid var(--frame)}
+tbody th{text-align:left; font-weight:600; color:var(--ink)}
+td .sub{display:block; font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10px; color:var(--muted); font-weight:400}
+td.rng{font-family:"IBM Plex Mono",ui-monospace,monospace; color:var(--muted); font-size:12px}
+.tblwrap{overflow-x:auto}
+
+.ownrow{display:flex; flex-direction:column; gap:6px}
+.ownhead{display:flex; align-items:baseline; justify-content:space-between; gap:14px; flex-wrap:wrap}
+.ownhead h4{margin:0; font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;
+  font-size:15.5px; font-weight:600}
+.ownrng{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11px; color:var(--muted)}
+.bar{display:flex; height:15px; border-radius:3px; overflow:hidden; background:var(--grid)}
+.seg{display:block; height:100%}
+.seg-wins{background:var(--s-jhq)}
+.seg-alone{background:var(--s-jhq); opacity:.42}
+.seg-loses{background:var(--frame)}
+.ownlegend{display:flex; flex-wrap:wrap; gap:8px 22px; font-size:13px; color:var(--ink-2)}
+.ownlegend span{display:inline-flex; align-items:center; gap:7px}
+.sw{width:16px; height:10px; border-radius:2px; display:inline-block}
+
+.legend{display:flex; flex-wrap:wrap; gap:6px 24px; align-items:center; padding:13px 0;
+  border-top:1px solid var(--rule); border-bottom:1px solid var(--rule)}
+.key{display:inline-flex; align-items:center; gap:8px; font-size:13.5px; color:var(--ink-2)}
+.key svg{display:block; flex:none}
+.key.lead{font-weight:600; color:var(--ink)}
+.grid6{display:grid; grid-template-columns:repeat(3,1fr); gap:20px}
+@media (max-width:1080px){.grid6{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:700px){.grid6{grid-template-columns:1fr}}
+.panel{margin:0; background:var(--panel); border:1px solid var(--rule); border-radius:5px;
+  padding:15px 15px 13px; display:flex; flex-direction:column; gap:9px}
+.panel figcaption{display:flex; flex-direction:column; gap:1px}
+.panel h3{font-size:17.5px; margin:0}
+.meta{margin:0; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11px;
+  color:var(--muted); font-variant-numeric:tabular-nums}
+.panel svg{width:100%; height:auto; display:block; overflow:visible}
+.delta{margin:0; padding-top:9px; border-top:1px solid var(--rule);
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11.5px; color:var(--muted);
+  font-variant-numeric:tabular-nums; line-height:1.6}
+.delta b{color:var(--s-jhq); font-weight:600; font-size:13px}
+.sep{opacity:.45; padding:0 3px}
+.ooms{margin:0; display:flex; flex-wrap:wrap; gap:5px}
+.oom{display:inline-block; background:var(--warn-bg); color:var(--warn);
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:10.5px; padding:2.5px 7px;
+  border-radius:3px}
+.grid{stroke:var(--grid); stroke-width:1}
+.frame{fill:none; stroke:var(--frame); stroke-width:1}
+.tick{fill:var(--muted); font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:9.5px;
+  font-variant-numeric:tabular-nums}
+.ty{text-anchor:end} .tx{text-anchor:middle}
+.axl{fill:var(--muted); font-family:"IBM Plex Sans",sans-serif; font-size:10px;
+  text-anchor:middle; letter-spacing:.04em}
+.ln{fill:none; stroke-width:1.6; stroke-linejoin:round; stroke-linecap:round}
+.pt{stroke:var(--panel); stroke-width:.9}
+.s-jhq{stroke:var(--s-jhq)} circle.s-jhq{fill:var(--s-jhq)}
+.s-pub{stroke:var(--s-pub); stroke-dasharray:5 3.5} circle.s-pub{fill:var(--s-pub); stroke-dasharray:none}
+.s-c32{stroke:var(--s-c32); stroke-dasharray:1.5 2.5} circle.s-c32{fill:var(--s-c32); stroke-dasharray:none}
+.s-c8{stroke:var(--s-c8); stroke-dasharray:8 3} circle.s-c8{fill:var(--s-c8); stroke-dasharray:none}
+.s-ivf{stroke:var(--s-ivf); stroke-dasharray:2 2.5 6 2.5} circle.s-ivf{fill:var(--s-ivf); stroke-dasharray:none}
+polyline.s-jhq{stroke-width:2.4}
+
+.ledger{display:grid; grid-template-columns:auto 1fr auto; gap:0 18px; font-size:14px}
+.ledger > *{padding:10px 0; border-bottom:1px solid var(--rule)}
+.ledger dt{font-family:"IBM Plex Mono",ui-monospace,monospace; font-weight:600; color:var(--ink)}
+.ledger dd{margin:0; color:var(--ink-2)}
+.ledger .res{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:12.5px;
+  text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums}
+.res.pos{color:var(--ok)} .res.neg{color:var(--bad)} .res.neu{color:var(--muted)}
+.todo{display:flex; flex-direction:column; gap:11px}
+.todo li{margin:0}
+ul{margin:0; padding-left:20px; display:flex; flex-direction:column; gap:9px; max-width:68ch}
+li{color:var(--ink-2)}
+li b{color:var(--ink); font-weight:600}
+footer{color:var(--muted); font-size:13px; font-family:"IBM Plex Mono",ui-monospace,monospace;
+  line-height:1.75; border-top:1px solid var(--rule); padding-top:20px}
+</style>
+
+<div class="wrap">
+<header style="display:flex;flex-direction:column;gap:15px">
+  <p class="eyebrow">JHQ on GPU &middot; measured 8 September 2026 &middot; RTX 5090</p>
+  <h1>Two bugs and a parameter</h1>
+  <p class="lede">JHQ got 1.3&times; to 2.3&times; faster at matched recall on all six datasets,
+    with the algorithm untouched. Almost none of it came from the kernel arithmetic the
+    optimisation effort had been aimed at. Two of the three sources were defects, and the
+    largest was a parameter that had never been sized.</p>
+  <p class="pull"><b>The frontier did not change hands.</b> Where fp32 CAGRA can build an index,
+    it still owns high recall. What JHQ owns, it owns because nothing else runs there &mdash;
+    and that was already true before this work. The speedup makes the alone-territory cheaper,
+    not larger.</p>
+</header>
+
+<hr>
+
+<section>
+  <h2>What moved</h2>
+  <dl class="ledger">
+    <dt>v45</dt>
+    <dd>Both selection buffers sorted the moment the count passed the target. <code>cap</code>
+      is the power of two at or above <code>target + BLOCK</code>, so after each compaction the
+      count sat at the target and the next chunk pushed it past again &mdash; a full
+      2048-element bitonic sort per chunk to absorb a handful of survivors. The bound the
+      buffer needs is <code>cnt + BLOCK &le; cap</code>.</dd>
+    <dd class="res pos">+11 to +38%</dd>
+
+    <dt>v46</dt>
+    <dd><code>cublasSdot(n * d_, &hellip;)</code> passes an <code>int</code>. At d=1024 the
+      product wraps negative above 2,097,152 rows; BLAS returns without writing the result for
+      a non-positive length, so sigma came out zero and equation 4 placed every primary
+      centroid at the origin. No error anywhere. It read as an <code>nlist</code> ceiling for
+      two runs, because nlist and the training set had always been raised together.</dd>
+    <dd class="res pos">fixes 0.48 &rarr; 0.99</dd>
+
+    <dt>v47</dt>
+    <dd>Equation 4 builds each subspace's codewords as a Cartesian product, so
+      <code>T[c] = T<sub>hi</sub>[c&gt;&gt;4] + T<sub>lo</sub>[c&amp;15]</code> exactly. 32
+      table entries a subspace instead of 256: 8&times; smaller, 16&times; cheaper to build,
+      and conflict-free in shared memory where the 256-entry table took up to an 8-way
+      conflict.</dd>
+    <dd class="res pos">+6 to +14.5%</dd>
+
+    <dt>config</dt>
+    <dd>The coarse quantizer had been trained on <code>JHQ_N_TRAIN=100000</code> at every
+      nlist &mdash; 6.1 points per centroid on Stella, against the 39 FAISS treats as a floor.
+      Better centroids partition more evenly, so a fixed nprobe touches fewer vectors: measured
+      candidates at nprobe=128 fall from 226,410 to 146,535 at <em>higher</em> recall.</dd>
+    <dd class="res pos">+5 to +96%</dd>
+
+    <dt>v48</dt>
+    <dd>Squared-distance table entries are non-negative, so a partial sum past the ck-th best
+      cannot reach the top-ck and the remaining subspaces need be neither gathered nor looked
+      up. Exact. The exit has to be per warp &mdash; lanes walk subspaces in lockstep &mdash;
+      and the maximum over 32 lanes is far above the mean.</dd>
+    <dd class="res neg">&minus;1 to &minus;3%</dd>
+  </dl>
+  <p style="font-size:14px;color:var(--muted)">v43 and v44 carry no speed of their own. v43 added
+    the two diagnostics the rest of this rests on; v44 replaced a probe selector that held all
+    nlist scores in one block's shared memory and could not launch above nlist=16384.</p>
+</section>
+
+<section>
+  <h2>Speedup against the published fronts</h2>
+  <div class="tblwrap">
+  <table>
+    <caption>Matched-recall QPS ratio, log-interpolated on the overlap of the two fronts.
+      v47 with the retuned configuration against the published v39 fronts.</caption>
+    <thead><tr><th scope="col" style="text-align:left">Dataset</th><th scope="col" style="text-align:right">Overlap</th>
+      <th scope="col">low</th><th scope="col">mid</th><th scope="col">high</th><th scope="col">top</th></tr></thead>
+    <tbody><tr><th scope="row">Vogue-768</th><td class="rng">0.9269&ndash;0.9827</td><td>1.28&times;<span class="sub">R=0.9325</span></td><td>1.40&times;<span class="sub">R=0.9520</span></td><td>1.45&times;<span class="sub">R=0.9715</span></td><td>1.46&times;<span class="sub">R=0.9816</span></td></tr>
+<tr><th scope="row">arXiv-768</th><td class="rng">0.9567&ndash;0.9855</td><td>1.41&times;<span class="sub">R=0.9596</span></td><td>1.72&times;<span class="sub">R=0.9697</span></td><td>1.87&times;<span class="sub">R=0.9797</span></td><td>1.71&times;<span class="sub">R=0.9849</span></td></tr>
+<tr><th scope="row">BGE-M3</th><td class="rng">0.8803&ndash;0.9575</td><td>1.77&times;<span class="sub">R=0.8880</span></td><td>1.95&times;<span class="sub">R=0.9150</span></td><td>1.87&times;<span class="sub">R=0.9421</span></td><td>1.63&times;<span class="sub">R=0.9560</span></td></tr>
+<tr><th scope="row">Stella-TREC24</th><td class="rng">0.9716&ndash;0.9932</td><td>1.88&times;<span class="sub">R=0.9738</span></td><td>1.94&times;<span class="sub">R=0.9813</span></td><td>2.32&times;<span class="sub">R=0.9889</span></td><td>2.19&times;<span class="sub">R=0.9928</span></td></tr>
+<tr><th scope="row">OpenAI3-1536</th><td class="rng">0.9243&ndash;0.9692</td><td>1.33&times;<span class="sub">R=0.9288</span></td><td>1.59&times;<span class="sub">R=0.9445</span></td><td>1.60&times;<span class="sub">R=0.9602</span></td><td>1.58&times;<span class="sub">R=0.9683</span></td></tr>
+<tr><th scope="row">OpenAI3-3072</th><td class="rng">0.9119&ndash;0.9649</td><td>1.51&times;<span class="sub">R=0.9172</span></td><td>1.83&times;<span class="sub">R=0.9357</span></td><td>1.91&times;<span class="sub">R=0.9543</span></td><td>1.88&times;<span class="sub">R=0.9638</span></td></tr></tbody>
+  </table>
+  </div>
+  <p>It grows with recall on every dataset. The mechanism is the same one everywhere: at large
+    nprobe the scan reads more, so a partition that is more even saves more.</p>
+</section>
+</div>
+
+<div class="wide" style="display:flex;flex-direction:column;gap:18px;margin-bottom:36px">
+  <h2 style="max-width:900px;margin:0 auto;width:100%">Recall&ndash;throughput, all six</h2>
+  <div class="legend">
+    <span class="key lead"><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" class="ln s-jhq"/><circle cx="13" cy="5" r="2.9" class="pt s-jhq"/></svg>JHQ &mdash; this work</span>
+    <span class="key"><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" class="ln s-pub"/></svg>JHQ &mdash; as published</span>
+    <span class="key"><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" class="ln s-c32"/></svg>CAGRA fp32</span>
+    <span class="key"><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" class="ln s-c8"/></svg>CAGRA int8</span>
+    <span class="key"><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" class="ln s-ivf"/></svg>IVF-PQ</span>
+  </div>
+  <div class="grid6"><figure class="panel">
+  <figcaption>
+    <h3>Vogue</h3>
+    <p class="meta">1.00M &times; 768d &nbsp;·&nbsp; M=96, B=8, B<sub>r</sub>=8</p>
+  </figcaption>
+  <svg viewBox="0 0 430 268" role="img" aria-label="Vogue recall versus QPS"><line class="grid" x1="54" x2="416" y1="210.8" y2="210.8"/><text class="tick ty" x="47" y="214.2">5K</text><line class="grid" x1="54" x2="416" y1="186.8" y2="186.8"/><text class="tick ty" x="47" y="190.2">10K</text><line class="grid" x1="54" x2="416" y1="162.7" y2="162.7"/><text class="tick ty" x="47" y="166.1">20K</text><line class="grid" x1="54" x2="416" y1="130.9" y2="130.9"/><text class="tick ty" x="47" y="134.3">50K</text><line class="grid" x1="54" x2="416" y1="106.8" y2="106.8"/><text class="tick ty" x="47" y="110.2">100K</text><line class="grid" x1="54" x2="416" y1="82.8" y2="82.8"/><text class="tick ty" x="47" y="86.2">200K</text><line class="grid" x1="54" x2="416" y1="51.0" y2="51.0"/><text class="tick ty" x="47" y="54.4">500K</text><line class="grid" x1="54" x2="416" y1="26.9" y2="26.9"/><text class="tick ty" x="47" y="30.3">1.0M</text><line class="grid" y1="12" y2="232" x1="76.7" x2="76.7"/><text class="tick tx" x="76.7" y="247">0.700</text><line class="grid" y1="12" y2="232" x1="190.0" x2="190.0"/><text class="tick tx" x="190.0" y="247">0.800</text><line class="grid" y1="12" y2="232" x1="303.3" x2="303.3"/><text class="tick tx" x="303.3" y="247">0.900</text><rect class="frame" x="54" y="12" width="362" height="220"/><polyline class="ln s-jhq" points="32.1,79.5 260.2,91.9 376.4,111.3 397.1,126.0"/><circle class="pt s-jhq" cx="32.1" cy="79.5" r="2.9"/><circle class="pt s-jhq" cx="260.2" cy="91.9" r="2.9"/><circle class="pt s-jhq" cx="376.4" cy="111.3" r="2.9"/><circle class="pt s-jhq" cx="397.1" cy="126.0" r="2.9"/><polyline class="ln s-pub" points="333.8,111.8 378.5,125.7 400.4,141.5 408.5,159.2 411.0,181.8 411.5,220.6"/><circle class="pt s-pub" cx="333.8" cy="111.8" r="2.1"/><circle class="pt s-pub" cx="378.5" cy="125.7" r="2.1"/><circle class="pt s-pub" cx="400.4" cy="141.5" r="2.1"/><circle class="pt s-pub" cx="408.5" cy="159.2" r="2.1"/><circle class="pt s-pub" cx="411.0" cy="181.8" r="2.1"/><circle class="pt s-pub" cx="411.5" cy="220.6" r="2.1"/><polyline class="ln s-c32" points="269.5,63.6 272.4,56.9 343.7,75.2 348.5,75.7 349.0,77.4 349.6,74.7 387.4,94.7 388.6,97.0 388.8,97.1 388.9,95.1 403.4,118.2 405.2,117.0 405.3,116.8 407.4,117.9 411.2,140.1"/><circle class="pt s-c32" cx="269.5" cy="63.6" r="2.1"/><circle class="pt s-c32" cx="272.4" cy="56.9" r="2.1"/><circle class="pt s-c32" cx="343.7" cy="75.2" r="2.1"/><circle class="pt s-c32" cx="348.5" cy="75.7" r="2.1"/><circle class="pt s-c32" cx="349.0" cy="77.4" r="2.1"/><circle class="pt s-c32" cx="349.6" cy="74.7" r="2.1"/><circle class="pt s-c32" cx="387.4" cy="94.7" r="2.1"/><circle class="pt s-c32" cx="388.6" cy="97.0" r="2.1"/><circle class="pt s-c32" cx="388.8" cy="97.1" r="2.1"/><circle class="pt s-c32" cx="388.9" cy="95.1" r="2.1"/><circle class="pt s-c32" cx="403.4" cy="118.2" r="2.1"/><circle class="pt s-c32" cx="405.2" cy="117.0" r="2.1"/><circle class="pt s-c32" cx="405.3" cy="116.8" r="2.1"/><circle class="pt s-c32" cx="407.4" cy="117.9" r="2.1"/><circle class="pt s-c32" cx="411.2" cy="140.1" r="2.1"/><polyline class="ln s-c8" points="230.4,24.9 232.2,26.9 303.9,37.4 306.5,37.4 307.5,39.3 307.9,40.9 336.3,53.5 337.9,55.1 338.5,57.7 341.5,63.4 348.7,84.9 349.1,75.3 349.2,78.9 349.5,78.6 353.6,96.0 354.3,99.7 354.5,126.2 354.8,132.3 354.9,115.5 355.0,138.1 355.1,138.8 355.4,160.4"/><circle class="pt s-c8" cx="230.4" cy="24.9" r="2.1"/><circle class="pt s-c8" cx="232.2" cy="26.9" r="2.1"/><circle class="pt s-c8" cx="303.9" cy="37.4" r="2.1"/><circle class="pt s-c8" cx="306.5" cy="37.4" r="2.1"/><circle class="pt s-c8" cx="307.5" cy="39.3" r="2.1"/><circle class="pt s-c8" cx="307.9" cy="40.9" r="2.1"/><circle class="pt s-c8" cx="336.3" cy="53.5" r="2.1"/><circle class="pt s-c8" cx="337.9" cy="55.1" r="2.1"/><circle class="pt s-c8" cx="338.5" cy="57.7" r="2.1"/><circle class="pt s-c8" cx="341.5" cy="63.4" r="2.1"/><circle class="pt s-c8" cx="348.7" cy="84.9" r="2.1"/><circle class="pt s-c8" cx="349.1" cy="75.3" r="2.1"/><circle class="pt s-c8" cx="349.2" cy="78.9" r="2.1"/><circle class="pt s-c8" cx="349.5" cy="78.6" r="2.1"/><circle class="pt s-c8" cx="353.6" cy="96.0" r="2.1"/><circle class="pt s-c8" cx="354.3" cy="99.7" r="2.1"/><circle class="pt s-c8" cx="354.5" cy="126.2" r="2.1"/><circle class="pt s-c8" cx="354.8" cy="132.3" r="2.1"/><circle class="pt s-c8" cx="354.9" cy="115.5" r="2.1"/><circle class="pt s-c8" cx="355.0" cy="138.1" r="2.1"/><circle class="pt s-c8" cx="355.1" cy="138.8" r="2.1"/><circle class="pt s-c8" cx="355.4" cy="160.4" r="2.1"/><polyline class="ln s-ivf" points="-60.1,58.3 38.1,88.8 53.4,61.5 65.3,131.1 67.7,153.8 97.7,85.1 110.0,108.0 200.4,95.6 250.8,161.3 251.4,137.8 291.4,116.2 314.2,150.7 353.3,161.7 356.7,185.3 395.1,196.5 398.8,219.4"/><circle class="pt s-ivf" cx="-60.1" cy="58.3" r="2.1"/><circle class="pt s-ivf" cx="38.1" cy="88.8" r="2.1"/><circle class="pt s-ivf" cx="53.4" cy="61.5" r="2.1"/><circle class="pt s-ivf" cx="65.3" cy="131.1" r="2.1"/><circle class="pt s-ivf" cx="67.7" cy="153.8" r="2.1"/><circle class="pt s-ivf" cx="97.7" cy="85.1" r="2.1"/><circle class="pt s-ivf" cx="110.0" cy="108.0" r="2.1"/><circle class="pt s-ivf" cx="200.4" cy="95.6" r="2.1"/><circle class="pt s-ivf" cx="250.8" cy="161.3" r="2.1"/><circle class="pt s-ivf" cx="251.4" cy="137.8" r="2.1"/><circle class="pt s-ivf" cx="291.4" cy="116.2" r="2.1"/><circle class="pt s-ivf" cx="314.2" cy="150.7" r="2.1"/><circle class="pt s-ivf" cx="353.3" cy="161.7" r="2.1"/><circle class="pt s-ivf" cx="356.7" cy="185.3" r="2.1"/><circle class="pt s-ivf" cx="395.1" cy="196.5" r="2.1"/><circle class="pt s-ivf" cx="398.8" cy="219.4" r="2.1"/><text class="axl" x="235" y="264">Recall@10</text><text class="axl axy" transform="translate(13,122) rotate(-90)" x="0" y="0">QPS (log)</text></svg>
+  <p class="delta"><b>1.46&times;</b> at R=0.9771 <span class="sep">·</span> nlist=1024, n_train=100K &rarr; nlist=4096, n_train=159K</p>
+  
+</figure>
+<figure class="panel">
+  <figcaption>
+    <h3>arXiv abstracts</h3>
+    <p class="meta">2.25M &times; 768d &nbsp;·&nbsp; M=96, B=8, B<sub>r</sub>=8</p>
+  </figcaption>
+  <svg viewBox="0 0 430 268" role="img" aria-label="arXiv abstracts recall versus QPS"><line class="grid" x1="54" x2="416" y1="202.1" y2="202.1"/><text class="tick ty" x="47" y="205.5">5K</text><line class="grid" x1="54" x2="416" y1="178.9" y2="178.9"/><text class="tick ty" x="47" y="182.3">10K</text><line class="grid" x1="54" x2="416" y1="155.8" y2="155.8"/><text class="tick ty" x="47" y="159.2">20K</text><line class="grid" x1="54" x2="416" y1="125.2" y2="125.2"/><text class="tick ty" x="47" y="128.6">50K</text><line class="grid" x1="54" x2="416" y1="102.0" y2="102.0"/><text class="tick ty" x="47" y="105.4">100K</text><line class="grid" x1="54" x2="416" y1="78.8" y2="78.8"/><text class="tick ty" x="47" y="82.2">200K</text><line class="grid" x1="54" x2="416" y1="48.2" y2="48.2"/><text class="tick ty" x="47" y="51.6">500K</text><line class="grid" x1="54" x2="416" y1="25.1" y2="25.1"/><text class="tick ty" x="47" y="28.5">1.0M</text><line class="grid" y1="12" y2="232" x1="76.6" x2="76.6"/><text class="tick tx" x="76.6" y="247">0.700</text><line class="grid" y1="12" y2="232" x1="189.8" x2="189.8"/><text class="tick tx" x="189.8" y="247">0.800</text><line class="grid" y1="12" y2="232" x1="302.9" x2="302.9"/><text class="tick tx" x="302.9" y="247">0.900</text><line class="grid" y1="12" y2="232" x1="416.0" x2="416.0"/><text class="tick tx" x="416.0" y="247">1.000</text><rect class="frame" x="54" y="12" width="362" height="220"/><polyline class="ln s-jhq" points="178.3,76.0 332.2,90.6 389.6,111.0 399.6,125.5"/><circle class="pt s-jhq" cx="178.3" cy="76.0" r="2.9"/><circle class="pt s-jhq" cx="332.2" cy="90.6" r="2.9"/><circle class="pt s-jhq" cx="389.6" cy="111.0" r="2.9"/><circle class="pt s-jhq" cx="399.6" cy="125.5" r="2.9"/><polyline class="ln s-pub" points="367.0,112.4 402.5,145.7 406.0,164.8 406.7,188.7 406.9,221.0"/><circle class="pt s-pub" cx="367.0" cy="112.4" r="2.1"/><circle class="pt s-pub" cx="402.5" cy="145.7" r="2.1"/><circle class="pt s-pub" cx="406.0" cy="164.8" r="2.1"/><circle class="pt s-pub" cx="406.7" cy="188.7" r="2.1"/><circle class="pt s-pub" cx="406.9" cy="221.0" r="2.1"/><polyline class="ln s-c32" points="296.9,53.9 302.1,55.5 366.1,73.1 366.7,72.2 368.5,71.1 372.2,74.7 397.4,91.1 398.5,91.3 398.6,93.1 400.8,92.6 409.6,111.6 410.6,113.5 411.0,116.6 411.1,111.4 414.0,134.1 414.6,134.4"/><circle class="pt s-c32" cx="296.9" cy="53.9" r="2.1"/><circle class="pt s-c32" cx="302.1" cy="55.5" r="2.1"/><circle class="pt s-c32" cx="366.1" cy="73.1" r="2.1"/><circle class="pt s-c32" cx="366.7" cy="72.2" r="2.1"/><circle class="pt s-c32" cx="368.5" cy="71.1" r="2.1"/><circle class="pt s-c32" cx="372.2" cy="74.7" r="2.1"/><circle class="pt s-c32" cx="397.4" cy="91.1" r="2.1"/><circle class="pt s-c32" cx="398.5" cy="91.3" r="2.1"/><circle class="pt s-c32" cx="398.6" cy="93.1" r="2.1"/><circle class="pt s-c32" cx="400.8" cy="92.6" r="2.1"/><circle class="pt s-c32" cx="409.6" cy="111.6" r="2.1"/><circle class="pt s-c32" cx="410.6" cy="113.5" r="2.1"/><circle class="pt s-c32" cx="411.0" cy="116.6" r="2.1"/><circle class="pt s-c32" cx="411.1" cy="111.4" r="2.1"/><circle class="pt s-c32" cx="414.0" cy="134.1" r="2.1"/><circle class="pt s-c32" cx="414.6" cy="134.4" r="2.1"/><polyline class="ln s-c8" points="278.2,25.8 280.7,24.4 339.0,55.7 340.0,35.6 342.4,42.6 343.1,39.5 361.9,53.1 362.2,52.5 362.3,52.7 362.7,57.2 368.9,70.6 369.2,70.8 370.0,71.2 372.3,91.1 372.4,113.9 372.6,90.8 372.8,103.4 372.9,135.2 373.0,117.8"/><circle class="pt s-c8" cx="278.2" cy="25.8" r="2.1"/><circle class="pt s-c8" cx="280.7" cy="24.4" r="2.1"/><circle class="pt s-c8" cx="339.0" cy="55.7" r="2.1"/><circle class="pt s-c8" cx="340.0" cy="35.6" r="2.1"/><circle class="pt s-c8" cx="342.4" cy="42.6" r="2.1"/><circle class="pt s-c8" cx="343.1" cy="39.5" r="2.1"/><circle class="pt s-c8" cx="361.9" cy="53.1" r="2.1"/><circle class="pt s-c8" cx="362.2" cy="52.5" r="2.1"/><circle class="pt s-c8" cx="362.3" cy="52.7" r="2.1"/><circle class="pt s-c8" cx="362.7" cy="57.2" r="2.1"/><circle class="pt s-c8" cx="368.9" cy="70.6" r="2.1"/><circle class="pt s-c8" cx="369.2" cy="70.8" r="2.1"/><circle class="pt s-c8" cx="370.0" cy="71.2" r="2.1"/><circle class="pt s-c8" cx="372.3" cy="91.1" r="2.1"/><circle class="pt s-c8" cx="372.4" cy="113.9" r="2.1"/><circle class="pt s-c8" cx="372.6" cy="90.8" r="2.1"/><circle class="pt s-c8" cx="372.8" cy="103.4" r="2.1"/><circle class="pt s-c8" cx="372.9" cy="135.2" r="2.1"/><circle class="pt s-c8" cx="373.0" cy="117.8" r="2.1"/><polyline class="ln s-ivf" points="-23.3,56.3 14.5,85.5 24.0,147.4 25.8,125.8 152.0,60.9 221.4,93.8 223.3,76.4 239.5,134.0 246.0,156.5 246.7,108.7 327.0,113.6 356.4,157.5 357.2,149.1 360.8,180.5 397.6,192.6 400.6,215.1"/><circle class="pt s-ivf" cx="-23.3" cy="56.3" r="2.1"/><circle class="pt s-ivf" cx="14.5" cy="85.5" r="2.1"/><circle class="pt s-ivf" cx="24.0" cy="147.4" r="2.1"/><circle class="pt s-ivf" cx="25.8" cy="125.8" r="2.1"/><circle class="pt s-ivf" cx="152.0" cy="60.9" r="2.1"/><circle class="pt s-ivf" cx="221.4" cy="93.8" r="2.1"/><circle class="pt s-ivf" cx="223.3" cy="76.4" r="2.1"/><circle class="pt s-ivf" cx="239.5" cy="134.0" r="2.1"/><circle class="pt s-ivf" cx="246.0" cy="156.5" r="2.1"/><circle class="pt s-ivf" cx="246.7" cy="108.7" r="2.1"/><circle class="pt s-ivf" cx="327.0" cy="113.6" r="2.1"/><circle class="pt s-ivf" cx="356.4" cy="157.5" r="2.1"/><circle class="pt s-ivf" cx="357.2" cy="149.1" r="2.1"/><circle class="pt s-ivf" cx="360.8" cy="180.5" r="2.1"/><circle class="pt s-ivf" cx="397.6" cy="192.6" r="2.1"/><circle class="pt s-ivf" cx="400.6" cy="215.1" r="2.1"/><text class="axl" x="235" y="264">Recall@10</text><text class="axl axy" transform="translate(13,122) rotate(-90)" x="0" y="0">QPS (log)</text></svg>
+  <p class="delta"><b>1.78&times;</b> at R=0.9826 <span class="sep">·</span> nlist=2048, n_train=100K &rarr; nlist=8192, n_train=319K</p>
+  
+</figure>
+<figure class="panel">
+  <figcaption>
+    <h3>BGE-M3</h3>
+    <p class="meta">10.09M &times; 1024d &nbsp;·&nbsp; M=128, B=8, B<sub>r</sub>=8</p>
+  </figcaption>
+  <svg viewBox="0 0 430 268" role="img" aria-label="BGE-M3 recall versus QPS"><line class="grid" x1="54" x2="416" y1="212.1" y2="212.1"/><text class="tick ty" x="47" y="215.5">2K</text><line class="grid" x1="54" x2="416" y1="181.3" y2="181.3"/><text class="tick ty" x="47" y="184.7">5K</text><line class="grid" x1="54" x2="416" y1="158.1" y2="158.1"/><text class="tick ty" x="47" y="161.5">10K</text><line class="grid" x1="54" x2="416" y1="134.9" y2="134.9"/><text class="tick ty" x="47" y="138.3">20K</text><line class="grid" x1="54" x2="416" y1="104.1" y2="104.1"/><text class="tick ty" x="47" y="107.5">50K</text><line class="grid" x1="54" x2="416" y1="80.9" y2="80.9"/><text class="tick ty" x="47" y="84.3">100K</text><line class="grid" x1="54" x2="416" y1="57.7" y2="57.7"/><text class="tick ty" x="47" y="61.1">200K</text><line class="grid" x1="54" x2="416" y1="27.0" y2="27.0"/><text class="tick ty" x="47" y="30.4">500K</text><line class="grid" y1="12" y2="232" x1="76.8" x2="76.8"/><text class="tick tx" x="76.8" y="247">0.700</text><line class="grid" y1="12" y2="232" x1="190.9" x2="190.9"/><text class="tick tx" x="190.9" y="247">0.800</text><line class="grid" y1="12" y2="232" x1="305.1" x2="305.1"/><text class="tick tx" x="305.1" y="247">0.900</text><rect class="frame" x="54" y="12" width="362" height="220"/><polyline class="ln s-jhq" points="90.7,69.2 245.2,83.4 341.0,107.5 370.7,126.7"/><circle class="pt s-jhq" cx="90.7" cy="69.2" r="2.9"/><circle class="pt s-jhq" cx="245.2" cy="83.4" r="2.9"/><circle class="pt s-jhq" cx="341.0" cy="107.5" r="2.9"/><circle class="pt s-jhq" cx="370.7" cy="126.7" r="2.9"/><polyline class="ln s-pub" points="282.6,111.0 372.2,143.2 394.4,164.0 405.8,189.7 411.4,221.0"/><circle class="pt s-pub" cx="282.6" cy="111.0" r="2.1"/><circle class="pt s-pub" cx="372.2" cy="143.2" r="2.1"/><circle class="pt s-pub" cx="394.4" cy="164.0" r="2.1"/><circle class="pt s-pub" cx="405.8" cy="189.7" r="2.1"/><circle class="pt s-pub" cx="411.4" cy="221.0" r="2.1"/><polyline class="ln s-c8" points="267.4,24.5 319.8,41.9 348.0,67.0"/><circle class="pt s-c8" cx="267.4" cy="24.5" r="2.1"/><circle class="pt s-c8" cx="319.8" cy="41.9" r="2.1"/><circle class="pt s-c8" cx="348.0" cy="67.0" r="2.1"/><polyline class="ln s-ivf" points="-24.2,44.5 64.2,50.5 72.0,75.8 106.3,115.6 115.1,78.1 116.7,138.4 189.8,85.3 252.6,125.3 253.1,116.5 267.9,148.3 335.2,159.2 353.6,181.8"/><circle class="pt s-ivf" cx="-24.2" cy="44.5" r="2.1"/><circle class="pt s-ivf" cx="64.2" cy="50.5" r="2.1"/><circle class="pt s-ivf" cx="72.0" cy="75.8" r="2.1"/><circle class="pt s-ivf" cx="106.3" cy="115.6" r="2.1"/><circle class="pt s-ivf" cx="115.1" cy="78.1" r="2.1"/><circle class="pt s-ivf" cx="116.7" cy="138.4" r="2.1"/><circle class="pt s-ivf" cx="189.8" cy="85.3" r="2.1"/><circle class="pt s-ivf" cx="252.6" cy="125.3" r="2.1"/><circle class="pt s-ivf" cx="253.1" cy="116.5" r="2.1"/><circle class="pt s-ivf" cx="267.9" cy="148.3" r="2.1"/><circle class="pt s-ivf" cx="335.2" cy="159.2" r="2.1"/><circle class="pt s-ivf" cx="353.6" cy="181.8" r="2.1"/><text class="axl" x="235" y="264">Recall@10</text><text class="axl axy" transform="translate(13,122) rotate(-90)" x="0" y="0">QPS (log)</text></svg>
+  <p class="delta"><b>1.73&times;</b> at R=0.9498 <span class="sep">·</span> nlist=8192, n_train=100K &rarr; nlist=16384, n_train=638K</p>
+  <p class="ooms"><span class="oom">CAGRA fp32 — out of memory</span></p>
+</figure>
+<figure class="panel">
+  <figcaption>
+    <h3>Stella TREC-24</h3>
+    <p class="meta">17.78M &times; 1024d &nbsp;·&nbsp; M=128, B=8, B<sub>r</sub>=8</p>
+  </figcaption>
+  <svg viewBox="0 0 430 268" role="img" aria-label="Stella TREC-24 recall versus QPS"><line class="grid" x1="54" x2="416" y1="217.4" y2="217.4"/><text class="tick ty" x="47" y="220.8">2K</text><line class="grid" x1="54" x2="416" y1="186.6" y2="186.6"/><text class="tick ty" x="47" y="190.0">5K</text><line class="grid" x1="54" x2="416" y1="163.3" y2="163.3"/><text class="tick ty" x="47" y="166.7">10K</text><line class="grid" x1="54" x2="416" y1="140.0" y2="140.0"/><text class="tick ty" x="47" y="143.4">20K</text><line class="grid" x1="54" x2="416" y1="109.1" y2="109.1"/><text class="tick ty" x="47" y="112.5">50K</text><line class="grid" x1="54" x2="416" y1="85.8" y2="85.8"/><text class="tick ty" x="47" y="89.2">100K</text><line class="grid" x1="54" x2="416" y1="62.5" y2="62.5"/><text class="tick ty" x="47" y="65.9">200K</text><line class="grid" x1="54" x2="416" y1="31.7" y2="31.7"/><text class="tick ty" x="47" y="35.1">500K</text><line class="grid" y1="12" y2="232" x1="59.0" x2="59.0"/><text class="tick tx" x="59.0" y="247">0.900</text><line class="grid" y1="12" y2="232" x1="130.4" x2="130.4"/><text class="tick tx" x="130.4" y="247">0.920</text><line class="grid" y1="12" y2="232" x1="201.8" x2="201.8"/><text class="tick tx" x="201.8" y="247">0.940</text><line class="grid" y1="12" y2="232" x1="273.2" x2="273.2"/><text class="tick tx" x="273.2" y="247">0.960</text><line class="grid" y1="12" y2="232" x1="344.6" x2="344.6"/><text class="tick tx" x="344.6" y="247">0.980</text><line class="grid" y1="12" y2="232" x1="416.0" x2="416.0"/><text class="tick tx" x="416.0" y="247">1.000</text><rect class="frame" x="54" y="12" width="362" height="220"/><polyline class="ln s-jhq" points="68.3,74.5 303.5,85.6 376.7,106.9 391.7,124.9"/><circle class="pt s-jhq" cx="68.3" cy="74.5" r="2.9"/><circle class="pt s-jhq" cx="303.5" cy="85.6" r="2.9"/><circle class="pt s-jhq" cx="376.7" cy="106.9" r="2.9"/><circle class="pt s-jhq" cx="391.7" cy="124.9" r="2.9"/><polyline class="ln s-pub" points="314.6,109.7 358.9,124.4 385.7,140.9 396.7,161.7 401.0,188.8 401.7,220.9"/><circle class="pt s-pub" cx="314.6" cy="109.7" r="2.1"/><circle class="pt s-pub" cx="358.9" cy="124.4" r="2.1"/><circle class="pt s-pub" cx="385.7" cy="140.9" r="2.1"/><circle class="pt s-pub" cx="396.7" cy="161.7" r="2.1"/><circle class="pt s-pub" cx="401.0" cy="188.8" r="2.1"/><circle class="pt s-pub" cx="401.7" cy="220.9" r="2.1"/><polyline class="ln s-c8" points="306.0,24.5 331.0,40.3 334.2,59.4 337.5,87.3"/><circle class="pt s-c8" cx="306.0" cy="24.5" r="2.1"/><circle class="pt s-c8" cx="331.0" cy="40.3" r="2.1"/><circle class="pt s-c8" cx="334.2" cy="59.4" r="2.1"/><circle class="pt s-c8" cx="337.5" cy="87.3" r="2.1"/><text class="axl" x="235" y="264">Recall@10</text><text class="axl axy" transform="translate(13,122) rotate(-90)" x="0" y="0">QPS (log)</text></svg>
+  <p class="delta"><b>2.06&times;</b> at R=0.9910 <span class="sep">·</span> nlist=16384, n_train=100K &rarr; nlist=32768, n_train=1277K</p>
+  <p class="ooms"><span class="oom">CAGRA fp32 — out of memory</span><span class="oom">IVF-PQ — out of memory</span></p>
+</figure>
+<figure class="panel">
+  <figcaption>
+    <h3>OpenAI-3 small</h3>
+    <p class="meta">1.00M &times; 1536d &nbsp;·&nbsp; M=192, B=8, B<sub>r</sub>=8</p>
+  </figcaption>
+  <svg viewBox="0 0 430 268" role="img" aria-label="OpenAI-3 small recall versus QPS"><line class="grid" x1="54" x2="416" y1="229.6" y2="229.6"/><text class="tick ty" x="47" y="233.0">2K</text><line class="grid" x1="54" x2="416" y1="197.7" y2="197.7"/><text class="tick ty" x="47" y="201.1">5K</text><line class="grid" x1="54" x2="416" y1="173.5" y2="173.5"/><text class="tick ty" x="47" y="176.9">10K</text><line class="grid" x1="54" x2="416" y1="149.3" y2="149.3"/><text class="tick ty" x="47" y="152.7">20K</text><line class="grid" x1="54" x2="416" y1="117.4" y2="117.4"/><text class="tick ty" x="47" y="120.8">50K</text><line class="grid" x1="54" x2="416" y1="93.2" y2="93.2"/><text class="tick ty" x="47" y="96.6">100K</text><line class="grid" x1="54" x2="416" y1="69.0" y2="69.0"/><text class="tick ty" x="47" y="72.4">200K</text><line class="grid" x1="54" x2="416" y1="37.1" y2="37.1"/><text class="tick ty" x="47" y="40.5">500K</text><line class="grid" x1="54" x2="416" y1="12.9" y2="12.9"/><text class="tick ty" x="47" y="16.3">1.0M</text><line class="grid" y1="12" y2="232" x1="76.6" x2="76.6"/><text class="tick tx" x="76.6" y="247">0.700</text><line class="grid" y1="12" y2="232" x1="189.8" x2="189.8"/><text class="tick tx" x="189.8" y="247">0.800</text><line class="grid" y1="12" y2="232" x1="302.9" x2="302.9"/><text class="tick tx" x="302.9" y="247">0.900</text><line class="grid" y1="12" y2="232" x1="416.0" x2="416.0"/><text class="tick tx" x="416.0" y="247">1.000</text><rect class="frame" x="54" y="12" width="362" height="220"/><polyline class="ln s-jhq" points="141.4,82.0 275.2,90.2 356.0,107.4 381.2,122.8"/><circle class="pt s-jhq" cx="141.4" cy="82.0" r="2.9"/><circle class="pt s-jhq" cx="275.2" cy="90.2" r="2.9"/><circle class="pt s-jhq" cx="356.0" cy="107.4" r="2.9"/><circle class="pt s-jhq" cx="381.2" cy="122.8" r="2.9"/><polyline class="ln s-pub" points="330.4,110.1 389.5,143.5 403.3,163.8 411.4,189.7 412.2,220.5"/><circle class="pt s-pub" cx="330.4" cy="110.1" r="2.1"/><circle class="pt s-pub" cx="389.5" cy="143.5" r="2.1"/><circle class="pt s-pub" cx="403.3" cy="163.8" r="2.1"/><circle class="pt s-pub" cx="411.4" cy="189.7" r="2.1"/><circle class="pt s-pub" cx="412.2" cy="220.5" r="2.1"/><polyline class="ln s-c32" points="282.7,62.2 290.7,71.8 339.4,86.6 342.4,85.6 348.7,82.8 348.9,82.3 369.2,108.0 369.6,105.1 378.8,103.5 379.0,102.8 386.9,126.9 389.2,126.4 392.6,124.6 395.2,124.9 398.4,148.5 399.7,148.4"/><circle class="pt s-c32" cx="282.7" cy="62.2" r="2.1"/><circle class="pt s-c32" cx="290.7" cy="71.8" r="2.1"/><circle class="pt s-c32" cx="339.4" cy="86.6" r="2.1"/><circle class="pt s-c32" cx="342.4" cy="85.6" r="2.1"/><circle class="pt s-c32" cx="348.7" cy="82.8" r="2.1"/><circle class="pt s-c32" cx="348.9" cy="82.3" r="2.1"/><circle class="pt s-c32" cx="369.2" cy="108.0" r="2.1"/><circle class="pt s-c32" cx="369.6" cy="105.1" r="2.1"/><circle class="pt s-c32" cx="378.8" cy="103.5" r="2.1"/><circle class="pt s-c32" cx="379.0" cy="102.8" r="2.1"/><circle class="pt s-c32" cx="386.9" cy="126.9" r="2.1"/><circle class="pt s-c32" cx="389.2" cy="126.4" r="2.1"/><circle class="pt s-c32" cx="392.6" cy="124.6" r="2.1"/><circle class="pt s-c32" cx="395.2" cy="124.9" r="2.1"/><circle class="pt s-c32" cx="398.4" cy="148.5" r="2.1"/><circle class="pt s-c32" cx="399.7" cy="148.4" r="2.1"/><polyline class="ln s-c8" points="262.6,25.0 283.5,25.0 320.2,40.4 323.9,42.7 329.9,39.3 333.9,40.4 346.2,59.0 349.8,61.8 352.5,58.0 358.0,58.7 361.5,79.9 364.3,78.2 364.5,80.4 370.5,78.7 371.8,101.1 371.9,101.2 374.3,106.1 376.9,126.9 377.4,126.1 382.5,127.0 383.5,147.2 383.9,147.5 384.4,168.8 384.6,168.8"/><circle class="pt s-c8" cx="262.6" cy="25.0" r="2.1"/><circle class="pt s-c8" cx="283.5" cy="25.0" r="2.1"/><circle class="pt s-c8" cx="320.2" cy="40.4" r="2.1"/><circle class="pt s-c8" cx="323.9" cy="42.7" r="2.1"/><circle class="pt s-c8" cx="329.9" cy="39.3" r="2.1"/><circle class="pt s-c8" cx="333.9" cy="40.4" r="2.1"/><circle class="pt s-c8" cx="346.2" cy="59.0" r="2.1"/><circle class="pt s-c8" cx="349.8" cy="61.8" r="2.1"/><circle class="pt s-c8" cx="352.5" cy="58.0" r="2.1"/><circle class="pt s-c8" cx="358.0" cy="58.7" r="2.1"/><circle class="pt s-c8" cx="361.5" cy="79.9" r="2.1"/><circle class="pt s-c8" cx="364.3" cy="78.2" r="2.1"/><circle class="pt s-c8" cx="364.5" cy="80.4" r="2.1"/><circle class="pt s-c8" cx="370.5" cy="78.7" r="2.1"/><circle class="pt s-c8" cx="371.8" cy="101.1" r="2.1"/><circle class="pt s-c8" cx="371.9" cy="101.2" r="2.1"/><circle class="pt s-c8" cx="374.3" cy="106.1" r="2.1"/><circle class="pt s-c8" cx="376.9" cy="126.9" r="2.1"/><circle class="pt s-c8" cx="377.4" cy="126.1" r="2.1"/><circle class="pt s-c8" cx="382.5" cy="127.0" r="2.1"/><circle class="pt s-c8" cx="383.5" cy="147.2" r="2.1"/><circle class="pt s-c8" cx="383.9" cy="147.5" r="2.1"/><circle class="pt s-c8" cx="384.4" cy="168.8" r="2.1"/><circle class="pt s-c8" cx="384.6" cy="168.8" r="2.1"/><polyline class="ln s-ivf" points="-20.0,56.8 0.6,91.3 2.5,159.5 3.3,135.5 73.0,58.4 130.5,94.6 146.2,139.7 159.0,163.8 165.5,66.5 204.3,103.1 251.6,103.7 289.4,150.1 289.9,174.6 312.9,141.2 364.1,187.3 373.8,212.7"/><circle class="pt s-ivf" cx="-20.0" cy="56.8" r="2.1"/><circle class="pt s-ivf" cx="0.6" cy="91.3" r="2.1"/><circle class="pt s-ivf" cx="2.5" cy="159.5" r="2.1"/><circle class="pt s-ivf" cx="3.3" cy="135.5" r="2.1"/><circle class="pt s-ivf" cx="73.0" cy="58.4" r="2.1"/><circle class="pt s-ivf" cx="130.5" cy="94.6" r="2.1"/><circle class="pt s-ivf" cx="146.2" cy="139.7" r="2.1"/><circle class="pt s-ivf" cx="159.0" cy="163.8" r="2.1"/><circle class="pt s-ivf" cx="165.5" cy="66.5" r="2.1"/><circle class="pt s-ivf" cx="204.3" cy="103.1" r="2.1"/><circle class="pt s-ivf" cx="251.6" cy="103.7" r="2.1"/><circle class="pt s-ivf" cx="289.4" cy="150.1" r="2.1"/><circle class="pt s-ivf" cx="289.9" cy="174.6" r="2.1"/><circle class="pt s-ivf" cx="312.9" cy="141.2" r="2.1"/><circle class="pt s-ivf" cx="364.1" cy="187.3" r="2.1"/><circle class="pt s-ivf" cx="373.8" cy="212.7" r="2.1"/><text class="axl" x="235" y="264">Recall@10</text><text class="axl axy" transform="translate(13,122) rotate(-90)" x="0" y="0">QPS (log)</text></svg>
+  <p class="delta"><b>1.59&times;</b> at R=0.9647 <span class="sep">·</span> nlist=1024, n_train=100K &rarr; nlist=4096, n_train=159K</p>
+  
+</figure>
+<figure class="panel">
+  <figcaption>
+    <h3>OpenAI-3 large</h3>
+    <p class="meta">1.00M &times; 3072d &nbsp;·&nbsp; M=384, B=8, B<sub>r</sub>=8</p>
+  </figcaption>
+  <svg viewBox="0 0 430 268" role="img" aria-label="OpenAI-3 large recall versus QPS"><line class="grid" x1="54" x2="416" y1="229.7" y2="229.7"/><text class="tick ty" x="47" y="233.1">1K</text><line class="grid" x1="54" x2="416" y1="206.2" y2="206.2"/><text class="tick ty" x="47" y="209.6">2K</text><line class="grid" x1="54" x2="416" y1="175.1" y2="175.1"/><text class="tick ty" x="47" y="178.5">5K</text><line class="grid" x1="54" x2="416" y1="151.6" y2="151.6"/><text class="tick ty" x="47" y="155.0">10K</text><line class="grid" x1="54" x2="416" y1="128.1" y2="128.1"/><text class="tick ty" x="47" y="131.5">20K</text><line class="grid" x1="54" x2="416" y1="97.0" y2="97.0"/><text class="tick ty" x="47" y="100.4">50K</text><line class="grid" x1="54" x2="416" y1="73.5" y2="73.5"/><text class="tick ty" x="47" y="76.9">100K</text><line class="grid" x1="54" x2="416" y1="49.9" y2="49.9"/><text class="tick ty" x="47" y="53.3">200K</text><line class="grid" x1="54" x2="416" y1="18.8" y2="18.8"/><text class="tick ty" x="47" y="22.2">500K</text><line class="grid" y1="12" y2="232" x1="76.6" x2="76.6"/><text class="tick tx" x="76.6" y="247">0.700</text><line class="grid" y1="12" y2="232" x1="189.8" x2="189.8"/><text class="tick tx" x="189.8" y="247">0.800</text><line class="grid" y1="12" y2="232" x1="302.9" x2="302.9"/><text class="tick tx" x="302.9" y="247">0.900</text><line class="grid" y1="12" y2="232" x1="416.0" x2="416.0"/><text class="tick tx" x="416.0" y="247">1.000</text><rect class="frame" x="54" y="12" width="362" height="220"/><polyline class="ln s-jhq" points="129.5,88.3 263.2,94.4 349.8,110.0 376.3,124.3"/><circle class="pt s-jhq" cx="129.5" cy="88.3" r="2.9"/><circle class="pt s-jhq" cx="263.2" cy="94.4" r="2.9"/><circle class="pt s-jhq" cx="349.8" cy="110.0" r="2.9"/><circle class="pt s-jhq" cx="376.3" cy="124.3" r="2.9"/><polyline class="ln s-pub" points="316.3,115.9 384.4,149.7 401.7,170.9 410.7,194.9 412.9,220.9"/><circle class="pt s-pub" cx="316.3" cy="115.9" r="2.1"/><circle class="pt s-pub" cx="384.4" cy="149.7" r="2.1"/><circle class="pt s-pub" cx="401.7" cy="170.9" r="2.1"/><circle class="pt s-pub" cx="410.7" cy="194.9" r="2.1"/><circle class="pt s-pub" cx="412.9" cy="220.9" r="2.1"/><polyline class="ln s-c32" points="276.5,64.9 292.5,66.8 334.9,87.3 342.8,88.1 343.5,84.8 349.4,85.9 365.5,108.3 368.6,107.9 377.5,106.3 379.3,105.8 386.4,128.9 389.8,129.4 392.8,127.3 393.3,127.0 398.5,150.7 398.9,150.4"/><circle class="pt s-c32" cx="276.5" cy="64.9" r="2.1"/><circle class="pt s-c32" cx="292.5" cy="66.8" r="2.1"/><circle class="pt s-c32" cx="334.9" cy="87.3" r="2.1"/><circle class="pt s-c32" cx="342.8" cy="88.1" r="2.1"/><circle class="pt s-c32" cx="343.5" cy="84.8" r="2.1"/><circle class="pt s-c32" cx="349.4" cy="85.9" r="2.1"/><circle class="pt s-c32" cx="365.5" cy="108.3" r="2.1"/><circle class="pt s-c32" cx="368.6" cy="107.9" r="2.1"/><circle class="pt s-c32" cx="377.5" cy="106.3" r="2.1"/><circle class="pt s-c32" cx="379.3" cy="105.8" r="2.1"/><circle class="pt s-c32" cx="386.4" cy="128.9" r="2.1"/><circle class="pt s-c32" cx="389.8" cy="129.4" r="2.1"/><circle class="pt s-c32" cx="392.8" cy="127.3" r="2.1"/><circle class="pt s-c32" cx="393.3" cy="127.0" r="2.1"/><circle class="pt s-c32" cx="398.5" cy="150.7" r="2.1"/><circle class="pt s-c32" cx="398.9" cy="150.4" r="2.1"/><polyline class="ln s-c8" points="258.2,24.6 273.0,26.7 313.6,44.8 314.3,43.3 324.9,41.8 329.5,42.7 345.3,63.2 347.9,64.2 352.3,61.5 355.6,61.8 363.3,84.2 364.3,87.0 367.0,82.5 367.7,83.0 370.9,105.3 373.2,105.5 373.9,104.4 377.5,127.0 380.0,127.0 383.4,130.0 383.9,151.9 384.0,151.8 385.3,173.4 385.8,173.4"/><circle class="pt s-c8" cx="258.2" cy="24.6" r="2.1"/><circle class="pt s-c8" cx="273.0" cy="26.7" r="2.1"/><circle class="pt s-c8" cx="313.6" cy="44.8" r="2.1"/><circle class="pt s-c8" cx="314.3" cy="43.3" r="2.1"/><circle class="pt s-c8" cx="324.9" cy="41.8" r="2.1"/><circle class="pt s-c8" cx="329.5" cy="42.7" r="2.1"/><circle class="pt s-c8" cx="345.3" cy="63.2" r="2.1"/><circle class="pt s-c8" cx="347.9" cy="64.2" r="2.1"/><circle class="pt s-c8" cx="352.3" cy="61.5" r="2.1"/><circle class="pt s-c8" cx="355.6" cy="61.8" r="2.1"/><circle class="pt s-c8" cx="363.3" cy="84.2" r="2.1"/><circle class="pt s-c8" cx="364.3" cy="87.0" r="2.1"/><circle class="pt s-c8" cx="367.0" cy="82.5" r="2.1"/><circle class="pt s-c8" cx="367.7" cy="83.0" r="2.1"/><circle class="pt s-c8" cx="370.9" cy="105.3" r="2.1"/><circle class="pt s-c8" cx="373.2" cy="105.5" r="2.1"/><circle class="pt s-c8" cx="373.9" cy="104.4" r="2.1"/><circle class="pt s-c8" cx="377.5" cy="127.0" r="2.1"/><circle class="pt s-c8" cx="380.0" cy="127.0" r="2.1"/><circle class="pt s-c8" cx="383.4" cy="130.0" r="2.1"/><circle class="pt s-c8" cx="383.9" cy="151.9" r="2.1"/><circle class="pt s-c8" cx="384.0" cy="151.8" r="2.1"/><circle class="pt s-c8" cx="385.3" cy="173.4" r="2.1"/><circle class="pt s-c8" cx="385.8" cy="173.4" r="2.1"/><polyline class="ln s-ivf" points="-104.3,54.8 -97.0,91.4 -93.5,158.9 -90.5,135.5 1.3,56.0 31.1,161.4 31.9,138.3 32.5,93.6 81.0,60.5 146.6,97.5 161.5,79.1 167.8,142.9 173.5,165.8 259.4,118.4 296.9,169.0 309.0,195.2"/><circle class="pt s-ivf" cx="-104.3" cy="54.8" r="2.1"/><circle class="pt s-ivf" cx="-97.0" cy="91.4" r="2.1"/><circle class="pt s-ivf" cx="-93.5" cy="158.9" r="2.1"/><circle class="pt s-ivf" cx="-90.5" cy="135.5" r="2.1"/><circle class="pt s-ivf" cx="1.3" cy="56.0" r="2.1"/><circle class="pt s-ivf" cx="31.1" cy="161.4" r="2.1"/><circle class="pt s-ivf" cx="31.9" cy="138.3" r="2.1"/><circle class="pt s-ivf" cx="32.5" cy="93.6" r="2.1"/><circle class="pt s-ivf" cx="81.0" cy="60.5" r="2.1"/><circle class="pt s-ivf" cx="146.6" cy="97.5" r="2.1"/><circle class="pt s-ivf" cx="161.5" cy="79.1" r="2.1"/><circle class="pt s-ivf" cx="167.8" cy="142.9" r="2.1"/><circle class="pt s-ivf" cx="173.5" cy="165.8" r="2.1"/><circle class="pt s-ivf" cx="259.4" cy="118.4" r="2.1"/><circle class="pt s-ivf" cx="296.9" cy="169.0" r="2.1"/><circle class="pt s-ivf" cx="309.0" cy="195.2" r="2.1"/><text class="axl" x="235" y="264">Recall@10</text><text class="axl axy" transform="translate(13,122) rotate(-90)" x="0" y="0">QPS (log)</text></svg>
+  <p class="delta"><b>1.89&times;</b> at R=0.9596 <span class="sep">·</span> nlist=1024, n_train=100K &rarr; nlist=4096, n_train=159K</p>
+  
+</figure></div>
+</div>
+
+<div class="wrap">
+<section>
+  <h2>Who owns which recall</h2>
+  <p>Across the range this sweep covered, split three ways: JHQ ahead of every baseline that
+    runs, JHQ alone because no baseline reaches that recall on that dataset, and a running
+    baseline ahead of JHQ.</p>
+  <div class="ownlegend">
+    <span><i class="sw" style="background:var(--s-jhq)"></i>JHQ faster, with competition</span>
+    <span><i class="sw" style="background:var(--s-jhq);opacity:.42"></i>JHQ alone &mdash; nothing else reaches here</span>
+    <span><i class="sw" style="background:var(--frame)"></i>A baseline is faster</span>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:17px;margin-top:6px"><div class="ownrow">
+  <div class="ownhead"><h4>Vogue-768</h4><span class="ownrng">R 0.661 &rarr; 0.983</span></div>
+  <div class="bar"><span class="seg seg-wins" style="flex:0 0 2.83%" title="0.6607-0.6698 Ahead of every baseline that runs here"></span><span class="seg seg-loses" style="flex:0 0 3.67%" title="0.6704-0.6822 A running baseline is faster"></span><span class="seg seg-wins" style="flex:0 0 47.33%" title="0.6827-0.8351 Ahead of every baseline that runs here"></span><span class="seg seg-loses" style="flex:0 0 45.67%" title="0.8357-0.9827 A running baseline is faster"></span></div>
+</div>
+<div class="ownrow">
+  <div class="ownhead"><h4>arXiv-768</h4><span class="ownrng">R 0.790 &rarr; 0.986</span></div>
+  <div class="bar"><span class="seg seg-loses" style="flex:0 0 3.00%" title="0.7899-0.7958 A running baseline is faster"></span><span class="seg seg-wins" style="flex:0 0 16.83%" title="0.7961-0.8290 Ahead of every baseline that runs here"></span><span class="seg seg-wins" style="flex:0 0 24.00%" title="0.8310-0.8779 Ahead of every baseline that runs here"></span><span class="seg seg-loses" style="flex:0 0 54.83%" title="0.8782-0.9855 A running baseline is faster"></span></div>
+</div>
+<div class="ownrow">
+  <div class="ownhead"><h4>BGE-M3</h4><span class="ownrng">R 0.712 &rarr; 0.958 &middot; CAGRA fp32 cannot build</span></div>
+  <div class="bar"><span class="seg seg-wins" style="flex:0 0 63.00%" title="0.7122-0.8667 Ahead of every baseline that runs here"></span><span class="seg seg-loses" style="flex:0 0 28.67%" title="0.8671-0.9375 A running baseline is faster"></span><span class="seg seg-alone" style="flex:0 0 6.00%" title="0.9428-0.9575 No baseline reaches this recall on this dataset"></span></div>
+</div>
+<div class="ownrow">
+  <div class="ownhead"><h4>Stella-TREC24</h4><span class="ownrng">R 0.903 &rarr; 0.993 &middot; CAGRA fp32, IVF-PQ cannot build</span></div>
+  <div class="bar"><span class="seg seg-alone" style="flex:0 0 73.50%" title="0.9026-0.9692 No baseline reaches this recall on this dataset"></span><span class="seg seg-loses" style="flex:0 0 9.50%" title="0.9693-0.9779 A running baseline is faster"></span><span class="seg seg-alone" style="flex:0 0 16.67%" title="0.9781-0.9932 No baseline reaches this recall on this dataset"></span></div>
+</div>
+<div class="ownrow">
+  <div class="ownhead"><h4>OpenAI3-1536</h4><span class="ownrng">R 0.757 &rarr; 0.969</span></div>
+  <div class="bar"><span class="seg seg-wins" style="flex:0 0 9.50%" title="0.7573-0.7774 Ahead of every baseline that runs here"></span><span class="seg seg-loses" style="flex:0 0 8.33%" title="0.7778-0.7954 A running baseline is faster"></span><span class="seg seg-wins" style="flex:0 0 32.33%" title="0.7958-0.8643 Ahead of every baseline that runs here"></span><span class="seg seg-loses" style="flex:0 0 49.33%" title="0.8647-0.9692 A running baseline is faster"></span></div>
+</div>
+<div class="ownrow">
+  <div class="ownhead"><h4>OpenAI3-3072</h4><span class="ownrng">R 0.748 &rarr; 0.965</span></div>
+  <div class="bar"><span class="seg seg-wins" style="flex:0 0 9.05%" title="0.7478-0.7674 Ahead of every baseline that runs here"></span><span class="seg seg-loses" style="flex:0 0 3.69%" title="0.7678-0.7758 A running baseline is faster"></span><span class="seg seg-wins" style="flex:0 0 38.69%" title="0.7762-0.8602 Ahead of every baseline that runs here"></span><span class="seg seg-loses" style="flex:0 0 48.07%" title="0.8605-0.9649 A running baseline is faster"></span></div>
+</div></div>
+  <p class="pull"><b>JHQ does not beat a running baseline above R&thinsp;&asymp;&thinsp;0.88 anywhere.</b>
+    Below that it is now ahead of everything that runs &mdash; a band the published fronts never
+    sampled, because they swept a different parameter set and started at R&thinsp;&ge;&thinsp;0.88.
+    Above it, CAGRA owns the frontier wherever it can build an index, and JHQ's high-recall
+    territory is the two datasets where it cannot.</p>
+</section>
+
+<section>
+  <h2>What it costs to build</h2>
+  <p>The objection this project raised against itself was that throughput bought with a bigger
+    index is not free: <code>nlist</code> doubled and the training set grew thirteen-fold.
+    Measured on cold caches, it very nearly is free.</p>
+  <div class="tblwrap">
+  <table>
+    <caption>Stella-TREC24, 17.8M &times; 1024, M=128. Cold cache, so train and add are real;
+      every build timing recorded before this was a cache hit reporting 35 ms.</caption>
+    <thead><tr><th scope="col" style="text-align:left"></th><th scope="col">nlist</th><th scope="col">n_train</th>
+      <th scope="col">train</th><th scope="col">add</th><th scope="col">VRAM</th><th scope="col">QPS @ R=0.989</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">as published</th><td>16,384</td><td>100K</td><td>0.3 s</td><td>5.7 s</td><td>20,547 MiB</td><td>23,094</td></tr>
+      <tr><th scope="row">this work</th><td>32,768</td><td>1.28M</td><td>3.6 s</td><td>7.5 s</td><td>20,837 MiB</td><td>53,640</td></tr>
+      <tr><th scope="row">ratio</th><td>2.0&times;</td><td>12.8&times;</td><td colspan="2">1.85&times; build</td><td>+1.4%</td><td>2.32&times;</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>k-means over <code>n_train &times; nlist &times; d</code> is a GEMM this card finishes in
+    seconds. <code>add()</code> encodes all N vectors and does not change; it dominates the
+    build in both rows.</p>
+</section>
+
+<section>
+  <h2>Limits of these numbers</h2>
+  <ul>
+    <li><b>The new fronts are incomplete at the top.</b> This sweep took four nprobe values
+      &mdash; 8, 32, 128, 256 &mdash; at one alpha. It reaches lower recall than the published
+      fronts and does not reach as high: Vogue tops out at 0.9827 against the published 0.9954.
+      Every comparison above is on the overlap.</li>
+    <li><b>Recall carries a 1e-3 floor across builds.</b> Training is not reproducible: three
+      cold-cache runs of one binary returned 0.9852 / 0.9842 / 0.9849 on Vogue with identical
+      candidate counts, so coarse assignment is deterministic and the codebooks differ in their
+      last bits. Any recall difference below 1e-3 between two builds means nothing &mdash; which
+      is the floor v47's 5e-4 agreement and all of v48's recall movement sit under.</li>
+    <li><b>The baselines are older measurements.</b> cuVS fronts come from commit 305e763 and
+      were not re-run. Only the JHQ rows are new.</li>
+    <li><b>One alpha, one B<sub>r</sub>.</b> alpha=100 and B<sub>r</sub>=8 throughout. The
+      ranking loss saturates at alpha=20 on Stella and 50 on Vogue, so a per-dataset alpha is
+      still unmeasured on the other four.</li>
+    <li><b>The published fronts may carry the sigma bug.</b> The threshold is
+      <code>2<sup>31</sup>/d</code> rows: 699,050 on OpenAI3-3072 and 1,398,101 on
+      OpenAI3-1536, far below Stella's 2,097,152. Any historical run at a large training set on
+      those two is suspect and has not been audited.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>What the diagnostics say to do next</h2>
+  <p>v43 measured where recall is lost. Across three datasets and a 32&times; range of nprobe,
+    everything downstream of coarse routing &mdash; the equation-4 primary code, the ADC scan,
+    the top-ck selection, the residual refinement &mdash; together loses between 0.0013 and
+    0.0051 of the neighbours routing hands it. At nprobe=8, 99.3% of Vogue's shortfall is a
+    list that was never opened.</p>
+  <p class="pull">No work on the scan can raise recall. The compaction, the lookup, the table
+    precision and the early-exit bound are all speed items with a half-point recall budget.
+    <b>Recall belongs to the coarse quantizer</b> &mdash; which is also where the largest
+    speedup came from, and it is the least optimised part of the system.</p>
+  <p>It also says the quantisation is not the weak link: a 1&nbsp;bit/dim primary code plus a
+    B<sub>r</sub>-bit residual reproduces the exact ranking of what it is given to within half a
+    point. That is a result about JHQ, and it is invisible in the recall number because routing
+    dominates it.</p>
+</section>
+
+<footer>
+  jhq_v47_split_lut &middot; branch fix/recall-eval-v15 &middot; RTX 5090, driver 595.71.05, cuVS 26.08.01<br>
+  k=10, batch 1024, 1000 queries, 3 repeats, BLOCK=1024, alpha=100, B=8, B_r=8<br>
+  Raw: results/front6/, results/v43_diag/, results/v45_compact/, results/v46_sigma/,
+  results/v47_split_lut/, results/v48_early_exit/<br>
+  Supersedes report_adc2026/frontier.html, which is kept unchanged as the record of the v39 fronts.
+</footer>
+</div>
