@@ -1,110 +1,102 @@
-<title>Bytes, Bugs and a Parameter</title>
+<title>JHQ Six-Dataset Frontier</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
 :root{
-  --ground:#f7f8fa; --panel:#ffffff; --ink:#111620; --ink-2:#39424f; --muted:#646d7c;
-  --grid:#e6e9ef; --frame:#ccd2dc; --rule:#dfe3ea; --quote:#eef1f6;
+  --ground:#f7f8fa; --panel:#ffffff; --ink:#111620; --ink-2:#3c4553; --muted:#646d7c;
+  --grid:#e6e9ef; --frame:#ccd2dc; --rule:#dfe3ea;
   --s-jhq:#1f6fd0; --s-pub:#98a3b4; --s-c32:#e2622e; --s-c8:#0d9268; --s-ivf:#6244bd;
-  --ok:#0d9268; --warn:#b3541e; --warn-bg:#fbf0e8; --bad:#c0392b;
+  --warn:#b3541e; --warn-bg:#fbf0e8;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --ground:#0f1217; --panel:#161a21; --ink:#e9edf3; --ink-2:#c3cbd6; --muted:#8b95a4;
-  --grid:#232830; --frame:#2f3742; --rule:#252b34; --quote:#1b2028;
-  --s-jhq:#4f97ee; --s-pub:#6f7c8e; --s-c32:#ef7f4d; --s-c8:#1cb583; --s-ivf:#9a86ea;
-  --ok:#1cb583; --warn:#e2925f; --warn-bg:#241a12; --bad:#e0705f;
-}}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0f1217; --panel:#161a21; --ink:#e9edf3; --ink-2:#c3cbd6; --muted:#8b95a4;
+    --grid:#232830; --frame:#2f3742; --rule:#252b34;
+    --s-jhq:#4f97ee; --s-pub:#6f7c8e; --s-c32:#ef7f4d; --s-c8:#1cb583; --s-ivf:#9a86ea;
+    --warn:#e2925f; --warn-bg:#241a12;
+  }
+}
 :root[data-theme="dark"]{
   --ground:#0f1217; --panel:#161a21; --ink:#e9edf3; --ink-2:#c3cbd6; --muted:#8b95a4;
-  --grid:#232830; --frame:#2f3742; --rule:#252b34; --quote:#1b2028;
+  --grid:#232830; --frame:#2f3742; --rule:#252b34;
   --s-jhq:#4f97ee; --s-pub:#6f7c8e; --s-c32:#ef7f4d; --s-c8:#1cb583; --s-ivf:#9a86ea;
-  --ok:#1cb583; --warn:#e2925f; --warn-bg:#241a12; --bad:#e0705f;
+  --warn:#e2925f; --warn-bg:#241a12;
 }
 *{box-sizing:border-box}
-body{background:var(--ground); color:var(--ink);
+body{
+  background:var(--ground); color:var(--ink);
   font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  font-size:15.5px; line-height:1.62; -webkit-font-smoothing:antialiased}
-.wrap{max-width:900px; margin:0 auto; padding:44px 26px 80px; display:flex; flex-direction:column; gap:36px}
-.wide{max-width:1240px; margin:0 auto; padding:0 26px}
+  font-size:15px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1240px; margin:0 auto; padding:38px 26px 64px; display:flex; flex-direction:column; gap:30px}
 
-.eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11.5px; font-weight:500;
-  letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:0}
-h1{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif; font-weight:700;
-  font-size:clamp(31px,4.4vw,46px); line-height:1.06; letter-spacing:-.014em; margin:0;
-  text-wrap:balance}
-h2{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif; font-weight:600;
-  font-size:25px; letter-spacing:-.008em; margin:0 0 4px; text-wrap:balance}
-h3{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif; font-weight:600;
-  font-size:18.5px; margin:0 0 3px; color:var(--ink)}
-p{margin:0; max-width:68ch}
-section{display:flex; flex-direction:column; gap:14px}
-section > p + p{margin-top:-2px}
-.lede{font-size:17px; color:var(--ink-2)}
-code{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.9em; color:var(--ink-2)}
-strong{font-weight:600}
-hr{border:0; border-top:1px solid var(--rule); margin:0}
+/* ── header ─────────────────────────────────────────── */
+header{display:flex; flex-direction:column; gap:14px; max-width:78ch}
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11.5px; font-weight:500;
+  letter-spacing:.13em; text-transform:uppercase; color:var(--muted); margin:0;
+}
+h1{
+  font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;
+  font-weight:700; font-size:clamp(30px,4.2vw,44px); line-height:1.08;
+  letter-spacing:-.012em; margin:0; text-wrap:balance; color:var(--ink);
+}
+h1 em{font-style:normal; color:var(--s-jhq)}
+.lede{margin:0; font-size:16.5px; color:var(--ink-2); max-width:70ch}
+.prov{
+  margin:0; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:12px;
+  color:var(--muted); line-height:1.7;
+}
 
-.pull{background:var(--quote); border-left:2px solid var(--s-jhq); padding:14px 18px;
-  border-radius:0 4px 4px 0; font-size:15px; color:var(--ink-2); max-width:68ch}
-.pull b{color:var(--ink)}
-
-table{border-collapse:collapse; width:100%; font-size:13.5px;
-  font-variant-numeric:tabular-nums}
-caption{text-align:left; color:var(--muted); font-size:12.5px; padding-bottom:8px;
-  font-family:"IBM Plex Mono",ui-monospace,monospace}
-th,td{padding:9px 11px; text-align:right; border-bottom:1px solid var(--rule)}
-thead th{color:var(--muted); font-weight:500; font-size:11.5px; letter-spacing:.07em;
-  text-transform:uppercase; border-bottom:1px solid var(--frame)}
-tbody th{text-align:left; font-weight:600; color:var(--ink)}
-td .sub{display:block; font-family:"IBM Plex Mono",ui-monospace,monospace;
-  font-size:10px; color:var(--muted); font-weight:400}
-td.rng{font-family:"IBM Plex Mono",ui-monospace,monospace; color:var(--muted); font-size:12px}
-.tblwrap{overflow-x:auto}
-
-.ownrow{display:flex; flex-direction:column; gap:6px}
-.ownhead{display:flex; align-items:baseline; justify-content:space-between; gap:14px; flex-wrap:wrap}
-.ownhead h4{margin:0; font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;
-  font-size:15.5px; font-weight:600}
-.ownrng{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11px; color:var(--muted)}
-.bar{display:flex; height:15px; border-radius:3px; overflow:hidden; background:var(--grid)}
-.seg{display:block; height:100%}
-.seg-wins{background:var(--s-jhq)}
-.seg-alone{background:var(--s-jhq); opacity:.42}
-.seg-loses{background:var(--frame)}
-.ownlegend{display:flex; flex-wrap:wrap; gap:8px 22px; font-size:13px; color:var(--ink-2)}
-.ownlegend span{display:inline-flex; align-items:center; gap:7px}
-.sw{width:16px; height:10px; border-radius:2px; display:inline-block}
-
-.legend{display:flex; flex-wrap:wrap; gap:6px 24px; align-items:center; padding:13px 0;
-  border-top:1px solid var(--rule); border-bottom:1px solid var(--rule)}
+/* ── legend ─────────────────────────────────────────── */
+.legend{
+  display:flex; flex-wrap:wrap; gap:6px 24px; align-items:center;
+  padding:13px 0; border-top:1px solid var(--rule); border-bottom:1px solid var(--rule);
+}
 .key{display:inline-flex; align-items:center; gap:8px; font-size:13.5px; color:var(--ink-2)}
 .key svg{display:block; flex:none}
 .key.lead{font-weight:600; color:var(--ink)}
+
+/* ── grid ───────────────────────────────────────────── */
 .grid6{display:grid; grid-template-columns:repeat(3,1fr); gap:20px}
 @media (max-width:1080px){.grid6{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:700px){.grid6{grid-template-columns:1fr}}
-.panel{margin:0; background:var(--panel); border:1px solid var(--rule); border-radius:5px;
-  padding:15px 15px 13px; display:flex; flex-direction:column; gap:9px}
+
+.panel{
+  margin:0; background:var(--panel); border:1px solid var(--rule); border-radius:5px;
+  padding:15px 15px 13px; display:flex; flex-direction:column; gap:9px;
+}
 .panel figcaption{display:flex; flex-direction:column; gap:1px}
-.panel h3{font-size:17.5px; margin:0}
-.meta{margin:0; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11px;
-  color:var(--muted); font-variant-numeric:tabular-nums}
+.panel h3{
+  font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;
+  font-size:17.5px; font-weight:600; letter-spacing:-.005em; margin:0; color:var(--ink);
+}
+.meta{
+  margin:0; font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums;
+}
 .panel svg{width:100%; height:auto; display:block; overflow:visible}
-.delta{margin:0; padding-top:9px; border-top:1px solid var(--rule);
-  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11.5px; color:var(--muted);
-  font-variant-numeric:tabular-nums; line-height:1.6}
+.delta{
+  margin:0; padding-top:9px; border-top:1px solid var(--rule);
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11.5px;
+  color:var(--muted); font-variant-numeric:tabular-nums; line-height:1.6;
+}
 .delta b{color:var(--s-jhq); font-weight:600; font-size:13px}
 .sep{opacity:.45; padding:0 3px}
 .ooms{margin:0; display:flex; flex-wrap:wrap; gap:5px}
-.oom{display:inline-block; background:var(--warn-bg); color:var(--warn);
-  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:10.5px; padding:2.5px 7px;
-  border-radius:3px}
+.oom{
+  display:inline-block; background:var(--warn-bg); color:var(--warn);
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:10.5px;
+  padding:2.5px 7px; border-radius:3px; letter-spacing:.01em;
+}
+
+/* ── chart internals ────────────────────────────────── */
 .grid{stroke:var(--grid); stroke-width:1}
 .frame{fill:none; stroke:var(--frame); stroke-width:1}
-.tick{fill:var(--muted); font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:9.5px;
-  font-variant-numeric:tabular-nums}
-.ty{text-anchor:end} .tx{text-anchor:middle}
-.axl{fill:var(--muted); font-family:"IBM Plex Sans",sans-serif; font-size:10px;
-  text-anchor:middle; letter-spacing:.04em}
+.tick{fill:var(--muted); font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:9.5px; font-variant-numeric:tabular-nums}
+.ty{text-anchor:end}
+.tx{text-anchor:middle}
+.axl{fill:var(--muted); font-family:"IBM Plex Sans",sans-serif; font-size:10px; text-anchor:middle; letter-spacing:.04em}
 .ln{fill:none; stroke-width:1.6; stroke-linejoin:round; stroke-linecap:round}
 .pt{stroke:var(--panel); stroke-width:.9}
 .s-jhq{stroke:var(--s-jhq)} circle.s-jhq{fill:var(--s-jhq)}
@@ -113,112 +105,43 @@ td.rng{font-family:"IBM Plex Mono",ui-monospace,monospace; color:var(--muted); f
 .s-c8{stroke:var(--s-c8); stroke-dasharray:8 3} circle.s-c8{fill:var(--s-c8); stroke-dasharray:none}
 .s-jhq4{stroke:var(--s-jhq); stroke-dasharray:3 2.5; opacity:.62}
 circle.s-jhq4{fill:var(--s-jhq); stroke-dasharray:none; opacity:.62}
-td.gain{color:var(--ok); font-weight:600}
 .s-ivf{stroke:var(--s-ivf); stroke-dasharray:2 2.5 6 2.5} circle.s-ivf{fill:var(--s-ivf); stroke-dasharray:none}
 polyline.s-jhq{stroke-width:2.4}
 
-.ledger{display:grid; grid-template-columns:auto 1fr auto; gap:0 18px; font-size:14px}
-.ledger > *{padding:10px 0; border-bottom:1px solid var(--rule)}
-.ledger dt{font-family:"IBM Plex Mono",ui-monospace,monospace; font-weight:600; color:var(--ink)}
-.ledger dd{margin:0; color:var(--ink-2)}
-.ledger .res{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:12.5px;
-  text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums}
-.res.pos{color:var(--ok)} .res.neg{color:var(--bad)} .res.neu{color:var(--muted)}
-.todo{display:flex; flex-direction:column; gap:11px}
-.todo li{margin:0}
-ul{margin:0; padding-left:20px; display:flex; flex-direction:column; gap:9px; max-width:68ch}
-li{color:var(--ink-2)}
-li b{color:var(--ink); font-weight:600}
-footer{color:var(--muted); font-size:13px; font-family:"IBM Plex Mono",ui-monospace,monospace;
-  line-height:1.75; border-top:1px solid var(--rule); padding-top:20px}
+/* ── footer ─────────────────────────────────────────── */
+.notes{border-top:1px solid var(--rule); padding-top:22px; display:grid; grid-template-columns:repeat(3,1fr); gap:22px}
+@media (max-width:860px){.notes{grid-template-columns:1fr}}
+.note h4{
+  font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;
+  margin:0 0 5px; font-size:14px; font-weight:600; color:var(--ink);
+}
+.note p{margin:0; font-size:13.5px; color:var(--muted); line-height:1.62}
+.note code{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:12.5px; color:var(--ink-2)}
 </style>
 
 <div class="wrap">
-<header style="display:flex;flex-direction:column;gap:15px">
-  <p class="eyebrow">JHQ on GPU &middot; 8 September 2026 &middot; RTX 5090 &middot; 620 measured points</p>
-  <h1>Bytes, bugs and a parameter</h1>
-  <p class="lede">At the same bytes per vector, JHQ reaches a recall ceiling
-    <strong>1.8 to 5.5 points</strong> above int8 CAGRA on all six datasets &mdash; and it is
-    now 1.3&times; to 2.1&times; faster than the fronts this project published, with the
-    algorithm untouched.</p>
-  <p class="pull"><b>Almost none of the speedup came from the kernel arithmetic.</b> Two of
-    three sources were defects &mdash; a selection buffer sorted on the wrong predicate, and a
-    <code>sigma</code> that reached zero without an error above 2.1M training rows &mdash; and
-    the largest was a parameter nobody had sized: the coarse quantizer had been trained on
-    about six points per centroid.</p>
+<header>
+  <p class="eyebrow">RTX 5090 · cuVS 26.08.01 · k=10 · batch 1024 · 3 repeats</p>
+  <h1>Six fronts, re-measured: <em>1.3&times; to 2.6&times;</em> faster at the same recall</h1>
+  <p class="lede">Every gain below leaves the JHQ algorithm untouched. Two came from bugs — a
+    selection buffer sorted on the wrong predicate, and a <code>sigma</code> that silently
+    reached zero above 2.1M training rows — and the rest from two parameters nobody had swept:
+    <code>nlist</code>, whose optimum moves along the front, and the coarse quantizer's
+    training set, which matters below about twenty points per centroid and costs above it.</p>
+  <p class="prov">JHQ&nbsp;v47 vs the published v39 fronts · alpha=100, BLOCK=1024, 1000 queries<br>
+    Each JHQ front is the envelope over four nlist values and nprobe 8–2048<br>
+    Baselines: cuVS CAGRA and IVF-PQ, measured separately (commit 305e763)</p>
 </header>
 
-<hr>
-
-<section>
-  <h2>At equal bytes</h2>
-  <p>JHQ stores a primary code of M bytes plus a residual of <code>(d&times;Br+7)/8</code> &mdash;
-    a byte per <em>dimension</em> at Br=8, not per subspace. That puts Br=8 within 1&ndash;8% of
-    int8 CAGRA's footprint on every dataset here, which makes it the matched-memory operating
-    point rather than an expensive one.</p>
-  <div class="tblwrap">
-  <table>
-    <caption>Recall ceiling at each method's own top operating point. Bytes per vector are the
-      resident code plus, for CAGRA, its graph at degree 32.</caption>
-    <thead><tr>
-      <th scope="col" style="text-align:left">Dataset</th>
-      <th scope="col" colspan="2">JHQ Br=8</th>
-      <th scope="col" colspan="2">CAGRA int8</th>
-      <th scope="col">&Delta; pts</th>
-      <th scope="col" colspan="2">JHQ Br=4</th>
-      <th scope="col">CAGRA fp32</th>
-    </tr></thead>
-    <tbody><tr><th scope="row">Vogue-768</th><td>872<span class="sub">B/vec</span></td><td>0.9946<span class="sub">5,739 QPS</span></td><td>896<span class="sub">B/vec</span></td><td>0.9459<span class="sub">21,412 QPS</span></td><td class="gain">+4.9</td><td>488<span class="sub">B/vec</span></td><td>0.9487</td><td>0.9952</td></tr>
-<tr><th scope="row">arXiv-768</th><td>872<span class="sub">B/vec</span></td><td>0.9903<span class="sub">3,432 QPS</span></td><td>896<span class="sub">B/vec</span></td><td>0.9620<span class="sub">62,318 QPS</span></td><td class="gain">+2.8</td><td>488<span class="sub">B/vec</span></td><td>0.9375</td><td>0.9988</td></tr>
-<tr><th scope="row">BGE-M3</th><td>1160<span class="sub">B/vec</span></td><td>0.9951<span class="sub">558 QPS</span></td><td>1152<span class="sub">B/vec</span></td><td>0.9376<span class="sub">151,569 QPS</span></td><td class="gain">+5.8</td><td>648<span class="sub">B/vec</span></td><td>0.9606</td><td>OOM</td></tr>
-<tr><th scope="row">Stella-TREC24</th><td>1160<span class="sub">B/vec</span></td><td>0.9959<span class="sub">5,398 QPS</span></td><td>1152<span class="sub">B/vec</span></td><td>0.9780<span class="sub">95,575 QPS</span></td><td class="gain">+1.8</td><td>648<span class="sub">B/vec</span></td><td>0.9623</td><td>OOM</td></tr>
-<tr><th scope="row">OpenAI3-1536</th><td>1736<span class="sub">B/vec</span></td><td>0.9961<span class="sub">2,860 QPS</span></td><td>1664<span class="sub">B/vec</span></td><td>0.9722<span class="sub">11,428 QPS</span></td><td class="gain">+2.4</td><td>968<span class="sub">B/vec</span></td><td>0.9711</td><td>0.9856</td></tr>
-<tr><th scope="row">OpenAI3-3072</th><td>3464<span class="sub">B/vec</span></td><td>0.9971<span class="sub">1,832 QPS</span></td><td>3200<span class="sub">B/vec</span></td><td>0.9733<span class="sub">5,259 QPS</span></td><td class="gain">+2.4</td><td>1928<span class="sub">B/vec</span></td><td>0.9803</td><td>0.9849</td></tr></tbody>
-  </table>
-  </div>
-  <p>Halving the residual to Br=4 takes JHQ to 0.56&times; the memory and drops the ceiling
-    below int8 CAGRA on four of six &mdash; so the advantage is at matched bytes, not at
-    every size. <code>Br=2</code> is rejected by the index: the residual codebook accepts 4
-    or 8 only.</p>
-</section>
-
-<section>
-  <h2>Speedup against the published fronts</h2>
-  <div class="tblwrap">
-  <table>
-    <caption>Matched-recall QPS ratio at Br=8, on the overlap of the two fronts. Both are the
-      Pareto envelope of two configurations swept to nprobe=1024; points where nprobe exceeds
-      nlist are excluded, since there the probe list repeats and the row is the same
-      measurement at a higher price.</caption>
-    <thead><tr><th scope="col" style="text-align:left">Dataset</th><th scope="col" style="text-align:right">Overlap</th>
-      <th scope="col">low</th><th scope="col">mid</th><th scope="col">high</th><th scope="col">top</th></tr></thead>
-    <tbody><tr><th scope="row">Vogue-768</th><td class="rng">0.9269&ndash;0.9946</td><td>1.35&times;<span class="sub">R=0.9371</span></td><td>1.47&times;<span class="sub">R=0.9607</span></td><td>1.46&times;<span class="sub">R=0.9844</span></td><td>0.44&times;<span class="sub">R=0.9946</span></td></tr>
-<tr><th scope="row">arXiv-768</th><td class="rng">0.9567&ndash;0.9903</td><td>1.41&times;<span class="sub">R=0.9617</span></td><td>1.84&times;<span class="sub">R=0.9735</span></td><td>1.69&times;<span class="sub">R=0.9853</span></td><td>0.19&times;<span class="sub">R=0.9903</span></td></tr>
-<tr><th scope="row">BGE-M3</th><td class="rng">0.8803&ndash;0.9932</td><td>1.55&times;<span class="sub">R=0.8972</span></td><td>1.97&times;<span class="sub">R=0.9367</span></td><td>1.36&times;<span class="sub">R=0.9763</span></td><td>1.10&times;<span class="sub">R=0.9932</span></td></tr>
-<tr><th scope="row">Stella-TREC24</th><td class="rng">0.9716&ndash;0.9959</td><td>1.43&times;<span class="sub">R=0.9752</span></td><td>1.76&times;<span class="sub">R=0.9838</span></td><td>2.11&times;<span class="sub">R=0.9923</span></td><td>1.86&times;<span class="sub">R=0.9959</span></td></tr>
-<tr><th scope="row">OpenAI3-1536</th><td class="rng">0.9243&ndash;0.9961</td><td>1.40&times;<span class="sub">R=0.9351</span></td><td>1.60&times;<span class="sub">R=0.9602</span></td><td>1.24&times;<span class="sub">R=0.9853</span></td><td>0.59&times;<span class="sub">R=0.9961</span></td></tr>
-<tr><th scope="row">OpenAI3-3072</th><td class="rng">0.9119&ndash;0.9971</td><td>1.56&times;<span class="sub">R=0.9247</span></td><td>1.91&times;<span class="sub">R=0.9545</span></td><td>1.62&times;<span class="sub">R=0.9843</span></td><td>1.31&times;<span class="sub">R=0.9971</span></td></tr></tbody>
-  </table>
-  </div>
-  <p>The gain grows with recall and then falls back at the very top, where a larger
-    <code>nlist</code> buys nothing and costs a coarse search over four to thirty-two times as
-    many centroids. Both configurations are kept and the envelope is what is plotted; a
-    per-dataset, per-operating-point <code>nlist</code> is the obvious next parameter and is
-    unmeasured.</p>
-</section>
+<div class="legend">
+  <span class="key lead"><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" class="ln s-jhq"/><circle cx="13" cy="5" r="2.9" class="pt s-jhq"/></svg>JHQ Br=8 — this work</span>
+  <span class="key"><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" class="ln s-pub"/></svg>JHQ — as published</span>
+  <span class="key"><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" class="ln s-c32"/></svg>CAGRA fp32</span>
+  <span class="key"><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" class="ln s-c8"/></svg>CAGRA int8</span>
+  <span class="key"><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" class="ln s-ivf"/></svg>IVF-PQ</span>
 </div>
 
-<div class="wide" style="display:flex;flex-direction:column;gap:18px;margin-bottom:36px">
-  <h2 style="max-width:900px;margin:0 auto;width:100%">Recall&ndash;throughput, all six</h2>
-  <div class="legend">
-    <span class="key lead"><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" class="ln s-jhq"/><circle cx="13" cy="5" r="2.9" class="pt s-jhq"/></svg>JHQ Br=8 &mdash; this work</span>
-    <span class="key"><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" class="ln s-pub"/></svg>JHQ Br=8 &mdash; published</span>
-    <span class="key"><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" class="ln s-jhq4"/></svg>JHQ Br=4 &mdash; this work</span>
-    <span class="key"><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" class="ln s-c32"/></svg>CAGRA fp32</span>
-    <span class="key"><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" class="ln s-c8"/></svg>CAGRA int8</span>
-    <span class="key"><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" class="ln s-ivf"/></svg>IVF-PQ</span>
-  </div>
-  <div class="grid6"><figure class="panel">
+<div class="grid6"><figure class="panel">
   <figcaption><h3>Vogue-768</h3>
   <p class="meta">1.00M &times; 768d &nbsp;·&nbsp; M=96 &nbsp;·&nbsp; 872 B/vec &nbsp;·&nbsp; nlist 1,024, 2,048, 4,096, 8,192</p></figcaption>
   <svg viewBox="0 0 430 268" role="img" aria-label="Vogue-768"><line class="grid" x1="54" x2="416" y1="210.8" y2="210.8"/><text class="tick ty" x="47" y="214.2">5K</text><line class="grid" x1="54" x2="416" y1="186.8" y2="186.8"/><text class="tick ty" x="47" y="190.2">10K</text><line class="grid" x1="54" x2="416" y1="162.7" y2="162.7"/><text class="tick ty" x="47" y="166.1">20K</text><line class="grid" x1="54" x2="416" y1="130.9" y2="130.9"/><text class="tick ty" x="47" y="134.3">50K</text><line class="grid" x1="54" x2="416" y1="106.8" y2="106.8"/><text class="tick ty" x="47" y="110.2">100K</text><line class="grid" x1="54" x2="416" y1="82.8" y2="82.8"/><text class="tick ty" x="47" y="86.2">200K</text><line class="grid" x1="54" x2="416" y1="51.0" y2="51.0"/><text class="tick ty" x="47" y="54.4">500K</text><line class="grid" x1="54" x2="416" y1="26.9" y2="26.9"/><text class="tick ty" x="47" y="30.3">1.0M</text><line class="grid" y1="12" y2="232" x1="130.3" x2="130.3"/><text class="tick tx" x="130.3" y="247">0.70</text><line class="grid" y1="12" y2="232" x1="225.7" x2="225.7"/><text class="tick tx" x="225.7" y="247">0.80</text><line class="grid" y1="12" y2="232" x1="321.2" x2="321.2"/><text class="tick tx" x="321.2" y="247">0.90</text><rect class="frame" x="54" y="12" width="362" height="220"/><polyline class="ln s-jhq" points="92.8,79.5 92.9,79.7 131.5,81.4 181.8,85.6 284.4,90.8 284.9,91.7 320.3,96.6 345.5,100.7 346.5,102.6 368.4,106.1 382.1,110.3 382.7,111.3 382.8,111.7 392.4,117.6 400.1,126.0 400.5,126.1 401.8,127.9 402.4,127.9 404.6,134.8 404.9,144.4 407.2,145.3 407.7,145.5 409.4,147.7 409.6,158.2 409.9,164.1 410.6,170.5 410.8,173.7 411.3,188.6 411.4,206.1"/><circle class="pt s-jhq" cx="92.8" cy="79.5" r="2.7"/><circle class="pt s-jhq" cx="92.9" cy="79.7" r="2.7"/><circle class="pt s-jhq" cx="131.5" cy="81.4" r="2.7"/><circle class="pt s-jhq" cx="181.8" cy="85.6" r="2.7"/><circle class="pt s-jhq" cx="284.4" cy="90.8" r="2.7"/><circle class="pt s-jhq" cx="284.9" cy="91.7" r="2.7"/><circle class="pt s-jhq" cx="320.3" cy="96.6" r="2.7"/><circle class="pt s-jhq" cx="345.5" cy="100.7" r="2.7"/><circle class="pt s-jhq" cx="346.5" cy="102.6" r="2.7"/><circle class="pt s-jhq" cx="368.4" cy="106.1" r="2.7"/><circle class="pt s-jhq" cx="382.1" cy="110.3" r="2.7"/><circle class="pt s-jhq" cx="382.7" cy="111.3" r="2.7"/><circle class="pt s-jhq" cx="382.8" cy="111.7" r="2.7"/><circle class="pt s-jhq" cx="392.4" cy="117.6" r="2.7"/><circle class="pt s-jhq" cx="400.1" cy="126.0" r="2.7"/><circle class="pt s-jhq" cx="400.5" cy="126.1" r="2.7"/><circle class="pt s-jhq" cx="401.8" cy="127.9" r="2.7"/><circle class="pt s-jhq" cx="402.4" cy="127.9" r="2.7"/><circle class="pt s-jhq" cx="404.6" cy="134.8" r="2.7"/><circle class="pt s-jhq" cx="404.9" cy="144.4" r="2.7"/><circle class="pt s-jhq" cx="407.2" cy="145.3" r="2.7"/><circle class="pt s-jhq" cx="407.7" cy="145.5" r="2.7"/><circle class="pt s-jhq" cx="409.4" cy="147.7" r="2.7"/><circle class="pt s-jhq" cx="409.6" cy="158.2" r="2.7"/><circle class="pt s-jhq" cx="409.9" cy="164.1" r="2.7"/><circle class="pt s-jhq" cx="410.6" cy="170.5" r="2.7"/><circle class="pt s-jhq" cx="410.8" cy="173.7" r="2.7"/><circle class="pt s-jhq" cx="411.3" cy="188.6" r="2.7"/><circle class="pt s-jhq" cx="411.4" cy="206.1" r="2.7"/><polyline class="ln s-pub" points="346.8,111.8 384.4,125.7 402.8,141.5 409.7,159.2 411.8,181.8 412.2,220.6"/><circle class="pt s-pub" cx="346.8" cy="111.8" r="1.9"/><circle class="pt s-pub" cx="384.4" cy="125.7" r="1.9"/><circle class="pt s-pub" cx="402.8" cy="141.5" r="1.9"/><circle class="pt s-pub" cx="409.7" cy="159.2" r="1.9"/><circle class="pt s-pub" cx="411.8" cy="181.8" r="1.9"/><circle class="pt s-pub" cx="412.2" cy="220.6" r="1.9"/><polyline class="ln s-jhq4" points="84.3,81.9 167.5,87.4 262.8,93.3 314.6,101.6 315.0,104.6 345.2,111.5 346.3,114.4 358.8,126.3 360.6,128.6 364.6,145.5 366.0,148.0 366.9,170.6 367.3,173.9 367.6,216.5"/><circle class="pt s-jhq4" cx="84.3" cy="81.9" r="1.9"/><circle class="pt s-jhq4" cx="167.5" cy="87.4" r="1.9"/><circle class="pt s-jhq4" cx="262.8" cy="93.3" r="1.9"/><circle class="pt s-jhq4" cx="314.6" cy="101.6" r="1.9"/><circle class="pt s-jhq4" cx="315.0" cy="104.6" r="1.9"/><circle class="pt s-jhq4" cx="345.2" cy="111.5" r="1.9"/><circle class="pt s-jhq4" cx="346.3" cy="114.4" r="1.9"/><circle class="pt s-jhq4" cx="358.8" cy="126.3" r="1.9"/><circle class="pt s-jhq4" cx="360.6" cy="128.6" r="1.9"/><circle class="pt s-jhq4" cx="364.6" cy="145.5" r="1.9"/><circle class="pt s-jhq4" cx="366.0" cy="148.0" r="1.9"/><circle class="pt s-jhq4" cx="366.9" cy="170.6" r="1.9"/><circle class="pt s-jhq4" cx="367.3" cy="173.9" r="1.9"/><circle class="pt s-jhq4" cx="367.6" cy="216.5" r="1.9"/><polyline class="ln s-c32" points="295.1,56.9 360.1,74.7 392.0,94.7 393.2,95.1 407.0,116.8 408.7,117.9 412.0,140.1"/><circle class="pt s-c32" cx="295.1" cy="56.9" r="1.9"/><circle class="pt s-c32" cx="360.1" cy="74.7" r="1.9"/><circle class="pt s-c32" cx="392.0" cy="94.7" r="1.9"/><circle class="pt s-c32" cx="393.2" cy="95.1" r="1.9"/><circle class="pt s-c32" cx="407.0" cy="116.8" r="1.9"/><circle class="pt s-c32" cx="408.7" cy="117.9" r="1.9"/><circle class="pt s-c32" cx="412.0" cy="140.1" r="1.9"/><polyline class="ln s-c8" points="259.7,24.9 261.2,26.9 323.8,37.4 324.7,39.3 325.0,40.9 348.9,53.5 350.3,55.1 350.7,57.7 353.3,63.4 359.7,75.3 360.0,78.6 363.4,96.0 364.1,99.7 364.6,115.5 364.7,138.1 364.8,138.8 365.0,160.4"/><circle class="pt s-c8" cx="259.7" cy="24.9" r="1.9"/><circle class="pt s-c8" cx="261.2" cy="26.9" r="1.9"/><circle class="pt s-c8" cx="323.8" cy="37.4" r="1.9"/><circle class="pt s-c8" cx="324.7" cy="39.3" r="1.9"/><circle class="pt s-c8" cx="325.0" cy="40.9" r="1.9"/><circle class="pt s-c8" cx="348.9" cy="53.5" r="1.9"/><circle class="pt s-c8" cx="350.3" cy="55.1" r="1.9"/><circle class="pt s-c8" cx="350.7" cy="57.7" r="1.9"/><circle class="pt s-c8" cx="353.3" cy="63.4" r="1.9"/><circle class="pt s-c8" cx="359.7" cy="75.3" r="1.9"/><circle class="pt s-c8" cx="360.0" cy="78.6" r="1.9"/><circle class="pt s-c8" cx="363.4" cy="96.0" r="1.9"/><circle class="pt s-c8" cx="364.1" cy="99.7" r="1.9"/><circle class="pt s-c8" cx="364.6" cy="115.5" r="1.9"/><circle class="pt s-c8" cx="364.7" cy="138.1" r="1.9"/><circle class="pt s-c8" cx="364.8" cy="138.8" r="1.9"/><circle class="pt s-c8" cx="365.0" cy="160.4" r="1.9"/><polyline class="ln s-ivf" points="15.2,58.3 110.8,61.5 148.1,85.1 234.5,95.6 311.1,116.2 330.3,150.7 363.2,161.7 366.1,185.3 398.4,196.5 401.5,219.4"/><circle class="pt s-ivf" cx="15.2" cy="58.3" r="1.9"/><circle class="pt s-ivf" cx="110.8" cy="61.5" r="1.9"/><circle class="pt s-ivf" cx="148.1" cy="85.1" r="1.9"/><circle class="pt s-ivf" cx="234.5" cy="95.6" r="1.9"/><circle class="pt s-ivf" cx="311.1" cy="116.2" r="1.9"/><circle class="pt s-ivf" cx="330.3" cy="150.7" r="1.9"/><circle class="pt s-ivf" cx="363.2" cy="161.7" r="1.9"/><circle class="pt s-ivf" cx="366.1" cy="185.3" r="1.9"/><circle class="pt s-ivf" cx="398.4" cy="196.5" r="1.9"/><circle class="pt s-ivf" cx="401.5" cy="219.4" r="1.9"/><text class="axl" x="235" y="264">Recall@10</text><text class="axl" transform="translate(13,122) rotate(-90)" x="0" y="0">QPS (log)</text></svg>
@@ -242,7 +165,7 @@ footer{color:var(--muted); font-size:13px; font-family:"IBM Plex Mono",ui-monosp
 <figure class="panel">
   <figcaption><h3>Stella-TREC24</h3>
   <p class="meta">17.78M &times; 1024d &nbsp;·&nbsp; M=128 &nbsp;·&nbsp; 1160 B/vec &nbsp;·&nbsp; nlist 8,192, 16,384, 32,768, 65,536</p></figcaption>
-  <svg viewBox="0 0 430 268" role="img" aria-label="Stella-TREC24"><line class="grid" x1="54" x2="416" y1="217.4" y2="217.4"/><text class="tick ty" x="47" y="220.8">2K</text><line class="grid" x1="54" x2="416" y1="186.6" y2="186.6"/><text class="tick ty" x="47" y="190.0">5K</text><line class="grid" x1="54" x2="416" y1="163.3" y2="163.3"/><text class="tick ty" x="47" y="166.7">10K</text><line class="grid" x1="54" x2="416" y1="140.0" y2="140.0"/><text class="tick ty" x="47" y="143.4">20K</text><line class="grid" x1="54" x2="416" y1="109.1" y2="109.1"/><text class="tick ty" x="47" y="112.5">50K</text><line class="grid" x1="54" x2="416" y1="85.8" y2="85.8"/><text class="tick ty" x="47" y="89.2">100K</text><line class="grid" x1="54" x2="416" y1="62.5" y2="62.5"/><text class="tick ty" x="47" y="65.9">200K</text><line class="grid" x1="54" x2="416" y1="31.7" y2="31.7"/><text class="tick ty" x="47" y="35.1">500K</text><line class="grid" y1="12" y2="232" x1="122.6" x2="122.6"/><text class="tick tx" x="122.6" y="247">0.90</text><line class="grid" y1="12" y2="232" x1="196.0" x2="196.0"/><text class="tick tx" x="196.0" y="247">0.93</text><line class="grid" y1="12" y2="232" x1="269.3" x2="269.3"/><text class="tick tx" x="269.3" y="247">0.95</text><line class="grid" y1="12" y2="232" x1="342.7" x2="342.7"/><text class="tick tx" x="342.7" y="247">0.97</text><line class="grid" y1="12" y2="232" x1="416.0" x2="416.0"/><text class="tick tx" x="416.0" y="247">1.00</text><rect class="frame" x="54" y="12" width="362" height="220"/><polyline class="ln s-jhq" points="130.3,74.5 169.9,77.2 206.0,83.2 310.4,84.0 323.3,85.5 323.6,85.6 353.5,90.2 359.7,94.2 376.4,98.4 383.7,106.9 392.8,111.7 396.1,124.9 400.7,132.9 401.6,150.6 402.5,165.9 404.0,184.0"/><circle class="pt s-jhq" cx="130.3" cy="74.5" r="2.7"/><circle class="pt s-jhq" cx="169.9" cy="77.2" r="2.7"/><circle class="pt s-jhq" cx="206.0" cy="83.2" r="2.7"/><circle class="pt s-jhq" cx="310.4" cy="84.0" r="2.7"/><circle class="pt s-jhq" cx="323.3" cy="85.5" r="2.7"/><circle class="pt s-jhq" cx="323.6" cy="85.6" r="2.7"/><circle class="pt s-jhq" cx="353.5" cy="90.2" r="2.7"/><circle class="pt s-jhq" cx="359.7" cy="94.2" r="2.7"/><circle class="pt s-jhq" cx="376.4" cy="98.4" r="2.7"/><circle class="pt s-jhq" cx="383.7" cy="106.9" r="2.7"/><circle class="pt s-jhq" cx="392.8" cy="111.7" r="2.7"/><circle class="pt s-jhq" cx="396.1" cy="124.9" r="2.7"/><circle class="pt s-jhq" cx="400.7" cy="132.9" r="2.7"/><circle class="pt s-jhq" cx="401.6" cy="150.6" r="2.7"/><circle class="pt s-jhq" cx="402.5" cy="165.9" r="2.7"/><circle class="pt s-jhq" cx="404.0" cy="184.0" r="2.7"/><polyline class="ln s-pub" points="332.7,109.7 369.1,124.4 391.1,140.9 400.2,161.7 403.7,188.8 404.3,220.9"/><circle class="pt s-pub" cx="332.7" cy="109.7" r="1.9"/><circle class="pt s-pub" cx="369.1" cy="124.4" r="1.9"/><circle class="pt s-pub" cx="391.1" cy="140.9" r="1.9"/><circle class="pt s-pub" cx="400.2" cy="161.7" r="1.9"/><circle class="pt s-pub" cx="403.7" cy="188.8" r="1.9"/><circle class="pt s-pub" cx="404.3" cy="220.9" r="1.9"/><polyline class="ln s-jhq4" points="65.7,75.8 66.0,84.2 237.9,92.2 268.7,100.7 289.6,111.9 299.8,128.2 303.6,152.4 305.4,184.7"/><circle class="pt s-jhq4" cx="65.7" cy="75.8" r="1.9"/><circle class="pt s-jhq4" cx="66.0" cy="84.2" r="1.9"/><circle class="pt s-jhq4" cx="237.9" cy="92.2" r="1.9"/><circle class="pt s-jhq4" cx="268.7" cy="100.7" r="1.9"/><circle class="pt s-jhq4" cx="289.6" cy="111.9" r="1.9"/><circle class="pt s-jhq4" cx="299.8" cy="128.2" r="1.9"/><circle class="pt s-jhq4" cx="303.6" cy="152.4" r="1.9"/><circle class="pt s-jhq4" cx="305.4" cy="184.7" r="1.9"/><polyline class="ln s-c8" points="325.6,24.5 346.2,40.3 348.8,59.4 351.5,87.3"/><circle class="pt s-c8" cx="325.6" cy="24.5" r="1.9"/><circle class="pt s-c8" cx="346.2" cy="40.3" r="1.9"/><circle class="pt s-c8" cx="348.8" cy="59.4" r="1.9"/><circle class="pt s-c8" cx="351.5" cy="87.3" r="1.9"/><text class="axl" x="235" y="264">Recall@10</text><text class="axl" transform="translate(13,122) rotate(-90)" x="0" y="0">QPS (log)</text></svg>
+  <svg viewBox="0 0 430 268" role="img" aria-label="Stella-TREC24"><line class="grid" x1="54" x2="416" y1="217.4" y2="217.4"/><text class="tick ty" x="47" y="220.8">2K</text><line class="grid" x1="54" x2="416" y1="186.6" y2="186.6"/><text class="tick ty" x="47" y="190.0">5K</text><line class="grid" x1="54" x2="416" y1="163.3" y2="163.3"/><text class="tick ty" x="47" y="166.7">10K</text><line class="grid" x1="54" x2="416" y1="140.0" y2="140.0"/><text class="tick ty" x="47" y="143.4">20K</text><line class="grid" x1="54" x2="416" y1="109.1" y2="109.1"/><text class="tick ty" x="47" y="112.5">50K</text><line class="grid" x1="54" x2="416" y1="85.8" y2="85.8"/><text class="tick ty" x="47" y="89.2">100K</text><line class="grid" x1="54" x2="416" y1="62.5" y2="62.5"/><text class="tick ty" x="47" y="65.9">200K</text><line class="grid" x1="54" x2="416" y1="31.7" y2="31.7"/><text class="tick ty" x="47" y="35.1">500K</text><line class="grid" y1="12" y2="232" x1="122.6" x2="122.6"/><text class="tick tx" x="122.6" y="247">0.90</text><line class="grid" y1="12" y2="232" x1="196.0" x2="196.0"/><text class="tick tx" x="196.0" y="247">0.93</text><line class="grid" y1="12" y2="232" x1="269.3" x2="269.3"/><text class="tick tx" x="269.3" y="247">0.95</text><line class="grid" y1="12" y2="232" x1="342.7" x2="342.7"/><text class="tick tx" x="342.7" y="247">0.98</text><line class="grid" y1="12" y2="232" x1="416.0" x2="416.0"/><text class="tick tx" x="416.0" y="247">1.00</text><rect class="frame" x="54" y="12" width="362" height="220"/><polyline class="ln s-jhq" points="130.3,74.5 169.9,77.2 206.0,83.2 310.4,84.0 323.3,85.5 323.6,85.6 353.5,90.2 359.7,94.2 376.4,98.4 383.7,106.9 392.8,111.7 396.1,124.9 400.7,132.9 401.6,150.6 402.5,165.9 404.0,184.0"/><circle class="pt s-jhq" cx="130.3" cy="74.5" r="2.7"/><circle class="pt s-jhq" cx="169.9" cy="77.2" r="2.7"/><circle class="pt s-jhq" cx="206.0" cy="83.2" r="2.7"/><circle class="pt s-jhq" cx="310.4" cy="84.0" r="2.7"/><circle class="pt s-jhq" cx="323.3" cy="85.5" r="2.7"/><circle class="pt s-jhq" cx="323.6" cy="85.6" r="2.7"/><circle class="pt s-jhq" cx="353.5" cy="90.2" r="2.7"/><circle class="pt s-jhq" cx="359.7" cy="94.2" r="2.7"/><circle class="pt s-jhq" cx="376.4" cy="98.4" r="2.7"/><circle class="pt s-jhq" cx="383.7" cy="106.9" r="2.7"/><circle class="pt s-jhq" cx="392.8" cy="111.7" r="2.7"/><circle class="pt s-jhq" cx="396.1" cy="124.9" r="2.7"/><circle class="pt s-jhq" cx="400.7" cy="132.9" r="2.7"/><circle class="pt s-jhq" cx="401.6" cy="150.6" r="2.7"/><circle class="pt s-jhq" cx="402.5" cy="165.9" r="2.7"/><circle class="pt s-jhq" cx="404.0" cy="184.0" r="2.7"/><polyline class="ln s-pub" points="332.7,109.7 369.1,124.4 391.1,140.9 400.2,161.7 403.7,188.8 404.3,220.9"/><circle class="pt s-pub" cx="332.7" cy="109.7" r="1.9"/><circle class="pt s-pub" cx="369.1" cy="124.4" r="1.9"/><circle class="pt s-pub" cx="391.1" cy="140.9" r="1.9"/><circle class="pt s-pub" cx="400.2" cy="161.7" r="1.9"/><circle class="pt s-pub" cx="403.7" cy="188.8" r="1.9"/><circle class="pt s-pub" cx="404.3" cy="220.9" r="1.9"/><polyline class="ln s-jhq4" points="65.7,75.8 66.0,84.2 237.9,92.2 268.7,100.7 289.6,111.9 299.8,128.2 303.6,152.4 305.4,184.7"/><circle class="pt s-jhq4" cx="65.7" cy="75.8" r="1.9"/><circle class="pt s-jhq4" cx="66.0" cy="84.2" r="1.9"/><circle class="pt s-jhq4" cx="237.9" cy="92.2" r="1.9"/><circle class="pt s-jhq4" cx="268.7" cy="100.7" r="1.9"/><circle class="pt s-jhq4" cx="289.6" cy="111.9" r="1.9"/><circle class="pt s-jhq4" cx="299.8" cy="128.2" r="1.9"/><circle class="pt s-jhq4" cx="303.6" cy="152.4" r="1.9"/><circle class="pt s-jhq4" cx="305.4" cy="184.7" r="1.9"/><polyline class="ln s-c8" points="325.6,24.5 346.2,40.3 348.8,59.4 351.5,87.3"/><circle class="pt s-c8" cx="325.6" cy="24.5" r="1.9"/><circle class="pt s-c8" cx="346.2" cy="40.3" r="1.9"/><circle class="pt s-c8" cx="348.8" cy="59.4" r="1.9"/><circle class="pt s-c8" cx="351.5" cy="87.3" r="1.9"/><text class="axl" x="235" y="264">Recall@10</text><text class="axl" transform="translate(13,122) rotate(-90)" x="0" y="0">QPS (log)</text></svg>
   <p class="delta"><b>2.62&times;</b> vs published at R=0.9923<span class='sep'>·</span>ceiling <b>+1.8 pts</b> vs int8 at 1152 B</p>
   <p class="ooms"><span class="oom">CAGRA fp32 — cannot build</span><span class="oom">IVF-PQ — cannot build</span></p>
 </figure>
@@ -260,243 +183,31 @@ footer{color:var(--muted); font-size:13px; font-family:"IBM Plex Mono",ui-monosp
   <p class="delta"><b>1.56&times;</b> vs published at R=0.9843<span class='sep'>·</span>ceiling <b>+2.4 pts</b> vs int8 at 3200 B</p>
   
 </figure></div>
+
+<div class="notes">
+  <div class="note">
+    <h4>Where the speedup comes from</h4>
+    <p>Code: v45 sorts the selection buffer when it is full rather than when it passes the
+      target (+11 to +38%), and v47 factorises the primary LUT along equation 4's Cartesian
+      product, 32 entries a subspace instead of 256 (+6 to +14.5%). Parameters: an
+      <code>nlist</code> whose optimum moves along the front, so every front here is an
+      envelope over four values, and a training set that is worth +42 to +96% on the two
+      largest datasets and −47% on Vogue.</p>
+  </div>
+  <div class="note">
+    <h4>What it cost to build</h4>
+    <p>Stella is the largest case: 17.8M vectors, thirteen times the training set and twice
+      the lists. The index goes from <code>6.0 s</code> to <code>11.1 s</code> to build, and
+      VRAM from 20,547 to 20,837 MiB. <code>add()</code> dominates the build and does not
+      change; k-means is a GEMM this card finishes in seconds.</p>
+  </div>
+  <div class="note">
+    <h4>What these numbers are not</h4>
+    <p>Recall carries a <code>1e-3</code> floor across builds — training is not reproducible,
+      and three cold-cache runs of one binary returned 0.9852 / 0.9842 / 0.9849 on Vogue with
+      identical candidate counts. At the top the front is near-vertical, so that floor is worth
+      2–3× of apparent QPS and interpolation there is meaningless; the report compares that band
+      at matched nlist and nprobe instead. One alpha throughout.</p>
+  </div>
 </div>
-
-<div class="wrap">
-<section>
-  <h2>Where the speedup came from</h2>
-  <dl class="ledger">
-    <dt>v45</dt>
-    <dd>Both selection buffers sorted the moment the count passed the target. <code>cap</code>
-      is the power of two at or above <code>target + BLOCK</code>, so after each compaction the
-      count sat at the target and the next chunk pushed it past again &mdash; a full
-      2048-element bitonic sort per chunk to absorb a handful of survivors. The bound the
-      buffer needs is <code>cnt + BLOCK &le; cap</code>.</dd>
-    <dd class="res pos">+11 to +38%</dd>
-    <dt>v46</dt>
-    <dd><code>cublasSdot(n * d_, &hellip;)</code> takes an <code>int</code>. At d=1024 the
-      product wraps negative above 2,097,152 rows; BLAS returns without writing the result for
-      a non-positive length, so sigma came out zero and equation 4 placed every primary
-      centroid at the origin. No error anywhere. It read as an <code>nlist</code> ceiling for
-      two runs, because nlist and the training set had always been raised together.</dd>
-    <dd class="res pos">fixes 0.48 &rarr; 0.99</dd>
-    <dt>v47</dt>
-    <dd>Equation 4 builds each subspace's codewords as a Cartesian product, so
-      <code>T[c] = T<sub>hi</sub>[c&gt;&gt;4] + T<sub>lo</sub>[c&amp;15]</code> exactly. 32
-      table entries a subspace instead of 256: 8&times; smaller, 16&times; cheaper to build,
-      and conflict-free in shared memory where the 256-entry table took up to an 8-way
-      conflict. The identity is verified against the centroids at train time, not inferred.</dd>
-    <dd class="res pos">+6 to +14.5%</dd>
-    <dt>config</dt>
-    <dd>The coarse quantizer had been trained on <code>JHQ_N_TRAIN=100000</code> at every
-      nlist &mdash; 6.1 points per centroid on Stella, against the 39 FAISS treats as a floor.
-      Below about ten points per centroid k-means is degenerate &mdash; most centroids never
-      move far from initialisation and the partition is wildly uneven &mdash; and repairing it
-      cuts candidates at nprobe=128 from 226,410 to 146,535 at <em>higher</em> recall. The
-      effect is monotone in points per centroid and crosses zero around twenty; see below.</dd>
-    <dd class="res pos">+42 to +96% on the two largest;<br>&minus;47% on Vogue</dd>
-    <dt>v48</dt>
-    <dd>Squared-distance entries are non-negative, so a partial sum past the ck-th best cannot
-      reach the top-ck and the remaining subspaces need be neither gathered nor looked up.
-      Exact. But the exit has to be per warp &mdash; lanes walk subspaces in lockstep &mdash;
-      and the maximum over 32 lanes is far above the mean.</dd>
-    <dd class="res neg">&minus;1 to &minus;3%</dd>
-  </dl>
-  <p style="font-size:14px;color:var(--muted)">v43 and v44 carry no speed of their own. v43 added
-    the diagnostics the rest rests on; v44 replaced a probe selector that held all nlist scores
-    in one block's shared memory and could not launch above nlist=16384.</p>
-</section>
-
-<section>
-  <h2>What it costs to build</h2>
-  <p>The objection this project raised against itself was that throughput bought with a bigger
-    index is not free: <code>nlist</code> doubled and the training set grew thirteen-fold.
-    Measured on cold caches, it very nearly is.</p>
-  <div class="tblwrap">
-  <table>
-    <caption>Stella-TREC24, 17.8M &times; 1024, M=128, Br=8. Cold cache, so train and add are
-      real; every build timing recorded before this was a cache hit reporting 35 ms.</caption>
-    <thead><tr><th scope="col" style="text-align:left"></th><th scope="col">nlist</th><th scope="col">n_train</th>
-      <th scope="col">train</th><th scope="col">add</th><th scope="col">VRAM</th><th scope="col">QPS @ R=0.989</th></tr></thead>
-    <tbody>
-      <tr><th scope="row">as published</th><td>16,384</td><td>100K</td><td>0.3 s</td><td>5.7 s</td><td>20,547 MiB</td><td>23,094</td></tr>
-      <tr><th scope="row">this work</th><td>32,768</td><td>1.28M</td><td>3.6 s</td><td>7.5 s</td><td>20,837 MiB</td><td>53,640</td></tr>
-      <tr><th scope="row">ratio</th><td>2.0&times;</td><td>12.8&times;</td><td colspan="2">1.85&times; build</td><td>+1.4%</td><td>2.32&times;</td></tr>
-    </tbody>
-  </table>
-  </div>
-  <p>k-means over <code>n_train &times; nlist &times; d</code> is a GEMM this card finishes in
-    seconds. <code>add()</code> encodes all N vectors and does not change; it dominates the
-    build in both rows.</p>
-</section>
-
-<section>
-  <h2>Who owns which recall</h2>
-  <p>JHQ does not beat a <em>running</em> baseline above R&thinsp;&asymp;&thinsp;0.88 on any
-    dataset. Where fp32 CAGRA can build an index it owns high recall; JHQ's high-recall
-    territory is BGE-M3 above 0.9428 and Stella above 0.9781, the two datasets where fp32
-    CAGRA needs more memory than the card has (67.8 GiB of 31.4 on Stella) and int8 CAGRA
-    saturates below the range.</p>
-  <p class="pull"><b>The 2&times; did not move the boundary; it made the alone-territory
-    cheaper.</b> What did change hands is below R&thinsp;=&thinsp;0.88, where JHQ is now ahead
-    of everything that runs &mdash; a band the published fronts never sampled, because their
-    nprobe sweep started higher.</p>
-</section>
-
-
-<section>
-  <h2>nlist has an optimum, and it moves</h2>
-  <p>Four values per dataset, each with a training set at ~39 points a centroid.
-    The value the fronts above use is best on two of six; elsewhere it leaves 5 to 139% on
-    the table, and on four of six the best value at the top of the front is not the best in
-    the middle.</p>
-  <div class="tblwrap">
-  <table>
-    <caption>Best nlist by region, and what the report's choice cost. 120 rows, none failed.</caption>
-    <thead><tr><th scope="col" style="text-align:left">Dataset</th><th scope="col">used</th>
-      <th scope="col">best mid-front</th><th scope="col">best at top</th><th scope="col">cost of the choice</th></tr></thead>
-    <tbody>
-      <tr><th scope="row">Vogue-768</th><td>4,096</td><td>4,096</td><td>2,048</td><td>+7% at the top</td></tr>
-      <tr><th scope="row">arXiv-768</th><td>8,192</td><td>8,192</td><td>16,384</td><td class="gain">+38% at the top</td></tr>
-      <tr><th scope="row">BGE-M3</th><td>16,384</td><td>32,768</td><td>32,768</td><td>+5 to 9% throughout</td></tr>
-      <tr><th scope="row">Stella-TREC24</th><td>32,768</td><td>32,768</td><td>65,536</td><td class="gain">+139% at the top</td></tr>
-      <tr><th scope="row">OpenAI3-1536</th><td>4,096</td><td>8,192</td><td>8,192</td><td>+4 to 7%</td></tr>
-      <tr><th scope="row">OpenAI3-3072</th><td>4,096</td><td>8,192</td><td>4,096</td><td>+8% at the low end</td></tr>
-    </tbody>
-  </table>
-  </div>
-  <p class="pull"><b>More lists is not monotonically better.</b> Vogue at nlist=8,192 runs
-    <b>2.2&times; slower at identical recall</b> than at 4,096 &mdash; 1M vectors over 8,192
-    lists is 122 vectors each, and there the per-probe overhead costs more than the scan it
-    directs. BGE-M3's optimum is at or above 32,768 and was not bracketed.</p>
-  <p>Stella at nlist=65,536 trains on 2,555,904 rows, past the <code>2<sup>31</sup>/d</code>
-    wrap, and returns 0.9952. The sigma fix is verified in a configuration that needs it.</p>
-</section>
-
-
-<section>
-  <h2>The training set matters below 20 points a centroid, and costs above it</h2>
-  <p>The first version of this report took +50 to +96% from Stella and implied it generally.
-    Separated at fixed <code>nlist</code> on the other five, it does not generalise &mdash;
-    and on Vogue it reverses.</p>
-  <div class="tblwrap">
-  <table>
-    <caption>Matched-recall QPS at <code>JHQ_N_TRAIN</code> 640,000 against 100,000, nlist
-      held fixed. Ordered by how much training each centroid received at 100K.</caption>
-    <thead><tr><th scope="col" style="text-align:left">Dataset</th><th scope="col">N</th>
-      <th scope="col">nlist</th><th scope="col">pts / centroid<br>at 100K</th>
-      <th scope="col">low recall</th><th scope="col">mid</th><th scope="col">high</th></tr></thead>
-    <tbody>
-      <tr><th scope="row">Vogue-768</th><td>1.0M</td><td>4,096</td><td>24.4</td><td style="color:var(--bad);font-weight:600">&minus;47%</td><td style="color:var(--bad);font-weight:600">&minus;39%</td><td style="color:var(--bad)">&minus;8%</td></tr>
-      <tr><th scope="row">OpenAI3-1536</th><td>999K</td><td>4,096</td><td>24.4</td><td>+9%</td><td>+9%</td><td>+14%</td></tr>
-      <tr><th scope="row">OpenAI3-3072</th><td>999K</td><td>4,096</td><td>24.4</td><td>+4%</td><td>+9%</td><td>+14%</td></tr>
-      <tr><th scope="row">arXiv-768</th><td>2.25M</td><td>8,192</td><td>12.2</td><td>+19%</td><td>+19%</td><td class="gain">+53%</td></tr>
-      <tr><th scope="row">BGE-M3</th><td>10.1M</td><td>16,384</td><td>6.1</td><td class="gain">+42%</td><td class="gain">+60%</td><td class="gain">+58%</td></tr>
-      <tr><th scope="row">Stella-TREC24</th><td>17.8M</td><td>32,768</td><td>3.1</td><td class="gain">+50%</td><td class="gain">+96%</td><td class="gain">+75%</td></tr>
-    </tbody>
-  </table>
-  </div>
-  <p class="pull"><b>The candidate counts run both ways, and they are the whole effect.</b>
-    On Stella at 6.1 points a centroid, more training cuts candidates scanned from 226,410 to
-    146,535 &mdash; <b>&minus;35% at higher recall</b>. On Vogue at 24.4, it raises them from
-    46,541 to 90,578 &mdash; <b>+95%</b>. Same knob, opposite directions, at matched recall.</p>
-  <p>Below roughly ten points a centroid, k-means is degenerate: most centroids never receive
-    enough data to move far from where initialisation put them, so the partition is
-    pathologically uneven and a query that opens <code>nprobe</code> lists opens some enormous
-    ones. Repairing that is worth a great deal. Above about twenty, the quantizer is already
-    reasonable and more training only makes it follow the density more sharply &mdash; more,
-    smaller centroids where the data is dense, which is precisely where queries land. So it is
-    not that a better-trained quantizer is faster; it is that an under-trained one is
-    pathologically uneven, and the fix pays until the pathology is gone.</p>
-  <p style="font-size:14px;color:var(--muted)">BGE-M3's nlist optimum stays unbracketed for a
-    memory reason: 65,536 and 131,072 both fail in <code>add()</code> at the
-    <code>n &times; bpv</code> residual buffer &mdash; 10.09M rows at 1,024 B is 10.3 GiB, and
-    the extra centroid copies push past the 32 GiB card.</p>
-</section>
-
-<section>
-  <h2>The top of the front cannot be interpolated</h2>
-  <p>At high recall the front is nearly vertical, and recall varies between builds by up to
-    1e-3. In a vertical region that is worth 2&ndash;3&times; of apparent QPS, so interpolating
-    one front against another there reads noise as a result &mdash; which produced a spurious
-    "0.32&times; regression" on Vogue and "0.19&times;" on arXiv, both from comparing an
-    endpoint against an interpolation.</p>
-  <div class="tblwrap">
-  <table>
-    <caption>Median of three independent builds against the published single build, at matched
-      nlist and nprobe. No interpolation. nlist and n_train held at the published values, so
-      this is the code speedup alone.</caption>
-    <thead><tr><th scope="col" style="text-align:left">Dataset</th><th scope="col">nlist / np</th>
-      <th scope="col">v39 recall</th><th scope="col">v39 QPS</th><th scope="col">v47 recall</th>
-      <th scope="col">v47 QPS</th><th scope="col">speedup</th></tr></thead>
-    <tbody>
-      <tr><th scope="row">Vogue-768</th><td>1,024 / 512</td><td>0.9950</td><td>11,536</td><td>0.9944</td><td>14,566</td><td class="gain">1.26&times;</td></tr>
-      <tr><th scope="row">Vogue-768</th><td>1,024 / 1,024</td><td>0.9954</td><td>3,776</td><td>0.9948</td><td>4,272</td><td class="gain">1.13&times;</td></tr>
-      <tr><th scope="row">arXiv-768</th><td>2,048 / 512</td><td>0.9918</td><td>7,465</td><td>0.9902</td><td>8,849</td><td class="gain">1.19&times;</td></tr>
-      <tr><th scope="row">arXiv-768</th><td>2,048 / 1,024</td><td>0.9920</td><td>2,838</td><td>0.9899</td><td>3,130</td><td class="gain">1.10&times;</td></tr>
-      <tr><th scope="row">OpenAI3-1536</th><td>1,024 / 512</td><td>0.9959</td><td>6,273</td><td>0.9951</td><td>7,343</td><td class="gain">1.17&times;</td></tr>
-      <tr><th scope="row">OpenAI3-1536</th><td>1,024 / 1,024</td><td>0.9966</td><td>2,593</td><td>0.9959</td><td>2,881</td><td class="gain">1.11&times;</td></tr>
-      <tr><th scope="row">Stella-TREC24</th><td>16,384 / 512</td><td>0.9958</td><td>4,688</td><td>0.9954</td><td>5,240</td><td class="gain">1.12&times;</td></tr>
-    </tbody>
-  </table>
-  </div>
-  <p class="pull"><b>The 4e-4 to 1.6e-3 recall deficit in every cell is equation 4, not a
-    regression.</b> The published fronts were built before
-    <code>build_analytical_cartesian</code> existed, so their primary level is a Lloyd-refined
-    product quantiser rather than equation 4's Cartesian product &mdash; measured at 0.027
-    better on its own, closed to about 0.004 once the 2000-iteration residual codebook runs.
-    So this is the faithful codebook against a stronger non-paper one, and the faithful one is
-    1.10 to 1.26&times; faster for that difference.</p>
-</section>
-
-<section>
-  <h2>What the diagnostics say to do next</h2>
-  <p>v43 measured where recall is lost. Across three datasets and a 32&times; range of nprobe,
-    everything downstream of coarse routing &mdash; the equation-4 primary code, the ADC scan,
-    the top-ck selection, the residual refinement &mdash; together loses between 0.0013 and
-    0.0051 of the neighbours routing hands it. At nprobe=8, 99.3% of Vogue's shortfall is a
-    list that was never opened.</p>
-  <p class="pull">No work on the scan can raise recall. The compaction, the lookup, the table
-    precision and the early-exit bound are all speed items with a half-point recall budget.
-    <b>Recall belongs to the coarse quantizer</b> &mdash; which is also where the largest
-    speedup came from, and it is the least optimised part of the system.</p>
-  <p>It also says the quantisation is not the weak link: a 1&nbsp;bit/dim primary code plus a
-    B<sub>r</sub>-bit residual reproduces the exact ranking of what it is given to within half a
-    point. That is a result about JHQ, and it is invisible in the recall number because routing
-    dominates it.</p>
-</section>
-
-<section>
-  <h2>Limits of these numbers</h2>
-  <ul>
-    <li><b>Recall carries a 1e-3 floor across builds.</b> Training is not reproducible: three
-      cold-cache runs of one binary returned 0.9852 / 0.9842 / 0.9849 on Vogue with identical
-      candidate counts, so coarse assignment is deterministic and the codebooks differ in their
-      last bits. Differences below 1e-3 between two builds mean nothing.</li>
-    <li><b>The baselines were not re-run.</b> cuVS fronts come from commit 305e763 and a
-      separate measurement session. Only the JHQ rows are new.</li>
-    <li><b>One alpha.</b> alpha=100 throughout, matching the published sweep. The ranking loss
-      saturates at alpha=20 on Stella and 50 on Vogue, so a per-dataset alpha is unmeasured on
-      the other four.</li>
-    <li><b>The fronts plotted are the envelope over every nlist measured</b> &mdash; four per
-      dataset, and every one of them contributes points somewhere, which is the sweep's result
-      restated. BGE-M3's optimum is still unbracketed: 65,536 does not fit in the card.</li>
-    <li><b>n_train and nlist are separated only on Stella.</b> Elsewhere they moved together,
-      &mdash; now separated on all six, which narrowed the claim rather than confirming it:
-      see the section on points per centroid.</li>
-    <li><b>The sigma overflow did not reach the published results.</b> Audited: the demo
-      defaults to <code>min(N, 100000)</code> training rows and no recorded run set
-      <code>JHQ_N_TRAIN</code>, so every historical row sits far below the
-      <code>2<sup>31</sup>/d</code> threshold &mdash; 699,050 rows at d=3072, the tightest
-      case. The bug was only reachable once the training set was raised.</li>
-  </ul>
-</section>
-
-<footer>
-  jhq_v47_split_lut &middot; branch fix/recall-eval-v15 &middot; RTX 5090, driver 595.71.05, cuVS 26.08.01<br>
-  k=10, batch 1024, 1000 queries, 3 repeats, BLOCK=1024, alpha=100, B=8<br>
-  Raw: results/front6/, results/v43_diag/, results/v45_compact/, results/v46_sigma/,
-  results/v47_split_lut/, results/v48_early_exit/<br>
-  Supersedes report_adc2026/frontier.html, kept unchanged as the record of the v39 fronts.
-</footer>
 </div>
