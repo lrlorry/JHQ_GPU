@@ -1497,6 +1497,44 @@ add_jhq_variant(v49_e32  ${V49} JHQ_PAPER_FAITHFUL=1
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_EXIT_BOUND=1 JHQ_EXIT_EVERY=32)
 
+# v50: two ways to spend less on the refinement, both exact.
+#
+#   JHQ_REGROUP      sorts the surviving ck on their position in the inverted
+#                    lists before their residual codes are read. The top-ck
+#                    arrives ordered by distance, so the positions are
+#                    scattered and the refinement makes ck reads of bpv bytes
+#                    at random offsets -- 1000 scattered 1 KB reads a query at
+#                    d=1024. In position order they run forward.
+#   JHQ_FUSE_REFINE  moves the refinement into the scan kernel. Unfused, the
+#                    scan writes ck positions and ck primary distances to
+#                    global and the next kernel reads them straight back:
+#                    16 KB a query at ck=1000, plus a launch.
+#
+# Neither changes which candidates survive or what any distance is -- each
+# composite distance is computed from one candidate alone, so not even the
+# summation order moves, and the final top-k re-sorts on it regardless.
+# Algorithm 1 fixes the set and the arithmetic and says nothing about the
+# order they are visited in.
+#
+# They target costs 64x apart in size, so all four combinations are built.
+set(V50 jhq_v50_fuse)
+add_jhq_variant(v50_base  ${V50} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1)
+add_jhq_variant(v50_group ${V50} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_REGROUP=1)
+add_jhq_variant(v50_fuse  ${V50} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_FUSE_REFINE=1)
+add_jhq_variant(v50_both  ${V50} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_REGROUP=1 JHQ_FUSE_REFINE=1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
