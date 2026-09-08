@@ -28,13 +28,39 @@ A distance below the true minimum cannot come from the data that was handed
 in. Together with the run-to-run variation and the zeros, this reads as
 uninitialised memory.
 
-## The likely cause, and what it would take
+## The sm_120 guess was wrong
 
-`libcuvs/include/cuvs/detail/jit_lto/ivf_rabitq/ivf_rabitq_fragments.hpp`
-says these kernels are assembled at run time through JIT-LTO. The wheel is
-built for the architectures RAPIDS ships; this card is **sm_120**, and a
-missing fragment for it would fail exactly this quietly -- the call returns,
-the timing is real, the output is whatever was in the buffer.
+`cuobjdump --list-elf libcuvs.so` lists **sm_75 sm_80 sm_86 sm_90 sm_100
+sm_120**, and this card is 12.0. CAGRA, IVF-PQ, IVF-Flat and IVF-SQ all go
+through the same `jit_lto/` machinery and all of them returned sensible recall
+in the same session's re-run. The architecture is not the problem.
+
+## What else was ruled out afterwards
+
+| | how |
+|---|---|
+| the row count | the file is 2,867,840,928 bytes at 3,076 a row = **932,328 exactly**, and JHQ's own loader prints `base=932328x768`. Both readers agree. |
+| an unbuilt index | there is no `extend()` in this API -- only build, search, serialize, deserialize -- and `idx.size()` returns **932,328**, every row |
+| the search mode | LUT16 and QUANT4 both return near-random results |
+| `bits_per_dim` | 3 (their default) and 9 both do |
+| the allocator | cuVS's own harness runs behind a pool and an explicit raft workspace. Setting one up is not possible against this wheel without a further migration: RMM 26.8 has dropped `rmm/mr/device/pool_memory_resource.hpp` for the CCCL-style `cuda/memory_pool` API. |
+
+Recall across all of it: **0.0000 to 0.0006**, where chance alone on
+932,328 rows is about 0.0001.
+
+## What is left, and what it would take
+
+Everything testable from outside the library now checks out, and the search
+still returns ids that are essentially random with distances **below the true
+minimum** -- 0.1787 where an exhaustive host scan of the whole base finds
+nothing under 0.629839. A distance smaller than the minimum cannot be computed
+from the data that was handed in.
+
+The one structural clue left is that `ivf_rabitq` has **no Python binding in
+this release** while every other algorithm here does. The C++ symbols and the
+header shipped; the feature did not. That is consistent with a path that is
+present but not yet functional in 26.08.01, which is also what the paper
+implies -- it names its own fork as the artifact rather than a cuVS version.
 
 Everything else about the comparison is ready: the timed region matches
 `demo_jhq_v36.cu` (host queries in, host results out), the byte budgets line up

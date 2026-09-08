@@ -19,9 +19,6 @@
 // Passing 8 against JHQ's Br=8 would give RaBitQ 11% less memory.
 #include <cuvs/neighbors/ivf_rabitq.hpp>
 #include <raft/core/device_resources.hpp>
-#include <raft/core/resource/device_memory_resource.hpp>
-#include <rmm/mr/device/pool_memory_resource.hpp>
-#include <rmm/mr/device/cuda_memory_resource.hpp>
 #include <raft/core/device_mdarray.hpp>
 #include <raft/core/host_mdspan.hpp>
 
@@ -117,18 +114,11 @@ int main(int argc, char** argv) {
     std::printf("n_lists=%u  bits_per_dim=%u  n_probes=%u  k=%d  mode=%d  metric=%d\n",
                 n_lists, bits, n_probes, k, mode_i, metric_i);
 
-    // cuVS's own benchmarks run behind a pool allocator and give raft an
-    // explicit workspace. A bare device_resources leaves both at their
-    // defaults, and an algorithm that wants scratch it cannot get may not say
-    // so -- which is one of the two explanations left for a search that
-    // returns near-random ids with distances below the true minimum.
-    rmm::mr::cuda_memory_resource cuda_mr;
-    rmm::mr::pool_memory_resource<rmm::mr::cuda_memory_resource> pool_mr{
-        &cuda_mr, size_t(2) << 30};
-    rmm::mr::set_current_device_resource(&pool_mr);
-
+    // A pool allocator was tried here and the headers it needs are gone: RMM
+    // 26.8 replaced rmm/mr/device/pool_memory_resource.hpp with the CCCL-style
+    // cuda/memory_pool API, so cuVS's own benchmark setup cannot be
+    // reproduced against this wheel without following that migration too.
     raft::device_resources res;
-    raft::resource::set_workspace_to_pool_resource(res, size_t(4) << 30);
 
     size_t free0 = 0, total0 = 0;
     cudaMemGetInfo(&free0, &total0);
