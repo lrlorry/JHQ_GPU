@@ -1612,6 +1612,24 @@ add_jhq_variant(v53_x4 ${V53} JHQ_PAPER_FAITHFUL=1
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=4)
 
+# A probe of the cluster-centric premise, before writing the kernel for it.
+#
+# Sharing one list's codes across the queries that probe it only pays if those
+# repeated reads reach DRAM. This card has 96 MB of L2 and stella's whole
+# primary code is 128 MB, so they might not. demo_jhq_qdup duplicates queries
+# instead of changing a kernel: same block count, same work, D times the list
+# overlap. Flat QPS in D means L2 already has it and the rewrite is worthless.
+#
+# It links jhq_v53_x1 -- v51's cursor and v52's word layout, the current
+# default -- so the answer is about the code that would actually be rewritten.
+add_executable(demo_jhq_qdup examples/demo_jhq_qdup.cu)
+target_compile_definitions(demo_jhq_qdup PRIVATE
+    JHQ_INDEX_HEADER="${V53}/jhq_gpu_index.cuh" JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+target_link_libraries(demo_jhq_qdup PRIVATE jhq_v53_x1)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
