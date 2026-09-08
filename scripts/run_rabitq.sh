@@ -36,7 +36,7 @@ nvcc -O3 -std=c++20 --expt-relaxed-constexpr --extended-lambda \
      -arch=sm_120 $INC \
      examples/bench_ivf_rabitq.cu -o build/bench_ivf_rabitq \
      -L$LIBD -lcuvs -lcudart -lcublas \
-     -Wl,-rpath,$LIBD >>$L 2>&1
+     -Xlinker -rpath -Xlinker $LIBD >>$L 2>&1
 rc=$?; say "compile_rc=$rc"
 [ $rc -ne 0 ] && { say "=== RABITQ""_DONE compile failed ==="; exit 1; }
 
