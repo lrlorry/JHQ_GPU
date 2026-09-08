@@ -1585,6 +1585,33 @@ add_jhq_variant(v52_word ${V52} JHQ_PAPER_FAITHFUL=1
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_WORD_LAYOUT=1)
 
+# v53: give the selection buffer room, so it is sorted less often.
+#
+# cap is the power of two at or above ck + BLOCK and v45 compacts when the
+# buffer cannot take another chunk. At ck=1000, BLOCK=1024 that is cap=2048
+# firing at cnt > 1024, and a compaction leaves cnt at 1000 -- twenty-five
+# survivors later it fires again. Doubling cap moves the trigger to 3072,
+# which takes 2,072 survivors: eighty times fewer sorts of twice the length.
+#
+# Shared memory has the room. 4096*8 is 32,768 B and the largest table here,
+# M=384, is 49,152: 81,920 of the 101,376 this card allows. The multiplier
+# stops as soon as the next doubling would not fit.
+#
+# Carries the v51 probe cursor and the v52 word layout, both on by default.
+set(V53 jhq_v53_cap)
+add_jhq_variant(v53_x1 ${V53} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+add_jhq_variant(v53_x2 ${V53} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=2)
+add_jhq_variant(v53_x4 ${V53} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=4)
+
 set(V29 jhq_v29_hist_wide)
 add_jhq_dir(v29_exp ${V29}
     JHQ_PAPER_FAITHFUL=1 JHQ_LUT32=1
