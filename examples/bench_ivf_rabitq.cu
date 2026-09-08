@@ -192,6 +192,22 @@ int main(int argc, char** argv) {
         for (int i = 0; i < 5 && i < k; ++i) std::printf(" %lld", (long long)h_id[i]);
         std::printf("\ndbg di[0][0..4] :");
         for (int i = 0; i < 5 && i < k; ++i) std::printf(" %.4f", h_di[i]);
+        // Which is actually closer: the ground truth's first neighbour or the
+        // one that came back? Computed here on the host, from the same arrays
+        // the benchmark read, so it tests the reader and the search together.
+        auto l2 = [&](long long id) {
+            double a = 0.0;
+            for (int j = 0; j < d; ++j) {
+                const double t = (double)xq[j] - (double)xb[(size_t)id * d + j];
+                a += t * t;
+            }
+            return a;
+        };
+        if (dgt > 0 && k > 0) {
+            const long long g0 = gt[0], r0 = h_id[0];
+            std::printf("dbg |q0-gt0|^2 = %.6f  (id %lld)\n", l2(g0), g0);
+            std::printf("dbg |q0-r0|^2  = %.6f  (id %lld)\n", l2(r0), r0);
+        }
         long long nz = 0, neg = 0;
         for (size_t i = 0; i < h_id.size(); ++i) { if (h_id[i] != 0) ++nz; if (h_id[i] < 0) ++neg; }
         std::printf("\ndbg nonzero ids %lld / %zu, negative %lld\n", nz, h_id.size(), neg);
