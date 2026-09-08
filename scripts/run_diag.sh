@@ -17,7 +17,14 @@ D=${DATA_ROOT:-/root/autodl-tmp}; V=${VOGUE_DIR:-/root/data}
 L=${LOG:-/root/diag.log}; : > $L
 say(){ echo "$(date -u +%H:%M:%S) $*" >> $L; }
 source /etc/network_turbo 2>/dev/null
-git fetch https://github.com/lrlorry/JHQ_GPU.git fix/recall-eval-v15 >>$L 2>&1 && git reset --hard FETCH_HEAD >>$L 2>&1
+# The fetch fails often enough -- GnuTLS, or the proxy not taking -- that
+# letting it fail quietly means the box runs an older commit and produces
+# numbers nothing explains. It cost one launch of this very script, which ran
+# eight commits behind and could not find itself. Abort instead.
+if ! git fetch https://github.com/lrlorry/JHQ_GPU.git fix/recall-eval-v15 >>$L 2>&1; then
+  say "=== fetch failed; refusing to run against a stale tree ==="; exit 1
+fi
+git reset --hard FETCH_HEAD >>$L 2>&1
 say "HEAD $(git log --oneline -1)"
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release >>$L 2>&1
 cmake --build build -j 16 --target demo_jhq_v43_exp >>$L 2>&1
