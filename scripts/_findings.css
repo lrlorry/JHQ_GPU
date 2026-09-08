@@ -1,4 +1,4 @@
-<title>Four Results the Fronts Cannot Show</title>
+<title>Five Results the Fronts Cannot Show</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
 :root{
@@ -6,6 +6,7 @@
   --grid:#e6e9ef; --frame:#ccd2dc; --rule:#dfe3ea; --quote:#eef1f6;
   --route:#e2622e; --rank:#1f6fd0; --cand:#6244bd;
   --comp:#0d9268; --look:#1f6fd0; --rest:#a8b2c0;
+  --train:#eda100; --add:#1f6fd0; --base:#a8b2c0;
   --pos:#0d9268; --neg:#c0392b; --refln:#8b95a4;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
@@ -13,6 +14,7 @@
   --grid:#232830; --frame:#2f3742; --rule:#252b34; --quote:#1b2028;
   --route:#ef7f4d; --rank:#4f97ee; --cand:#9a86ea;
   --comp:#1cb583; --look:#4f97ee; --rest:#5a6474;
+  --train:#c98500; --add:#4f97ee; --base:#5a6474;
   --pos:#1cb583; --neg:#e0705f; --refln:#7c8796;
 }}
 :root[data-theme="dark"]{
@@ -20,6 +22,7 @@
   --grid:#232830; --frame:#2f3742; --rule:#252b34; --quote:#1b2028;
   --route:#ef7f4d; --rank:#4f97ee; --cand:#9a86ea;
   --comp:#1cb583; --look:#4f97ee; --rest:#5a6474;
+  --train:#c98500; --add:#4f97ee; --base:#5a6474;
   --pos:#1cb583; --neg:#e0705f; --refln:#7c8796;
 }
 *{box-sizing:border-box}
@@ -48,6 +51,7 @@ code{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.9em; color:v
 .pull b{color:var(--ink)}
 .k-route{color:var(--route)} .k-rank{color:var(--rank)}
 .k-comp{color:var(--comp)} .k-look{color:var(--look)} .k-rest{color:var(--muted)}
+.k-train{color:var(--train)} .k-add{color:var(--add)}
 .figs{display:flex; flex-direction:column; gap:16px}
 .fig{margin:0; background:var(--panel); border:1px solid var(--rule); border-radius:5px;
   padding:13px 15px 10px}
@@ -68,6 +72,9 @@ code{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.9em; color:v
 .ptlab{fill:var(--ink-2); font-family:"IBM Plex Sans",sans-serif; font-size:10.5px}
 .b-route{fill:var(--route)} .b-rank{fill:var(--rank)} .b-cand{fill:var(--cand)}
 .b-comp{fill:var(--comp)} .b-look{fill:var(--look)} .b-rest{fill:var(--rest)}
+.b-train{fill:var(--train)} .b-add{fill:var(--add)} .b-base{fill:var(--base)}
+.blab.lead{fill:var(--ink); font-weight:600}
+.dslab{fill:var(--muted); font-family:"IBM Plex Sans Condensed",sans-serif; font-size:10.5px; text-anchor:end; letter-spacing:.06em; text-transform:uppercase}
 .rng{stroke:var(--frame); stroke-width:2.5; stroke-linecap:round}
 .p-pos{fill:var(--pos)} .p-neg{fill:var(--neg)}
 footer{color:var(--muted); font-size:13px; font-family:"IBM Plex Mono",ui-monospace,monospace;

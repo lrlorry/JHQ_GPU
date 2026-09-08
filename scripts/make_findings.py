@@ -5,7 +5,7 @@ The recall-vs-QPS fronts have a page; these four do not, and each is a result
 the fronts cannot show. Regenerates report_adc2026/v47/findings.html from the
 raw logs. Run from the repo root.
 """
-import re, json, math, os, sys, collections, statistics as st
+import csv, glob, json, math, os, re, sys, collections, statistics as st
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT  = os.path.join(ROOT, 'report_adc2026', 'v47', 'findings.html')
@@ -14,12 +14,18 @@ NICE = {'vogue':'Vogue-768','bge':'BGE-M3','stella':'Stella','vogue-768':'Vogue-
         'openai3-3072':'OpenAI3-3072'}
 
 def load_diag():
-    rows = []
+    """One row per (dataset, nprobe). diag.log sweeps nprobe at alpha=100 and
+    then alpha at nprobe=128, so the alpha=100 cell appears in both passes."""
+    rows, seen = [], set()
     pat = re.compile(r'\s+(\S+)\s+nlist=\S+\s+np=(\S+)\s+a=(\S+)\s+recall=([\d.]+)\s+ivf=([\d.]+)'
                      r'\s+route_lost=([\d.]+)\s+rank_lost=([\d.]+)\s+cand=(\d+)\s+est=(\d+)')
     for l in open(os.path.join(ROOT, 'results/v43_diag/diag.log')):
         m = pat.match(l)
         if m:
+            key = (m.group(1), int(m.group(2)), float(m.group(3)))
+            if key in seen:
+                continue
+            seen.add(key)
             rows.append(dict(ds=m.group(1), np=int(m.group(2)), a=float(m.group(3)),
                              recall=float(m.group(4)), ivf=float(m.group(5)),
                              route=float(m.group(6)), rank=float(m.group(7)),
@@ -65,6 +71,47 @@ def load_ntrain():
             g[('stella', 16384, int(m.group(1)))].append(
                 (float(m.group(2)), float(m.group(3)), int(m.group(4))))
     return g
+
+def load_build():
+    """Cold-cache train / add / VRAM. Only the first row of each group is a
+    real build; the three after it read the cache the first one wrote."""
+    seen, pat = {}, re.compile(
+        r'\s+(\S+)\s+M=\S+\s+nlist=(\S+)\s+nt=(\S+)\s+np=\S+\s+recall=[\d.]+\s+qps=[\d.]+'
+        r'\s+cand=\S+\s+ivf=\S+\s+train=([\d.]+)\s+add=([\d.]+)\s+vram=([\d.]+)')
+    for l in open(os.path.join(ROOT, 'results/front6/front6.log')):
+        m = pat.match(l)
+        if not m:
+            continue
+        k = (m.group(1), int(m.group(2)), int(m.group(3)))
+        if k not in seen:
+            seen[k] = (float(m.group(4)) / 1000, float(m.group(5)) / 1000, float(m.group(6)))
+    return seen
+
+
+def load_build_baselines():
+    """cuVS build time. Its CSVs put the whole build in train_ms and leave
+    add_ms empty, which is why an earlier pass requiring both found nothing."""
+    pats = {'vogue-768':'vogue','arxiv-768':'arxiv-768','bge-m3':'bge-m3',
+            'stella':'stella-trec24','openai3-1536':'openai3-1536','openai3-3072':'openai3-3072'}
+    out = {}
+    for ds, pat in pats.items():
+        got = {}
+        for lab, keys in [('CAGRA fp32', ['cagra']),
+                          ('CAGRA int8', ['cagra_int8', 'cagra_int8_hi']),
+                          ('IVF-PQ',     ['ivfpq', 'ivf_pq'])]:
+            vals = []
+            for f in glob.glob(os.path.join(ROOT, 'results/pre_freeze_v22_s2b1', f'*{pat}*.csv')):
+                if not re.match(r'(p0|sat)_.*?_(' + '|'.join(keys) + r')\.csv$', os.path.basename(f)):
+                    continue
+                for r in csv.DictReader(l for l in open(f) if not l.startswith('#')):
+                    if r.get('status') == 'FAILED' or not r.get('train_ms'):
+                        continue
+                    vals.append(float(r['train_ms']) / 1000 + float(r.get('add_ms') or 0) / 1000)
+            if vals:
+                got[lab] = min(vals)
+        out[ds] = got
+    return out
+
 
 def interp(front, r):
     f = sorted((a, b) for a, b, *_ in front)
@@ -204,15 +251,68 @@ def plot_ntrain(g):
     return (f'<figure class="fig wide"><svg viewBox="0 0 {W} {H}" role="img" '
             f'aria-label="training gain against points per centroid">{"".join(g2)}</svg></figure>')
 
+def bars_build(build, base):
+    """Cold-cache build time: JHQ at both configurations, then the baselines."""
+    order = ['vogue-768', 'arxiv-768', 'openai3-1536', 'openai3-3072', 'bge-m3', 'stella']
+    W, L, T = 640, 132, 14
+    PW = W - L - 104
+    rows = []
+    for ds in order:
+        ks = sorted([k for k in build if k[0] == ds], key=lambda x: x[2])
+        if len(ks) != 2:
+            continue
+        rows.append((ds, [('JHQ, published cfg', build[ks[0]][0], build[ks[0]][1], None),
+                          ('JHQ, this work',     build[ks[1]][0], build[ks[1]][1], None)] +
+                         [(lab, None, None, t) for lab, t in
+                          sorted(base.get(ds, {}).items(), key=lambda x: x[1])]))
+    n = sum(len(r[1]) for r in rows)
+    PH = n * 17 + len(rows) * 9
+    H = PH + T + 30
+    top = max(max((v[3] or (v[1] + v[2])) for v in r[1]) for r in rows) * 1.04
+    g, y = [], T
+    for ds, entries in rows:
+        for lab, tr, ad, bt in entries:
+            bw = 12
+            x = L
+            if bt is None:
+                for val, cls in ((tr, 'b-train'), (ad, 'b-add')):
+                    w = val / top * PW
+                    g.append(f'<rect class="{cls}" x="{x:.1f}" y="{y:.1f}" '
+                             f'width="{max(w,0.7):.1f}" height="{bw}"/>')
+                    x += w
+                tot = tr + ad
+            else:
+                w = bt / top * PW
+                g.append(f'<rect class="b-base" x="{x:.1f}" y="{y:.1f}" '
+                         f'width="{max(w,0.7):.1f}" height="{bw}"/>')
+                x += w
+                tot = bt
+            jhq = entries[1][1] + entries[1][2]
+            extra = f' &#183; {tot/jhq:.1f}&#215;' if bt is not None else ''
+            cls = 'blab lead' if lab == 'JHQ, this work' else 'blab'
+            g.append(f'<text class="{cls}" x="{L-8}" y="{y+bw-2.5:.1f}">{lab}</text>')
+            g.append(f'<text class="bval" x="{x+7:.1f}" y="{y+bw-2.5:.1f}">{tot:.2f}s{extra}</text>')
+            y += 17
+        g.append(f'<text class="dslab" x="{L-8}" y="{y+2:.1f}">{NICE[ds]}</text>')
+        y += 9
+    for f in (0, .25, .5, .75, 1):
+        xx = L + PW * f
+        g.append(f'<line class="grid" x1="{xx:.1f}" x2="{xx:.1f}" y1="{T-3}" y2="{T+PH-6}"/>')
+        g.append(f'<text class="tick tx" x="{xx:.1f}" y="{H-12}">{top*f:.0f}s</text>')
+    return (f'<figure class="fig wide"><svg viewBox="0 0 {W} {H}" role="img" '
+            f'aria-label="build cost against the baselines">{"".join(g)}</svg></figure>')
+
+
 CSS = open(os.path.join(ROOT, 'scripts', '_findings.css')).read()
 
 def main():
     diag, blk, ntr = load_diag(), load_block(), load_ntrain()
+    bld, bbase = load_build(), load_build_baselines()
     html = CSS + f'''
 <div class="wrap">
 <header>
   <p class="eyebrow">JHQ on GPU &middot; 8 September 2026 &middot; RTX 5090</p>
-  <h1>Four results the fronts cannot show</h1>
+  <h1>Five results the fronts cannot show</h1>
   <p class="lede">Recall&ndash;throughput curves say where the method lands. These say why,
     and each one changed what to work on next.</p>
 </header>
@@ -260,6 +360,28 @@ def main():
     repairing it cuts Stella's candidates 35% <em>at higher recall</em>. Above twenty the
     quantizer is already fine and more training only sharpens its density-following, so Vogue's
     candidates <b>rise 95%</b>. Same knob, opposite directions.</p>
+</section>
+<section>
+  <h2>Building the bigger index costs five seconds</h2>
+  <p>The objection this project raised against itself was that throughput bought with a larger
+    index is not free: <code>nlist</code> doubled or quadrupled, and the training set grew up
+    to thirteen-fold. Cold caches, so JHQ's <b class="k-train">training</b> and
+    <b class="k-add">add</b> are real &mdash; every build timing recorded before this was a
+    cache hit reporting 35&nbsp;ms.</p>
+  {bars_build(bld, bbase)}
+  <p class="pull">The larger index costs <b>five seconds</b> on Stella &mdash; 6.03&nbsp;s to
+    11.12&nbsp;s on 17.8M vectors, for 2.3&times; the query throughput. And against the
+    baselines it is not close: <b>JHQ builds 5.3&times; to 10.3&times; faster than CAGRA</b>
+    and 2.7&times; to 6.1&times; faster than IVF-PQ, on every dataset. Stella's int8 graph
+    takes 73&nbsp;s where JHQ takes 11.</p>
+  <p>k-means over <code>n_train &#215; nlist &#215; d</code> is a GEMM this card finishes in
+    seconds, and <code>add()</code> &mdash; which encodes all N vectors and does not change
+    &mdash; dominates JHQ's build in both rows. A graph has to be searched into existence
+    instead, which is why it does not amortise the same way.</p>
+  <p style="font-size:14px;color:var(--muted)">cuVS reports its whole build in
+    <code>train_ms</code> and leaves <code>add_ms</code> empty, so the baseline bars are one
+    segment. Memory is compared properly by bytes per vector in the report, not by these runs'
+    VRAM figures, which are measured differently on each side.</p>
 </section>
 <footer>
   Regenerated by <code>scripts/make_findings.py</code> from
