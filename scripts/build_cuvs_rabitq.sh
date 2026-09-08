@@ -84,8 +84,14 @@ say "configuring"
 rc=$?; say "configure_rc=$rc"
 [ $rc -ne 0 ] && { grep -iE "error|CMake Error" $L | tail -20 >>$L; say "=== CUVSBUILD""_DONE configure failed ==="; exit 1; }
 
-say "building with $(nproc) cores"
-"$CM" --build build_sm120 -j "$(nproc)" >>$L 2>&1
+# Not $(nproc). This box reports 208 cores and has a 90 GiB cgroup, and a
+# CUDA template compile takes 2-4 GB: 208 of them is several hundred GB and
+# the OOM killer takes the difference. The first attempt died with make
+# reporting Error 2 and no compiler diagnostic anywhere in the log, which is
+# what that looks like. 24 is roughly 72 GB of headroom.
+JOBS=${JOBS:-24}
+say "building with $JOBS jobs (nproc says $(nproc), memory says otherwise)"
+"$CM" --build build_sm120 -j "$JOBS" >>$L 2>&1
 rc=$?; say "build_rc=$rc"
 [ $rc -ne 0 ] && { grep -iE " error" $L | tail -25 >>$L; say "=== CUVSBUILD""_DONE build failed ==="; exit 1; }
 
