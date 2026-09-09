@@ -160,7 +160,10 @@ int main(int argc, char** argv) {
     // row of the index and probing every list, self-recall is 0/20 built and
     // 20/20 round-tripped. Both paths are timed here, so the cost of the step
     // is recorded rather than hidden.
-    const char* rt_file = "/tmp/rq_bench.idx";
+    // 3.2 GB at 1 M x 3072 and 8 bits a dimension. /tmp is the 30 GB system
+    // overlay on this box; the data disk is not. JHQ_RQ_IDX moves it.
+    const char* rt_file = std::getenv("JHQ_RQ_IDX")
+                        ? std::getenv("JHQ_RQ_IDX") : "/tmp/rq_bench.idx";
     cuvs::neighbors::ivf_rabitq::serialize(res, rt_file, built);
     cuvs::neighbors::ivf_rabitq::index<int64_t> loaded(res);
     cuvs::neighbors::ivf_rabitq::deserialize(res, rt_file, &loaded);
