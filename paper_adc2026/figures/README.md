@@ -9,6 +9,7 @@ the text.
 |---|---|---|---|
 | `fig_pipeline.py` | the JHQ-GPU pipeline, shaded by what changed | 3.1 | schematic |
 | `fig_lut.py` | the Cartesian factorisation, and what it saves per query | 3.3.2 | schematic + arithmetic |
+| `fig_layout.py` | the transpose, and four subspaces in one word | 3.2.3, 3.3.3 | schematic |
 | `fig_rule.py` | how the budget is chosen, and one real calibration | 4.3 | schematic + `alpha_fast.log` |
 | `fig_frontier.py` | six-panel recall-QPS frontier | 6.2 | `paper_fronts.log`, `paper_rabitq.log`, `../../report_adc2026/v47/fronts.json` |
 | `fig_alpha.py` | ranking loss vs alpha; what the rule is worth | 6.3 | `alpha_ds.log`, `paper_fronts.log` |
@@ -18,6 +19,7 @@ the text.
 | `fig_negatives.py` | the table-free distance, and reuse bounded from above | 6.5 | `v54.log`, `qdup.log`, `qdup_stella.log` |
 | `fig_hierarchy.py` | what the second level buys | 6.7 | `hierarchy_ablation.log`, `paper_fronts.log` |
 | `fig_cost.py` | resident memory, and build time | 6.7 | `vram.log`, `paper_fronts.log` |
+| `fig_memory.py` | where JHQ\'s memory goes, and why it is above RaBitQ\'s | 6.7 | index parameters + both measured totals |
 
 `style.py` holds the loaders and the camera-ready settings, so a change there
 applies to every figure at once.
