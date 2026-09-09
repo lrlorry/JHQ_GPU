@@ -21,7 +21,10 @@
 #include <raft/core/device_resources.hpp>
 #include <memory>
 #include <raft/core/resource/device_memory_resource.hpp>
-#include <rmm/mr/device/managed_memory_resource.hpp>
+// RMM 26.8 flattened this layout: the header is rmm/mr/..., not
+// rmm/mr/device/... . The same move is why an earlier attempt at a pool
+// resource looked like it had been removed.
+#include <rmm/mr/managed_memory_resource.hpp>
 #include <raft/core/device_mdarray.hpp>
 #include <raft/core/host_mdspan.hpp>
 
