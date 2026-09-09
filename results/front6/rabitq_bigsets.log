@@ -1,0 +1,76 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at 235df7e The RaBitQ OOM was its k-means training set, not the dataset
+13:28:04 HEAD 235df7e The RaBitQ OOM was its k-means training set, not the dataset
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp: In constructor ‘raft::resource::cusolver_sp_resource::cusolver_sp_resource(rmm::_RMM_26_8::cuda_stream_view)’:
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:25:54: warning: ‘cusolverStatus_t cusolverSpCreate(cusolverSpContext**)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   25 |     RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpCreate(&cusolver_res));
+      |                                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~      
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:67:61: note: declared here
+   67 |   CUSOLVER_DEPRECATED(cuDSS) cusolverStatus_t CUSOLVERAPI cusolverSpCreate(cusolverSpHandle_t *handle);
+      |                                                             ^~~~~~~~~~~~~~~~
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:26:57: warning: ‘cusolverStatus_t cusolverSpSetStream(cusolverSpHandle_t, cudaStream_t)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   26 |     RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpSetStream(cusolver_res, stream));
+      |                                      ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~    
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:70:1: note: declared here
+   70 |     cusolverSpSetStream(cusolverSpHandle_t handle, cudaStream_t streamId);
+      | ^   ~~~~~~~~~~~~~~~
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp: In destructor ‘virtual raft::resource::cusolver_sp_resource::~cusolver_sp_resource()’:
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:31:98: warning: ‘cusolverStatus_t cusolverSpDestroy(cusolverSpHandle_t)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   31 |   ~cusolver_sp_resource() override { RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpDestroy(cusolver_res)); }
+      |                                                                                 ~~~~~~~~~~~~~~~~~^~            
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:68:61: note: declared here
+   68 |   CUSOLVER_DEPRECATED(cuDSS) cusolverStatus_t CUSOLVERAPI cusolverSpDestroy(cusolverSpHandle_t handle);
+      |                                                             ^~~~~~~~~~~~~~~~~
+13:28:17 compile_rc=0
+13:36:01 got the GPU
+13:36:01 ########## does a smaller training set let it build at all ##########
+  stella   nlist=32768  np=128   train/list=32   recall=         qps=          vram=          build_ms=           rc=134
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 72813015040 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  bge-m3   nlist=32768  np=128   train/list=32   recall=         qps=          vram=          build_ms=           rc=134
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 41334882304 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+13:38:04 ########## if it does, the sweep ##########
+  stella   nlist=32768  np=8     train/list=32   recall=         qps=          vram=          build_ms=           rc=134
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 72813015040 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  bge-m3   nlist=32768  np=8     train/list=32   recall=         qps=          vram=          build_ms=           rc=134
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 41334882304 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  stella   nlist=32768  np=32    train/list=32   recall=         qps=          vram=          build_ms=           rc=134
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 72813015040 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  bge-m3   nlist=32768  np=32    train/list=32   recall=         qps=          vram=          build_ms=           rc=134
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 41334882304 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  stella   nlist=32768  np=128   train/list=32   recall=         qps=          vram=          build_ms=           rc=134
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 72813015040 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  bge-m3   nlist=32768  np=128   train/list=32   recall=         qps=          vram=          build_ms=           rc=134
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 41334882304 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  stella   nlist=32768  np=256   train/list=32   recall=         qps=          vram=          build_ms=           rc=134
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 72813015040 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  bge-m3   nlist=32768  np=256   train/list=32   recall=         qps=          vram=          build_ms=           rc=134
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 41334882304 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  stella   nlist=32768  np=512   train/list=32   recall=         qps=          vram=          build_ms=           rc=134
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 72813015040 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  bge-m3   nlist=32768  np=512   train/list=32   recall=         qps=          vram=          build_ms=           rc=134
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 41334882304 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  stella   nlist=32768  np=1024  train/list=32   recall=         qps=          vram=          build_ms=           rc=134
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 72813015040 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  bge-m3   nlist=32768  np=1024  train/list=32   recall=         qps=          vram=          build_ms=           rc=134
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 41334882304 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+13:51:47 ########## and the VRAM the other four occupy ##########
+  vogue    nlist=4096   np=128   train/list=256  recall=0.9557   qps=182397    vram=1012.0    build_ms=3695.5     rc=0
+  arxiv    nlist=8192   np=128   train/list=256  recall=0.9787   qps=136147    vram=2018.0    build_ms=10807.0    rc=0
+  oai1536  nlist=8192   np=128   train/list=256  recall=0.9320   qps=114860    vram=1836.0    build_ms=9088.6     rc=0
+  oai3072  nlist=4096   np=128   train/list=256  recall=0.9412   qps=57129     vram=3324.0    build_ms=17316.9    rc=0
+13:53:00 === BIG2_DONE ===

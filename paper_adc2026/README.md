@@ -162,3 +162,37 @@ far more often than it does for real queries.
 | Where the high-recall gap comes from | bytes, α, cache reuse and LUT divergence are each measured and each too small; the selection stage at high nprobe is the one untested candidate | the v42 split predates v47's factorised table and cannot run at this M and BLOCK; needs porting forward |
 | CPU baseline protocol | `max_iter`, `max_train_n`, thread pinning in `JHQ_repro` | not started; that repo is untouched |
 | Recall ties in the selection | `jhq_compact_topck` compares distance alone, which is the 1e-4 wobble between builds | not started |
+
+---
+
+## 6. The batch size changes who wins  ▸ finished
+
+Every other number here is one batch, and IVF-RaBitQ's paper reports 10⁴ on a
+different card. `data/batch_sweep.log` sweeps it on both systems, nprobe=128,
+real queries (duplicating them to reach 10⁴ would not do: `data/qdup.log`
+measures that it inflates throughput 4–26% through L2 reuse alone).
+
+| batch | openai3-3072 JHQ/RaBitQ | vogue-768 JHQ/RaBitQ |
+|---:|---:|---:|
+| 32 | 1.55× | 0.48× |
+| 64 | 2.04× | 0.68× |
+| 128 | **2.44×** | 0.84× |
+| 256 | 1.92× | 0.94× |
+| 512 | 1.71× | 0.98× |
+| 1024 | 1.49× | **1.12×** |
+
+**The ratio is not stable in batch, and it moves in opposite directions on the
+two datasets.** On openai3-3072 JHQ's lead peaks at batch 128 and is falling by
+1024; on vogue-768 IVF-RaBitQ is twice as fast at batch 32 and JHQ only
+overtakes at 1024, still climbing.
+
+Two things follow. Our own per-block fixed cost — building the table — is what
+loses vogue-768 at small batch, and it amortises away. And **a single-batch
+comparison is incomplete, in either direction**: extrapolating vogue-768's
+trend to the 10⁴ that IVF-RaBitQ's paper uses would favour JHQ, while
+extrapolating openai3-3072's would not.
+
+This is the answer to the sharpest question available about the evaluation —
+everything runs on one card at one operating point, and `data/v54.log` already
+shows a kernel verdict flipping with a card's bandwidth. The batch axis is now
+measured; the second card is not.
