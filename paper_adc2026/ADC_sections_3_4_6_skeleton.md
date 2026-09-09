@@ -553,6 +553,26 @@ Input:
 - failure mode when the sample is not representative;
 - this is an empirical policy, not a formal worst-case guarantee.
 
+### The two knees are the argument, and both are measured failures
+
+Do not assert `S=32` and one slot; show what happens on either side of them.
+
+| setting | what it picks | recall change |
+|---|---|---|
+| `S=8` | openai3-3072 picks alpha=2 | **-0.0058** |
+| `S=16` | correct on openai3-3072, still loose on arxiv-768 | -0.0014 |
+| **`S=32`** | **the swept value on both** | **+/-0.0000** |
+| tolerance 0 slots | vogue-768 keeps alpha=100 | 0, and no gain either |
+| **tolerance 1 slot** | **vogue-768 picks alpha=64** | **-0.0003** |
+| tolerance 2 slots | vogue-768 picks alpha=32 | **-0.0035** |
+
+Both failures sit outside the 1e-3 build-noise floor, and both are one-sided
+in the expected direction: too small a sample, or too loose a tolerance, cuts
+too far. That is the argument for the settings, and it is more convincing than
+the successes.
+
+Evidence: `data/alpha_sample.log`, `data/alpha_fast.log`.
+
 ---
 
 ## 4.4 Integration with JHQ-GPU
@@ -665,12 +685,43 @@ Main baselines:
 - same host/device timing boundary;
 - compare at matched Recall@10, not only one parameter point.
 
+### Baseline setup is itself a result worth one paragraph
+
+cuVS's `ivf_rabitq` returns neighbour ids that are essentially random until
+the index is round-tripped through `serialize`/`deserialize`. Its own unit
+test does this with the comment "reorganize data for efficient search";
+nothing in the public header says so. `data/selftest.log` isolates it with an
+answer known in advance -- the query is a row of the index and every list is
+probed, so the correct reply is the row's own id at distance zero:
+
+| | self in top-1 | self in top-10 |
+|---|---|---|
+| searched as built | 0 / 20 | 0 / 20 |
+| round-tripped | **20 / 20** | **20 / 20** |
+
+at two sizes and through two link paths. State this in the setup, not in a
+footnote: it is the evidence that the strongest baseline was configured
+correctly, and a reviewer who has run the same library will recognise it.
+
+The same paragraph should record that IVF-RaBitQ is measured in QUANT4, its
+fastest mode here -- LUT16 is 1.8x slower at nprobe=1024
+(`data/bench_lut.log`) -- and that nlist matches JHQ's on every dataset.
+
 ### Current open item
 CPU JHQ protocol still needs final validation:
 - `max_iter`
 - `max_train_n`
 - thread count / pinning
 - official-repository parity
+
+The fair experiment is fixed by how `JHQ_official` works: it reads IVF
+centroids and assignments from `<name>_centroid_<nlist>.fvecs` and
+`<name>_cluster_id_<nlist>.ivecs` rather than training its own. Give it the
+ones this index trained (`examples/export_ivf_for_cpu.cu`) and the coarse
+routing is identical, so the comparison isolates the quantisation and the
+search instead of measuring who trained longer. Threads must be pinned: 32
+beat 208 by 1.9x in an earlier measurement, so an unpinned CPU column records
+how busy the machine was.
 
 ---
 
@@ -702,39 +753,53 @@ Curves:
   - `data/openai3072_v57_front.log`
 
 ### Current RaBitQ state
-At the time this skeleton was created, the repository records the direct IVF-RaBitQ comparison as complete on **openai3-3072 only**; the other five are marked missing/running.
 
-Do not generalize the OpenAI3-3072 conclusion to all datasets until the remaining five are measured.
+Four of six are measured (`data/paper_rabitq.log`, `data/bench_quant.log`;
+JHQ from the rule arm of `data/paper_fronts.log`). JHQ divided by IVF-RaBitQ
+at matched recall:
 
-### Current OpenAI3-3072 pattern
+| dataset | d | R=0.90 | R=0.93 | R=0.95 | R=0.97 | R=0.98 |
+|---|---:|---:|---:|---:|---:|---:|
+| vogue-768 | 768 | 1.24x | 1.11x | 1.02x | 1.00x | 0.94x |
+| arxiv-768 | 768 | 1.29x | 1.17x | 1.02x | 0.89x | 0.81x |
+| openai3-1536 | 1536 | **2.35x** | **2.26x** | **1.98x** | **1.62x** | **1.36x** |
+| openai3-3072 | 3072 | 1.82x | 1.57x | 1.36x | 1.06x | 0.93x |
 
-Approximate reported JHQ / RaBitQ ratio at matched recall:
+### The pattern, which is the claim worth making
 
-| Recall@10 | JHQ / IVF-RaBitQ |
-|---:|---:|
-| 0.95 | 1.36x |
-| 0.96 | 1.22x |
-| 0.97 | 1.06x |
-| 0.98 | 0.93x |
-| 0.99 | 0.72x |
+JHQ leads on all four through Recall 0.95, and **the margin grows with
+dimensionality** -- near parity at d=768, 1.36x to 2.35x across the whole
+range at d=1536. Where it gives way is the high-recall tail, earliest on
+arxiv-768 and latest on openai3-1536.
 
-Crossover:
-
-\[
-Recall \approx 0.975
-\]
-
-### Good research framing
-
-Avoid:
+That is a statement about where each design pays, which is what the section
+should argue. Avoid:
 
 > JHQ always beats RaBitQ.
 
 Prefer:
 
-> the two systems occupy different operating regions; JHQ is stronger in some recall regimes while RaBitQ is stronger at very high recall.
+> the two occupy different operating regions, and the boundary moves with
+> dimensionality and with batch size.
 
-Only generalize after all six datasets support it.
+### The two datasets that are absent, worded precisely
+
+stella and bge-m3 are missing, and the sentence has to name the allocation
+rather than the library's capability -- "IVF-RaBitQ cannot index these" has
+been the wrong sentence twice.
+
+With default parameters the build throws `rmm::out_of_memory` on
+34,359,738,368 bytes: `max_train_points_per_cluster * n_lists = 256 * 32768`
+rows of the k-means training set, materialised as float. With
+`force_streaming` set and that parameter cut 32x it throws on `n * d * 4`
+instead -- the dataset itself, because the training-set sampler is handed the
+host mdspan. `data/rabitq_bigsets.log`, `data/paper_rabitq.log`.
+
+JHQ indexes both on the same card with room: 20,837 MiB on stella and 12,113
+MiB on bge-m3 of 32,607 (`data/paper_fronts.log`). CAGRA fp32 cannot reach
+them either, at 72 GB and 41 GB of raw float. So on the two largest datasets
+JHQ is the only one of the three that returns a result -- but say it as "at
+these parameters, on a 32 GB card", not as a property of the method.
 
 ---
 
@@ -840,7 +905,7 @@ Suggested table:
 | Factorized Cartesian LUT | reduce per-query LUT working set | `results/v47_split_lut/README.md` |
 | Packed primary-code loading | fewer / wider memory operations | `results/front6/v52.log` |
 | Monotonic probe traversal | remove repeated list-boundary scans | `results/front6/v51.log` |
-| Query-sized launch | avoid zero-padded query work | `data/v57_launch.log` |
+| Query-sized launch (**a correction, not a design**) | every search ran `batch_cap` blocks and zero-padded the rest | `data/v57_launch.log` |
 | Adaptive alpha | reduce residual refinement work | `data/paper_fronts.log` |
 
 ### Current measured evidence to verify
@@ -852,7 +917,14 @@ Suggested table:
 - adaptive alpha: up to 2.65x relative to fixed alpha.
 
 ### Warning
-Large gains caused by removing an implementation pathology should not be presented as deep algorithmic novelty.
+Large gains caused by removing an implementation pathology should not be
+presented as deep algorithmic novelty. **The query-sized launch is the case in
+point in this very table**: a 999-query batch on a 1024-wide workspace was
+computing 25 queries of zeros, and they cost more than their 2.4% share
+because a zero query's table is degenerate, so every candidate ties at the
+threshold and the compaction fires far more often than for real queries.
+Label it a correction, and state the consequence plainly: every QPS this work
+measured before it was 1-9% low, rising with nprobe.
 
 ---
 
@@ -930,9 +1002,56 @@ Be careful:
 
 ---
 
-# RQ5. What Is the Cost in Build Time and Memory?
+# RQ5. Does the Comparison Hold at Other Operating Points?
 
-## 6.6 Build Time, Memory, and Scalability
+## 6.6 Batch Size
+
+Everything above is one batch on one card, and IVF-RaBitQ's paper reports
+10^4 on a different card. That is the sharpest question this evaluation
+invites, and it has an answer. `data/batch_sweep.log`, nprobe=128, both
+systems, real queries:
+
+| batch | openai3-3072 JHQ/RaBitQ | vogue-768 JHQ/RaBitQ |
+|---:|---:|---:|
+| 32 | 1.55x | 0.48x |
+| 64 | 2.04x | 0.68x |
+| 128 | **2.44x** | 0.84x |
+| 256 | 1.92x | 0.94x |
+| 512 | 1.71x | 0.98x |
+| 1024 | 1.49x | **1.12x** |
+
+### What to say
+
+**The ratio is not stable in batch, and it moves in opposite directions on the
+two datasets.** On openai3-3072 JHQ's lead peaks at batch 128 and is falling
+by 1024; on vogue-768 IVF-RaBitQ is twice as fast at batch 32 and JHQ
+overtakes only at 1024, still climbing.
+
+Two consequences, both worth stating:
+
+- Our own per-block fixed cost -- building the distance table -- is what loses
+  vogue-768 at small batch, and it amortises away as the batch grows.
+- **A single-batch comparison is incomplete in either direction.**
+  Extrapolating vogue-768's trend to 10^4 would favour JHQ; extrapolating
+  openai3-3072's would not.
+
+### Why the sweep goes down from 1000 rather than up to 10^4
+
+The query files hold about 1000 rows. Reaching 10^4 would mean duplicating
+queries, and `data/qdup.log` measures that duplication inflates throughput by
+4-26% through L2 reuse alone -- the comparison would be against an artefact.
+Say this; it is a stronger position than an unexplained range.
+
+### Limit to state, not to hide
+`data/v54.log` shows a kernel verdict flipping between an L40S and this card.
+The batch axis is measured; the second card is not. Name that limit in the
+setup rather than letting a reviewer find it.
+
+---
+
+# RQ6. What Is the Cost in Build Time and Memory?
+
+## 6.7 Build Time, Memory, and Scalability
 
 Suggested table:
 
@@ -960,7 +1079,7 @@ Do not claim JHQ is universally more memory-efficient than RaBitQ unless directl
 
 ---
 
-# 6.7 Experimental Takeaways
+# 6.8 Experimental Takeaways
 
 Finish Section 6 with 3–4 compact conclusions, for example:
 
@@ -992,7 +1111,12 @@ Section 6.2.
 ### Figure 5 — Alpha saturation / adaptive selection
 Section 6.3.
 
-### Figure 6 — Optional ablation or negative-result chart
+### Figure 6 — Batch-size ratio
+Section 6.6. Two lines, JHQ/RaBitQ against batch, one per dataset, crossing
+1.0 in opposite directions. This is the figure that answers the
+one-operating-point objection.
+
+### Figure 7 — Optional ablation or negative-result chart
 Section 6.4 or 6.5.
 
 ---
@@ -1006,7 +1130,8 @@ Section 6.1.
 Section 6.4.
 
 ### Table 3 — Build time / GPU memory
-Section 6.6.
+Section 6.7. The IVF-RaBitQ memory row is not measured yet; leave it empty
+rather than deriving it from bits per dimension.
 
 ---
 
@@ -1022,7 +1147,9 @@ Section 6.6.
    - bug fix,
    - performance optimization,
    - algorithmic contribution.
-6. Confirm the final IVF-RaBitQ results on all six datasets.
+6. IVF-RaBitQ stands at four of six. The two absent ones are absent for a
+   reason that must be stated as an allocation and a parameter, not as a
+   capability: `data/rabitq_bigsets.log`.
 7. Confirm CPU-JHQ protocol before writing CPU speedup claims.
 8. Do not claim:
    - architecture independence from one GPU,
@@ -1059,13 +1186,22 @@ Section 6.6.
   6.3 Adaptive Refinement Evaluation
   6.4 GPU Design Ablation
   6.5 Performance Analysis and Negative Results
-  6.6 Build Time and Memory
+  6.6 Batch Size
+  6.7 Build Time and Memory
 ```
 
 ---
 
 # One-Sentence Paper Story
 
-> **JHQ-GPU exploits the structural properties of JHQ to redesign its GPU execution path, and introduces an adaptive refinement-budget policy that avoids unnecessary residual work across datasets with widely different refinement requirements.**
+> **JHQ fixes its refinement budget at `ck = alpha*k` and leaves alpha
+> unspecified; we show the budget it needs varies 25x across datasets, give a
+> rule that recovers it from 32 of the batch's own queries without labels, and
+> pair it with a GPU execution path derived from JHQ's Cartesian code
+> structure.**
+
+The first clause is the part that is not true of many papers: it names a gap
+in a published formulation rather than an engineering knob. Keep the
+structural GPU work in the sentence, but second.
 
 This sentence should be checked against the final evidence and then used to keep Sections 3, 4, and 6 aligned.
