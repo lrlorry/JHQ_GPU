@@ -1677,6 +1677,30 @@ target_compile_definitions(demo_jhq_alpha_sample PRIVATE
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
 target_link_libraries(demo_jhq_alpha_sample PRIVATE jhq_v55_exp)
 
+# v56: the alpha rule with the three costs v55 measured taken out.
+#
+#  1. cal_ms was flat at ~99 ms from S=8 to S=128 and scaled with grid steps
+#     instead, ~15 ms each against ~0.8 ms of searching: ck moves with alpha,
+#     the CUDA graph is keyed on ck, and every step re-captured it. A
+#     calibration flag runs the kernels straight on the stream.
+#  2. The grid was walked linearly, up to 7 searches; bisection needs 3.
+#  3. eps was a fraction, and 0.001 of S*k = 320 slots allowed 0.32 of a slot
+#     -- exact equality by accident, which is why two cells picked a larger
+#     alpha than the sweep. It is a slot count now.
+#
+# JHQ_AS_LINEAR=1 keeps the linear walk so the two can be compared.
+set(V56 jhq_v56_alpha_fast)
+add_jhq_variant(v56_exp ${V56} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+add_executable(demo_jhq_alpha_fast examples/demo_jhq_alpha_fast.cu)
+target_compile_definitions(demo_jhq_alpha_fast PRIVATE
+    JHQ_INDEX_HEADER="${V56}/jhq_gpu_index.cuh" JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+target_link_libraries(demo_jhq_alpha_fast PRIVATE jhq_v56_exp)
+
 # A probe of the cluster-centric premise, before writing the kernel for it.
 #
 # Sharing one list's codes across the queries that probe it only pays if those
