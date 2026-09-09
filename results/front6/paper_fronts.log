@@ -1,0 +1,88 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at 596184d v57 measured: calibration falls 11x, and every reported QPS was 1-9% low
+10:52:10 HEAD 596184d v57 measured: calibration falls 11x, and every reported QPS was 1-9% low
+-- Configuring done (0.1s)
+-- Generating done (0.9s)
+-- Build files have been written to: /root/JHQ_GPU/build
+[100%] Built target jhq_cpu
+[100%] Built target jhq_v57_exp
+[100%] Built target demo_jhq_v57
+[100%] Built target jhq_cpu
+[100%] Built target jhq_v57_exp
+[100%] Built target demo_jhq_alpha_v57
+10:52:12 build_rc=0
+10:52:12 got the GPU
+  FIX   vogue-768      M=96   nlist=4096   np=8     a=100 recall=0.6606   qps=269811    train=990.0     add=286.5      vram=1405.2    rc=0
+  FIX   arxiv-768      M=96   nlist=8192   np=8     a=100 recall=0.7899   qps=270585    train=486.0     add=606.3      vram=2545.2    rc=0
+  FIX   bge-m3         M=128  nlist=32768  np=8     a=100 recall=0.6978   qps=191224    train=3887.8    add=3721.5     vram=12113.2   rc=0
+  FIX   stella         M=128  nlist=32768  np=8     a=100 recall=0.9027   qps=188549    train=3873.6    add=9519.4     vram=20837.2   rc=0
+  FIX   openai3-1536   M=192  nlist=8192   np=8     a=100 recall=0.7297   qps=184893    train=641.9     add=488.6      vram=2353.2    rc=0
+  FIX   openai3-3072   M=384  nlist=4096   np=8     a=100 recall=0.7464   qps=89981     train=707.0     add=942.7      vram=4047.2    rc=0
+  RULE  vogue-768      M=96   nlist=4096   np=8     AF_RESULT picked=16 probes=3 recall_picked=0.6596 qps_picked=658128 recall_max=0.6606 qps_max=270312 gain=2.435 cal_ms=2.0 batches_to_repay=0.9 rc=0
+  RULE  arxiv-768      M=96   nlist=8192   np=8     AF_RESULT picked=32 probes=3 recall_picked=0.7885 qps_picked=518890 recall_max=0.7899 qps_max=270654 gain=1.917 cal_ms=2.1 batches_to_repay=1.2 rc=0
+  RULE  bge-m3         M=128  nlist=32768  np=8     AF_RESULT picked=16 probes=3 recall_picked=0.6972 qps_picked=334915 recall_max=0.6978 qps_max=191142 gain=1.752 cal_ms=2.7 batches_to_repay=1.2 rc=0
+  RULE  stella         M=128  nlist=32768  np=8     AF_RESULT picked=8 probes=3 recall_picked=0.9016 qps_picked=346676 recall_max=0.9027 qps_max=189416 gain=1.830 cal_ms=2.6 batches_to_repay=1.1 rc=0
+  RULE  openai3-1536   M=192  nlist=8192   np=8     AF_RESULT picked=4 probes=3 recall_picked=0.7293 qps_picked=482186 recall_max=0.7297 qps_max=187079 gain=2.577 cal_ms=2.4 batches_to_repay=0.7 rc=0
+  RULE  openai3-3072   M=384  nlist=4096   np=8     AF_RESULT picked=4 probes=3 recall_picked=0.7464 qps_picked=227274 recall_max=0.7464 qps_max=90725 gain=2.505 cal_ms=4.0 batches_to_repay=0.6 rc=0
+  FIX   vogue-768      M=96   nlist=4096   np=32    a=100 recall=0.8618   qps=216849    train=25.8      add=366.2      vram=1405.2    rc=0
+  FIX   arxiv-768      M=96   nlist=8192   np=32    a=100 recall=0.9257   qps=183323    train=41.2      add=584.3      vram=2543.2    rc=0
+  FIX   bge-m3         M=128  nlist=32768  np=32    a=100 recall=0.8279   qps=161559    train=217.5     add=6018.8     vram=12113.2   rc=0
+  FIX   stella         M=128  nlist=32768  np=32    a=100 recall=0.9688   qps=154066    train=273.4     add=10377.0    vram=20837.2   rc=0
+  FIX   openai3-1536   M=192  nlist=8192   np=32    a=100 recall=0.8472   qps=169592    train=82.3      add=514.5      vram=2353.2    rc=0
+  FIX   openai3-3072   M=384  nlist=4096   np=32    a=100 recall=0.8648   qps=64360     train=117.0     add=908.9      vram=4047.2    rc=0
+  RULE  vogue-768      M=96   nlist=4096   np=32    AF_RESULT picked=32 probes=3 recall_picked=0.8609 qps_picked=373439 recall_max=0.8618 qps_max=219507 gain=1.701 cal_ms=3.4 batches_to_repay=1.8 rc=0
+  RULE  arxiv-768      M=96   nlist=8192   np=32    AF_RESULT picked=64 probes=3 recall_picked=0.9245 qps_picked=275471 recall_max=0.9257 qps_max=182886 gain=1.506 cal_ms=2.7 batches_to_repay=1.5 rc=0
+  RULE  bge-m3         M=128  nlist=32768  np=32    AF_RESULT picked=16 probes=3 recall_picked=0.8262 qps_picked=255804 recall_max=0.8279 qps_max=161356 gain=1.585 cal_ms=3.6 batches_to_repay=1.6 rc=0
+  RULE  stella         M=128  nlist=32768  np=32    AF_RESULT picked=16 probes=3 recall_picked=0.9685 qps_picked=234932 recall_max=0.9688 qps_max=154884 gain=1.517 cal_ms=3.8 batches_to_repay=1.7 rc=0
+  RULE  openai3-1536   M=192  nlist=8192   np=32    AF_RESULT picked=4 probes=3 recall_picked=0.8460 qps_picked=417537 recall_max=0.8472 qps_max=170301 gain=2.452 cal_ms=2.7 batches_to_repay=0.8 rc=0
+  RULE  openai3-3072   M=384  nlist=4096   np=32    AF_RESULT picked=4 probes=3 recall_picked=0.8648 qps_picked=170248 recall_max=0.8648 qps_max=64184 gain=2.653 cal_ms=5.2 batches_to_repay=0.5 rc=0
+  FIX   vogue-768      M=96   nlist=4096   np=128   a=100 recall=0.9647   qps=139111    train=19.0      add=402.6      vram=1407.2    rc=0
+  FIX   arxiv-768      M=96   nlist=8192   np=128   a=100 recall=0.9763   qps=122595    train=47.6      add=565.0      vram=2545.2    rc=0
+  FIX   bge-m3         M=128  nlist=32768  np=128   a=100 recall=0.9181   qps=107055    train=268.6     add=6458.3     vram=12115.2   rc=0
+  FIX   stella         M=128  nlist=32768  np=128   a=100 recall=0.9893   qps=89773     train=232.2     add=10234.5    vram=20837.2   rc=0
+  FIX   openai3-1536   M=192  nlist=8192   np=128   a=100 recall=0.9316   qps=133790    train=89.2      add=535.4      vram=2353.2    rc=0
+  FIX   openai3-3072   M=384  nlist=4096   np=128   a=100 recall=0.9414   qps=41354     train=128.0     add=810.2      vram=4047.2    rc=0
+  RULE  vogue-768      M=96   nlist=4096   np=128   AF_RESULT picked=64 probes=3 recall_picked=0.9645 qps_picked=169748 recall_max=0.9647 qps_max=133230 gain=1.274 cal_ms=6.3 batches_to_repay=3.9 rc=0
+  RULE  arxiv-768      M=96   nlist=8192   np=128   AF_RESULT picked=100 probes=2 recall_picked=0.9763 qps_picked=122383 recall_max=0.9763 qps_max=122822 gain=0.996 cal_ms=4.3 batches_to_repay=-1.0 rc=0
+  RULE  bge-m3         M=128  nlist=32768  np=128   AF_RESULT picked=16 probes=3 recall_picked=0.9145 qps_picked=141628 recall_max=0.9181 qps_max=108135 gain=1.310 cal_ms=7.2 batches_to_repay=3.3 rc=0
+  RULE  stella         M=128  nlist=32768  np=128   AF_RESULT picked=16 probes=3 recall_picked=0.9890 qps_picked=112087 recall_max=0.9893 qps_max=90297 gain=1.241 cal_ms=8.4 batches_to_repay=3.9 rc=0
+  RULE  openai3-1536   M=192  nlist=8192   np=128   AF_RESULT picked=4 probes=3 recall_picked=0.9298 qps_picked=262471 recall_max=0.9316 qps_max=133764 gain=1.962 cal_ms=4.4 batches_to_repay=1.2 rc=0
+  RULE  openai3-3072   M=384  nlist=4096   np=128   AF_RESULT picked=4 probes=3 recall_picked=0.9414 qps_picked=87683 recall_max=0.9414 qps_max=41201 gain=2.128 cal_ms=9.0 batches_to_repay=0.7 rc=0
+  FIX   vogue-768      M=96   nlist=4096   np=256   a=100 recall=0.9830   qps=105783    train=46.1      add=398.5      vram=1409.2    rc=0
+  FIX   arxiv-768      M=96   nlist=8192   np=256   a=100 recall=0.9852   qps=94377     train=48.8      add=564.7      vram=2547.2    rc=0
+  FIX   bge-m3         M=128  nlist=32768  np=256   a=100 recall=0.9471   qps=75680     train=252.4     add=4144.0     vram=12117.2   rc=0
+  FIX   stella         M=128  nlist=32768  np=256   a=100 recall=0.9935   qps=57563     train=213.9     add=16662.4    vram=20839.2   rc=0
+  FIX   openai3-1536   M=192  nlist=8192   np=256   a=100 recall=0.9549   qps=106694    train=90.6      add=528.2      vram=2355.2    rc=0
+  FIX   openai3-3072   M=384  nlist=4096   np=256   a=100 recall=0.9648   qps=31074     train=139.3     add=936.7      vram=4049.2    rc=0
+  RULE  vogue-768      M=96   nlist=4096   np=256   AF_RESULT picked=64 probes=3 recall_picked=0.9828 qps_picked=121215 recall_max=0.9830 qps_max=104318 gain=1.162 cal_ms=8.6 batches_to_repay=6.5 rc=0
+  RULE  arxiv-768      M=96   nlist=8192   np=256   AF_RESULT picked=100 probes=2 recall_picked=0.9852 qps_picked=94494 recall_max=0.9852 qps_max=94180 gain=1.003 cal_ms=6.3 batches_to_repay=178.6 rc=0
+  RULE  bge-m3         M=128  nlist=32768  np=256   AF_RESULT picked=16 probes=3 recall_picked=0.9430 qps_picked=90098 recall_max=0.9471 qps_max=75314 gain=1.196 cal_ms=11.5 batches_to_repay=5.3 rc=0
+  RULE  stella         M=128  nlist=32768  np=256   AF_RESULT picked=16 probes=3 recall_picked=0.9932 qps_picked=66567 recall_max=0.9935 qps_max=57989 gain=1.148 cal_ms=15.6 batches_to_repay=7.0 rc=0
+  RULE  openai3-1536   M=192  nlist=8192   np=256   AF_RESULT picked=4 probes=3 recall_picked=0.9527 qps_picked=179927 recall_max=0.9549 qps_max=107350 gain=1.676 cal_ms=6.5 batches_to_repay=1.7 rc=0
+  RULE  openai3-3072   M=384  nlist=4096   np=256   AF_RESULT picked=4 probes=3 recall_picked=0.9647 qps_picked=53581 recall_max=0.9648 qps_max=30951 gain=1.731 cal_ms=13.7 batches_to_repay=1.0 rc=0
+  FIX   vogue-768      M=96   nlist=4096   np=512   a=100 recall=0.9908   qps=75562     train=21.4      add=399.5      vram=1411.2    rc=0
+  FIX   arxiv-768      M=96   nlist=8192   np=512   a=100 recall=0.9881   qps=63378     train=52.3      add=555.1      vram=2549.2    rc=0
+  FIX   bge-m3         M=128  nlist=32768  np=512   a=100 recall=0.9663   qps=41054     train=239.6     add=4530.4     vram=12119.2   rc=0
+  FIX   stella         M=128  nlist=32768  np=512   a=100 recall=0.9949   qps=30266     train=246.2     add=9145.7     vram=20843.2   rc=0
+  FIX   openai3-1536   M=192  nlist=8192   np=512   a=100 recall=0.9748   qps=73589     train=87.0      add=566.9      vram=2357.2    rc=0
+  FIX   openai3-3072   M=384  nlist=4096   np=512   a=100 recall=0.9814   qps=21111     train=119.9     add=922.7      vram=4053.2    rc=0
+  RULE  vogue-768      M=96   nlist=4096   np=512   AF_RESULT picked=64 probes=3 recall_picked=0.9905 qps_picked=86583 recall_max=0.9908 qps_max=76326 gain=1.134 cal_ms=11.8 batches_to_repay=7.6 rc=0
+  RULE  arxiv-768      M=96   nlist=8192   np=512   AF_RESULT picked=100 probes=2 recall_picked=0.9881 qps_picked=63463 recall_max=0.9881 qps_max=63086 gain=1.006 cal_ms=10.2 batches_to_repay=108.0 rc=0
+  RULE  bge-m3         M=128  nlist=32768  np=512   AF_RESULT picked=16 probes=3 recall_picked=0.9618 qps_picked=45268 recall_max=0.9663 qps_max=40914 gain=1.106 cal_ms=21.9 batches_to_repay=9.3 rc=0
+  RULE  stella         M=128  nlist=32768  np=512   AF_RESULT picked=16 probes=3 recall_picked=0.9946 qps_picked=32640 recall_max=0.9949 qps_max=29932 gain=1.090 cal_ms=28.5 batches_to_repay=10.3 rc=0
+  RULE  openai3-1536   M=192  nlist=8192   np=512   AF_RESULT picked=4 probes=3 recall_picked=0.9721 qps_picked=103813 recall_max=0.9748 qps_max=73789 gain=1.407 cal_ms=10.7 batches_to_repay=2.7 rc=0
+  RULE  openai3-3072   M=384  nlist=4096   np=512   AF_RESULT picked=4 probes=3 recall_picked=0.9813 qps_picked=30082 recall_max=0.9814 qps_max=20862 gain=1.442 cal_ms=22.7 batches_to_repay=1.5 rc=0
+  FIX   vogue-768      M=96   nlist=4096   np=1024  a=100 recall=0.9939   qps=57887     train=37.3      add=370.0      vram=1415.2    rc=0
+  FIX   arxiv-768      M=96   nlist=8192   np=1024  a=100 recall=0.9898   qps=42234     train=56.1      add=702.9      vram=2553.2    rc=0
+  FIX   bge-m3         M=128  nlist=32768  np=1024  a=100 recall=0.9815   qps=28208     train=264.9     add=3841.6     vram=12123.2   rc=0
+  FIX   stella         M=128  nlist=32768  np=1024  a=100 recall=0.9957   qps=18706     train=255.4     add=21807.6    vram=20847.2   rc=0
+  FIX   openai3-1536   M=192  nlist=8192   np=1024  a=100 recall=0.9864   qps=49888     train=86.1      add=471.6      vram=2361.2    rc=0
+  FIX   openai3-3072   M=384  nlist=4096   np=1024  a=100 recall=0.9926   qps=12925     train=115.8     add=852.9      vram=4057.2    rc=0
+  RULE  vogue-768      M=96   nlist=4096   np=1024  AF_RESULT picked=64 probes=3 recall_picked=0.9935 qps_picked=63837 recall_max=0.9939 qps_max=58115 gain=1.098 cal_ms=15.0 batches_to_repay=9.8 rc=0
+  RULE  arxiv-768      M=96   nlist=8192   np=1024  AF_RESULT picked=100 probes=2 recall_picked=0.9898 qps_picked=42392 recall_max=0.9898 qps_max=41896 gain=1.012 cal_ms=16.3 batches_to_repay=58.2 rc=0
+  RULE  bge-m3         M=128  nlist=32768  np=1024  AF_RESULT picked=16 probes=3 recall_picked=0.9767 qps_picked=30188 recall_max=0.9815 qps_max=28034 gain=1.077 cal_ms=32.9 batches_to_repay=12.9 rc=0
+  RULE  stella         M=128  nlist=32768  np=1024  AF_RESULT picked=16 probes=3 recall_picked=0.9954 qps_picked=19531 recall_max=0.9957 qps_max=18704 gain=1.044 cal_ms=47.5 batches_to_repay=21.0 rc=0
+  RULE  openai3-1536   M=192  nlist=8192   np=1024  AF_RESULT picked=4 probes=3 recall_picked=0.9836 qps_picked=63611 recall_max=0.9864 qps_max=49883 gain=1.275 cal_ms=17.0 batches_to_repay=3.9 rc=0
+  RULE  openai3-3072   M=384  nlist=4096   np=1024  AF_RESULT picked=4 probes=3 recall_picked=0.9926 qps_picked=15759 recall_max=0.9926 qps_max=12851 gain=1.226 cal_ms=41.5 batches_to_repay=2.9 rc=0
+11:30:38 === PA_DONE ===
