@@ -1701,6 +1701,40 @@ target_compile_definitions(demo_jhq_alpha_fast PRIVATE
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
 target_link_libraries(demo_jhq_alpha_fast PRIVATE jhq_v56_exp)
 
+# v57: size the launch to the queries present, not to the workspace.
+#
+# Every search ran batch_cap blocks and zero-padded the rest, so a 32-query
+# calibration pass did 1024 queries' work with 992 of them zeros.
+# results/front6/alpha_fast.log is the evidence: cal_ms was flat from S=8 to
+# S=128, scaled with grid steps instead, and did not move when the graph
+# capture was removed -- the cost was never the capture, it was the kernels
+# running at full width.
+#
+# The graph is fixed-width, so B joins ck and nprobe in its key: a run of equal
+# batches captures once as before, a remainder captures a second graph and
+# reuses it. A 999-query batch against a 1024 workspace also stops computing
+# 25 queries of zeros.
+set(V57 jhq_v57_launch_nq)
+add_jhq_variant(v57_exp ${V57} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+add_executable(demo_jhq_alpha_v57 examples/demo_jhq_alpha_fast.cu)
+target_compile_definitions(demo_jhq_alpha_v57 PRIVATE
+    JHQ_INDEX_HEADER="${V57}/jhq_gpu_index.cuh" JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+target_link_libraries(demo_jhq_alpha_v57 PRIVATE jhq_v57_exp)
+# The plain front demo too, since sizing the launch changes every search, not
+# only calibration -- a 999-query batch on a 1024 workspace included 25
+# queries of zeros in every number this project has reported.
+add_executable(demo_jhq_v57 examples/demo_jhq_v36.cu)
+target_compile_definitions(demo_jhq_v57 PRIVATE
+    JHQ_INDEX_HEADER="${V57}/jhq_gpu_index.cuh" JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+target_link_libraries(demo_jhq_v57 PRIVATE jhq_v57_exp)
+
 # A probe of the cluster-centric premise, before writing the kernel for it.
 #
 # Sharing one list's codes across the queries that probe it only pays if those
