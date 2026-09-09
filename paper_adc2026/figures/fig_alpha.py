@@ -14,18 +14,24 @@ import sys, os, re, collections
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from style import *
 
-# (a) ranking loss vs alpha, from the diagnostic sweep
+# (a) ranking loss vs alpha.
+#
+# rank_lost = ivf_recall - recall: of the true neighbours whose list the query
+# actually opened, the share the primary filter and the refinement then failed
+# to return. It is conditioned on routing, which 1 - recall is not -- most of
+# what 1 - recall measures is lists never opened, and that has nothing to do
+# with alpha.
+#
+# It comes from the JHQ_DIAG build (alpha6.log, v47 at BLOCK=1024), which is
+# the only run that recorded ivf_recall. Its QPS column is not usable -- the
+# readbacks sit on the search stream -- but rank_lost is a recall quantity and
+# does not depend on the timing.
 loss = collections.defaultdict(dict)
-for ln in open(datafile("alpha_ds.log")):
+for ln in open(datafile("alpha6.log")):
     m = re.search(r"(\S+)\s+Br=8\s+nlist=\d+\s+np=(\d+)\s+a=([\d.]+)\s+"
                   r"recall=[\d.]+\s+ivf=[\d.]+\s+rank_lost=([\d.]+)", ln)
     if m and int(m.group(2)) == 128:
         loss[m.group(1)][float(m.group(3))] = float(m.group(4))
-if not loss:                      # the six-dataset sweep lives in its own log
-    for ln in open(datafile("alpha_ds.log")):
-        m = re.search(r"(\S+)\s+M=\d+\s+bpd=1\s+np=(\d+)\s+a=([\d.]+)\s+recall=([\d.]+)", ln)
-        if m and int(m.group(2)) == 128:
-            loss[m.group(1)][float(m.group(3))] = 1.0 - float(m.group(4))
 
 # (b) rule gain vs nprobe, from the 72-run grid
 gain = collections.defaultdict(dict)
@@ -44,10 +50,10 @@ for i, ds in enumerate([d for d in DATASETS if d in loss]):
            label=PRETTY[ds])
 a.set_xscale("log"); a.set_yscale("log")
 a.set_xlabel(r"refinement budget $\alpha$")
-a.set_ylabel("ranking loss")
+a.set_ylabel("ranking loss\n(ivf recall $-$ recall)")
 a.set_xticks([4, 8, 16, 32, 64, 100, 200])
 a.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-a.text(0.03, 0.06, "(a)", transform=a.transAxes, fontsize=8)
+a.text(0.03, 0.06, "(a)  nprobe$=$128", transform=a.transAxes, fontsize=8)
 
 for i, ds in enumerate([d for d in DATASETS if d in gain]):
     xs = sorted(gain[ds])
@@ -59,7 +65,8 @@ b.set_xlabel("nprobe")
 b.set_ylabel(r"QPS, rule $\div$ fixed $\alpha{=}100$")
 b.set_xticks([8, 32, 128, 256, 512, 1024])
 b.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-b.text(0.03, 0.06, "(b)", transform=b.transAxes, fontsize=8)
+b.text(0.03, 0.06, "(b)  at the recall the rule preserves",
+       transform=b.transAxes, fontsize=8)
 
 h, l = b.get_legend_handles_labels()
 fig.legend(h, l, loc="upper center", ncol=6, bbox_to_anchor=(0.5, 1.10),

@@ -5,10 +5,15 @@ Section 6.2. The dashed grey line is JHQ at the fixed alpha=100 this project
 used from its first run to its last; the gap to the solid line is what the
 calibration rule is worth.
 
-A shaded band marks recall no CAGRA or IVF-PQ configuration reaches. CAGRA
-fp32 is absent on stella and bge-m3 -- 17.8 M and 10.1 M vectors at 1024 float
-dimensions do not fit the card -- and IVF-RaBitQ is absent there too, for the
-reason given in the paper's setup.
+Each curve ends where its own sweep ended, and nothing here marks a region as
+out of reach: a baseline whose highest swept point is below JHQ's has not been
+shown to be unable to go higher, only not to have been asked to. Read the
+curves where they overlap.
+
+CAGRA fp32 is absent on stella and bge-m3 -- 17.8 M and 10.1 M vectors at 1024
+float dimensions do not fit the card -- and IVF-RaBitQ is absent there too,
+for the reason given in the paper's setup. Those are the only two claims of
+the form "cannot", and both are allocation failures, not sweep endpoints.
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -19,9 +24,6 @@ fronts, rq, base = load_fronts(), load_rabitq(), load_baselines()
 fig, axes = plt.subplots(2, 3, figsize=(WIDE, 3.6), sharex=True, sharey=True)
 for ax, ds in zip(axes.flat, DATASETS):
     b = base[ds]
-    top = max([p[0] for k in ("cagra", "cagra8", "ivfpq") for p in b[k]], default=0)
-    if 0.85 < top < 1.0:
-        ax.axvspan(top, 1.0, color=S["jhq"]["color"], alpha=0.07, lw=0)
 
     for key, pts in (("ivfpq", b["ivfpq"]), ("cagra8", b["cagra8"]),
                      ("cagra", b["cagra"]), ("rabitq", rq.get(ds, []))):
@@ -40,7 +42,7 @@ for ax, ds in zip(axes.flat, DATASETS):
     # Dataset name and shape inside the axes: six panels do not have room for
     # six titles above them.
     ax.text(0.03, 0.05, f"{PRETTY[ds]}\n{b['N']/1e6:.1f}M $\\times$ {b['d']}",
-            transform=ax.transAxes, va="bottom", ha="left", fontsize=6.5,
+            transform=ax.transAxes, va="bottom", ha="left", fontsize=7,
             linespacing=1.3)
 
 for ax in axes[1]:

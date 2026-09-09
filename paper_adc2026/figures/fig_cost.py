@@ -47,14 +47,14 @@ a.barh(y - 0.19, rv, height=0.36, color=S["rabitq"]["color"], label="IVF-RaBitQ"
 a.barh(y + 0.19, jv, height=0.36, color=S["jhq"]["color"], label="JHQ")
 for i, d in enumerate(order):
     if d not in rq_vram:
-        a.text(0.4, i - 0.19, "does not build", va="center", fontsize=6,
+        a.text(0.4, i - 0.19, "does not build", va="center", fontsize=7,
                color=S["rabitq"]["color"], style="italic")
     else:
         a.text(jv[i] + 0.3, i + 0.19, f"+{100*(jv[i]/rv[i]-1):.0f}\\%",
-               va="center", fontsize=6)
+               va="center", fontsize=7)
 a.set_yticks(y); a.set_yticklabels([PRETTY[d] for d in order])
 a.set_xlabel("resident GPU memory (GiB)"); a.invert_yaxis()
-a.grid(axis="y", visible=False); a.legend(loc="lower right", fontsize=6.5)
+a.grid(axis="y", visible=False); a.legend(loc="lower right", fontsize=7)
 a.set_xlim(0, max(jv) * 1.25)
 a.text(0.97, 0.05, "(a)", transform=a.transAxes, fontsize=8, ha="right")
 
@@ -63,10 +63,10 @@ av = [add[d] / 1000 for d in order]
 b.barh(y, tv, height=0.5, color="#4a3aa7", label="train")
 b.barh(y, av, height=0.5, left=tv, color="#1baf7a", label="encode")
 for i in range(len(order)):
-    b.text(tv[i] + av[i] + 0.4, i, f"{tv[i]+av[i]:.0f}s", va="center", fontsize=6)
+    b.text(tv[i] + av[i] + 0.4, i, f"{tv[i]+av[i]:.0f}s", va="center", fontsize=7)
 b.set_yticks(y); b.set_yticklabels([])
 b.set_xlabel("JHQ index build (s)"); b.invert_yaxis()
-b.grid(axis="y", visible=False); b.legend(loc="lower right", fontsize=6.5)
+b.grid(axis="y", visible=False); b.legend(loc="lower right", fontsize=7)
 b.set_xlim(0, max(t + a2 for t, a2 in zip(tv, av)) * 1.2)
 b.text(0.97, 0.05, "(b)", transform=b.transAxes, fontsize=8, ha="right")
 

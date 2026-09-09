@@ -13,11 +13,19 @@ the space because each says something the byte counting does not.
     says only that it "may vary" with bandwidth; this card has twice the
     bandwidth, and both sides are measured here.
 
-(b) Cross-query reuse, bounded from above. Duplicating queries D times makes D
-    of them probe an identical list -- more reuse than any real clustering can
-    produce. The gain saturates at D=2, which is what a 96 MB L2 already
-    holding the working set looks like, so a cluster-centric rewrite has less
-    to win than the traffic arithmetic suggests.
+(b) Cross-query reuse, as a controlled proxy. Duplicating a query D times makes
+    D queries probe exactly the same lists in exactly the same order, which is
+    more agreement than real queries clustered by their coarse assignment ever
+    show. The gain saturates at D=2 -- what a 96 MB L2 already holding the
+    working set looks like -- so the traffic arithmetic overstates what a
+    cluster-centric rewrite has to win from reuse.
+
+    It is a proxy, not an upper bound. Duplication holds the schedule fixed
+    and varies only how much the queries have in common; a rewrite would also
+    change the schedule -- amortising the table build across a group, reordering
+    the scan around the list rather than the query -- and those are not on this
+    axis. What this measures is the reuse term alone, and the reuse term is
+    small.
 """
 import sys, os, re, collections
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -58,7 +66,7 @@ a.axhline(0, color="0.3", lw=0.7)
 a.set_xticks(range(len(sets)))
 a.set_xticklabels([PRETTY.get(s, s) for s in sets], rotation=18, ha="right")
 a.set_ylabel("QPS change (\\%)")
-a.legend(loc="lower left", fontsize=6.5, ncol=1)
+a.legend(loc="lower left", fontsize=7, ncol=1)
 a.grid(axis="x", visible=False)
 a.text(0.97, 0.90, "(a) table-free primary distance", transform=a.transAxes,
        ha="right", fontsize=7)
@@ -77,8 +85,8 @@ b.set_xlabel("query duplication factor $D$")
 b.set_ylabel("QPS, relative to $D{=}1$")
 b.set_xticks([1, 2, 4, 8])
 b.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-b.legend(loc="lower right", fontsize=5.8, ncol=2, columnspacing=0.8)
-b.text(0.03, 0.90, "(b) cross-query reuse, upper bound",
+b.legend(loc="lower right", fontsize=7, ncol=2, columnspacing=0.8)
+b.text(0.03, 0.90, "(b) cross-query reuse, controlled proxy",
        transform=b.transAxes, fontsize=7)
 
 fig.tight_layout(pad=0.3)

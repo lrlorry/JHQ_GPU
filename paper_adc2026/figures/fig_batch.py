@@ -1,14 +1,25 @@
 #!/usr/bin/env python3
-"""Figure: the batch size changes who wins.
+"""Figure: batch sensitivity at fixed nprobe.
 
 Section 6.6. Every other number in the paper is one batch on one card, and
 IVF-RaBitQ's own paper reports 10^4 on a different card. This is the axis that
 answers the objection.
 
+Both systems run at nprobe=128 throughout; the recall each reaches there is
+whatever it reaches, and is reported in panel (b). This is a sensitivity plot,
+not an iso-recall comparison -- the ratio is a throughput ratio at one
+operating point, and only panel (b)'s recall line says how comparable the two
+operating points are.
+
+They are close enough to read on openai3-3072 (JHQ 0.9414, IVF-RaBitQ 0.9405
+to 0.9450, so the ratio is if anything slightly generous to JHQ) and on
+vogue-768 they favour IVF-RaBitQ (JHQ 0.9645, IVF-RaBitQ 0.9549 to 0.9592, so
+JHQ is being timed at a higher recall than the system it is divided by).
+
 The ratio is not stable in batch and moves in opposite directions on the two
-datasets: JHQ's lead over IVF-RaBitQ peaks at batch 128 on openai3-3072 and is
-falling by 1024, while on vogue-768 IVF-RaBitQ is twice as fast at batch 32 and
-JHQ overtakes only at 1024, still climbing.
+datasets: JHQ's lead peaks at batch 128 on openai3-3072 and is falling by
+1024, while on vogue-768 IVF-RaBitQ is twice as fast at batch 32 and JHQ
+overtakes only at 1024, still climbing.
 
 The sweep goes down from ~1000 rather than up to 10^4 because the query files
 hold about 1000 rows; duplicating them inflates throughput 4-26% through L2
@@ -25,7 +36,7 @@ for ln in open(datafile("batch_sweep.log")):
     if m:
         d[(m.group(2), int(m.group(3)))][m.group(1)] = (float(m.group(4)), int(m.group(5)))
 
-fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 2.0))
+fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 2.15))
 sets = ["openai3-3072", "vogue-768"]
 cyc = {"openai3-3072": "#2a78d6", "vogue-768": "#eb6834"}
 mk = {"openai3-3072": "o", "vogue-768": "^"}
@@ -56,12 +67,25 @@ b.set_ylabel(r"JHQ $\div$ IVF-RaBitQ")
 b.set_xticks([32, 64, 128, 256, 512, 1024])
 b.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
 b.text(0.03, 0.90, "(b)", transform=b.transAxes, fontsize=8)
-b.legend(loc="lower right")
+
+# What the ratio is a ratio *of*: the recall each side reaches at nprobe=128.
+# Without this the panel reads as an iso-recall speedup, which it is not.
+notes = []
+for ds in sets:
+    r_j = [d[k]["JHQ"][0] for k in d if k[0] == ds]
+    r_r = [d[k]["RaBitQ"][0] for k in d if k[0] == ds]
+    notes.append(u"%s: recall %.3f vs %.3f\u2013%.3f"
+                 % (PRETTY[ds].split("-")[0], sum(r_j) / len(r_j),
+                    min(r_r), max(r_r)))
+b.text(0.97, 0.04, "at nprobe$=$128 throughout\n" + "\n".join(notes),
+       transform=b.transAxes, ha="right", va="bottom", fontsize=7,
+       color="#52514e", linespacing=1.35)
+b.legend(loc="upper right", fontsize=7)
 
 # the solid/dashed convention, stated once
 a.plot([], [], color="0.35", ls="-", label="JHQ")
 a.plot([], [], color="0.35", ls="--", mfc="none", label="IVF-RaBitQ")
-a.legend(loc="upper left")
+a.legend(loc="lower right", fontsize=7)
 
 fig.tight_layout(pad=0.3)
 save(fig, "fig_batch")

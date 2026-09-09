@@ -11,9 +11,13 @@ This is the rest of the gap, and it is not a code-size difference:
   at the same size -- the factorised table for every query in the batch, and
   the candidate buffers the exact top-alpha-k selection runs in.
 
-The bars are computed from the index parameters, and the measured total from
-cudaMemGetInfo is marked, so the difference between the two is visible rather
-than hidden in a residual.
+The first six bars are computed from the index parameters. They do not add up
+to what the card actually reports, and the gap is real: the CUDA context, the
+cuBLAS and cuRAND handles, the allocator's slack, and the training buffers
+that are freed but whose pool pages are not returned. Rather than let the
+stack quietly disagree with the measurement, the last segment is *defined* as
+measured minus modelled, so the bar ends exactly at the cudaMemGetInfo total
+and the unexplained part is drawn at its true size instead of being left out.
 """
 import sys, os, re
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -46,6 +50,7 @@ order = [d for d in DATASETS if d in meas]
 parts = [("primary codes", "#2a78d6"), ("residual codes", "#86b6ef"),
          ("corr + ids", "#cde2fb"), ("coarse centroids", "#1baf7a"),
          ("per-batch table", "#eda100"), ("candidate buffers", "#eb6834")]
+OTHER = "context + allocator"
 
 vals = {p: [] for p, _ in parts}
 for ds in order:
@@ -62,15 +67,32 @@ for ds in order:
     vals["candidate buffers"].append(
         BATCH * (2 * d * 4 + nlist * 4 + 2 * CK * 4 + 10 * 8) / MiB)
 
+# Defined, not modelled: whatever cudaMemGetInfo reports above the six terms
+# above. Negative would mean the model over-counts, which would be a bug in
+# the model rather than a memory segment, so it is reported, not drawn.
+vals[OTHER] = []
+for i, ds in enumerate(order):
+    modelled = sum(vals[p][i] for p, _ in parts)
+    gap = meas[ds] - modelled
+    if gap < 0:
+        print("  WARNING: model exceeds measured on %s by %.0f MiB" % (ds, -gap))
+    vals[OTHER].append(max(gap, 0.0))
+
 y = np.arange(len(order))
-fig, ax = plt.subplots(figsize=(WIDE, 2.2))
+fig, ax = plt.subplots(figsize=(WIDE, 2.35))
 left = np.zeros(len(order))
 for p, c in parts:
     v = np.array(vals[p]) / 1024          # GiB
     ax.barh(y, v, left=left, height=0.5, color=c, label=p, ec="none")
     left += v
+vo = np.array(vals[OTHER]) / 1024
+ax.barh(y, vo, left=left, height=0.5, color="#f2f1ec", label=OTHER,
+        ec="#898781", lw=0.5, hatch="///")
+left += vo
 
 for i, ds in enumerate(order):
+    # coincides with the bar end by construction; drawn as the check that it
+    # does, and so the RaBitQ tick has something to be read against.
     ax.scatter([meas[ds] / 1024], [i], marker="|", s=110, color="black",
                zorder=4, lw=1.1)
     if ds in rq:
@@ -86,7 +108,7 @@ h, l = ax.get_legend_handles_labels()
 h += [plt.Line2D([], [], color="black", marker="|", ls="", ms=8, mew=1.1),
       plt.Line2D([], [], color=S["rabitq"]["color"], marker="|", ls="", ms=8, mew=1.1)]
 l += ["JHQ, measured", "IVF-RaBitQ, measured"]
-ax.legend(h, l, loc="lower right", fontsize=6, ncol=2, columnspacing=1.0)
+ax.legend(h, l, loc="lower right", fontsize=7, ncol=2, columnspacing=1.0)
 
 fig.tight_layout(pad=0.3)
 save(fig, "fig_memory")

@@ -17,7 +17,7 @@ from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
 OURS, GREY, GOOD, BAD = "#2a78d6", "#e8e7e1", "#1baf7a", "#e34948"
 
-def box(ax, x, y, w, h, t, fc=GREY, ec="#52514e", fs=6.4, tc="black", lw=0.7):
+def box(ax, x, y, w, h, t, fc=GREY, ec="#52514e", fs=7, tc="black", lw=0.7):
     ax.add_patch(FancyBboxPatch((x, y), w, h,
                                 boxstyle="round,pad=0.006,rounding_size=0.02",
                                 fc=fc, ec=ec, lw=lw, zorder=2))
@@ -55,7 +55,7 @@ a.add_patch(FancyArrowPatch((0.66, 0.49), (0.53, 0.49), arrowstyle="-|>",
 box(a, 0.02, 0.02, 0.50, 0.14, "run the rest of the batch at $\\alpha^{*}$",
     fc="white", ec=OURS, tc=OURS, lw=1.0)
 arr(a, 0.82, 0.20, 0.53, 0.10, col=BAD)
-a.text(0.5, 0.975, "no ground truth is used", ha="center", fontsize=6,
+a.text(0.5, 0.975, "no ground truth is used", ha="center", fontsize=7,
        style="italic", color="#52514e")
 
 # ── right: one real calibration ────────────────────────────────────────────
@@ -72,9 +72,9 @@ for i, (al, miss, ok) in enumerate(probes):
     b.scatter([al], [i], s=46, marker="o" if ok else "X",
               color=GOOD if ok else BAD, zorder=3)
     b.text(al * 1.18, i, f"$\\alpha={al}$, {miss} slots differ",
-           fontsize=6, va="center")
+           fontsize=7, va="center")
 b.axvline(4, color=OURS, lw=1.2, ls="--", zorder=2)
-b.text(4, -0.5, "  picked $\\alpha^{*}{=}4$", color=OURS, fontsize=6.5, va="top")
+b.text(4, -0.5, "  picked $\\alpha^{*}{=}4$", color=OURS, fontsize=7, va="top")
 b.set_xlabel(r"$\alpha$ grid, walked by bisection")
 b.set_xticks(grid)
 b.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
@@ -82,7 +82,7 @@ b.grid(False)
 b.text(0.5, 0.06,
        "openai3-3072, nprobe=128, $S{=}32$: 3 probes, 8.9 ms,\n"
        "then $2.0\\times$ the throughput of $\\alpha{=}100$ at identical recall",
-       transform=b.transAxes, ha="center", fontsize=6, color="#52514e",
+       transform=b.transAxes, ha="center", fontsize=7, color="#52514e",
        linespacing=1.4)
 
 fig.tight_layout(pad=0.25)

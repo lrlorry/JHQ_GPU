@@ -29,7 +29,7 @@ ax.text(0.5, 0.95, "one 8-bit code", ha="center", fontsize=7, color="#52514e")
 for i, (x, lab, col) in enumerate([(0.28, "high 4 bits", "#9ec5f4"),
                                    (0.50, "low 4 bits", "#f6c9b4")]):
     ax.add_patch(Rectangle((x, 0.76), 0.22, 0.12, fc=col, ec="#52514e", lw=0.7))
-    ax.text(x + 0.11, 0.82, lab, ha="center", va="center", fontsize=6.5)
+    ax.text(x + 0.11, 0.82, lab, ha="center", va="center", fontsize=7)
 
 ax.add_patch(FancyArrowPatch((0.39, 0.755), (0.24, 0.60), arrowstyle="-|>",
                              mutation_scale=7, lw=0.8, color="#2a78d6"))
@@ -42,14 +42,14 @@ for x, n, col, lab in [(0.06, 16, "#9ec5f4", "$T^{\\mathrm{hi}}_m$"),
         ax.add_patch(Rectangle((x + (j % 8) * 0.042, 0.44 - (j // 8) * 0.075),
                                0.038, 0.068, fc=col, ec="#52514e", lw=0.4))
     ax.text(x + 0.168, 0.60, lab, ha="center", fontsize=7)
-    ax.text(x + 0.168, 0.26, "16 entries", ha="center", fontsize=6, color="#52514e")
+    ax.text(x + 0.168, 0.26, "16 entries", ha="center", fontsize=7, color="#52514e")
 
 # mathtext has no \; and no \&; \gg and \wedge it does have.
 ax.text(0.5, 0.11,
         r"$T_m[c] = T^{\mathrm{hi}}_m[c \gg 4] + T^{\mathrm{lo}}_m[c \wedge 15]$",
         ha="center", fontsize=7.5)
 ax.text(0.5, 0.005, "exact for the Eq. 4 codebook; checked against the centroids at train time",
-        ha="center", fontsize=5.8, color="#52514e", style="italic")
+        ha="center", fontsize=7, color="#52514e", style="italic")
 
 # ── right: what it costs per query, at the M this work runs ────────────────
 bx.set_xlim(0, 1); bx.set_ylim(0, 1)
@@ -62,19 +62,19 @@ for i, (lab, M) in enumerate(rows):
     y = 0.76 - i * 0.19
     full = M * 256 * 4 / 1024
     fact = M * 32 * 4 / 1024
-    bx.text(0.0, y + 0.035, lab, fontsize=6, va="center", linespacing=1.2)
+    bx.text(0.0, y + 0.035, lab, fontsize=7, va="center", linespacing=1.2)
     bx.add_patch(Rectangle((0.24, y + 0.055), 0.72 * full / maxkb, 0.055,
                            fc="#e1e0d9", ec="#898781", lw=0.5))
     bx.add_patch(Rectangle((0.24, y - 0.015), 0.72 * fact / maxkb, 0.055,
                            fc="#2a78d6", ec="none"))
     bx.text(0.24 + 0.72 * full / maxkb + 0.012, y + 0.082,
-            f"{full:.0f} KiB", fontsize=5.8, va="center", color="#52514e")
+            f"{full:.0f} KiB", fontsize=7, va="center", color="#52514e")
     bx.text(0.24 + 0.72 * fact / maxkb + 0.012, y + 0.012,
-            f"{fact:.0f}", fontsize=5.8, va="center", color="#2a78d6")
+            f"{fact:.0f}", fontsize=7, va="center", color="#2a78d6")
 bx.add_patch(Rectangle((0.24, 0.045), 0.03, 0.04, fc="#e1e0d9", ec="#898781", lw=0.5))
-bx.text(0.285, 0.065, "full, $256$/subspace", fontsize=6, va="center")
+bx.text(0.285, 0.065, "full, $256$/subspace", fontsize=7, va="center")
 bx.add_patch(Rectangle((0.60, 0.045), 0.03, 0.04, fc="#2a78d6", ec="none"))
-bx.text(0.645, 0.065, "factorised, $16{+}16$", fontsize=6, va="center")
+bx.text(0.645, 0.065, "factorised, $16{+}16$", fontsize=7, va="center")
 
 fig.tight_layout(pad=0.2)
 save(fig, "fig_lut")

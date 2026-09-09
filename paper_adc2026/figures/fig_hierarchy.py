@@ -36,11 +36,11 @@ ch = [max(r for r, _ in jhq[d].values()) for d in order]
 a.barh(y - 0.19, cj, height=0.36, color=S["jq"]["color"], label="JQ (primary only)")
 a.barh(y + 0.19, ch, height=0.36, color=S["jhq"]["color"], label="JHQ (two levels)")
 for i, (u, v) in enumerate(zip(cj, ch)):
-    a.text(v + 0.008, i + 0.19, f"+{v-u:.3f}", va="center", fontsize=6)
+    a.text(v + 0.008, i + 0.19, f"+{v-u:.3f}", va="center", fontsize=7)
 a.set_yticks(y); a.set_yticklabels([PRETTY[d] for d in order])
 a.set_xlabel("highest Recall@10 reached"); a.set_xlim(0, 1.16)
 a.invert_yaxis(); a.grid(axis="y", visible=False)
-a.legend(loc="lower right", fontsize=6.5)
+a.legend(loc="lower right", fontsize=7)
 a.text(0.03, 0.05, "(a)", transform=a.transAxes, fontsize=8)
 
 # right: the two curves where the ceiling is worst, to show nprobe cannot fix it
@@ -54,7 +54,7 @@ for i, ds in enumerate(["arxiv-768", "stella"]):
     b.plot([jhq[ds][n][0] for n in nps], [jhq[ds][n][1] for n in nps],
            color=c, marker="o", label=f"{PRETTY[ds]}, JHQ")
 b.set_yscale("log"); b.set_xlabel("Recall@10"); b.set_ylabel("QPS")
-b.legend(loc="lower left", fontsize=6.5)
+b.legend(loc="lower left", fontsize=7)
 b.text(0.95, 0.90, "(b)", transform=b.transAxes, fontsize=8, ha="right")
 
 fig.tight_layout(pad=0.3)

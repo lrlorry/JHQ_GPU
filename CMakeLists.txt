@@ -1561,17 +1561,23 @@ add_jhq_variant(v51_on  ${V51} JHQ_PAPER_FAITHFUL=1
 
 # v52: read the primary code a word at a time.
 #
-# The scan reads list_primary_t[m * N + pos], one byte a thread, so a warp asks
-# for 32 consecutive bytes and the memory system moves a 128-byte transaction
-# to serve them -- three quarters discarded. results/block_sweep/ puts the
-# gather at 53-66% of the scan and a roofline against this card's 1792 GB/s
-# puts it at 47-50% of peak, which is what that looks like.
+# The scan reads list_primary_t[m * N + pos], one byte a thread, and that is
+# already coalesced: since Pascal a global access is served in 32-byte
+# sectors, so a warp's 32 consecutive bytes are exactly one sector with
+# nothing discarded. v13's transpose is what fixed the coalescing; there is no
+# second coalescing win left to take here.
+#
+# What is left is instruction count. results/block_sweep/ puts the gather at
+# 53-66% of the scan while a roofline against this card's 1792 GB/s puts it at
+# 47-50% of peak -- a loop that is issuing far more than its arithmetic needs,
+# which is the same thing v54 later confirmed from the other side when a
+# table-free distance moved less memory and still lost.
 #
 # Ds=8 and B=8 make the primary code 1 bit a dimension, so four subspaces are
-# 32 dimensions and fit one uint32. Stored grouped by dimension rather than by
-# vector, 32 threads read 32 consecutive words: one full transaction. Same
-# bytes, same codes, same distances. The repack runs once after add(), so
-# neither encoder has to know.
+# 32 dimensions and fit one uint32. One load replaces four, with one address
+# computation and a quarter of the loop iterations. Same bytes, same codes,
+# same distances. The repack runs once after add(), so neither encoder has to
+# know.
 #
 # v51's probe cursor is on by default from here; it was +2.5 to +148.5% at
 # identical recall.

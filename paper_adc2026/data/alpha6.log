@@ -1,0 +1,117 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at 4a3fd31 Sweep alpha on all six, and reach bge nlist ceiling at Br=4
+07:41:16 HEAD 4a3fd31 Sweep alpha on all six, and reach bge nlist ceiling at Br=4
+-- Configuring done (0.1s)
+-- Generating done (0.8s)
+-- Build files have been written to: /root/JHQ_GPU/build
+[ 33%] Built target jhq_cpu
+[ 66%] Built target jhq_v47_diag
+[100%] Built target demo_jhq_v47_diag
+07:41:18 build_rc=0
+07:41:18 ########## 1. alpha saturation, six datasets ##########
+  vogue-768      Br=8   nlist=4096    np=32    a=4.0    recall=0.8044   ivf=0.8640   rank_lost=0.0596   qps=331170    rc=0
+  arxiv-768      Br=8   nlist=8192    np=32    a=4.0    recall=0.7900   ivf=0.9302   rank_lost=0.1402   qps=329161    rc=0
+  bge-m3         Br=8   nlist=32768   np=32    a=4.0    recall=0.8095   ivf=0.8302   rank_lost=0.0207   qps=196350    rc=0
+  stella         Br=8   nlist=32768   np=32    a=4.0    recall=0.9543   ivf=0.9718   rank_lost=0.0175   qps=176062    rc=0
+  openai3-1536   Br=8   nlist=8192    np=32    a=4.0    recall=0.8455   ivf=0.8485   rank_lost=0.0030   qps=286234    rc=0
+  openai3-3072   Br=8   nlist=4096    np=32    a=4.0    recall=0.8650   ivf=0.8657   rank_lost=0.0007   qps=133116    rc=0
+  vogue-768      Br=8   nlist=4096    np=128   a=4.0    recall=0.8822   ivf=0.9685   rank_lost=0.0863   qps=155318    rc=0
+  arxiv-768      Br=8   nlist=8192    np=128   a=4.0    recall=0.8104   ivf=0.9840   rank_lost=0.1736   qps=147806    rc=0
+  bge-m3         Br=8   nlist=32768   np=128   a=4.0    recall=0.8924   ivf=0.9211   rank_lost=0.0287   qps=91648     rc=0
+  stella         Br=8   nlist=32768   np=128   a=4.0    recall=0.9733   ivf=0.9931   rank_lost=0.0198   qps=71466     rc=0
+  openai3-1536   Br=8   nlist=8192    np=128   a=4.0    recall=0.9296   ivf=0.9336   rank_lost=0.0040   qps=158429    rc=0
+  openai3-3072   Br=8   nlist=4096    np=128   a=4.0    recall=0.9416   ivf=0.9430   rank_lost=0.0014   qps=55055     rc=0
+  vogue-768      Br=8   nlist=4096    np=32    a=8.0    recall=0.8416   ivf=0.8640   rank_lost=0.0224   qps=327888    rc=0
+  arxiv-768      Br=8   nlist=8192    np=32    a=8.0    recall=0.8644   ivf=0.9302   rank_lost=0.0658   qps=325226    rc=0
+  bge-m3         Br=8   nlist=32768   np=32    a=8.0    recall=0.8226   ivf=0.8302   rank_lost=0.0076   qps=195328    rc=0
+  stella         Br=8   nlist=32768   np=32    a=8.0    recall=0.9662   ivf=0.9718   rank_lost=0.0056   qps=175369    rc=0
+  openai3-1536   Br=8   nlist=8192    np=32    a=8.0    recall=0.8467   ivf=0.8485   rank_lost=0.0018   qps=283856    rc=0
+  openai3-3072   Br=8   nlist=4096    np=32    a=8.0    recall=0.8650   ivf=0.8657   rank_lost=0.0007   qps=128185    rc=0
+  vogue-768      Br=8   nlist=4096    np=128   a=8.0    recall=0.9313   ivf=0.9685   rank_lost=0.0372   qps=153297    rc=0
+  arxiv-768      Br=8   nlist=8192    np=128   a=8.0    recall=0.8945   ivf=0.9840   rank_lost=0.0895   qps=146700    rc=0
+  bge-m3         Br=8   nlist=32768   np=128   a=8.0    recall=0.9094   ivf=0.9211   rank_lost=0.0117   qps=91442     rc=0
+  stella         Br=8   nlist=32768   np=128   a=8.0    recall=0.9865   ivf=0.9931   rank_lost=0.0066   qps=71125     rc=0
+  openai3-1536   Br=8   nlist=8192    np=128   a=8.0    recall=0.9315   ivf=0.9336   rank_lost=0.0021   qps=139165    rc=0
+  openai3-3072   Br=8   nlist=4096    np=128   a=8.0    recall=0.9416   ivf=0.9430   rank_lost=0.0014   qps=55273     rc=0
+  vogue-768      Br=8   nlist=4096    np=32    a=16.0   recall=0.8560   ivf=0.8640   rank_lost=0.0080   qps=312545    rc=0
+  arxiv-768      Br=8   nlist=8192    np=32    a=16.0   recall=0.9042   ivf=0.9302   rank_lost=0.0260   qps=309734    rc=0
+  bge-m3         Br=8   nlist=32768   np=32    a=16.0   recall=0.8267   ivf=0.8302   rank_lost=0.0035   qps=188931    rc=0
+  stella         Br=8   nlist=32768   np=32    a=16.0   recall=0.9683   ivf=0.9718   rank_lost=0.0035   qps=169667    rc=0
+  openai3-1536   Br=8   nlist=8192    np=32    a=16.0   recall=0.8467   ivf=0.8485   rank_lost=0.0018   qps=258886    rc=0
+  openai3-3072   Br=8   nlist=4096    np=32    a=16.0   recall=0.8650   ivf=0.8657   rank_lost=0.0007   qps=120698    rc=0
+  vogue-768      Br=8   nlist=4096    np=128   a=16.0   recall=0.9537   ivf=0.9685   rank_lost=0.0148   qps=148992    rc=0
+  arxiv-768      Br=8   nlist=8192    np=128   a=16.0   recall=0.9410   ivf=0.9840   rank_lost=0.0430   qps=142852    rc=0
+  bge-m3         Br=8   nlist=32768   np=128   a=16.0   recall=0.9151   ivf=0.9211   rank_lost=0.0060   qps=90015     rc=0
+  stella         Br=8   nlist=32768   np=128   a=16.0   recall=0.9889   ivf=0.9931   rank_lost=0.0042   qps=70340     rc=0
+  openai3-1536   Br=8   nlist=8192    np=128   a=16.0   recall=0.9315   ivf=0.9336   rank_lost=0.0021   qps=151593    rc=0
+  openai3-3072   Br=8   nlist=4096    np=128   a=16.0   recall=0.9416   ivf=0.9430   rank_lost=0.0014   qps=53088     rc=0
+  vogue-768      Br=8   nlist=4096    np=32    a=32.0   recall=0.8605   ivf=0.8640   rank_lost=0.0035   qps=264677    rc=0
+  arxiv-768      Br=8   nlist=8192    np=32    a=32.0   recall=0.9196   ivf=0.9302   rank_lost=0.0106   qps=267655    rc=0
+  bge-m3         Br=8   nlist=32768   np=32    a=32.0   recall=0.8282   ivf=0.8302   rank_lost=0.0020   qps=166092    rc=0
+  stella         Br=8   nlist=32768   np=32    a=32.0   recall=0.9686   ivf=0.9718   rank_lost=0.0032   qps=151357    rc=0
+  openai3-1536   Br=8   nlist=8192    np=32    a=32.0   recall=0.8467   ivf=0.8485   rank_lost=0.0018   qps=206477    rc=0
+  openai3-3072   Br=8   nlist=4096    np=32    a=32.0   recall=0.8650   ivf=0.8657   rank_lost=0.0007   qps=95308     rc=0
+  vogue-768      Br=8   nlist=4096    np=128   a=32.0   recall=0.9616   ivf=0.9685   rank_lost=0.0069   qps=139005    rc=0
+  arxiv-768      Br=8   nlist=8192    np=128   a=32.0   recall=0.9640   ivf=0.9840   rank_lost=0.0200   qps=132251    rc=0
+  bge-m3         Br=8   nlist=32768   np=128   a=32.0   recall=0.9179   ivf=0.9211   rank_lost=0.0032   qps=84191     rc=0
+  stella         Br=8   nlist=32768   np=128   a=32.0   recall=0.9892   ivf=0.9931   rank_lost=0.0039   qps=67084     rc=0
+  openai3-1536   Br=8   nlist=8192    np=128   a=32.0   recall=0.9315   ivf=0.9336   rank_lost=0.0021   qps=125581    rc=0
+  openai3-3072   Br=8   nlist=4096    np=128   a=32.0   recall=0.9416   ivf=0.9430   rank_lost=0.0014   qps=47177     rc=0
+  vogue-768      Br=8   nlist=4096    np=32    a=64.0   recall=0.8613   ivf=0.8640   rank_lost=0.0027   qps=220183    rc=0
+  arxiv-768      Br=8   nlist=8192    np=32    a=64.0   recall=0.9240   ivf=0.9302   rank_lost=0.0062   qps=215079    rc=0
+  bge-m3         Br=8   nlist=32768   np=32    a=64.0   recall=0.8283   ivf=0.8302   rank_lost=0.0019   qps=141842    rc=0
+  stella         Br=8   nlist=32768   np=32    a=64.0   recall=0.9686   ivf=0.9718   rank_lost=0.0032   qps=130608    rc=0
+  openai3-1536   Br=8   nlist=8192    np=32    a=64.0   recall=0.8467   ivf=0.8485   rank_lost=0.0018   qps=159742    rc=0
+  openai3-3072   Br=8   nlist=4096    np=32    a=64.0   recall=0.8650   ivf=0.8657   rank_lost=0.0007   qps=68099     rc=0
+  vogue-768      Br=8   nlist=4096    np=128   a=64.0   recall=0.9640   ivf=0.9685   rank_lost=0.0045   qps=123504    rc=0
+  arxiv-768      Br=8   nlist=8192    np=128   a=64.0   recall=0.9745   ivf=0.9840   rank_lost=0.0095   qps=114067    rc=0
+  bge-m3         Br=8   nlist=32768   np=128   a=64.0   recall=0.9184   ivf=0.9211   rank_lost=0.0027   qps=77337     rc=0
+  stella         Br=8   nlist=32768   np=128   a=64.0   recall=0.9892   ivf=0.9931   rank_lost=0.0039   qps=62698     rc=0
+  openai3-1536   Br=8   nlist=8192    np=128   a=64.0   recall=0.9315   ivf=0.9336   rank_lost=0.0021   qps=110505    rc=0
+  openai3-3072   Br=8   nlist=4096    np=128   a=64.0   recall=0.9416   ivf=0.9430   rank_lost=0.0014   qps=40236     rc=0
+  vogue-768      Br=8   nlist=4096    np=32    a=100.0  recall=0.8615   ivf=0.8640   rank_lost=0.0025   qps=153801    rc=0
+  arxiv-768      Br=8   nlist=8192    np=32    a=100.0  recall=0.9252   ivf=0.9302   rank_lost=0.0050   qps=139765    rc=0
+  bge-m3         Br=8   nlist=32768   np=32    a=100.0  recall=0.8284   ivf=0.8302   rank_lost=0.0018   qps=108009    rc=0
+  stella         Br=8   nlist=32768   np=32    a=100.0  recall=0.9686   ivf=0.9718   rank_lost=0.0032   qps=101150    rc=0
+  openai3-1536   Br=8   nlist=8192    np=32    a=100.0  recall=0.8467   ivf=0.8485   rank_lost=0.0018   qps=122706    rc=0
+  openai3-3072   Br=8   nlist=4096    np=32    a=100.0  recall=0.8650   ivf=0.8657   rank_lost=0.0007   qps=52976     rc=0
+  vogue-768      Br=8   nlist=4096    np=128   a=100.0  recall=0.9642   ivf=0.9685   rank_lost=0.0043   qps=87905     rc=0
+  arxiv-768      Br=8   nlist=8192    np=128   a=100.0  recall=0.9760   ivf=0.9840   rank_lost=0.0080   qps=76475     rc=0
+  bge-m3         Br=8   nlist=32768   np=128   a=100.0  recall=0.9187   ivf=0.9211   rank_lost=0.0024   qps=62301     rc=0
+  stella         Br=8   nlist=32768   np=128   a=100.0  recall=0.9892   ivf=0.9931   rank_lost=0.0039   qps=53592     rc=0
+  openai3-1536   Br=8   nlist=8192    np=128   a=100.0  recall=0.9315   ivf=0.9336   rank_lost=0.0021   qps=83884     rc=0
+  openai3-3072   Br=8   nlist=4096    np=128   a=100.0  recall=0.9416   ivf=0.9430   rank_lost=0.0014   qps=33659     rc=0
+  vogue-768      Br=8   nlist=4096    np=32    a=200.0  recall=0.8615   ivf=0.8640   rank_lost=0.0025   qps=121984    rc=0
+  arxiv-768      Br=8   nlist=8192    np=32    a=200.0  recall=0.9255   ivf=0.9302   rank_lost=0.0047   qps=97808     rc=0
+  bge-m3         Br=8   nlist=32768   np=32    a=200.0  recall=0.8284   ivf=0.8302   rank_lost=0.0018   qps=83663     rc=0
+  stella         Br=8   nlist=32768   np=32    a=200.0  recall=0.9686   ivf=0.9718   rank_lost=0.0032   qps=79695     rc=0
+  openai3-1536   Br=8   nlist=8192    np=32    a=200.0  recall=0.8467   ivf=0.8485   rank_lost=0.0018   qps=76415     rc=0
+  openai3-3072   Br=8   nlist=4096    np=32    a=200.0  recall=0.8650   ivf=0.8657   rank_lost=0.0007   qps=32556     rc=0
+  vogue-768      Br=8   nlist=4096    np=128   a=200.0  recall=0.9642   ivf=0.9685   rank_lost=0.0043   qps=77808     rc=0
+  arxiv-768      Br=8   nlist=8192    np=128   a=200.0  recall=0.9771   ivf=0.9840   rank_lost=0.0069   qps=63134     rc=0
+  bge-m3         Br=8   nlist=32768   np=128   a=200.0  recall=0.9187   ivf=0.9211   rank_lost=0.0024   qps=55960     rc=0
+  stella         Br=8   nlist=32768   np=128   a=200.0  recall=0.9892   ivf=0.9931   rank_lost=0.0039   qps=47962     rc=0
+  openai3-1536   Br=8   nlist=8192    np=128   a=200.0  recall=0.9315   ivf=0.9336   rank_lost=0.0021   qps=62140     rc=0
+  openai3-3072   Br=8   nlist=4096    np=128   a=200.0  recall=0.9416   ivf=0.9430   rank_lost=0.0014   qps=24357     rc=0
+08:19:24 ########## 2. bge-m3 nlist ceiling at Br=4 ##########
+  bge-m3         Br=4   nlist=16384   np=32    a=100.0  recall=0.8322   ivf=0.8502   rank_lost=0.0180   qps=71748     rc=0
+  bge-m3         Br=4   nlist=16384   np=128   a=100.0  recall=0.9095   ivf=0.9349   rank_lost=0.0254   qps=37767     rc=0
+  bge-m3         Br=4   nlist=16384   np=512   a=100.0  recall=0.9480   ivf=0.9806   rank_lost=0.0326   qps=11200     rc=0
+  bge-m3         Br=4   nlist=32768   np=32    a=100.0  recall=0.8151   ivf=0.8302   rank_lost=0.0151   qps=77428     rc=0
+  bge-m3         Br=4   nlist=32768   np=128   a=100.0  recall=0.8975   ivf=0.9211   rank_lost=0.0236   qps=47462     rc=0
+  bge-m3         Br=4   nlist=32768   np=512   a=100.0  recall=0.9398   ivf=0.9704   rank_lost=0.0306   qps=18288     rc=0
+  bge-m3         Br=4   nlist=65536   np=32    a=100.0  recall=         ivf=         rank_lost=         qps=          rc=1
+      ! [res-train] residual codebook on 100000 vectors, whole-set (primary/IVF/sigma still from 2555904; rotated set would be 0.4 GB)
+      ! [res-train] subspaces 0-127: converged at 720 iterations, rel 0.000e+00, 0 boundaries moving, 0 cells empty
+  bge-m3         Br=4   nlist=65536   np=128   a=100.0  recall=         ivf=         rank_lost=         qps=          rc=1
+      ! CUDA error /root/JHQ_GPU/jhq_v47_split_lut/jhq_gpu_index.cu:2490  out of memory
+  bge-m3         Br=4   nlist=65536   np=512   a=100.0  recall=         ivf=         rank_lost=         qps=          rc=1
+      ! CUDA error /root/JHQ_GPU/jhq_v47_split_lut/jhq_gpu_index.cu:2490  out of memory
+  bge-m3         Br=4   nlist=131072  np=32    a=100.0  recall=         ivf=         rank_lost=         qps=          rc=1
+      ! CUDA error /root/JHQ_GPU/jhq_v47_split_lut/jhq_gpu_index.cu:953  out of memory
+  bge-m3         Br=4   nlist=131072  np=128   a=100.0  recall=         ivf=         rank_lost=         qps=          rc=1
+      ! CUDA error /root/JHQ_GPU/jhq_v47_split_lut/jhq_gpu_index.cu:953  out of memory
+  bge-m3         Br=4   nlist=131072  np=512   a=100.0  recall=         ivf=         rank_lost=         qps=          rc=1
+      ! CUDA error /root/JHQ_GPU/jhq_v47_split_lut/jhq_gpu_index.cu:953  out of memory
+08:23:04 === ALPHA6_DONE ===

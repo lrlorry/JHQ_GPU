@@ -25,13 +25,18 @@ say how to choose it; this project used 100 from its first run to its last.
 that as the reference, answer the same S at smaller α, and keep the smallest
 whose top-k still agrees to within a slot. No ground truth: it asks whether a
 smaller budget changes what is returned, not whether it changes recall.
-Stopping at the first rejection makes it one-sided — it can pick an α larger
-than needed, never smaller.
+Stopping at the first rejection makes it one-sided **with respect to its own
+criterion**: it cannot return less than the smallest α whose sampled top-k
+agrees to within a slot. That is weaker than "never smaller than needed" — the
+sample estimates the agreement the full batch would show, and the search is
+bounded above by α_max, so where the saturation point lies beyond α_max the
+rule returns α_max and cannot do otherwise. arxiv-768 is that case.
 
 | claim | number | file |
 |---|---|---|
 | worth 1.0× to 2.65× at equal recall, six datasets, nprobe 8–1024 | 72 runs, one build | `data/paper_fronts.log` |
-| recovers the swept saturation α | 7 of 8 configurations | `data/alpha_sample.log`, `data/alpha_fast.log` |
+| recovers the swept saturation α | 3 of 4 at nprobe=128; the 4th is arxiv-768, still improving past the rule's α_max | `data/alpha_sample.log`, `data/alpha6.log` |
+| the nprobe=512 rows are **withdrawn** — no sweep was run there, and the earlier table reused the nprobe=128 answer | — | `results/front6/ALPHA_RULE.md` |
 | recall cost | ≤0.003, except bge-m3 at nprobe=1024 (0.0048) | `data/paper_fronts.log` |
 | S=32 is the knee | S=8 picks α=2 on openai3-3072 and loses 0.0058 | `data/alpha_sample.log` |
 | one slot of tolerance is the knee | 0 slots leaves 26% on the table, 2 slots costs 0.0035 | `data/alpha_fast.log` |

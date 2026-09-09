@@ -55,6 +55,6 @@ b.text(0.03, 0.06, "(b) changes that did not", transform=b.transAxes,
        ha="left", fontsize=7.5)
 a.barh([], [], color="#1baf7a", alpha=0.35, hatch="//", edgecolor="#1baf7a",
        label="a correction, not a design")
-a.legend(loc="upper right", fontsize=6.5)
+a.legend(loc="upper right", fontsize=7)
 fig.tight_layout(pad=0.3)
 save(fig, "fig_ablation")

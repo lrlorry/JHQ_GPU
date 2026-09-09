@@ -21,13 +21,23 @@ batch at that alpha.
 Two properties matter. It needs **no ground truth** — it asks "would a smaller
 budget change what I return", which the system can see, not "would it change
 recall", which needs labels it does not have. And stopping at the first
-rejection makes it **one-sided**: it can pick an alpha larger than necessary,
-never smaller.
+rejection makes it **one-sided with respect to its own criterion**: it cannot
+return less than the smallest alpha whose sampled top-k agrees to within eps.
+
+That is a weaker statement than "never smaller than necessary", and the
+difference matters twice. The sample only estimates the agreement the full
+batch would show, so the criterion itself is noisy. And the search is bounded
+above by `alpha_max`, so where the true saturation point lies beyond it — as
+on arxiv-768 below — the rule returns `alpha_max` and cannot do otherwise.
 
 Agreement is set intersection per query, not position equality: the same
 neighbours in a different order are the same answer.
 
 ## Against the sweep, S = 32, eps = 0.001
+
+The sweep is `alpha6.log`, grid {4, 8, 16, 32, 64, 100, 200}, and "sweep says"
+is the smallest alpha whose ranking loss is within 3e-4 of the loss at the top
+of that grid. **It only exists at nprobe 32 and 128.**
 
 | dataset | nprobe | rule picks | sweep says | recall vs alpha_max | QPS gain |
 |---|---:|---:|---:|---:|---:|
@@ -35,16 +45,30 @@ neighbours in a different order are the same answer.
 | stella | 128 | **16** | **16** | −0.0003 | **1.27x** |
 | vogue-768 | 128 | **64** | **64** | −0.0002 | **1.26x** |
 | arxiv-768 | 128 | 100 | >200 | +0.0000 | 1.00x |
-| openai3-3072 | 512 | **4** | **4** | −0.0001 | **1.38x** |
-| stella | 512 | **16** | **16** | −0.0003 | 1.08x |
-| vogue-768 | 512 | 100 | 64 | +0.0000 | 1.00x |
-| arxiv-768 | 512 | 100 | >200 | +0.0000 | 1.00x |
 
-**Six of eight land on the value the sweep found.** The two that do not are
-both conservative — a larger alpha than needed, so no gain but no loss either,
-which is the direction the one-sided construction guarantees. The largest
-recall deviation is −0.0003, inside the 1e-3 floor that three cold-cache runs
-of one binary already established.
+**Three of four land on the value the sweep found.** The fourth is arxiv-768,
+and it is not the rule erring in either direction: its ranking loss is still
+falling at alpha=200 while the rule's own `alpha_max` is 100, so the
+saturation point is outside the range the rule can return. It returns 100 and
+reports no gain, which is the correct behaviour when the budget is already too
+small. The largest recall deviation is −0.0003, inside the 1e-3 floor that
+three cold-cache runs of one binary already established.
+
+### The nprobe=512 rows are withdrawn
+
+An earlier version of this table carried four more rows at nprobe=512 and gave
+them a "sweep says" column. **No sweep was run at nprobe=512 on those
+datasets** — the column reused the nprobe=128 value. The saturation point is a
+property of the operating point, not of the dataset: nprobe changes how many
+true neighbours are in the candidate pool at all, which is exactly what the
+refinement budget then has to sort. Reusing one nprobe's answer for another
+assumes the thing the table was supposed to be testing.
+
+What the nprobe=512 runs do still support, because it needs no sweep, is the
+gain: 1.38x on openai3-3072, 1.08x on stella, 1.00x on vogue-768 and
+arxiv-768, at recall deviations of −0.0001, −0.0003, +0.0000 and +0.0000. That
+is a statement about the rule against fixed alpha=100, which is measured, and
+not about the rule against the saturation point, which is not.
 
 ## How many samples
 
