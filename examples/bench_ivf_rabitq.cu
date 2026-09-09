@@ -127,6 +127,17 @@ int main(int argc, char** argv) {
     ip.n_lists      = n_lists;
     ip.bits_per_dim = bits;
     ip.metric       = static_cast<cuvs::distance::DistanceType>(metric_i);
+    // The k-means training set is materialised on the device as
+    // min(n_rows, max_train_points_per_cluster * n_lists) x dim floats. At
+    // nlist=32768 and the default 256 that is 8,388,608 x 1024 x 4 =
+    // 34,359,738,368 bytes, which is what stella and bge-m3 threw
+    // rmm::out_of_memory on -- the dataset streams past fine; the trainset
+    // does not. The library says as much in its own error handler.
+    if (const char* t = std::getenv("JHQ_RQ_TRAIN_PER_LIST"))
+        ip.max_train_points_per_cluster = (uint32_t)std::atoi(t);
+    if (std::getenv("JHQ_RQ_FORCE_STREAM")) ip.force_streaming = true;
+    std::printf("index_params: n_lists=%u bits_per_dim=%u train_per_list=%u\n",
+                ip.n_lists, ip.bits_per_dim, ip.max_train_points_per_cluster);
 
     // Build from device memory, not host.
     //
