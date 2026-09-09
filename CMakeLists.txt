@@ -1758,6 +1758,23 @@ target_compile_definitions(export_ivf_for_cpu PRIVATE
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
 target_link_libraries(export_ivf_for_cpu PRIVATE jhq_v58_exp)
 
+# The hierarchy ablation, on the build everything else is measured on.
+#
+# JHQ_NO_RESIDUAL drops the second level: primary codes only, no selective
+# refinement. results/pre_freeze_v22_s2b1/ has this, but on v21 -- before the
+# factorised table, the probe cursor, the word layout, the launch fix and the
+# alpha rule -- so its numbers cannot sit in the same table as the rest of
+# Section 6.
+#
+# It is the ablation Section 3 rests on: selective refinement, the alpha
+# budget and the two-level scan all presuppose that the second level earns its
+# place. Without this the motivation is asserted rather than measured.
+add_jhq_variant(v58_jq ${V58} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1
+    JHQ_NO_RESIDUAL=1)
+
 # A probe of the cluster-centric premise, before writing the kernel for it.
 #
 # Sharing one list's codes across the queries that probe it only pays if those
