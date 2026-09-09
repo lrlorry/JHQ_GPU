@@ -1,0 +1,269 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at b7b0d15 v56: the alpha rule without the three costs v55 measured
+04:39:20 HEAD b7b0d15 v56: the alpha rule without the three costs v55 measured
+-- Configuring done (0.1s)
+-- Generating done (0.8s)
+-- Build files have been written to: /root/JHQ_GPU/build
+[  0%] Built target jhq_cpu
+[  0%] Building CUDA object CMakeFiles/jhq_v56_exp.dir/jhq_v56_alpha_fast/encode.cu.o
+[  0%] Building CUDA object CMakeFiles/jhq_v56_exp.dir/jhq_v56_alpha_fast/jhq_gpu_index.cu.o
+[  0%] Building CUDA object CMakeFiles/jhq_v56_exp.dir/jhq_v56_alpha_fast/search.cu.o
+[  0%] Building CUDA object CMakeFiles/jhq_v56_exp.dir/jhq_v56_alpha_fast/train_pq_gpu.cu.o
+[  0%] Building CUDA object CMakeFiles/jhq_v56_exp.dir/jhq_v56_alpha_fast/train_res_gpu.cu.o
+In file included from /root/JHQ_GPU/jhq_v56_alpha_fast/encode.cu:13:
+/root/JHQ_GPU/common/cuda_utils.cuh:17: warning: "CUBLAS_CHECK" redefined
+   17 | #define CUBLAS_CHECK(call)                                                     \
+      | 
+/root/JHQ_GPU/jhq_v56_alpha_fast/encode.cu:9: note: this is the location of the previous definition
+    9 | #define CUBLAS_CHECK(x) do { cublasStatus_t _s = (x); if (_s != CUBLAS_STATUS_SUCCESS) { \
+      | 
+In file included from /root/JHQ_GPU/jhq_v56_alpha_fast/encode.cu:13:
+/root/JHQ_GPU/common/cuda_utils.cuh:17: warning: "CUBLAS_CHECK" redefined
+   17 | #define CUBLAS_CHECK(call)                                                     \
+      | 
+/root/JHQ_GPU/jhq_v56_alpha_fast/encode.cu:9: note: this is the location of the previous definition
+    9 | #define CUBLAS_CHECK(x) do { cublasStatus_t _s = (x); if (_s != CUBLAS_STATUS_SUCCESS) { \
+      | 
+/root/JHQ_GPU/jhq_v56_alpha_fast/search.cu(516): warning #177-D: variable "s_q" was declared but never referenced
+      float* s_q = s_suf + (0 ? (M + 1) : 0);
+             ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/jhq_v56_alpha_fast/search.cu(559): warning #177-D: variable "TILE_M" was declared but never referenced
+      const int TILE_M = tile_m;
+                ^
+
+/root/JHQ_GPU/jhq_v56_alpha_fast/train_res_gpu.cu(160): warning #177-D: function "jhq_gpu::<unnamed>::assign_accum_kernel" was declared but never referenced
+            void assign_accum_kernel(
+                 ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+[  0%] Linking CXX static library libjhq_v56_exp.a
+[  0%] Built target jhq_v56_exp
+[100%] Building CUDA object CMakeFiles/demo_jhq_alpha_fast.dir/examples/demo_jhq_alpha_fast.cu.o
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_fvecs(const char*, std::vector<float>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:13:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   13 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:26:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   26 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:27:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   27 |         fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_ivecs(const char*, std::vector<int>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:39:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   39 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:52:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   52 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:53:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   53 |         fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable demo_jhq_alpha_fast
+[100%] Built target demo_jhq_alpha_fast
+04:39:35 build_rc=0
+04:39:35 got the GPU
+04:39:35 ########## 1. bisect + no-graph + slots=1, the same eight cells as v55 ##########
+04:39:35 --- openai3-3072 nprobe=128 BLOCK=1024  JHQ_AS_SAMPLE=32 ---
+      alpha=16     miss=0      accept
+      alpha=4      miss=0      accept
+      alpha=2      miss=3      reject
+    picked alpha = 4   (3 probes, 56.8 ms)
+    picked     alpha=4      recall=0.9413  qps=82072  (12.18 ms)
+    alpha_max  alpha=100    recall=0.9413  qps=40945  (24.42 ms)
+    AF_RESULT picked=4 probes=3 recall_picked=0.9413 qps_picked=82072 recall_max=0.9413 qps_max=40945 gain=2.004 cal_ms=56.8 batches_to_repay=4.6
+04:39:46 rc=0
+04:39:46 --- stella nprobe=128 BLOCK=512  JHQ_AS_SAMPLE=32 ---
+      alpha=16     miss=0      accept
+      alpha=4      miss=3      reject
+      alpha=8      miss=2      reject
+    picked alpha = 16   (3 probes, 27.3 ms)
+    picked     alpha=16     recall=0.9891  qps=110136  (9.07 ms)
+    alpha_max  alpha=100    recall=0.9894  qps=86252  (11.58 ms)
+    AF_RESULT picked=16 probes=3 recall_picked=0.9891 qps_picked=110136 recall_max=0.9894 qps_max=86252 gain=1.277 cal_ms=27.3 batches_to_repay=10.9
+04:40:43 rc=0
+04:40:43 --- vogue-768 nprobe=128 BLOCK=512  JHQ_AS_SAMPLE=32 ---
+      alpha=16     miss=7      reject
+      alpha=64     miss=0      accept
+      alpha=32     miss=2      reject
+    picked alpha = 64   (3 probes, 16.5 ms)
+    picked     alpha=64     recall=0.9647  qps=168916  (5.92 ms)
+    alpha_max  alpha=100    recall=0.9649  qps=137680  (7.26 ms)
+    AF_RESULT picked=64 probes=3 recall_picked=0.9647 qps_picked=168916 recall_max=0.9649 qps_max=137680 gain=1.227 cal_ms=16.5 batches_to_repay=12.3
+04:40:47 rc=0
+04:40:47 --- arxiv-768 nprobe=128 BLOCK=512  JHQ_AS_SAMPLE=32 ---
+      alpha=16     miss=17     reject
+      alpha=64     miss=2      reject
+    picked alpha = 100   (2 probes, 12.6 ms)
+    picked     alpha=100    recall=0.9768  qps=122425  (8.17 ms)
+    alpha_max  alpha=100    recall=0.9768  qps=122663  (8.15 ms)
+    AF_RESULT picked=100 probes=2 recall_picked=0.9768 qps_picked=122425 recall_max=0.9768 qps_max=122663 gain=0.998 cal_ms=12.6 batches_to_repay=-1.0
+04:40:52 rc=0
+04:40:52 --- openai3-3072 nprobe=512 BLOCK=1024  JHQ_AS_SAMPLE=32 ---
+      alpha=16     miss=0      accept
+      alpha=4      miss=0      accept
+      alpha=2      miss=3      reject
+    picked alpha = 4   (3 probes, 146.6 ms)
+    picked     alpha=4      recall=0.9814  qps=27335  (36.58 ms)
+    alpha_max  alpha=100    recall=0.9815  qps=19882  (50.30 ms)
+    AF_RESULT picked=4 probes=3 recall_picked=0.9814 qps_picked=27335 recall_max=0.9815 qps_max=19882 gain=1.375 cal_ms=146.6 batches_to_repay=10.7
+04:41:10 rc=0
+04:41:10 --- stella nprobe=512 BLOCK=512  JHQ_AS_SAMPLE=32 ---
+      alpha=16     miss=0      accept
+      alpha=4      miss=3      reject
+      alpha=8      miss=2      reject
+    picked alpha = 16   (3 probes, 92.8 ms)
+    picked     alpha=16     recall=0.9947  qps=30421  (32.84 ms)
+    alpha_max  alpha=100    recall=0.9950  qps=28076  (35.58 ms)
+    AF_RESULT picked=16 probes=3 recall_picked=0.9947 qps_picked=30421 recall_max=0.9950 qps_max=28076 gain=1.084 cal_ms=92.8 batches_to_repay=33.9
+04:41:52 rc=0
+04:41:52 --- vogue-768 nprobe=512 BLOCK=512  JHQ_AS_SAMPLE=32 ---
+      alpha=16     miss=9      reject
+      alpha=64     miss=1      accept
+      alpha=32     miss=2      reject
+    picked alpha = 64   (3 probes, 33.7 ms)
+    picked     alpha=64     recall=0.9908  qps=84399  (11.85 ms)
+    alpha_max  alpha=100    recall=0.9911  qps=75396  (13.26 ms)
+    AF_RESULT picked=64 probes=3 recall_picked=0.9908 qps_picked=84399 recall_max=0.9911 qps_max=75396 gain=1.119 cal_ms=33.7 batches_to_repay=23.8
+04:41:54 rc=0
+04:41:54 --- arxiv-768 nprobe=512 BLOCK=512  JHQ_AS_SAMPLE=32 ---
+      alpha=16     miss=19     reject
+      alpha=64     miss=5      reject
+    picked alpha = 100   (2 probes, 30.5 ms)
+    picked     alpha=100    recall=0.9884  qps=62550  (15.99 ms)
+    alpha_max  alpha=100    recall=0.9884  qps=62609  (15.97 ms)
+    AF_RESULT picked=100 probes=2 recall_picked=0.9884 qps_picked=62550 recall_max=0.9884 qps_max=62609 gain=0.999 cal_ms=30.5 batches_to_repay=-1.0
+04:42:01 rc=0
+04:42:01 ########## 2. what each of the three fixes is worth, on two datasets ##########
+04:42:01 --- openai3-3072 nprobe=128 BLOCK=1024  JHQ_AS_SAMPLE=32 JHQ_AS_LINEAR=1 JHQ_AS_SLOTS=0 ---
+      alpha=64     miss=0      accept
+      alpha=32     miss=0      accept
+      alpha=16     miss=0      accept
+      alpha=8      miss=0      accept
+      alpha=4      miss=0      accept
+      alpha=2      miss=3      reject -> stop
+    picked alpha = 4   (6 probes, 98.3 ms)
+    picked     alpha=4      recall=0.9413  qps=81798  (12.23 ms)
+    alpha_max  alpha=100    recall=0.9413  qps=40744  (24.54 ms)
+    AF_RESULT picked=4 probes=6 recall_picked=0.9413 qps_picked=81798 recall_max=0.9413 qps_max=40744 gain=2.008 cal_ms=98.3 batches_to_repay=8.0
+04:42:09 rc=0
+04:42:09 --- vogue-768 nprobe=512 BLOCK=512  JHQ_AS_SAMPLE=32 JHQ_AS_LINEAR=1 JHQ_AS_SLOTS=0 ---
+      alpha=64     miss=1      reject -> stop
+    picked alpha = 100   (1 probes, 18.7 ms)
+    picked     alpha=100    recall=0.9910  qps=74073  (13.50 ms)
+    alpha_max  alpha=100    recall=0.9910  qps=73457  (13.61 ms)
+    AF_RESULT picked=100 probes=1 recall_picked=0.9910 qps_picked=74073 recall_max=0.9910 qps_max=73457 gain=1.008 cal_ms=18.7 batches_to_repay=164.8
+04:42:11 rc=0
+04:42:11 --- openai3-3072 nprobe=128 BLOCK=1024  JHQ_AS_SAMPLE=32 JHQ_AS_LINEAR=1 JHQ_AS_SLOTS=1 ---
+      alpha=64     miss=0      accept
+      alpha=32     miss=0      accept
+      alpha=16     miss=0      accept
+      alpha=8      miss=0      accept
+      alpha=4      miss=0      accept
+      alpha=2      miss=3      reject -> stop
+    picked alpha = 4   (6 probes, 98.8 ms)
+    picked     alpha=4      recall=0.9413  qps=81755  (12.23 ms)
+    alpha_max  alpha=100    recall=0.9413  qps=41052  (24.36 ms)
+    AF_RESULT picked=4 probes=6 recall_picked=0.9413 qps_picked=81755 recall_max=0.9413 qps_max=41052 gain=1.991 cal_ms=98.8 batches_to_repay=8.1
+04:42:17 rc=0
+04:42:17 --- vogue-768 nprobe=512 BLOCK=512  JHQ_AS_SAMPLE=32 JHQ_AS_LINEAR=1 JHQ_AS_SLOTS=1 ---
+      alpha=64     miss=1      accept
+      alpha=32     miss=2      reject -> stop
+    picked alpha = 64   (2 probes, 26.5 ms)
+    picked     alpha=64     recall=0.9908  qps=84923  (11.78 ms)
+    alpha_max  alpha=100    recall=0.9911  qps=74725  (13.38 ms)
+    AF_RESULT picked=64 probes=2 recall_picked=0.9908 qps_picked=84923 recall_max=0.9911 qps_max=74725 gain=1.136 cal_ms=26.5 batches_to_repay=16.5
+04:42:19 rc=0
+04:42:19 --- openai3-3072 nprobe=128 BLOCK=1024  JHQ_AS_SAMPLE=32 JHQ_AS_SLOTS=0 ---
+      alpha=16     miss=0      accept
+      alpha=4      miss=0      accept
+      alpha=2      miss=3      reject
+    picked alpha = 4   (3 probes, 57.2 ms)
+    picked     alpha=4      recall=0.9413  qps=81642  (12.25 ms)
+    alpha_max  alpha=100    recall=0.9413  qps=40744  (24.54 ms)
+    AF_RESULT picked=4 probes=3 recall_picked=0.9413 qps_picked=81642 recall_max=0.9413 qps_max=40744 gain=2.004 cal_ms=57.2 batches_to_repay=4.7
+04:42:25 rc=0
+04:42:25 --- vogue-768 nprobe=512 BLOCK=512  JHQ_AS_SAMPLE=32 JHQ_AS_SLOTS=0 ---
+      alpha=16     miss=9      reject
+      alpha=64     miss=1      reject
+    picked alpha = 100   (2 probes, 26.2 ms)
+    picked     alpha=100    recall=0.9910  qps=74551  (13.41 ms)
+    alpha_max  alpha=100    recall=0.9910  qps=74096  (13.50 ms)
+    AF_RESULT picked=100 probes=2 recall_picked=0.9910 qps_picked=74551 recall_max=0.9910 qps_max=74096 gain=1.006 cal_ms=26.2 batches_to_repay=318.3
+04:42:28 rc=0
+04:42:28 --- openai3-3072 nprobe=128 BLOCK=1024  JHQ_AS_SAMPLE=32 JHQ_AS_SLOTS=2 ---
+      alpha=16     miss=0      accept
+      alpha=4      miss=0      accept
+      alpha=2      miss=3      reject
+    picked alpha = 4   (3 probes, 57.1 ms)
+    picked     alpha=4      recall=0.9413  qps=82061  (12.19 ms)
+    alpha_max  alpha=100    recall=0.9413  qps=40921  (24.44 ms)
+    AF_RESULT picked=4 probes=3 recall_picked=0.9413 qps_picked=82061 recall_max=0.9413 qps_max=40921 gain=2.005 cal_ms=57.1 batches_to_repay=4.7
+04:42:34 rc=0
+04:42:34 --- vogue-768 nprobe=512 BLOCK=512  JHQ_AS_SAMPLE=32 JHQ_AS_SLOTS=2 ---
+      alpha=16     miss=9      reject
+      alpha=64     miss=1      accept
+      alpha=32     miss=2      accept
+    picked alpha = 32   (3 probes, 33.6 ms)
+    picked     alpha=32     recall=0.9876  qps=95340  (10.49 ms)
+    alpha_max  alpha=100    recall=0.9911  qps=75150  (13.31 ms)
+    AF_RESULT picked=32 probes=3 recall_picked=0.9876 qps_picked=95340 recall_max=0.9911 qps_max=75150 gain=1.269 cal_ms=33.6 batches_to_repay=11.9
+04:42:36 rc=0
+04:42:36 === AF_DONE ===
