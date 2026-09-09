@@ -251,3 +251,47 @@ in its workspace.
 Write this as the trade it is. **Do not write that JHQ is more memory
 efficient** -- it is not, and a reviewer who counts bits will see it in a
 minute.
+
+---
+
+## 9. A defect in our own coarse quantiser on vogue-768  ▸ found, not fixed
+
+Exporting the IVF for the CPU reference printed a list histogram, and vogue-768
+has one list holding **135,489 of 932,328 vectors — 14.5%**, against a mean of
+227.6 and a 99th percentile of 839. The next four hold another 7.5%. No other
+dataset is close: the largest list is 0.01% on stella, 0.06% on arxiv-768 and
+openai3-1536, 0.11% on openai3-3072, 0.28% on bge-m3.
+
+**It is not duplicate data.** Sampling 20,000 vectors from that list gives
+19,966 distinct, the same rate as 20,000 sampled from the whole base. All
+vectors are unit norm, and the list's members sit at mean cosine 0.623 to
+their own centroid -- a broad cone, not a tight cluster. One centroid has
+absorbed a diffuse region, which is what an under-trained or badly initialised
+k-means does.
+
+All six datasets train the coarse quantiser at the same ratio, 39 points per
+centroid, so the budget alone does not explain it; vogue-768's distribution
+and that budget together do.
+
+### Why it matters for the numbers already taken
+
+A query that probes this list scans 135,489 candidates where the expected
+total for the whole query is `nprobe * mean = 128 * 227.6 = 29,133`. **One
+list is five times the intended candidate budget.**
+
+So vogue-768's throughput figures are pessimistic for JHQ, and the comparison
+against IVF-RaBitQ on that dataset is unfair in our own disfavour: cuVS trains
+its own coarse quantiser and does not inherit this. That is worth stating
+plainly rather than leaving as an unexplained weak column -- vogue-768 is
+where JHQ trails IVF-RaBitQ most at small batch (0.48x at batch 32) and where
+the alpha rule's gain decays fastest.
+
+### What would settle it
+
+Retrain vogue-768's IVF with more points per centroid and re-measure that
+column. That needs the GPU, which was released before this was found. Until
+then the honest treatment is a footnote on the vogue-768 row, not a silent
+number.
+
+Evidence: `data/export_ivf.log`, and the histogram is reproducible from
+`<cpu_baseline>/vogue-768/vogue-768_cluster_id_4096.ivecs`.
