@@ -160,7 +160,7 @@ far more often than it does for real queries.
 |---|---|---|
 | IVF-RaBitQ VRAM | its bits per dimension say 11% under JHQ; the measured figure is not captured | one run, queued |
 | Where the high-recall gap comes from | bytes, α, cache reuse and LUT divergence are each measured and each too small; the selection stage at high nprobe is the one untested candidate | the v42 split predates v47's factorised table and cannot run at this M and BLOCK; needs porting forward |
-| CPU baseline protocol | `max_iter`, `max_train_n`, thread pinning in `JHQ_repro` | not started; that repo is untouched |
+| CPU baseline protocol | three changes in `JHQ_repro`, listed below | not started |
 | Recall ties in the selection | `jhq_compact_topck` compares distance alone, which is the 1e-4 wobble between builds | not started |
 
 ---
@@ -295,3 +295,46 @@ number.
 
 Evidence: `data/export_ivf.log`, and the histogram is reproducible from
 `<cpu_baseline>/vogue-768/vogue-768_cluster_id_4096.ivecs`.
+
+---
+
+## 10. The CPU baseline: what it is, and the three changes it needs
+
+`results/cpu_baseline/README.md` settled this before this session began, and
+re-deriving it cost hours that should not have been spent. Copied here as
+`data/cpu_baseline_artifact_note.md`.
+
+**The authors' artifact cannot be built.** Four defects, each sufficient alone
+-- a `.gitmodules` path that does not match the tree and carries no gitlink, so
+FAISS can never be fetched; AVX intrinsics in three files without
+`<immintrin.h>`; no architecture flags anywhere; examples constructing classes
+that are unrelated in the shipped headers. Then, with those worked around, it
+needs FAISS headers introduced after 1.9.0 together with an
+`InvertedListScanner` interface retired before them. Nothing pins a version and
+the API points two ways at once.
+
+**That does not leave the paper without a CPU baseline.** Every CPU number in
+`results/jhq_cpu_ivf_*.csv` -- six datasets -- comes from `JHQ_repro`, a
+from-scratch C++17 reimplementation that builds, implements equation 4 as the
+paper states it, and shares `train_1d_kmeans`'s lineage with `cpu/` here. As a
+baseline it is sound and its protocol can at least be stated, which the
+authors' cannot.
+
+**What is wrong is only the protocol.** `src/jhq_ivf_index.cpp:96` calls
+`train_1d_kmeans` without `max_iter`, taking the header default of **25** --
+which `results/v34_lloyd_iterations/` measures as 6-8e-3 of recall short of the
+2000 the GPU side uses. The recorded 238.55 s on stella therefore describes a
+25-iteration codebook against GPU rows describing a 2000-iteration one.
+
+Three changes, and the comparison is CPU against GPU and nothing else:
+
+1. pass `max_iter=2000` at `src/jhq_ivf_index.cpp:96`;
+2. match the residual training-set size to the GPU side;
+3. pin the thread count -- `results/` records 32 threads beating 208 by 1.9x on
+   this host, so an unpinned column measures how busy the machine was.
+
+`JHQ_repro` builds without FAISS and the datasets are already in place, so this
+is an afternoon, not a port. The centroid export written this session
+(`examples/export_ivf_for_cpu.cu`) is not needed for it -- that was for the
+authors' artifact, which reads its IVF from files. `JHQ_repro` trains its own,
+so matching `max_train_n` is what aligns the routing there.
