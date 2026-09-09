@@ -1,0 +1,82 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at f54e540 v54 measured: the identity holds, and it costs 30 to 52%
+23:39:16 HEAD f54e540 v54 measured: the identity holds, and it costs 30 to 52%
+[  0%] Built target jhq_cpu
+[100%] Built target jhq_v53_x1
+[100%] Built target demo_jhq_v53_x1
+23:39:16 build_rc=0
+23:39:16 got the GPU
+23:39:16 ########## 1. alpha, measured clean at Ds=8 (1 bit/dim) ##########
+  vogue-768      M=96   bpd=1    np=128   a=4.0    recall=0.8829   qps=239139    rc=0
+  arxiv-768      M=96   bpd=1    np=128   a=4.0    recall=0.8108   qps=245221    rc=0
+  stella         M=128  bpd=1    np=128   a=4.0    recall=0.9737   qps=111265    rc=0
+  openai3-3072   M=384  bpd=1    np=128   a=4.0    recall=0.9413   qps=81643     rc=0
+  vogue-768      M=96   bpd=1    np=512   a=4.0    recall=0.9007   qps=100050    rc=0
+  arxiv-768      M=96   bpd=1    np=512   a=4.0    recall=0.8121   qps=88757     rc=0
+  stella         M=128  bpd=1    np=512   a=4.0    recall=0.9785   qps=30602     rc=0
+  openai3-3072   M=384  bpd=1    np=512   a=4.0    recall=0.9814   qps=27408     rc=0
+  vogue-768      M=96   bpd=1    np=128   a=8.0    recall=0.9318   qps=236579    rc=0
+  arxiv-768      M=96   bpd=1    np=128   a=8.0    recall=0.8949   qps=263418    rc=0
+  stella         M=128  bpd=1    np=128   a=8.0    recall=0.9867   qps=111604    rc=0
+  openai3-3072   M=384  bpd=1    np=128   a=8.0    recall=0.9413   qps=81988     rc=0
+  vogue-768      M=96   bpd=1    np=512   a=8.0    recall=0.9535   qps=99494     rc=0
+  arxiv-768      M=96   bpd=1    np=512   a=8.0    recall=0.8981   qps=88038     rc=0
+  stella         M=128  bpd=1    np=512   a=8.0    recall=0.9921   qps=30578     rc=0
+  openai3-3072   M=384  bpd=1    np=512   a=8.0    recall=0.9815   qps=27379     rc=0
+  vogue-768      M=96   bpd=1    np=128   a=16.0   recall=0.9543   qps=229781    rc=0
+  arxiv-768      M=96   bpd=1    np=128   a=16.0   recall=0.9422   qps=252465    rc=0
+  stella         M=128  bpd=1    np=128   a=16.0   recall=0.9891   qps=108849    rc=0
+  openai3-3072   M=384  bpd=1    np=128   a=16.0   recall=0.9413   qps=77045     rc=0
+  vogue-768      M=96   bpd=1    np=512   a=16.0   recall=0.9789   qps=99516     rc=0
+  arxiv-768      M=96   bpd=1    np=512   a=16.0   recall=0.9490   qps=86844     rc=0
+  stella         M=128  bpd=1    np=512   a=16.0   recall=0.9947   qps=30381     rc=0
+  openai3-3072   M=384  bpd=1    np=512   a=16.0   recall=0.9815   qps=26822     rc=0
+  vogue-768      M=96   bpd=1    np=128   a=32.0   recall=0.9624   qps=207230    rc=0
+  arxiv-768      M=96   bpd=1    np=128   a=32.0   recall=0.9652   qps=213972    rc=0
+  stella         M=128  bpd=1    np=128   a=32.0   recall=0.9894   qps=105007    rc=0
+  openai3-3072   M=384  bpd=1    np=128   a=32.0   recall=0.9413   qps=71281     rc=0
+  vogue-768      M=96   bpd=1    np=512   a=32.0   recall=0.9876   qps=92927     rc=0
+  arxiv-768      M=96   bpd=1    np=512   a=32.0   recall=0.9742   qps=81328     rc=0
+  stella         M=128  bpd=1    np=512   a=32.0   recall=0.9950   qps=30098     rc=0
+  openai3-3072   M=384  bpd=1    np=512   a=32.0   recall=0.9815   qps=26099     rc=0
+  vogue-768      M=96   bpd=1    np=128   a=100.0  recall=0.9648   qps=136112    rc=0
+  arxiv-768      M=96   bpd=1    np=128   a=100.0  recall=0.9768   qps=121316    rc=0
+  stella         M=128  bpd=1    np=128   a=100.0  recall=0.9894   qps=86356     rc=0
+  openai3-3072   M=384  bpd=1    np=128   a=100.0  recall=0.9413   qps=40916     rc=0
+  vogue-768      M=96   bpd=1    np=512   a=100.0  recall=0.9911   qps=74658     rc=0
+  arxiv-768      M=96   bpd=1    np=512   a=100.0  recall=0.9884   qps=62550     rc=0
+  stella         M=128  bpd=1    np=512   a=100.0  recall=0.9950   qps=28250     rc=0
+  openai3-3072   M=384  bpd=1    np=512   a=100.0  recall=0.9815   qps=19878     rc=0
+23:51:14 ########## 2. Ds=4 (2 bit/dim), M = d/4 ##########
+  vogue-768      M=192  bpd=2    np=128   a=4.0    recall=0.9573   qps=141518    rc=0
+  arxiv-768      M=192  bpd=2    np=128   a=4.0    recall=0.9615   qps=161028    rc=0
+  stella         M=256  bpd=2    np=128   a=4.0    recall=0.9893   qps=62353     rc=0
+  vogue-768      M=192  bpd=2    np=512   a=4.0    recall=0.9816   qps=52351     rc=0
+  arxiv-768      M=192  bpd=2    np=512   a=4.0    recall=0.9718   qps=47992     rc=0
+  stella         M=256  bpd=2    np=512   a=4.0    recall=0.9950   qps=16339     rc=0
+  vogue-768      M=192  bpd=2    np=128   a=8.0    recall=0.9631   qps=140093    rc=0
+  arxiv-768      M=192  bpd=2    np=128   a=8.0    recall=0.9756   qps=156996    rc=0
+  stella         M=256  bpd=2    np=128   a=8.0    recall=0.9897   qps=62369     rc=0
+  vogue-768      M=192  bpd=2    np=512   a=8.0    recall=0.9890   qps=52505     rc=0
+  arxiv-768      M=192  bpd=2    np=512   a=8.0    recall=0.9877   qps=47766     rc=0
+  stella         M=256  bpd=2    np=512   a=8.0    recall=0.9954   qps=16311     rc=0
+  vogue-768      M=192  bpd=2    np=128   a=16.0   recall=0.9635   qps=135513    rc=0
+  arxiv-768      M=192  bpd=2    np=128   a=16.0   recall=0.9793   qps=153824    rc=0
+  stella         M=256  bpd=2    np=128   a=16.0   recall=0.9897   qps=61715     rc=0
+  vogue-768      M=192  bpd=2    np=512   a=16.0   recall=0.9896   qps=52035     rc=0
+  arxiv-768      M=192  bpd=2    np=512   a=16.0   recall=0.9917   qps=47175     rc=0
+  stella         M=256  bpd=2    np=512   a=16.0   recall=0.9954   qps=16266     rc=0
+  vogue-768      M=192  bpd=2    np=128   a=32.0   recall=0.9638   qps=132404    rc=0
+  arxiv-768      M=192  bpd=2    np=128   a=32.0   recall=0.9796   qps=145846    rc=0
+  stella         M=256  bpd=2    np=128   a=32.0   recall=0.9897   qps=59916     rc=0
+  vogue-768      M=192  bpd=2    np=512   a=32.0   recall=0.9897   qps=50113     rc=0
+  arxiv-768      M=192  bpd=2    np=512   a=32.0   recall=0.9923   qps=46532     rc=0
+  stella         M=256  bpd=2    np=512   a=32.0   recall=0.9954   qps=16141     rc=0
+  vogue-768      M=192  bpd=2    np=128   a=100.0  recall=0.9637   qps=106187    rc=0
+  arxiv-768      M=192  bpd=2    np=128   a=100.0  recall=0.9796   qps=106288    rc=0
+  stella         M=256  bpd=2    np=128   a=100.0  recall=0.9897   qps=53018     rc=0
+  vogue-768      M=192  bpd=2    np=512   a=100.0  recall=0.9898   qps=46391     rc=0
+  arxiv-768      M=192  bpd=2    np=512   a=100.0  recall=0.9923   qps=39789     rc=0
+  stella         M=256  bpd=2    np=512   a=100.0  recall=0.9954   qps=15542     rc=0
+23:56:21 === V55_DONE ===

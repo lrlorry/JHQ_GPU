@@ -1,0 +1,40 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at 5277d94 Sweep alpha clean, and the one Eq.4 parameter never swept: Ds=4
+00:23:55 HEAD 5277d94 Sweep alpha clean, and the one Eq.4 parameter never swept: Ds=4
+[  0%] Built target jhq_cpu
+[100%] Built target jhq_v53_x1
+[100%] Built target demo_jhq_v53_x1
+00:23:56 build_rc=0
+00:23:56 got the GPU
+00:23:56 ########## 1. openai3-1536, never re-measured ##########
+  openai3-1536   M=192  np=32    a=8.0    recall=0.8469   qps=381169    rc=0
+  openai3-1536   M=192  np=32    a=32.0   recall=0.8469   qps=301529    rc=0
+  openai3-1536   M=192  np=32    a=100.0  recall=0.8469   qps=153218    rc=0
+  openai3-1536   M=192  np=128   a=8.0    recall=0.9317   qps=248648    rc=0
+  openai3-1536   M=192  np=128   a=32.0   recall=0.9317   qps=207001    rc=0
+  openai3-1536   M=192  np=128   a=100.0  recall=0.9317   qps=122451    rc=0
+  openai3-1536   M=192  np=256   a=8.0    recall=0.9551   qps=170096    rc=0
+  openai3-1536   M=192  np=256   a=32.0   recall=0.9551   qps=149229    rc=0
+  openai3-1536   M=192  np=256   a=100.0  recall=0.9551   qps=97572     rc=0
+  openai3-1536   M=192  np=512   a=8.0    recall=0.9751   qps=95546     rc=0
+  openai3-1536   M=192  np=512   a=32.0   recall=0.9751   qps=88326     rc=0
+  openai3-1536   M=192  np=512   a=100.0  recall=0.9751   qps=66111     rc=0
+  openai3-1536   M=192  np=1024  a=8.0    recall=0.9868   qps=57851     rc=0
+  openai3-1536   M=192  np=1024  a=32.0   recall=0.9868   qps=55254     rc=0
+  openai3-1536   M=192  np=1024  a=100.0  recall=0.9868   qps=44686     rc=0
+00:25:10 ########## 2. fill the nprobe gaps ##########
+  vogue-768      M=96   np=256   a=16.0   recall=0.9708   qps=152624    rc=0
+  vogue-768      M=96   np=1024  a=16.0   recall=0.9809   qps=69060     rc=0
+  vogue-768      M=96   np=256   a=32.0   recall=0.9793   qps=140482    rc=0
+  vogue-768      M=96   np=1024  a=32.0   recall=0.9900   qps=66465     rc=0
+  vogue-768      M=96   np=256   a=100.0  recall=0.9827   qps=105332    rc=0
+  vogue-768      M=96   np=1024  a=100.0  recall=0.9936   qps=57944     rc=0
+  arxiv-768      M=96   np=256   a=32.0   recall=0.9718   qps=142222    rc=0
+  arxiv-768      M=96   np=1024  a=32.0   recall=0.9747   qps=49473     rc=0
+  arxiv-768      M=96   np=256   a=100.0  recall=0.9850   qps=93909     rc=0
+  arxiv-768      M=96   np=1024  a=100.0  recall=0.9897   qps=41794     rc=0
+  openai3-3072   M=384  np=256   a=8.0    recall=0.9646   qps=49744     rc=0
+  openai3-3072   M=384  np=256   a=32.0   recall=0.9646   qps=45602     rc=0
+  openai3-3072   M=384  np=256   a=100.0  recall=0.9646   qps=30066     rc=0
+00:26:05 === FPG_DONE ===
