@@ -1,4 +1,28 @@
-# The reference artifact does not build
+# The reference artifact builds, but not as documented
+
+**Correction (2026-09-10).** The original heading here said the artifact does
+not build. That is wrong, and it cost hours: `JHQ_official/jhq/build_mac/`
+already contains `jhqlib/libjhq.a`, `external/faiss/faiss/libfaiss.a` and a
+working `examples/bench_vogue768`. Its CMakeCache records how:
+
+```
+CMAKE_CXX_COMPILER = /usr/bin/clang++        not GCC 14
+CMAKE_CXX_FLAGS    = -mavx2 -mno-avx512f -mno-avx512vl -mno-avx512bw -mno-avx512dq
+FAISS               placed into jhq/external/faiss by hand
+```
+
+So defects 1-3 below are real but each has a workaround, and the version
+deadlock in the last section applies to the parts `bench_vogue768` does not
+reach. What does not build is `demo_jhq_test` and `demo_ivfjhq_test`, the two
+examples in defect 4. `bench_vogue768` takes base/query/gt on the command line,
+sweeps nprobe and prints Recall@10 and QPS against the authors\' own
+`IndexIVFJHQ`, which is what a CPU baseline needs.
+
+The rest of this file is the original write-up and remains accurate about what
+goes wrong out of the box.
+
+---
+
 
 The CPU baseline in `results/` (238.55 s on stella) comes from `~/JHQ_repro`,
 which is not the paper's code, at settings that were never recorded. Replacing
@@ -64,8 +88,10 @@ inferred from the API, and the API points two ways at once.
 
 ## What this means for the paper
 
-**The authors' artifact cannot be run. That does not leave the paper without a
-CPU baseline.**
+**The authors' artifact runs once FAISS is placed by hand and `-mavx2` and
+`-include immintrin.h` are supplied -- see the correction at the top. Use it.**
+`JHQ_repro` remains a sound fallback, but it is our own reimplementation, and a
+baseline one wrote oneself is worth less in a paper than the authors\' code.
 
 `JHQ_repro` (`github.com/lrlorry/JHQ_repro`) is a from-scratch C++17
 reimplementation, it builds, and every CPU number in `results/` came from it. It
