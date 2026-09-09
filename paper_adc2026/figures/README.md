@@ -15,7 +15,8 @@ the text.
 | `fig_alpha.py` | ranking loss vs alpha; what the rule is worth | 6.3 | `alpha6.log`, `paper_fronts.log` |
 | `fig_batch.py` | throughput and the JHQ/RaBitQ ratio against batch | 6.6 | `batch_sweep.log` |
 | `fig_ablation.py` | what paid, and what did not | 6.4, 6.5 | ranges from `NEGATIVES.md` and the version logs |
-| `fig_calibration.py` | the rule against the sweep; sample size; tolerance | 6.3 | `alpha_sample.log`, `alpha6.log`, `alpha_fast.log` |
+| `fig_calibration.py` | the rule against the sweep; sample size; tolerance | 6.3.2 | `alpha_sample.log`, `alpha6.log`, `alpha_fast.log` |
+| `fig_economics.py` | what the calibration costs, and when it is repaid | 6.3.3 | `paper_fronts.log` |
 | `fig_negatives.py` | the table-free distance, and reuse as a controlled proxy | 6.5 | `v54.log`, `qdup.log`, `qdup_stella.log` |
 | `fig_hierarchy.py` | what the second level buys | 6.4 | `hierarchy_ablation.log`, `paper_fronts.log` |
 | `fig_cost.py` | resident memory, and build time | 6.7 | `vram.log`, `paper_fronts.log` |
@@ -44,6 +45,17 @@ applies to every figure at once.
 - **Nothing is shaded to mean "cannot".** A curve stops where its sweep
   stopped. The only claims of the form "cannot" in these figures are the two
   allocation failures, and they are stated in words.
+- **One hue and one marker per dataset, from `DS_COLOR`/`DS_MARK`**, so a
+  dataset never changes colour between figures. The six were validated as a
+  categorical palette: lightness band, chroma floor and normal-vision
+  separation pass. Two results constrain use rather than the palette --
+  openai3-1536 and openai3-3072 separate by only \u0394E 7.2 under protanopia,
+  which is legal only because every series also carries a marker, so never
+  drop the markers; and bge-m3 is at 2.74:1 against the surface, so a figure
+  leaning on it needs a visible label rather than a legend swatch alone.
+- **A sentinel is not a quantity.** `batches_to_repay` is -1 in the log when
+  the gain is below one. `fig_economics` draws those above a rule instead of
+  plotting them, because "never" has no position on a log axis.
 
 ## Editing
 

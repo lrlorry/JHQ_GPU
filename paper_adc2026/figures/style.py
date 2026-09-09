@@ -56,6 +56,22 @@ S = {
 }
 DATASETS = ["vogue-768", "arxiv-768", "bge-m3", "stella",
             "openai3-1536", "openai3-3072"]
+
+# One hue and one marker per dataset, in DATASETS order, used by every figure
+# that plots datasets as series -- the same dataset must not change colour
+# between figures. Validated as a categorical palette against a light surface:
+# lightness band, chroma floor and normal-vision separation all pass. Two
+# results shape how it must be used:
+#
+#   * openai3-1536 and openai3-3072 (#e34948, #008300) separate by only
+#     dE 7.2 under protanopia -- the 6-8 floor band, which is legal only with
+#     a secondary encoding. The markers are that encoding, so never drop them.
+#   * bge-m3 (#1baf7a) sits at 2.74:1 against the surface, under the 3:1 bar,
+#     so a figure that leans on it needs a visible label, not a legend swatch
+#     alone.
+DS_COLOR = dict(zip(DATASETS, ["#2a78d6", "#eb6834", "#1baf7a",
+                               "#4a3aa7", "#e34948", "#008300"]))
+DS_MARK = dict(zip(DATASETS, ["o", "s", "^", "D", "x", "v"]))
 PRETTY = {"vogue-768": "vogue-768", "arxiv-768": "arxiv-768", "bge-m3": "bge-m3",
           "stella": "stella-trec24", "openai3-1536": "openai3-1536",
           "openai3-3072": "openai3-3072"}

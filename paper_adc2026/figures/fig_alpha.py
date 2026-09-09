@@ -41,8 +41,8 @@ for ln in open(datafile("paper_fronts.log")):
         gain[m.group(1)][int(m.group(2))] = float(m.group(3))
 
 fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 2.0))
-cyc = ["#2a78d6", "#eb6834", "#1baf7a", "#4a3aa7", "#e34948", "#008300"]
-mk = ["o", "s", "^", "D", "x", "v"]
+cyc = [DS_COLOR[d] for d in DATASETS]
+mk = [DS_MARK[d] for d in DATASETS]
 
 for i, ds in enumerate([d for d in DATASETS if d in loss]):
     xs = sorted(loss[ds])

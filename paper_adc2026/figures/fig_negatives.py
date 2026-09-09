@@ -72,7 +72,7 @@ a.text(0.97, 0.90, "(a) table-free primary distance", transform=a.transAxes,
        ha="right", fontsize=7)
 
 keys = [k for k in sorted(qd) if len(qd[k]) >= 3]
-cyc = ["#2a78d6", "#eb6834", "#1baf7a", "#4a3aa7", "#e34948", "#008300"]
+cyc = [DS_COLOR[d] for d in DATASETS]
 for i, k in enumerate(keys[:6]):
     ds, np_ = k
     ds_ = sorted(qd[k])
