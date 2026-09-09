@@ -19,7 +19,8 @@ the text.
 | `fig_economics.py` | what the calibration costs, and when it is repaid | 6.3.3 | `paper_fronts.log` |
 | `fig_negatives.py` | the table-free distance, and reuse as a controlled proxy | 6.5 | `v54.log`, `qdup.log`, `qdup_stella.log` |
 | `fig_hierarchy.py` | what the second level buys | 6.4 | `hierarchy_ablation.log`, `paper_fronts.log` |
-| `fig_cost.py` | resident memory, and build time | 6.7 | `vram.log`, `paper_fronts.log` |
+| `fig_cost.py` | resident memory, and JHQ's own train/encode split | 6.7 | `vram.log`, `paper_fronts.log` |
+| `fig_build.py` | **index build time, all five methods** | 6.7 | `results/**/*.csv` (`train_ms`), `paper_fronts.log`, `paper_rabitq.log` |
 | `fig_memory.py` | where JHQ\'s memory goes, and why it is above RaBitQ\'s | 6.7 | index parameters + both measured totals |
 
 `style.py` holds the loaders and the camera-ready settings, so a change there
@@ -53,6 +54,11 @@ applies to every figure at once.
   which is legal only because every series also carries a marker, so never
   drop the markers; and bge-m3 is at 2.74:1 against the surface, so a figure
   leaning on it needs a visible label rather than a legend swatch alone.
+- **An absent bar is a claim, so say which claim.** `fig_build` separates
+  "the build fails on this card" (CAGRA fp32 and IVF-RaBitQ on bge-m3 and
+  stella, each with the log that records it) from "we never timed it"
+  (IVF-RaBitQ on openai3-3072). Drawing them the same way would assert a
+  limitation of a baseline that we have not measured.
 - **A sentinel is not a quantity.** `batches_to_repay` is -1 in the log when
   the gain is below one. `fig_economics` draws those above a rule instead of
   plotting them, because "never" has no position on a log axis.
