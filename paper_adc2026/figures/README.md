@@ -11,7 +11,10 @@ the text.
 | `fig_alpha.py` | ranking loss vs alpha; what the rule is worth | 6.3 | `alpha_ds.log`, `paper_fronts.log` |
 | `fig_batch.py` | throughput and the JHQ/RaBitQ ratio against batch | 6.6 | `batch_sweep.log` |
 | `fig_ablation.py` | what paid, and what did not | 6.4, 6.5 | ranges from `NEGATIVES.md` and the version logs |
+| `fig_calibration.py` | the rule against the sweep; sample size; tolerance | 6.3 | `alpha_sample.log`, `alpha_fast.log` |
+| `fig_negatives.py` | the table-free distance, and reuse bounded from above | 6.5 | `v54.log`, `qdup.log`, `qdup_stella.log` |
 | `fig_hierarchy.py` | what the second level buys | 6.7 | `hierarchy_ablation.log`, `paper_fronts.log` |
+| `fig_cost.py` | resident memory, and build time | 6.7 | `vram.log`, `paper_fronts.log` |
 
 `style.py` holds the loaders and the camera-ready settings, so a change there
 applies to every figure at once.
@@ -37,3 +40,14 @@ Change the script, run it, and the PDF is replaced in place. `./make_all.sh`
 redraws all five. To re-point a figure at new measurements, replace the log in
 `../data/` -- the loaders parse the run scripts' own output format, so a
 re-run drops in without edits.
+
+## Not yet drawn
+
+- **The CPU reference.** `../data/jhq_cpu_ivf_*.csv` covers six datasets but at
+  a protocol that does not match the GPU side -- the residual codebook took 25
+  Lloyd iterations against 2000, and the thread count was not pinned. A figure
+  from those numbers would compare training budgets. See section 10 of
+  `../README.md`.
+- **Schematics**: the pipeline, the Cartesian factorisation, and the
+  calibration flow. These are drawings rather than data and belong in TikZ
+  beside the text, not in matplotlib.
