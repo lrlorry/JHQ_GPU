@@ -221,17 +221,41 @@ int main(int argc, char** argv) {
     std::vector<int64_t> h_id((size_t)nq * k);
     std::vector<float>   h_di((size_t)nq * k);
 
-    // One call to match JHQ's timed region: queries up, search, results back.
+    // Batching, to match demo_jhq_v36's argv[12] rather than always answering
+    // the whole query set in one call.
+    //
+    // Everything in this evaluation runs at one batch size, and IVF-RaBitQ's
+    // own paper runs at 10^4 on a different card -- while results/front6/v54.log
+    // shows the LUT-versus-bitwise verdict flips with a card's bandwidth. A
+    // single operating point is the weakest part of the comparison, so the
+    // batch is a knob here too.
+    const int qbatch = [&]{
+        const char* e = std::getenv("JHQ_RQ_BATCH");
+        const int v = e ? std::atoi(e) : nq;
+        return (v > 0 && v < nq) ? v : nq;
+    }();
+
+    // One call per batch to match JHQ's timed region: queries up, search,
+    // results back.
     auto one_pass = [&]() {
-        raft::copy(d_q.data_handle(), xq.data(), (size_t)nq * d,
-                   raft::resource::get_cuda_stream(res));
-        cuvs::neighbors::ivf_rabitq::search(res, sp, idx, d_q.view(),
-                                            d_id.view(), d_di.view());
-        raft::copy(h_id.data(), d_id.data_handle(), (size_t)nq * k,
-                   raft::resource::get_cuda_stream(res));
-        raft::copy(h_di.data(), d_di.data_handle(), (size_t)nq * k,
-                   raft::resource::get_cuda_stream(res));
-        raft::resource::sync_stream(res);
+        auto st = raft::resource::get_cuda_stream(res);
+        for (int off = 0; off < nq; off += qbatch) {
+            const int B = std::min(qbatch, nq - off);
+            auto qv = raft::make_device_matrix_view<const float, int64_t>(
+                d_q.data_handle(), B, d);
+            auto iv = raft::make_device_matrix_view<int64_t, int64_t>(
+                d_id.data_handle(), B, k);
+            auto dv = raft::make_device_matrix_view<float, int64_t>(
+                d_di.data_handle(), B, k);
+            raft::copy(d_q.data_handle(), xq.data() + (size_t)off * d,
+                       (size_t)B * d, st);
+            cuvs::neighbors::ivf_rabitq::search(res, sp, idx, qv, iv, dv);
+            raft::copy(h_id.data() + (size_t)off * k, d_id.data_handle(),
+                       (size_t)B * k, st);
+            raft::copy(h_di.data() + (size_t)off * k, d_di.data_handle(),
+                       (size_t)B * k, st);
+            raft::resource::sync_stream(res);
+        }
     };
 
     one_pass();                       // warm up
@@ -305,7 +329,7 @@ int main(int argc, char** argv) {
     }
 
     std::printf("\nRecall@%d : %.4f\n", k, recall);
-    std::printf("Latency   : %.2f ms  (%d queries)\n", ms, nq);
+    std::printf("Latency   : %.2f ms  (%d queries, batch %d)\n", ms, nq, qbatch);
     std::printf("QPS       : %.0f\n", nq / (ms / 1000.0));
     std::printf("  train: %.1f ms\n", build_ms);
     std::printf("VRAM used : %.1f MiB\n", (double)(free0 - free1) / (1024.0 * 1024.0));
