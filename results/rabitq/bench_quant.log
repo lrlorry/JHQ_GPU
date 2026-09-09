@@ -1,0 +1,46 @@
+fatal: unable to access 'https://github.com/lrlorry/JHQ_GPU.git/': The requested URL returned error: 503
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at 31d04cb The serialized RaBitQ index is 3.2 GB; keep it off the 30 GB system overlay
+01:58:57 HEAD 31d04cb The serialized RaBitQ index is 3.2 GB; keep it off the 30 GB system overlay
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp: In constructor ‘raft::resource::cusolver_sp_resource::cusolver_sp_resource(rmm::_RMM_26_8::cuda_stream_view)’:
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:25:54: warning: ‘cusolverStatus_t cusolverSpCreate(cusolverSpContext**)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   25 |     RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpCreate(&cusolver_res));
+      |                                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~      
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:67:61: note: declared here
+   67 |   CUSOLVER_DEPRECATED(cuDSS) cusolverStatus_t CUSOLVERAPI cusolverSpCreate(cusolverSpHandle_t *handle);
+      |                                                             ^~~~~~~~~~~~~~~~
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:26:57: warning: ‘cusolverStatus_t cusolverSpSetStream(cusolverSpHandle_t, cudaStream_t)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   26 |     RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpSetStream(cusolver_res, stream));
+      |                                      ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~    
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:70:1: note: declared here
+   70 |     cusolverSpSetStream(cusolverSpHandle_t handle, cudaStream_t streamId);
+      | ^   ~~~~~~~~~~~~~~~
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp: In destructor ‘virtual raft::resource::cusolver_sp_resource::~cusolver_sp_resource()’:
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:31:98: warning: ‘cusolverStatus_t cusolverSpDestroy(cusolverSpHandle_t)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   31 |   ~cusolver_sp_resource() override { RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpDestroy(cusolver_res)); }
+      |                                                                                 ~~~~~~~~~~~~~~~~~^~            
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:68:61: note: declared here
+   68 |   CUSOLVER_DEPRECATED(cuDSS) cusolverStatus_t CUSOLVERAPI cusolverSpDestroy(cusolverSpHandle_t handle);
+      |                                                             ^~~~~~~~~~~~~~~~~
+01:59:09 compile_rc=0
+01:59:09 got the GPU
+01:59:09 ########## mode=2 (QUANT4) ##########
+  nlist=4096   np=32    mode=2   recall=0.8606   qps=76165     rc=0
+  nlist=4096   np=64    mode=2   recall=0.9055   qps=67883     rc=0
+  nlist=4096   np=128   mode=2   recall=0.9414   qps=58790     rc=0
+  nlist=4096   np=256   mode=2   recall=0.9666   qps=45244     rc=0
+  nlist=4096   np=512   mode=2   recall=0.9839   qps=31218     rc=0
+  nlist=4096   np=1024  mode=2   recall=0.9943   qps=22095     rc=0
+02:01:36 ########## mode=3 (QUANT8) ##########
+  nlist=4096   np=32    mode=3   recall=0.8657   qps=71578     rc=0
+  nlist=4096   np=64    mode=3   recall=0.9100   qps=66704     rc=0
+  nlist=4096   np=128   mode=3   recall=0.9397   qps=55646     rc=0
+  nlist=4096   np=256   mode=3   recall=0.9664   qps=42309     rc=0
+  nlist=4096   np=512   mode=3   recall=0.9825   qps=29596     rc=0
+  nlist=4096   np=1024  mode=3   recall=0.9942   qps=20134     rc=0
+02:04:09 ########## nlist=1024, in case 4096 is not its best ##########
+  nlist=1024   np=64    mode=2   recall=0.9503   qps=25643     rc=0
+  nlist=1024   np=256   mode=2   recall=0.9891   qps=16031     rc=0
+  nlist=1024   np=1024  mode=2   recall=0.9985   qps=7530      rc=0
+02:05:20 === RQ2_DONE ===
