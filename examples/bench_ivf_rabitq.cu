@@ -19,6 +19,9 @@
 // Passing 8 against JHQ's Br=8 would give RaBitQ 11% less memory.
 #include <cuvs/neighbors/ivf_rabitq.hpp>
 #include <raft/core/device_resources.hpp>
+#include <memory>
+#include <raft/core/resource/device_memory_resource.hpp>
+#include <rmm/mr/device/managed_memory_resource.hpp>
 #include <raft/core/device_mdarray.hpp>
 #include <raft/core/host_mdspan.hpp>
 
@@ -119,6 +122,26 @@ int main(int argc, char** argv) {
     // cuda/memory_pool API, so cuVS's own benchmark setup cannot be
     // reproduced against this wheel without following that migration too.
     raft::device_resources res;
+
+    // JHQ_RQ_MANAGED=1 backs the large-workspace allocations with managed
+    // memory.
+    //
+    // On stella and bge-m3 the build throws rmm::out_of_memory on
+    // n_rows * dim * 4 -- the whole dataset as float -- even with
+    // force_streaming set and the training set cut to a thirty-second of its
+    // default. Streaming skips the dataset upload for the encoding pass, but
+    // the k-means sampler is handed the original host mdspan and materialises
+    // it. cuVS's own error handler names this as the other way out: "set
+    // large_workspace_resource appropriately". This box has 754 GB of host
+    // RAM behind managed memory, so the question is whether it completes at
+    // all and at what cost, not whether it fits.
+    static rmm::mr::managed_memory_resource managed_mr;
+    if (std::getenv("JHQ_RQ_MANAGED")) {
+        raft::resource::set_large_workspace_resource(
+            res, std::shared_ptr<rmm::mr::device_memory_resource>(
+                     &managed_mr, [](rmm::mr::device_memory_resource*){}));
+        std::printf("large workspace: managed memory\n");
+    }
 
     size_t free0 = 0, total0 = 0;
     cudaMemGetInfo(&free0, &total0);
