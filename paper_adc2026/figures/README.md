@@ -7,6 +7,9 @@ the text.
 
 | script | figure | section | reads |
 |---|---|---|---|
+| `fig_pipeline.py` | the JHQ-GPU pipeline, shaded by what changed | 3.1 | schematic |
+| `fig_lut.py` | the Cartesian factorisation, and what it saves per query | 3.3.2 | schematic + arithmetic |
+| `fig_rule.py` | how the budget is chosen, and one real calibration | 4.3 | schematic + `alpha_fast.log` |
 | `fig_frontier.py` | six-panel recall-QPS frontier | 6.2 | `paper_fronts.log`, `paper_rabitq.log`, `../../report_adc2026/v47/fronts.json` |
 | `fig_alpha.py` | ranking loss vs alpha; what the rule is worth | 6.3 | `alpha_ds.log`, `paper_fronts.log` |
 | `fig_batch.py` | throughput and the JHQ/RaBitQ ratio against batch | 6.6 | `batch_sweep.log` |
@@ -48,6 +51,7 @@ re-run drops in without edits.
   Lloyd iterations against 2000, and the thread count was not pinned. A figure
   from those numbers would compare training budgets. See section 10 of
   `../README.md`.
-- **Schematics**: the pipeline, the Cartesian factorisation, and the
-  calibration flow. These are drawings rather than data and belong in TikZ
-  beside the text, not in matplotlib.
+The three schematics are matplotlib like the rest, so `make_all.sh` produces
+every figure the paper needs in one command and a co-author does not have to
+choose a second toolchain. If they are later redrawn in TikZ to pick up the
+paper\'s own fonts, these stay as the reference for what they should say.
