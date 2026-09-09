@@ -138,11 +138,12 @@ int main(int argc, char** argv) {
     // large_workspace_resource appropriately". This box has 754 GB of host
     // RAM behind managed memory, so the question is whether it completes at
     // all and at what cost, not whether it fits.
-    static rmm::mr::managed_memory_resource managed_mr;
+    // raft 26.8's setter takes a type-erased raft::mr::device_resource by
+    // value, not a shared_ptr to the old device_memory_resource base -- that
+    // base is gone from this RMM.
     if (std::getenv("JHQ_RQ_MANAGED")) {
         raft::resource::set_large_workspace_resource(
-            res, std::shared_ptr<rmm::mr::device_memory_resource>(
-                     &managed_mr, [](rmm::mr::device_memory_resource*){}));
+            res, raft::mr::device_resource{rmm::mr::managed_memory_resource{}});
         std::printf("large workspace: managed memory\n");
     }
 
