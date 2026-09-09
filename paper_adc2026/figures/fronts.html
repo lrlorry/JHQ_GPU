@@ -1,0 +1,297 @@
+<title>JHQ Frontier Standing</title>
+<style>
+:root{
+  --surface:#fcfcfb; --plane:#f4f4f1; --panel:#ffffff;
+  --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e6e5de; --axis:#c3c2b7; --hair:rgba(11,11,11,.10);
+  --s-jhq:#2a78d6; --s-jhq-soft:rgba(42,120,214,.085);
+  --s-rq:#e34948; --s-old:#a9a7a0; --s-int8:#1baf7a; --s-fp32:#eb6834; --s-ivfpq:#4a3aa7;
+  --good:#0ca30c;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --surface:#1a1a19; --plane:#0f0f0e; --panel:#201f1e;
+  --ink:#ffffff; --ink2:#c3c2b7; --muted:#8f8d86;
+  --grid:#2c2c2a; --axis:#3d3d3a; --hair:rgba(255,255,255,.10);
+  --s-jhq:#3987e5; --s-jhq-soft:rgba(57,135,229,.10);
+  --s-rq:#e66767; --s-old:#6b6a65; --s-int8:#199e70; --s-fp32:#d95926; --s-ivfpq:#9085e9;
+  --good:#0ca30c; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --surface:#1a1a19; --plane:#0f0f0e; --panel:#201f1e;
+  --ink:#ffffff; --ink2:#c3c2b7; --muted:#8f8d86;
+  --grid:#2c2c2a; --axis:#3d3d3a; --hair:rgba(255,255,255,.10);
+  --s-jhq:#3987e5; --s-jhq-soft:rgba(57,135,229,.10);
+  --s-rq:#e66767; --s-old:#6b6a65; --s-int8:#199e70; --s-fp32:#d95926; --s-ivfpq:#9085e9;
+  --good:#0ca30c; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--plane);color:var(--ink);
+  font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;
+  margin:0;padding:28px 20px 56px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+header{display:flex;flex-direction:column;gap:10px;max-width:74ch}
+h1{margin:0;font-size:25px;font-weight:640;letter-spacing:-.014em;text-wrap:balance}
+.sub{margin:0;color:var(--ink2);font-size:14.5px}
+.lede{margin:0;font-size:14.5px;line-height:1.6;color:var(--ink)}
+.lede b{font-weight:640}
+mark{background:var(--s-jhq-soft);color:inherit;padding:1px 4px;border-radius:3px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 20px;align-items:center;
+  padding:11px 14px;background:var(--panel);border:1px solid var(--hair);border-radius:9px}
+.lg{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink2);white-space:nowrap}
+.lg svg{flex:none;display:block}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(3,1fr)}
+@media(max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:660px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--hair);border-radius:10px;
+  padding:13px 13px 9px;display:flex;flex-direction:column;gap:7px;min-width:0}
+.ph{display:flex;flex-direction:column;gap:2px}
+.pname{font-size:13.5px;font-weight:640;letter-spacing:-.005em}
+.pmeta{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pnote{font-size:11.5px;color:var(--ink2);line-height:1.45;min-height:2.9em}
+.pnote.oom::before{content:"◇ ";color:var(--s-fp32)}
+.pnote.own::before{content:"● ";color:var(--s-jhq)}
+svg.plot{width:100%;height:auto;display:block;overflow:visible}
+.tblwrap{overflow-x:auto;background:var(--panel);border:1px solid var(--hair);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:12.5px;
+  font-variant-numeric:tabular-nums;min-width:660px}
+caption{text-align:left;padding:13px 15px 9px;font-size:13px;font-weight:640;color:var(--ink)}
+th,td{padding:7px 15px;text-align:right;border-top:1px solid var(--grid);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{color:var(--muted);font-weight:560;font-size:11.5px;
+  text-transform:uppercase;letter-spacing:.055em;border-top:none}
+td.win{color:var(--good);font-weight:620}
+td.lose{color:var(--s-rq);font-weight:620}
+.headline table{min-width:560px}
+.headline caption{font-size:13.5px;padding-bottom:6px}
+.headline tbody tr:hover{background:var(--surface)}
+td.na{color:var(--muted)}
+footer{color:var(--ink2);font-size:12.5px;line-height:1.6;max-width:78ch}
+footer code{font-size:11.5px;background:var(--surface);border:1px solid var(--hair);
+  padding:1px 5px;border-radius:4px}
+#tip{position:fixed;pointer-events:none;opacity:0;transition:opacity .09s;
+  background:var(--ink);color:var(--surface);padding:7px 10px;border-radius:6px;
+  font-size:12px;line-height:1.45;font-variant-numeric:tabular-nums;z-index:9;
+  box-shadow:0 4px 14px rgba(0,0,0,.22);max-width:250px}
+#tip b{display:block;font-weight:620;margin-bottom:2px}
+.dot:hover{r:6}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Choosing the refinement budget</h1>
+  <p class="sub">Recall@10 against QPS &mdash; 999-query batches, one RTX 5090, every system on the same card and the same timed region. Log throughput, shared axes.</p>
+</header>
+
+<div class="tblwrap headline">
+  <table id="h2h">
+    <caption>openai3-3072, the dataset shared with the IVF-RaBitQ paper (999,000 &times; 3072)</caption>
+    <thead><tr>
+      <th>Recall@10</th><th>JHQ</th><th>IVF-RaBitQ</th><th>CAGRA fp32</th>
+      <th>JHQ &divide; RaBitQ</th><th>JHQ &divide; fp32</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<div class="legend" id="legend"></div>
+<div class="grid" id="grid"></div>
+
+<div class="tblwrap">
+  <table id="tbl">
+    <caption>The highest recall each system reaches, and what it costs there</caption>
+    <thead><tr>
+      <th>dataset</th><th>N &times; d</th>
+      <th>JHQ now</th><th>QPS</th>
+      <th>best baseline</th><th>QPS</th>
+      <th>JHQ at that recall</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<footer id="foot"></footer>
+</div>
+<div id="tip" role="status"></div>
+
+<script>
+const D = {"openai3-3072":{"N":999000,"d":3072,"M":384,"now":[[0.7464,227274,"rule picked \u03b1=4, nprobe=8"],[0.8648,170248,"rule picked \u03b1=4, nprobe=32"],[0.9414,87683,"rule picked \u03b1=4, nprobe=128"],[0.9647,53581,"rule picked \u03b1=4, nprobe=256"],[0.9813,30082,"rule picked \u03b1=4, nprobe=512"],[0.9926,15759,"rule picked \u03b1=4, nprobe=1024"]],"old":[[0.7464,89981,"\u03b1=100 nprobe=8"],[0.8648,64360,"\u03b1=100 nprobe=32"],[0.9414,41354,"\u03b1=100 nprobe=128"],[0.9648,31074,"\u03b1=100 nprobe=256"],[0.9814,21111,"\u03b1=100 nprobe=512"],[0.9926,12925,"\u03b1=100 nprobe=1024"]],"base":{"CAGRA fp32":[[0.8767,128533.0],[0.8908,121758.0],[0.9359,71657.0],[0.9411,69325.0],[0.9676,38585.0],[0.9799,20633.0],[0.9849,10354.0]],"CAGRA int8":[[0.8605,421948.0],[0.8736,396695.0],[0.9195,254162.0],[0.9235,247268.0],[0.9437,142397.0],[0.9466,141085.0],[0.9567,76547.0],[0.9573,75553.0],[0.9628,40111.0],[0.9682,20616.0],[0.9712,18869.0],[0.9717,9921.0],[0.9733,5259.0]],"IVF-PQ":[[0.5401,173276.0],[0.6334,167488.0],[0.7039,146326.0],[0.775,84548.0],[0.8616,26559.0],[0.8947,5985.0],[0.9054,2763.0]],"IVF-RaBitQ":[[0.8606,76165,"QUANT4 nprobe=32"],[0.9055,67883,"QUANT4 nprobe=64"],[0.9414,58790,"QUANT4 nprobe=128"],[0.9666,45244,"QUANT4 nprobe=256"],[0.9839,31218,"QUANT4 nprobe=512"],[0.9943,22095,"QUANT4 nprobe=1024"]]},"baseline_top_recall":0.9849,"note":""},"openai3-1536":{"N":999000,"d":1536,"M":192,"now":[[0.7293,482186,"rule picked \u03b1=4, nprobe=8"],[0.846,417537,"rule picked \u03b1=4, nprobe=32"],[0.9298,262471,"rule picked \u03b1=4, nprobe=128"],[0.9527,179927,"rule picked \u03b1=4, nprobe=256"],[0.9721,103813,"rule picked \u03b1=4, nprobe=512"],[0.9836,63611,"rule picked \u03b1=4, nprobe=1024"]],"old":[[0.7297,184893,"\u03b1=100 nprobe=8"],[0.8472,169592,"\u03b1=100 nprobe=32"],[0.9316,133790,"\u03b1=100 nprobe=128"],[0.9549,106694,"\u03b1=100 nprobe=256"],[0.9748,73589,"\u03b1=100 nprobe=512"],[0.9864,49888,"\u03b1=100 nprobe=1024"]],"base":{"CAGRA fp32":[[0.8822,243338.0],[0.8892,184901.0],[0.9407,136615.0],[0.9673,75951.0],[0.9793,40696.0],[0.9816,40267.0],[0.9856,20559.0]],"CAGRA int8":[[0.8644,708467.0],[0.8829,707149.0],[0.9239,469251.0],[0.9274,455378.0],[0.9439,274196.0],[0.9487,269335.0],[0.9543,153653.0],[0.9598,151576.0],[0.9609,79668.0],[0.961,79560.0],[0.9631,69182.0],[0.9659,38926.0],[0.9704,37974.0],[0.9713,21264.0],[0.9716,21068.0],[0.9721,11433.0],[0.9722,11428.0]],"IVF-PQ":[[0.6146,284102.0],[0.6968,271715.0],[0.7786,215319.0],[0.8129,75327.0],[0.8547,73993.0],[0.9089,25268.0],[0.9541,6726.0],[0.9627,3248.0]]},"baseline_top_recall":0.9856,"note":""},"stella":{"N":17776615,"d":1024,"M":128,"now":[[0.9016,346676,"rule picked \u03b1=8, nprobe=8"],[0.9685,234932,"rule picked \u03b1=16, nprobe=32"],[0.989,112087,"rule picked \u03b1=16, nprobe=128"],[0.9932,66567,"rule picked \u03b1=16, nprobe=256"],[0.9946,32640,"rule picked \u03b1=16, nprobe=512"],[0.9954,19531,"rule picked \u03b1=16, nprobe=1024"]],"old":[[0.9027,188549,"\u03b1=100 nprobe=8"],[0.9688,154066,"\u03b1=100 nprobe=32"],[0.9893,89773,"\u03b1=100 nprobe=128"],[0.9935,57563,"\u03b1=100 nprobe=256"],[0.9949,30266,"\u03b1=100 nprobe=512"],[0.9957,18706,"\u03b1=100 nprobe=1024"]],"base":{"CAGRA int8":[[0.9692,618859.0],[0.9762,386824.0],[0.9771,219320.0],[0.978,95575.0]]},"baseline_top_recall":0.978,"note":"CAGRA fp32 and IVF-PQ need more than the card has at 17.8 M x 1024"},"bge-m3":{"N":10091524,"d":1024,"M":128,"now":[[0.6972,334915,"rule picked \u03b1=16, nprobe=8"],[0.8262,255804,"rule picked \u03b1=16, nprobe=32"],[0.9145,141628,"rule picked \u03b1=16, nprobe=128"],[0.943,90098,"rule picked \u03b1=16, nprobe=256"],[0.9618,45268,"rule picked \u03b1=16, nprobe=512"],[0.9767,30188,"rule picked \u03b1=16, nprobe=1024"]],"old":[[0.6978,191224,"\u03b1=100 nprobe=8"],[0.8279,161559,"\u03b1=100 nprobe=32"],[0.9181,107055,"\u03b1=100 nprobe=128"],[0.9471,75680,"\u03b1=100 nprobe=256"],[0.9663,41054,"\u03b1=100 nprobe=512"],[0.9815,28208,"\u03b1=100 nprobe=1024"]],"base":{"CAGRA int8":[[0.867,538622.0],[0.9129,320201.0],[0.9376,151569.0]],"IVF-PQ":[[0.6115,295928.0],[0.6889,248042.0],[0.6958,116596.0],[0.7335,108682.0],[0.799,87651.0],[0.8545,34608.0],[0.8674,13409.0],[0.9264,9681.0],[0.9425,4937.0]]},"baseline_top_recall":0.9425,"note":"CAGRA fp32 needs more than the card has at 10.1 M x 1024"},"vogue-768":{"N":1000000,"d":768,"M":96,"now":[[0.6596,658128,"rule picked \u03b1=16, nprobe=8"],[0.8609,373439,"rule picked \u03b1=32, nprobe=32"],[0.9645,169748,"rule picked \u03b1=64, nprobe=128"],[0.9828,121215,"rule picked \u03b1=64, nprobe=256"],[0.9905,86583,"rule picked \u03b1=64, nprobe=512"],[0.9935,63837,"rule picked \u03b1=64, nprobe=1024"]],"old":[[0.6606,269811,"\u03b1=100 nprobe=8"],[0.8618,216849,"\u03b1=100 nprobe=32"],[0.9647,139111,"\u03b1=100 nprobe=128"],[0.983,105783,"\u03b1=100 nprobe=256"],[0.9908,75562,"\u03b1=100 nprobe=512"],[0.9939,57887,"\u03b1=100 nprobe=1024"]],"base":{"CAGRA fp32":[[0.8727,421760.0],[0.9408,252427.0],[0.9742,141995.0],[0.9755,140258.0],[0.99,75180.0],[0.9918,72760.0],[0.9952,38326.0]],"CAGRA int8":[[0.8356,1059600.0],[0.8372,998929.0],[0.9028,739148.0],[0.9037,700716.0],[0.904,667372.0],[0.9291,464664.0],[0.9305,444072.0],[0.931,412460.0],[0.9337,349278.0],[0.9404,248451.0],[0.9407,225894.0],[0.9443,136832.0],[0.945,122978.0],[0.9455,78040.0],[0.9456,40608.0],[0.9457,39834.0],[0.9459,21412.0]],"IVF-PQ":[[0.5793,405333.0],[0.6795,369734.0],[0.7186,186980.0],[0.8092,138233.0],[0.8895,76297.0],[0.9096,28304.0],[0.9441,20578.0],[0.9471,10435.0],[0.981,7569.0],[0.9842,3910.0]]},"baseline_top_recall":0.9952,"note":""},"arxiv-768":{"N":2253000,"d":768,"M":96,"now":[[0.7885,518890,"rule picked \u03b1=32, nprobe=8"],[0.9245,275471,"rule picked \u03b1=64, nprobe=32"],[0.9763,122383,"rule picked \u03b1=100, nprobe=128"],[0.9852,94494,"rule picked \u03b1=100, nprobe=256"],[0.9881,63463,"rule picked \u03b1=100, nprobe=512"],[0.9898,42392,"rule picked \u03b1=100, nprobe=1024"]],"old":[[0.7899,270585,"\u03b1=100 nprobe=8"],[0.9257,183323,"\u03b1=100 nprobe=32"],[0.9763,122595,"\u03b1=100 nprobe=128"],[0.9852,94377,"\u03b1=100 nprobe=256"],[0.9881,63378,"\u03b1=100 nprobe=512"],[0.9898,42234,"\u03b1=100 nprobe=1024"]],"base":{"CAGRA fp32":[[0.8947,421694.0],[0.8993,402425.0],[0.958,252429.0],[0.9613,226327.0],[0.9836,138519.0],[0.9845,137592.0],[0.9866,132566.0],[0.9957,75390.0],[0.9982,38231.0],[0.9988,37957.0]],"CAGRA int8":[[0.8804,1019495.0],[0.9328,728869.0],[0.9356,649698.0],[0.9524,440241.0],[0.9525,437553.0],[0.9529,381789.0],[0.9584,256205.0],[0.9586,254045.0],[0.9593,251497.0],[0.9616,139634.0],[0.9618,95952.0],[0.962,62318.0]],"IVF-PQ":[[0.6117,392497.0],[0.7666,341907.0],[0.8297,215322.0],[0.8503,81858.0],[0.9213,70726.0],[0.948,24448.0],[0.9512,9534.0],[0.9837,6648.0],[0.9864,3387.0]]},"baseline_top_recall":0.9988,"note":"The one set where the rule declines to cut: ranking loss still improves past alpha=200"}};
+const SER = [
+  ["now",   "JHQ + \u03b1 rule",     "var(--s-jhq)",   "circle", 2.4, null],
+  ["old",   "JHQ at \u03b1=100 (untuned)", "var(--s-old)", "none", 1.7, "4 3"],
+  ["CAGRA int8","CAGRA int8",       "var(--s-int8)",  "square", 2,   null],
+  ["CAGRA fp32","CAGRA fp32",       "var(--s-fp32)",  "tri",    2,   null],
+  ["IVF-PQ","IVF-PQ",               "var(--s-ivfpq)", "diamond",2,   null],
+  ["IVF-RaBitQ","IVF-RaBitQ (PVLDB 19)","var(--s-rq)",  "cross",  2.2, null]
+];
+const X0 = 0.85, X1 = 1.0, Y0 = 1e3, Y1 = 1.2e6;
+const W = 330, H = 248, ML = 46, MR = 12, MT = 22, MB = 42;
+const px = r => ML + (r - X0) / (X1 - X0) * (W - ML - MR);
+const py = q => MT + (Math.log10(Y1) - Math.log10(Math.max(q, Y0))) /
+                     (Math.log10(Y1) - Math.log10(Y0)) * (H - MT - MB);
+const fmt = n => n >= 1e6 ? (n/1e6).toFixed(1)+"M" : n >= 1e3 ? Math.round(n/1e3)+"k" : ""+n;
+const grp = n => n.toLocaleString("en-US");
+
+// x and y arrive as numbers, always: `${x+3.5}` on a string concatenates
+// rather than adds, and a path built that way draws a filled wedge across
+// the panel instead of a 7-pixel marker.
+function mark(kind, x, y, col){
+  x = +x; y = +y;
+  const r = (v) => v.toFixed(1);
+  if (kind === "square")
+    return `<rect x="${r(x-3.1)}" y="${r(y-3.1)}" width="6.2" height="6.2" fill="${col}"/>`;
+  if (kind === "tri")
+    return `<path d="M${r(x)} ${r(y-3.9)}L${r(x+3.6)} ${r(y+2.8)}L${r(x-3.6)} ${r(y+2.8)}Z" fill="${col}"/>`;
+  if (kind === "cross")
+    return `<path d="M${r(x-3.8)} ${r(y-3.8)}L${r(x+3.8)} ${r(y+3.8)}M${r(x-3.8)} ${r(y+3.8)}L${r(x+3.8)} ${r(y-3.8)}"`
+         + ` stroke="${col}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+  if (kind === "diamond")
+    return `<path d="M${r(x)} ${r(y-4)}L${r(x+3.7)} ${r(y)}L${r(x)} ${r(y+4)}L${r(x-3.7)} ${r(y)}Z" fill="${col}"/>`;
+  return `<circle cx="${r(x)}" cy="${r(y)}" r="3.5" fill="${col}"/>`;
+}
+
+// legend (identity is never colour alone: every entry carries its own glyph)
+document.getElementById("legend").innerHTML = SER.map(([k,label,col,kind,w,dash]) => {
+  const g = kind === "none"
+    ? `<line x1="1" y1="7" x2="25" y2="7" stroke="${col}" stroke-width="${w}" stroke-dasharray="4 3"/>`
+    : `<line x1="1" y1="7" x2="25" y2="7" stroke="${col}" stroke-width="${w}"/>` + mark(kind, 13, 7, col);
+  return `<span class="lg"><svg width="26" height="14" aria-hidden="true">${g}</svg>${label}</span>`;
+}).join("") +
+`<span class="lg"><svg width="26" height="14" aria-hidden="true"><rect x="1" y="1" width="24" height="12" fill="var(--s-jhq-soft)" stroke="var(--hair)"/></svg>no baseline reaches this recall</span>`;
+
+const tip = document.getElementById("tip");
+function showTip(e, html){
+  tip.innerHTML = html; tip.style.opacity = 1;
+  const r = tip.getBoundingClientRect();
+  let x = e.clientX + 14, y = e.clientY - r.height - 10;
+  if (x + r.width > innerWidth - 8) x = e.clientX - r.width - 14;
+  if (y < 8) y = e.clientY + 16;
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+addEventListener("scroll", () => tip.style.opacity = 0, {passive:true});
+
+let panels = "";
+for (const [ds, o] of Object.entries(D)) {
+  const band = o.baseline_top_recall;
+  const ownFrom = Math.max(band, X0);
+  const hasOwn = o.now.length && Math.max(...o.now.map(p=>p[0])) > band && band < X1;
+
+  let g = "";
+  // shaded band: recall no baseline reaches
+  if (band > X0 && band < X1)
+    g += `<rect x="${px(band).toFixed(1)}" y="${MT}" width="${(px(X1)-px(band)).toFixed(1)}"`
+       + ` height="${H-MT-MB}" fill="var(--s-jhq-soft)"/>`
+       + `<line x1="${px(band).toFixed(1)}" y1="${MT}" x2="${px(band).toFixed(1)}" y2="${H-MB}"`
+       + ` stroke="var(--s-jhq)" stroke-width="1" stroke-dasharray="2 3" opacity=".55"/>`;
+
+  // gridlines + y ticks
+  for (const t of [1e3,1e4,1e5,1e6]) {
+    g += `<line x1="${ML}" y1="${py(t)}" x2="${W-MR}" y2="${py(t)}" stroke="var(--grid)" stroke-width="1"/>`;
+    g += `<text x="${ML-7}" y="${py(t)+3.6}" text-anchor="end" font-size="10" fill="var(--muted)">${fmt(t)}</text>`;
+  }
+  // x ticks
+  for (const t of [0.85,0.90,0.95,1.00]) {
+    g += `<line x1="${px(t)}" y1="${H-MB}" x2="${px(t)}" y2="${H-MB+4}" stroke="var(--axis)" stroke-width="1"/>`;
+    g += `<text x="${px(t)}" y="${H-MB+16}" text-anchor="middle" font-size="10" fill="var(--muted)">${t.toFixed(2)}</text>`;
+  }
+  g += `<line x1="${ML}" y1="${H-MB}" x2="${W-MR}" y2="${H-MB}" stroke="var(--axis)" stroke-width="1"/>`;
+  g += `<text x="${ML-38}" y="${MT-8}" font-size="9.5" fill="var(--muted)">QPS</text>`;
+  g += `<text x="${(ML+W-MR)/2}" y="${H-6}" text-anchor="middle" font-size="9.5" fill="var(--muted)">Recall@10</text>`;
+
+  const hits = [];
+  for (const [key, label, col, kind, w, dash] of SER) {
+    const pts = (key === "now" ? o.now : key === "old" ? o.old : (o.base[key] || []))
+                  .filter(p => p[0] >= X0);
+    if (!pts.length) continue;
+    const dd = pts.map((p,i) => (i ? "L" : "M") + px(p[0]).toFixed(1) + " " + py(p[1]).toFixed(1)).join("");
+    g += `<path d="${dd}" fill="none" stroke="${col}" stroke-width="${w}"` +
+         (dash ? ` stroke-dasharray="${dash}"` : "") + ` stroke-linejoin="round"/>`;
+    if (kind !== "none") for (const p of pts) {
+      g += mark(kind, px(p[0]), py(p[1]), col);
+      hits.push([px(p[0]), py(p[1]), label, p]);
+    }
+  }
+  // invisible, generous hit targets on top
+  for (const [x, y, label, p] of hits) {
+    const detail = p[2] ? `<br>${p[2]}` : "";
+    g += `<circle class="dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="9" fill="transparent"` +
+         ` data-t="<b>${label}</b>Recall@10 ${p[0].toFixed(4)}<br>${grp(p[1])} QPS${detail}"/>`;
+  }
+
+  const noteCls = o.note ? (o.note.indexOf("card") > 0 ? "pnote oom" : "pnote") : (hasOwn ? "pnote own" : "pnote");
+  const noteTxt = o.note ? o.note
+    : hasOwn ? `JHQ alone above Recall ${band.toFixed(4)}` : "Baselines reach every recall JHQ does";
+
+  panels += `<div class="panel"><div class="ph">
+      <span class="pname">${ds}</span>
+      <span class="pmeta">${(o.N/1e6).toFixed(1)} M &times; ${o.d} &nbsp;·&nbsp; M=${o.M}</span></div>
+    <svg class="plot" viewBox="0 0 ${W} ${H}" role="img"
+      aria-label="Recall versus QPS for ${ds}">${g}</svg>
+    <p class="${noteCls}">${noteTxt}</p></div>`;
+}
+document.getElementById("grid").innerHTML = panels;
+
+document.getElementById("grid").addEventListener("mouseover", e => {
+  const t = e.target.closest(".dot"); if (t) showTip(e, t.dataset.t);
+});
+document.getElementById("grid").addEventListener("mousemove", e => {
+  const t = e.target.closest(".dot"); if (t) showTip(e, t.dataset.t);
+});
+document.getElementById("grid").addEventListener("mouseout", e => {
+  if (e.target.closest(".dot")) tip.style.opacity = 0;
+});
+
+// ── head-to-head on the shared dataset ─────────────────────────────────
+// Read off the same arrays the panels draw, log-interpolated between measured
+// points, so this table and that chart cannot drift apart.
+function at(pts, r) {
+  const p = pts.map(q => [q[0], q[1]]).sort((a,b) => a[0]-b[0]);
+  if (!p.length || r < p[0][0] || r > p[p.length-1][0]) return null;
+  for (let i = 1; i < p.length; i++) if (p[i][0] >= r) {
+    const [r0,q0] = p[i-1], [r1,q1] = p[i];
+    if (r1 === r0) return q1;
+    const f = (r - r0) / (r1 - r0);
+    return Math.pow(10, Math.log10(q0) + f * (Math.log10(q1) - Math.log10(q0)));
+  }
+  return null;
+}
+{
+  const o = D["openai3-3072"];
+  const rows = [0.95, 0.96, 0.97, 0.98, 0.99].map(t => {
+    const j = at(o.now, t), q = at(o.base["IVF-RaBitQ"], t), f = at(o.base["CAGRA fp32"], t);
+    const cell = v => v ? grp(Math.round(v)) : "&mdash;";
+    const ratio = (a,b) => !a || !b ? `<td class="na">&mdash;</td>`
+      : `<td class="${a >= b ? "win" : "lose"}">${(a/b).toFixed(2)}&times;</td>`;
+    return `<tr><td>${t.toFixed(2)}</td><td>${cell(j)}</td><td>${cell(q)}</td>` +
+           `<td>${cell(f)}</td>${ratio(j,q)}${ratio(j,f)}</tr>`;
+  });
+  document.querySelector("#h2h tbody").innerHTML = rows.join("");
+}
+
+// ── table view: the same numbers, readable without the chart ────────────
+const rows = [];
+for (const [ds, o] of Object.entries(D)) {
+  const nowTop = o.now.length ? o.now[o.now.length-1] : null;
+  let bb = null, bn = "";
+  for (const [k, v] of Object.entries(o.base))
+    for (const p of v) if (!bb || p[0] > bb[0]) { bb = p; bn = k; }
+  // JHQ's QPS at or above the best baseline's recall
+  let at = null;
+  if (nowTop && bb) for (const p of o.now) if (p[0] >= bb[0] && (!at || p[1] > at[1])) at = p;
+  rows.push(`<tr>
+    <td>${ds}</td><td>${(o.N/1e6).toFixed(1)} M &times; ${o.d}</td>
+    <td>${nowTop ? nowTop[0].toFixed(4) : "&mdash;"}</td>
+    <td>${nowTop ? grp(nowTop[1]) : "&mdash;"}</td>
+    <td>${bb ? bn + " " + bb[0].toFixed(4) : "&mdash;"}</td>
+    <td>${bb ? grp(bb[1]) : "&mdash;"}</td>
+    ${at ? `<td class="win">${grp(at[1])} at ${at[0].toFixed(4)}</td>`
+         : `<td class="na">does not reach it</td>`}</tr>`);
+}
+document.querySelector("#tbl tbody").innerHTML = rows.join("");
+
+document.getElementById("foot").innerHTML =
+  `<b>What the two JHQ lines are.</b> &alpha; sets the refinement budget, ck = &alpha;k, and the paper that defines JHQ does not say how to choose it; this project used 100 from its first run to its last. The dashed line is that constant. The solid line lets a rule choose instead: answer 32 of the batch&rsquo;s own queries at a generous &alpha;, then at smaller &alpha;, and keep the smallest whose top-k still agrees. No ground truth is involved &mdash; it asks whether a smaller budget changes what is returned, not whether it changes recall. Stopping at the first rejection makes it one-sided, so it can pick an &alpha; larger than needed, never smaller. ` +
+  `<br><br><b>It is worth 1.0&times; to 2.65&times;</b> at equal recall, and the gain falls as nprobe rises on every dataset: &alpha; sizes the refinement, refinement is most of the work at small nprobe, and the scan takes over at large. arxiv-768 gains nothing past nprobe=128 &mdash; its ranking loss is still improving at &alpha;=200, and the rule correctly declines to cut. Recall cost is at most 0.003 except bge-m3 at nprobe=1024, which gives up 0.0048. All 72 runs are one build (v57), one batch size, one timed region. ` +
+  `<br><br><b>IVF-RaBitQ</b> appears on openai3-3072, the dataset it and this work share; the other five are running. It is cuVS&rsquo;s <code>ivf_rabitq</code> in QUANT4 at the same nlist &mdash; its fastest mode here, with LUT16 measuring 1.8&times; slower, so reporting that one would have overstated JHQ by as much. Its index must be round-tripped through serialize/deserialize before it can be searched at all, which no public header states. Against CAGRA fp32 measured here it is 0.77&times; at Recall 0.95, well under the 3.3&times; average its paper reports on an L40S at batch 10&#8308;, so <b>the JHQ-vs-RaBitQ comparison holds while the RaBitQ-vs-CAGRA one is not comparable to the published figure</b>. ` +
+  `<br><br><b>Reading it.</b> Up and to the right is better; the x axis starts at Recall 0.85 and points below are omitted, not missing. The shaded band marks recall no CAGRA or IVF-PQ configuration reaches &mdash; CAGRA fp32 is absent on stella and bge-m3 because 17.8&nbsp;M and 10.1&nbsp;M vectors at 1024 float dimensions do not fit this card&rsquo;s 32&nbsp;GB. Each CAGRA curve stops where our own sweep stopped, which is not a limit of CAGRA. Recall differences below 1e-3 are inside this build&rsquo;s training noise.`;
+</script>
