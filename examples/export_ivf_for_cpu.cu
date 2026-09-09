@@ -64,10 +64,12 @@ int main(int argc, char** argv) {
     int n_train = (argc > 8) ? std::atoi(argv[8]) : std::min(nb, 100000);
     std::printf("base=%dx%d  M=%d  nlist=%d  n_train=%d\n", nb, d, M, nlist, n_train);
 
+    // d is a constructor argument, not a Params field -- demo_jhq_v36 does
+    // JHQGpuIndex idx(d, p).
     JHQGpuIndex::Params p;
-    p.d = d; p.M = M; p.B = B; p.Br = Br;
+    p.M = M; p.B = B; p.Br = Br;
     p.nlist = nlist; p.nprobe = 8; p.alpha = 100.0f;
-    JHQGpuIndex idx(p);
+    JHQGpuIndex idx(d, p);
     // train() honours JHQ_INDEX_CACHE, so pointing this at the same cache the
     // measured runs used exports the centroids those runs actually searched,
     // rather than a fresh set that would differ in its last bits.
