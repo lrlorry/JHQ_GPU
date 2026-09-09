@@ -11,6 +11,7 @@
 // itself, the library cannot answer the easiest question there is on this
 // card, and nothing about our call site is left to blame.
 #include <cuvs/neighbors/ivf_rabitq.hpp>
+#include <cstdlib>
 #include <raft/core/device_resources.hpp>
 #include <raft/core/device_mdarray.hpp>
 #include <raft/core/copy.hpp>
@@ -45,11 +46,28 @@ int main(int argc, char** argv) {
     cuvs::neighbors::ivf_rabitq::index_params ip;
     ip.n_lists = nlist; ip.bits_per_dim = bits;
     ip.metric = cuvs::distance::DistanceType::L2Expanded;
-    auto idx = cuvs::neighbors::ivf_rabitq::build(
+    auto built = cuvs::neighbors::ivf_rabitq::build(
         res, ip, raft::make_device_matrix_view<const float, int64_t>(
                      d_base.data_handle(), N, d));
     raft::resource::sync_stream(res);
-    std::printf("index size=%lld dim=%u\n", (long long)idx.size(), idx.dim());
+
+    // cuVS's own test (cpp/tests/neighbors/ann_ivf_rabitq.cuh) round-trips the
+    // index through serialize/deserialize with the comment "reorganize data
+    // for efficient search". So build() does not leave the codes in the layout
+    // search reads, which is what ids that are essentially random beside
+    // distances below the true minimum look like. JHQ_RQ_NO_ROUNDTRIP=1
+    // searches the built index directly, so both are measured here.
+    const bool roundtrip = !(std::getenv("JHQ_RQ_NO_ROUNDTRIP"));
+    cuvs::neighbors::ivf_rabitq::index<int64_t> loaded(res);
+    if (roundtrip) {
+        const char* f = "/tmp/rq_selftest.idx";
+        cuvs::neighbors::ivf_rabitq::serialize(res, f, built);
+        cuvs::neighbors::ivf_rabitq::deserialize(res, f, &loaded);
+        raft::resource::sync_stream(res);
+    }
+    auto& idx = roundtrip ? loaded : built;
+    std::printf("roundtrip=%d  index size=%lld dim=%u\n",
+                (int)roundtrip, (long long)idx.size(), idx.dim());
 
     // Queries are rows 0, 1000, 2000, ... of the index itself.
     std::vector<float> xq((size_t)NQ * d);
