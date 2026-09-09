@@ -36,12 +36,14 @@ at nprobe=32 -- the second is a cache hit on the first. Taking a median would
 report the cache. The bar is the maximum, which is the build that actually
 happened.
 
-**JHQ's coarse quantiser was undertrained** -- about 6 points per centroid
-where the usual guidance is ~39. Training it properly costs a few seconds more
-here and is worth up to +96% QPS, so this figure and the frontier are *both*
-measured on the cheap-to-build, slow-to-search configuration. The bar is
-therefore a lower bound on the build time of the index a tuned JHQ would ship,
-and the paper must say so rather than bank a fast build it would not keep.
+**The coarse quantiser is trained at 39 points per centroid, and the build
+time includes that.** `/root/_pa.sh` passes `JHQ_N_TRAIN = 39 x nlist` on every
+dataset -- 1,277,952 for bge-m3 and stella at nlist=32768, 159,744 for vogue
+and openai3-3072 at 4096, 319,488 for arxiv and openai3-1536 at 8192. So this
+is not a cheap build bought by under-training: an earlier draft of this
+docstring said it was, which was wrong, and the mistake matters in the
+generous direction -- the bar already carries the cost of the quantiser the
+frontier was measured on.
 
 ## A missing bar means one of two different things, and they are drawn apart
 
@@ -51,10 +53,13 @@ rc=134 even after `train/list` is cut to 32 (`rabitq_bigsets.log`). At 10.1M
 and 17.8M vectors of 1024 dimensions the allocation does not fit this card,
 and it is the same reason both are absent from fig_frontier.
 
-**The build was never timed.** IVF-RaBitQ on openai3-3072 has search results
-throughout this paper but no `build_ms` in any frozen log. That is a gap in
-our measurements, not a property of the system, and drawing it the same way as
-a failure would be a false claim about a baseline. It gets its own mark.
+**The build was never timed.** No cell is in this state any more. IVF-RaBitQ
+on openai3-3072 was in it until the log of `/root/_rqb.sh` was collected into
+`data/rabitq_o3072_build.log` -- the number had been measured all along and
+had simply never left the box. The mark stays in the legend because the
+distinction is worth keeping visible: a gap in our measurements and a
+limitation of a baseline are different claims, and drawing them the same way
+would assert the second from evidence for the first.
 """
 import sys, os, re, csv, glob, collections
 import statistics as st
@@ -105,6 +110,15 @@ for ln in open(datafile("paper_rabitq.log")):
 # was simply not timed, and is marked differently.
 FAILS = {("cuVS-CAGRA", "bge-m3"), ("cuVS-CAGRA", "stella"),        # fronts.json oom
          ("IVF-RaBitQ", "bge-m3"), ("IVF-RaBitQ", "stella")}        # rc=134
+# openai3-3072's RaBitQ build was timed by /root/_rqb.sh, whose log is
+# dedicated to that dataset and so does not repeat the name on each line.
+# It was simply never collected into data/ until now.
+for ln in open(datafile("rabitq_o3072_build.log")):
+    m = re.search(r"nlist=\d+\s+bits=8\s+np=\d+\s+mode=0\s+recall=[\d.]+\s+"
+                  r"qps=\d+\s+build_ms=([\d.]+)", ln)
+    if m:
+        b[("IVF-RaBitQ", "openai3-3072")].append(float(m.group(1)) / 1000)
+
 METHODS = [("JHQ-GPU", "jhq"), ("IVF-RaBitQ", "rabitq"),
            ("cuVS-CAGRA", "cagra"), ("cuVS-CAGRA-int8", "cagra8"),
            ("cuVS-IVFPQ", "ivfpq")]
@@ -153,10 +167,11 @@ ll.append("not timed")
 ax.legend(hh, ll, loc="lower center", bbox_to_anchor=(0.5, 1.005), ncol=7,
           fontsize=7, columnspacing=1.0, handlelength=1.3)
 ax.text(0.5, -0.30, "whisker: the range across swept configurations and repeat "
-        "builds, not a confidence interval.  JHQ is a cold build (later rows "
-        "hit the trained-state cache)\nand uses the undertrained coarse "
-        "quantiser, so its bar is a lower bound on the index a tuned JHQ "
-        "would ship.", transform=ax.transAxes, ha="center", va="top",
+        "builds, not a confidence interval.  JHQ is a cold build -- later rows "
+        "of a dataset hit the trained-state cache and\nreport 26 ms, so the "
+        "bar is the maximum, not the median. All indexes train the coarse "
+        "quantiser at 39 points a centroid.",
+        transform=ax.transAxes, ha="center", va="top",
         fontsize=7, color="#898781", linespacing=1.35)
 
 fig.tight_layout(pad=0.3, rect=(0, 0.16, 1, 1))
