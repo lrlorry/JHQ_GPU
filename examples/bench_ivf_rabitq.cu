@@ -147,8 +147,25 @@ int main(int argc, char** argv) {
         d_base.data_handle(), nb, d);
 
     auto t0 = clk::now();
-    auto idx = cuvs::neighbors::ivf_rabitq::build(res, ip, xb_dev);
+    auto built = cuvs::neighbors::ivf_rabitq::build(res, ip, xb_dev);
     raft::resource::sync_stream(res);
+
+    // build() does not leave the index in the layout search reads.
+    //
+    // cuVS's own test round-trips it through serialize/deserialize with the
+    // comment "Serialize and deserialize to reorganize data for efficient
+    // search" (cpp/tests/neighbors/ann_ivf_rabitq.cuh). Without it the search
+    // returns ids that are essentially random beside distances below the true
+    // minimum -- examples/rabitq_selftest.cu puts it exactly: querying with a
+    // row of the index and probing every list, self-recall is 0/20 built and
+    // 20/20 round-tripped. Both paths are timed here, so the cost of the step
+    // is recorded rather than hidden.
+    const char* rt_file = "/tmp/rq_bench.idx";
+    cuvs::neighbors::ivf_rabitq::serialize(res, rt_file, built);
+    cuvs::neighbors::ivf_rabitq::index<int64_t> loaded(res);
+    cuvs::neighbors::ivf_rabitq::deserialize(res, rt_file, &loaded);
+    raft::resource::sync_stream(res);
+    auto& idx = loaded;
     const double build_ms = ms_since(t0);
 
     // Ask the index what it actually holds. There is no extend() in this API,
