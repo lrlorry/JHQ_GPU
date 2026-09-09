@@ -38,8 +38,10 @@ for ln in open(datafile("batch_sweep.log")):
 
 fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 2.15))
 sets = ["openai3-3072", "vogue-768"]
-cyc = {"openai3-3072": "#2a78d6", "vogue-768": "#eb6834"}
-mk = {"openai3-3072": "o", "vogue-768": "^"}
+# from style.py, so a dataset is the same colour in every figure -- these
+# two were painted with vogue's blue and arxiv's orange before
+cyc = {d: DS_COLOR[d] for d in sets}
+mk = {d: DS_MARK[d] for d in sets}
 
 # left: absolute throughput, both systems
 for ds in sets:

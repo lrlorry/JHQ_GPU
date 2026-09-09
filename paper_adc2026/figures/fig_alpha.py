@@ -54,6 +54,15 @@ a.set_ylabel("ranking loss\n(ivf recall $-$ recall)")
 a.set_xticks([4, 8, 16, 32, 64, 100, 200])
 a.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
 a.text(0.03, 0.06, "(a)  nprobe$=$128", transform=a.transAxes, fontsize=8)
+# arxiv-768 has not flattened at the largest alpha the sweep tried, so its
+# saturation point is a lower bound and the curve must not read as converged
+xs_ = sorted(loss["arxiv-768"])
+a.annotate("still falling at the\ngrid edge: $\\alpha_{sat}$ is a\nlower bound",
+           (xs_[-1], loss["arxiv-768"][xs_[-1]]), fontsize=7, color="#52514e",
+           xytext=(-14, 26), textcoords="offset points", ha="right",
+           linespacing=1.3,
+           arrowprops=dict(arrowstyle="-|>", lw=0.7, color="#898781",
+                           shrinkA=2, shrinkB=3))
 
 for i, ds in enumerate([d for d in DATASETS if d in gain]):
     xs = sorted(gain[ds])
@@ -65,8 +74,8 @@ b.set_xlabel("nprobe")
 b.set_ylabel(r"QPS, rule $\div$ fixed $\alpha{=}100$")
 b.set_xticks([8, 32, 128, 256, 512, 1024])
 b.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-b.text(0.03, 0.06, "(b)  at the recall the rule preserves",
-       transform=b.transAxes, fontsize=8)
+b.text(0.03, 0.06, "(b)  throughput only; the recall it costs is in "
+       "fig\\_economics(b)", transform=b.transAxes, fontsize=8)
 
 h, l = b.get_legend_handles_labels()
 fig.legend(h, l, loc="upper center", ncol=6, bbox_to_anchor=(0.5, 1.10),

@@ -18,6 +18,10 @@ that are freed but whose pool pages are not returned. Rather than let the
 stack quietly disagree with the measurement, the last segment is *defined* as
 measured minus modelled, so the bar ends exactly at the cudaMemGetInfo total
 and the unexplained part is drawn at its true size instead of being left out.
+It is labelled "other / unaccounted" rather than attributed: the CUDA context
+and the allocator's slack are what it is *expected* to be, but nothing here
+measures them separately, and naming a cause we did not measure would be the
+same mistake as leaving the gap out.
 """
 import sys, os, re
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -50,7 +54,7 @@ order = [d for d in DATASETS if d in meas]
 parts = [("primary codes", "#2a78d6"), ("residual codes", "#86b6ef"),
          ("corr + ids", "#cde2fb"), ("coarse centroids", "#1baf7a"),
          ("per-batch table", "#eda100"), ("candidate buffers", "#eb6834")]
-OTHER = "context + allocator"
+OTHER = "other / unaccounted"
 
 vals = {p: [] for p, _ in parts}
 for ds in order:
@@ -79,7 +83,12 @@ for i, ds in enumerate(order):
     vals[OTHER].append(max(gap, 0.0))
 
 y = np.arange(len(order))
-fig, ax = plt.subplots(figsize=(WIDE, 2.35))
+# Stella is 20 GiB and vogue is 1.4, so on one absolute axis the small
+# datasets' workspace and centroid segments are a few pixels wide. The second
+# panel is the same stack normalised, which is where the composition is
+# actually readable.
+fig, (ax, axp) = plt.subplots(1, 2, figsize=(WIDE, 2.55),
+                              gridspec_kw=dict(width_ratios=[1.55, 1]))
 left = np.zeros(len(order))
 for p, c in parts:
     v = np.array(vals[p]) / 1024          # GiB
@@ -99,16 +108,32 @@ for i, ds in enumerate(order):
         ax.scatter([rq[ds] / 1024], [i], marker="|", s=110,
                    color=S["rabitq"]["color"], zorder=4, lw=1.1)
 
+# same stack, as a share of the measured total
+leftp = np.zeros(len(order))
+tot = np.array([meas[d] for d in order])
+for p_, c in parts + [(OTHER, "#f2f1ec")]:
+    v = np.array(vals[p_]) / tot * 100
+    axp.barh(y, v, left=leftp, height=0.5, color=c, ec="none" if p_ != OTHER else "#898781",
+             lw=0 if p_ != OTHER else 0.5, hatch=None if p_ != OTHER else "///")
+    leftp += v
+axp.set_xlim(0, 100); axp.set_yticks(y); axp.set_yticklabels([])
+axp.set_xlabel("share of measured total (%)")
+axp.invert_yaxis(); axp.grid(axis="y", visible=False)
+axp.text(0.03, 0.03, "(b)", transform=axp.transAxes, fontsize=8)
+ax.text(0.97, 0.03, "(a)", transform=ax.transAxes, fontsize=8, ha="right")
+
 ax.set_yticks(y); ax.set_yticklabels([PRETTY[d] for d in order])
 ax.set_xlabel("resident GPU memory (GiB)")
 ax.invert_yaxis(); ax.grid(axis="y", visible=False)
-ax.set_xlim(0, max(left) * 1.30)
+ax.set_xlim(0, max(left) * 1.08)
 
 h, l = ax.get_legend_handles_labels()
 h += [plt.Line2D([], [], color="black", marker="|", ls="", ms=8, mew=1.1),
       plt.Line2D([], [], color=S["rabitq"]["color"], marker="|", ls="", ms=8, mew=1.1)]
 l += ["JHQ, measured", "IVF-RaBitQ, measured"]
-ax.legend(h, l, loc="lower right", fontsize=7, ncol=2, columnspacing=1.0)
+fig.legend(h, l, loc="upper center", bbox_to_anchor=(0.5, 1.0), ncol=4,
+           fontsize=7, columnspacing=1.2)
 
-fig.tight_layout(pad=0.3)
+fig.tight_layout(pad=0.3, rect=(0, 0, 1, 0.80))
+fig.subplots_adjust(wspace=0.10)
 save(fig, "fig_memory")

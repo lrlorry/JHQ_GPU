@@ -66,7 +66,7 @@ a.axhline(0, color="0.3", lw=0.7)
 a.set_xticks(range(len(sets)))
 a.set_xticklabels([PRETTY.get(s, s) for s in sets], rotation=18, ha="right")
 a.set_ylabel("QPS change (\\%)")
-a.legend(loc="lower left", fontsize=7, ncol=1)
+a.legend(loc="lower left", fontsize=7, ncol=1, framealpha=0.92)
 a.grid(axis="x", visible=False)
 a.text(0.97, 0.90, "(a) table-free primary distance", transform=a.transAxes,
        ha="right", fontsize=7)
@@ -85,7 +85,7 @@ b.set_xlabel("query duplication factor $D$")
 b.set_ylabel("QPS, relative to $D{=}1$")
 b.set_xticks([1, 2, 4, 8])
 b.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-b.legend(loc="lower right", fontsize=7, ncol=2, columnspacing=0.8)
+b.legend(loc="upper right", fontsize=7, ncol=2, columnspacing=0.8, framealpha=0.92)
 b.text(0.03, 0.90, "(b) cross-query reuse, controlled proxy",
        transform=b.transAxes, fontsize=7)
 

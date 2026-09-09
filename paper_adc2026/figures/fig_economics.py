@@ -51,10 +51,12 @@ Reporting the gain without it would be reporting half a trade.
     paired: nothing varies but alpha. The only residual wobble is the top-ck
     tie-break, which is order 1e-4.
 
-    So most of these deltas are real, not noise. They are simply small: five
-    of the six datasets stay inside 3e-3 across the whole nprobe range. The
-    outlier is bge-m3 at nprobe=1024, at -0.0048, and it is a measured cost
-    rather than a run-to-run artefact.
+    So most of these deltas are real costs, not noise, and the figure names
+    the largest rather than calling it the only one. Once the floor is 1e-4,
+    openai3-1536 at -0.0028 and bge-m3 across nprobe >= 128 are costs too. The
+    honest summary is a range: the rule gives up between 0.0000 and 0.0048 of
+    recall, it is largest where nprobe is largest, and the four runs where the
+    budget did not change give up exactly nothing.
 
 Over the 32 configurations where the rule did change the budget, payback runs
 from 0.5 to 21.0 batches, median 1.75, and the gain is above one in every one
@@ -174,7 +176,7 @@ b.text(1024, 0.00062, "band is $\\pm10^{-4}$: the top-$ck$ tie-break, the only\n
        "thing that varies besides $\\alpha$ -- both arms share one index",
        fontsize=7, color="#5f5e5a", va="center", ha="right", linespacing=1.35)
 bad = min(rows, key=lambda r: r["drecall"])
-b.annotate("%s at nprobe=%d gives up\n%.4f of recall: the one real cost"
+b.annotate("largest: %s at nprobe=%d,\n%.4f of recall"
            % (PRETTY[bad["ds"]], bad["np"], -bad["drecall"]),
            (bad["np"], bad["drecall"]), fontsize=7, color="#3d3c39",
            xytext=(-8, 20), textcoords="offset points", ha="right",

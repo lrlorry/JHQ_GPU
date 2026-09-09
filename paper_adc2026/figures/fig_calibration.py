@@ -33,9 +33,15 @@ Section 6.3, the contribution's own evidence. Three panels.
     estimates the true saturation point; it does not bound it, and arxiv-768
     is what the difference looks like.
 (b) Sample size. At S=8 openai3-3072 picks alpha=2 and gives up 0.0058 of
-    recall; from S=32 on it is exact. The knee, not a chosen constant.
-(c) Tolerance. Zero slots leaves the gain on the table, two slots costs 0.0035
-    -- outside the 1e-3 floor three cold-cache runs of one binary establish.
+    recall; from S=32 on it is exact. The knee, not a chosen constant. The
+    reference line is 1e-4 here for the same reason as in (c): one index, one
+    set of codebooks, alpha the only thing that changes.
+(c) Tolerance, on vogue-768 at nprobe=512, all three points from the
+    bisecting rule. The reference is 1e-4, not 1e-3: both arms of each
+    comparison run on one index with one set of codebooks, so the only thing
+    that varies besides alpha is the top-ck tie-break. The 1e-3 figure quoted
+    elsewhere is a build-to-build floor and does not apply to a paired
+    comparison.
 """
 import sys, os, re
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -93,9 +99,19 @@ for ln in open(datafile("alpha_sample.log")):
         bys.setdefault(cur[0], {})[cur[2]] = (float(m.group(1)),
                                               float(m.group(2)) - float(m.group(3)))
 
-# (c) tolerance, from the v56 ablation
-tol = {}
-cur = None
+# (c) tolerance.
+#
+# alpha_fast.log carries two search modes. JHQ_AS_LINEAR=1 steps the grid one
+# value at a time; without it the rule bisects, and bisection is the rule the
+# paper describes. An earlier version of this panel matched on "SLOTS" alone,
+# which put slots=0 and slots=2 on the bisection runs and slots=1 -- the
+# default, the one the paper actually uses -- on the linear run. Three bars,
+# two algorithms.
+#
+# The default tolerance is one slot and is not written in the header, so the
+# slots=1 point is the run with neither knob set.
+TOL_DS, TOL_NP = "vogue-768", 512
+tol, cur = {}, None
 for ln in open(datafile("alpha_fast.log")):
     m = re.search(r"--- (\S+) nprobe=(\d+) BLOCK=\d+\s+(.*?) ---", ln)
     if m:
@@ -103,13 +119,26 @@ for ln in open(datafile("alpha_fast.log")):
         continue
     m = re.search(r"AF_RESULT picked=(\S+) probes=\d+ recall_picked=(\S+) "
                   r"qps_picked=\d+ recall_max=(\S+) qps_max=\d+ gain=(\S+)", ln)
-    if m and cur and "SLOTS" in cur[2]:
-        s = int(re.search(r"SLOTS=(\d+)", cur[2]).group(1))
-        tol.setdefault(cur[0], {})[s] = (float(m.group(1)),
-                                         float(m.group(2)) - float(m.group(3)),
-                                         float(m.group(4)))
+    if not (m and cur):
+        continue
+    ds_, np_, flags = cur
+    if ds_ != TOL_DS or np_ != TOL_NP or "JHQ_AS_LINEAR" in flags:
+        continue
+    hit = re.search(r"JHQ_AS_SLOTS=(\d+)", flags)
+    slots = int(hit.group(1)) if hit else 1          # 1 is the default
+    tol[slots] = (float(m.group(1)),
+                  float(m.group(2)) - float(m.group(3)), float(m.group(4)))
+assert sorted(tol) == [0, 1, 2], sorted(tol)
 
-fig, (a, b, c) = plt.subplots(1, 3, figsize=(WIDE, 2.25))
+# Two measures on one x is two stacked axes, not one axes with two y-scales:
+# a twin axis lets the reader compare bar heights that share no unit.
+fig = plt.figure(figsize=(WIDE, 2.45))
+gs = fig.add_gridspec(2, 3, height_ratios=[1, 1], hspace=0.16,
+                      wspace=0.52)
+a = fig.add_subplot(gs[:, 0])
+b = fig.add_subplot(gs[:, 1])
+c = fig.add_subplot(gs[0, 2])
+d = fig.add_subplot(gs[1, 2], sharex=c)
 
 # (a) One row per configuration, sweep marker to rule marker. A scatter
 # against the diagonal cannot carry eight labelled points at this width, and
@@ -162,8 +191,8 @@ for i, ds in enumerate([d for d in ("openai3-3072", "arxiv-768") if d in bys]):
     col = ["#2a78d6", "#eb6834"][i]
     b.plot(xs, [-bys[ds][x][1] for x in xs], color=col,
            marker=["o", "^"][i], label=PRETTY[ds])
-b.axhline(1e-3, color="0.35", lw=0.7, ls=":")
-b.text(0.97, 0.30, "build noise", transform=b.transAxes, ha="right", fontsize=7,
+b.axhline(1e-4, color="0.35", lw=0.7, ls=":")
+b.text(0.97, 0.30, "$10^{-4}$: tie-break only", transform=b.transAxes, ha="right", fontsize=7,
        color="0.35")
 # Linear, not log: from S=32 on the loss is exactly zero, and a log axis
 # cannot draw that -- the lines would fall off the bottom and read as broken.
@@ -175,23 +204,28 @@ b.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
 b.legend(loc="upper right", fontsize=7)
 b.text(0.03, 0.90, "(b)", transform=b.transAxes, fontsize=8)
 
-# (c)
-ds = "vogue-768"
-if ds in tol:
-    xs = sorted(tol[ds])
-    c2 = c.twinx()
-    c.bar([x - 0.15 for x in xs], [-tol[ds][x][1] for x in xs], width=0.3,
-          color="#e34948", label="recall given up")
-    c2.bar([x + 0.15 for x in xs], [tol[ds][x][2] for x in xs], width=0.3,
-           color=S["jhq"]["color"], label="QPS gain")
-    c.axhline(1e-3, color="0.35", lw=0.7, ls=":")
-    c.set_ylabel("recall given up"); c2.set_ylabel(r"QPS $\div$ fixed $\alpha$")
-    c.set_xlabel("disagreeing slots allowed")
-    c.set_xticks(xs); c2.grid(False); c2.set_ylim(0.95, 1.35)
-    h1, l1 = c.get_legend_handles_labels(); h2, l2 = c2.get_legend_handles_labels()
-    c.legend(h1 + h2, l1 + l2, loc="upper center", fontsize=7,
-             bbox_to_anchor=(0.55, 1.0))
-c.text(0.03, 0.90, "(c)", transform=c.transAxes, fontsize=8)
+# (c) upper: what the tolerance costs.  lower: what it buys.
+xs = sorted(tol)
+c.bar(xs, [-tol[x][1] for x in xs], width=0.5, color="#e34948")
+c.axhline(1e-4, color="0.35", lw=0.7, ls=":")
+c.text(-0.5, 1.3e-4, "$10^{-4}$", fontsize=7, color="0.35", ha="left",
+       va="bottom")
+c.set_ylabel("recall\ngiven up", linespacing=1.2)
+c.tick_params(labelbottom=False)
+c.set_xlim(-0.55, 2.55)
+for x in xs:
+    c.text(x, -tol[x][1], r"$\alpha^{*}{=}%.0f$" % tol[x][0], fontsize=7,
+           ha="center", va="bottom", color="#52514e")
+c.set_ylim(0, max(-tol[x][1] for x in xs) * 1.42)
+c.text(0.04, 0.90, "(c) %s, nprobe$=$%d" % (TOL_DS, TOL_NP),
+       transform=c.transAxes, fontsize=7.5, va="top")
 
-fig.tight_layout(pad=0.3)
+d.bar(xs, [tol[x][2] for x in xs], width=0.5, color=S["jhq"]["color"])
+d.axhline(1.0, color="0.35", lw=0.7, ls=":")
+d.set_ylabel(r"QPS $\div$" "\n" r"fixed $\alpha$", linespacing=1.2)
+d.set_xlabel("disagreeing slots allowed")
+d.set_xticks(xs)
+d.set_ylim(0.95, max(tol[x][2] for x in xs) * 1.06)
+
+fig.subplots_adjust(left=0.075, right=0.995, top=0.97, bottom=0.17)
 save(fig, "fig_calibration")

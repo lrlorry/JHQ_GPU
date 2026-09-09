@@ -50,11 +50,12 @@ for i, d in enumerate(order):
         a.text(0.4, i - 0.19, "does not build", va="center", fontsize=7,
                color=S["rabitq"]["color"], style="italic")
     else:
-        a.text(jv[i] + 0.3, i + 0.19, f"+{100*(jv[i]/rv[i]-1):.0f}\\%",
+        a.text(jv[i] + 0.3, i + 0.19, f"+{100*(jv[i]/rv[i]-1):.0f}%",
                va="center", fontsize=7)
 a.set_yticks(y); a.set_yticklabels([PRETTY[d] for d in order])
 a.set_xlabel("resident GPU memory (GiB)"); a.invert_yaxis()
-a.grid(axis="y", visible=False); a.legend(loc="lower right", fontsize=7)
+a.grid(axis="y", visible=False); a.legend(loc="lower right", fontsize=7,
+                                        framealpha=0.92)
 a.set_xlim(0, max(jv) * 1.25)
 a.text(0.97, 0.05, "(a)", transform=a.transAxes, fontsize=8, ha="right")
 
