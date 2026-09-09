@@ -25,20 +25,31 @@ and a reviewer will ask for the break-even before asking anything else.
 The number is already measured on every row. `paper_fronts.log` records
 `batches_to_repay` on all 36 RULE rows:
 
-| | |
+> **Corrected 2026-09-10.** The table below first read "0.6 to 178.6, median
+> 2.7, 18 of 36 above two batches". That was wrong, and the error is described
+> in `SKELETON_REVIEW_v3.md` item 0: four rows compare a configuration with
+> itself, so their gain is repeat-timing noise and their payback is 1/noise.
+> Excluding them leaves the figures below.
+
+| | over the 32 runs where the budget actually changed |
 |---|---|
 | calibration cost | 2.0 – 47.5 ms |
-| batches to repay | 0.6 – 178.6, median 2.7 |
-| rows needing more than 2 batches | 18 of 36 |
-| rows that never repay | 1 (gain 0.996) |
+| steady-state gain | 1.044 – 2.653 — **every one above 1** |
+| batches to repay | 0.5 – 21.0, median 1.75 |
+| rows needing more than 2 batches | 15 of 32 |
+| runs where the rule changed nothing | 4 (arxiv-768, nprobe >= 128), reported separately |
 
-The joint distribution is the story, and it is a *favourable* one: payback is
-inversely tied to gain. Where the rule finds a 2.5x gain it repays in under a
-batch; where it finds nothing (gain 1.003) it wants 178 batches, i.e. never.
-The cost is self-limiting in exactly the direction that matters. **Report the
-scatter of gain against batches-to-repay, not the gain range alone.** A single
-"1.0x to 2.65x" with the cost in a footnote reads as concealment even though
-the data acquits us.
+The correction improves the result rather than damaging it. The row that
+appeared never to repay, at gain 0.996, was one of the four self-comparisons:
+across every configuration where the rule actually moved the budget, it is
+faster, by 1.044x to 2.653x.
+
+**Report the scatter of gain against batches-to-repay, not the gain range
+alone**, and say which runs are not on it and why. A single "1.0x to 2.65x"
+with the cost in a footnote reads as concealment even though the data acquits
+us. Note also that the anticorrelation is largely definitional --
+B* = (T_cal/T_rule)/(g-1) diverges as g approaches 1 by construction -- so the
+figure is worth having for the levels it reports, not as a mechanism finding.
 
 Two corrections that follow:
 
