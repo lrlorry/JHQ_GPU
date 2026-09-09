@@ -196,3 +196,58 @@ This is the answer to the sharpest question available about the evaluation —
 everything runs on one card at one operating point, and `data/v54.log` already
 shows a kernel verdict flipping with a card's bandwidth. The batch axis is now
 measured; the second card is not.
+
+---
+
+## 7. The second level, measured  ▸ finished
+
+Everything in Section 3 presupposes that the residual level earns its place:
+selective refinement, the alpha budget, the two-level scan. `data/hierarchy_ablation.log`
+drops it -- `JHQ_NO_RESIDUAL`, primary codes only -- on the same build,
+datasets and nprobe grid as `data/paper_fronts.log`.
+
+Recall ceiling, over every nprobe:
+
+| dataset | JQ (primary only) | JHQ | gain |
+|---|---:|---:|---:|
+| arxiv-768 | 0.5137 | 0.9898 | **+0.476** |
+| vogue-768 | 0.6371 | 0.9939 | **+0.357** |
+| bge-m3 | 0.7273 | 0.9815 | +0.254 |
+| stella | 0.7459 | 0.9957 | +0.250 |
+| openai3-1536 | 0.8127 | 0.9864 | +0.174 |
+| openai3-3072 | 0.8642 | 0.9926 | +0.128 |
+
+**The primary level alone tops out between 0.51 and 0.86.** Adding nprobe does
+not fix it -- arxiv-768 gains 0.0002 of recall going from nprobe 128 to 1024 --
+because what is missing is resolution, not candidates. The second level is
+what makes the method reach the recall regime the paper is about, and it costs
+1.3x to 2.4x of throughput to run.
+
+That is the motivation Section 3 needs, and it was asserted rather than
+measured until now. The previous version of this ablation
+(`results/pre_freeze_v22_s2b1/`) ran on v21, before the factorised table, the
+probe cursor, the word layout, the launch fix and the alpha rule, so its
+numbers could not sit in the same table as the rest of Section 6.
+
+## 8. Memory, measured  ▸ finished
+
+Same call on both sides: `cudaMemGetInfo` after the index is built and the
+search workspace allocated (`data/vram.log`, `data/paper_fronts.log`).
+
+| dataset | IVF-RaBitQ | JHQ | JHQ above |
+|---|---:|---:|---:|
+| vogue-768 | 1,012 MiB | 1,405 MiB | +39% |
+| arxiv-768 | 2,018 MiB | 2,545 MiB | +26% |
+| openai3-1536 | 1,836 MiB | 2,353 MiB | +28% |
+| openai3-3072 | 3,324 MiB | 4,047 MiB | +22% |
+| bge-m3 | does not build | 12,113 MiB | — |
+| stella | does not build | 20,837 MiB | — |
+
+**IVF-RaBitQ has the smaller footprint wherever it builds**, by more than its
+bits per dimension alone predict: 8 against 9 is 11%, and the measured gap is
+22–39% because JHQ also carries the selection buffer and the factorised table
+in its workspace.
+
+Write this as the trade it is. **Do not write that JHQ is more memory
+efficient** -- it is not, and a reviewer who counts bits will see it in a
+minute.

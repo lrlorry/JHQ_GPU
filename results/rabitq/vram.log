@@ -1,0 +1,6 @@
+14:33:22 got the GPU
+  vogue-768      nlist=4096   vram=1012.0     recall=0.9553   index_size=size=932328 rc=0
+  arxiv-768      nlist=8192   vram=2018.0     recall=0.9774   index_size=size=2253000 rc=0
+  openai3-1536   nlist=8192   vram=1836.0     recall=0.9310   index_size=size=999000 rc=0
+  openai3-3072   nlist=4096   vram=3324.0     recall=0.9427   index_size=size=999000 rc=0
+14:34:35 === VR_DONE ===
