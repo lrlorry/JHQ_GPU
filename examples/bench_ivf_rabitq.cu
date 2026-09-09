@@ -139,35 +139,54 @@ int main(int argc, char** argv) {
     // gives 1.03 where the ground truth's own first neighbour is at 0.63. The
     // header says streaming is not applicable once the data is resident, so
     // it is uploaded first. 11.4 GiB at d=3072 fits the card.
-    auto d_base = raft::make_device_matrix<float, int64_t>(res, nb, d);
-    raft::copy(d_base.data_handle(), xb.data(), (size_t)nb * d,
-               raft::resource::get_cuda_stream(res));
-    raft::resource::sync_stream(res);
-    auto xb_dev = raft::make_device_matrix_view<const float, int64_t>(
-        d_base.data_handle(), nb, d);
-
-    auto t0 = clk::now();
-    auto built = cuvs::neighbors::ivf_rabitq::build(res, ip, xb_dev);
-    raft::resource::sync_stream(res);
-
-    // build() does not leave the index in the layout search reads.
-    //
-    // cuVS's own test round-trips it through serialize/deserialize with the
-    // comment "Serialize and deserialize to reorganize data for efficient
-    // search" (cpp/tests/neighbors/ann_ivf_rabitq.cuh). Without it the search
-    // returns ids that are essentially random beside distances below the true
-    // minimum -- examples/rabitq_selftest.cu puts it exactly: querying with a
-    // row of the index and probing every list, self-recall is 0/20 built and
-    // 20/20 round-tripped. Both paths are timed here, so the cost of the step
-    // is recorded rather than hidden.
     // 3.2 GB at 1 M x 3072 and 8 bits a dimension. /tmp is the 30 GB system
     // overlay on this box; the data disk is not. JHQ_RQ_IDX moves it.
     const char* rt_file = std::getenv("JHQ_RQ_IDX")
                         ? std::getenv("JHQ_RQ_IDX") : "/tmp/rq_bench.idx";
-    cuvs::neighbors::ivf_rabitq::serialize(res, rt_file, built);
+    // stella is 17.8 M x 1024 and bge-m3 10.1 M x 1024 -- 72 GB and 41 GB of
+    // raw float -- so neither can be uploaded to a 32 GB card at all, and
+    // JHQ_RQ_HOST=1 hands cuVS a host matrix instead. That path logs "Using
+    // streaming construction" and used to return nonsense, but so did every
+    // other path for want of the round-trip below, so it is worth asking
+    // again.
+    const bool host_in = std::getenv("JHQ_RQ_HOST") != nullptr;
+
+    auto t0 = clk::now();
     cuvs::neighbors::ivf_rabitq::index<int64_t> loaded(res);
-    cuvs::neighbors::ivf_rabitq::deserialize(res, rt_file, &loaded);
-    raft::resource::sync_stream(res);
+    {
+        // build() does not leave the index in the layout search reads. cuVS's
+        // own test round-trips it through serialize/deserialize with the
+        // comment "Serialize and deserialize to reorganize data for efficient
+        // search" (cpp/tests/neighbors/ann_ivf_rabitq.cuh); nothing in the
+        // public header says so. Without it the search returns ids that are
+        // essentially random beside distances below the true minimum --
+        // examples/rabitq_selftest.cu puts it exactly: querying with a row of
+        // the index and probing every list, self-recall is 0/20 built and
+        // 20/20 round-tripped. The round-trip is inside the timed build, so
+        // its cost is recorded rather than hidden.
+        //
+        // The device copy lives only in this scope: at d=3072 it is 11.4 GiB
+        // that the search has no use for.
+        if (host_in) {
+            auto h_view = raft::make_host_matrix_view<const float, int64_t>(
+                xb.data(), nb, d);
+            auto built = cuvs::neighbors::ivf_rabitq::build(res, ip, h_view);
+            raft::resource::sync_stream(res);
+            cuvs::neighbors::ivf_rabitq::serialize(res, rt_file, built);
+        } else {
+            auto d_base = raft::make_device_matrix<float, int64_t>(res, nb, d);
+            raft::copy(d_base.data_handle(), xb.data(), (size_t)nb * d,
+                       raft::resource::get_cuda_stream(res));
+            raft::resource::sync_stream(res);
+            auto built = cuvs::neighbors::ivf_rabitq::build(
+                res, ip, raft::make_device_matrix_view<const float, int64_t>(
+                             d_base.data_handle(), nb, d));
+            raft::resource::sync_stream(res);
+            cuvs::neighbors::ivf_rabitq::serialize(res, rt_file, built);
+        }
+        cuvs::neighbors::ivf_rabitq::deserialize(res, rt_file, &loaded);
+        raft::resource::sync_stream(res);
+    }
     auto& idx = loaded;
     const double build_ms = ms_since(t0);
 
