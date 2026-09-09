@@ -1,0 +1,732 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at ea9799f v59 build fix, and the 2x2 the paper was inferring across versions
+23:46:01 HEAD ea9799f v59 build fix, and the 2x2 the paper was inferring across versions
+-- Configuring done (0.1s)
+-- Generating done (0.7s)
+-- Build files have been written to: /root/JHQ_GPU/build
+[100%] Built target jhq_cpu
+[100%] Building CUDA object CMakeFiles/jhq_v59_g1.dir/jhq_v59_lutgroups/search.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_g1.dir/jhq_v59_lutgroups/jhq_gpu_index.cu.o
+/root/JHQ_GPU/jhq_v59_lutgroups/search.cu(542): warning #177-D: variable "s_q" was declared but never referenced
+      float* s_q = s_suf + (0 ? (M + 1) : 0);
+             ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/jhq_v59_lutgroups/search.cu(593): warning #177-D: variable "TILE_M" was declared but never referenced
+      const int TILE_M = tile_m;
+                ^
+
+[100%] Linking CXX static library libjhq_v59_g1.a
+[100%] Built target jhq_v59_g1
+[100%] Building CUDA object CMakeFiles/demo_jhq_v59_g1.dir/examples/demo_jhq_v36.cu.o
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_fvecs(const char*, std::vector<float>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:13:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   13 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:26:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   26 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:27:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   27 |         fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_ivecs(const char*, std::vector<int>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:39:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   39 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:52:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   52 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:53:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   53 |         fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable demo_jhq_v59_g1
+[100%] Built target demo_jhq_v59_g1
+[ 50%] Built target jhq_cpu
+[ 50%] Building CUDA object CMakeFiles/jhq_v59_g2.dir/jhq_v59_lutgroups/jhq_gpu_index.cu.o
+[ 50%] Building CUDA object CMakeFiles/jhq_v59_g2.dir/jhq_v59_lutgroups/search.cu.o
+[ 50%] Building CUDA object CMakeFiles/jhq_v59_g2.dir/jhq_v59_lutgroups/encode.cu.o
+[ 50%] Building CUDA object CMakeFiles/jhq_v59_g2.dir/jhq_v59_lutgroups/train_pq_gpu.cu.o
+[ 50%] Building CUDA object CMakeFiles/jhq_v59_g2.dir/jhq_v59_lutgroups/train_res_gpu.cu.o
+In file included from /root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:13:
+/root/JHQ_GPU/common/cuda_utils.cuh:17: warning: "CUBLAS_CHECK" redefined
+   17 | #define CUBLAS_CHECK(call)                                                     \
+      | 
+/root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:9: note: this is the location of the previous definition
+    9 | #define CUBLAS_CHECK(x) do { cublasStatus_t _s = (x); if (_s != CUBLAS_STATUS_SUCCESS) { \
+      | 
+In file included from /root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:13:
+/root/JHQ_GPU/common/cuda_utils.cuh:17: warning: "CUBLAS_CHECK" redefined
+   17 | #define CUBLAS_CHECK(call)                                                     \
+      | 
+/root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:9: note: this is the location of the previous definition
+    9 | #define CUBLAS_CHECK(x) do { cublasStatus_t _s = (x); if (_s != CUBLAS_STATUS_SUCCESS) { \
+      | 
+/root/JHQ_GPU/jhq_v59_lutgroups/search.cu(542): warning #177-D: variable "s_q" was declared but never referenced
+      float* s_q = s_suf + (0 ? (M + 1) : 0);
+             ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/jhq_v59_lutgroups/search.cu(593): warning #177-D: variable "TILE_M" was declared but never referenced
+      const int TILE_M = tile_m;
+                ^
+
+/root/JHQ_GPU/jhq_v59_lutgroups/train_res_gpu.cu(160): warning #177-D: function "jhq_gpu::<unnamed>::assign_accum_kernel" was declared but never referenced
+            void assign_accum_kernel(
+                 ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+[100%] Linking CXX static library libjhq_v59_g2.a
+[100%] Built target jhq_v59_g2
+[100%] Building CUDA object CMakeFiles/demo_jhq_v59_g2.dir/examples/demo_jhq_v36.cu.o
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_fvecs(const char*, std::vector<float>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:13:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   13 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:26:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   26 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:27:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   27 |         fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_ivecs(const char*, std::vector<int>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:39:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   39 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:52:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   52 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:53:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   53 |         fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable demo_jhq_v59_g2
+[100%] Built target demo_jhq_v59_g2
+[100%] Built target jhq_cpu
+[100%] Building CUDA object CMakeFiles/jhq_v59_g4.dir/jhq_v59_lutgroups/search.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_g4.dir/jhq_v59_lutgroups/jhq_gpu_index.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_g4.dir/jhq_v59_lutgroups/encode.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_g4.dir/jhq_v59_lutgroups/train_res_gpu.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_g4.dir/jhq_v59_lutgroups/train_pq_gpu.cu.o
+In file included from /root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:13:
+/root/JHQ_GPU/common/cuda_utils.cuh:17: warning: "CUBLAS_CHECK" redefined
+   17 | #define CUBLAS_CHECK(call)                                                     \
+      | 
+/root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:9: note: this is the location of the previous definition
+    9 | #define CUBLAS_CHECK(x) do { cublasStatus_t _s = (x); if (_s != CUBLAS_STATUS_SUCCESS) { \
+      | 
+In file included from /root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:13:
+/root/JHQ_GPU/common/cuda_utils.cuh:17: warning: "CUBLAS_CHECK" redefined
+   17 | #define CUBLAS_CHECK(call)                                                     \
+      | 
+/root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:9: note: this is the location of the previous definition
+    9 | #define CUBLAS_CHECK(x) do { cublasStatus_t _s = (x); if (_s != CUBLAS_STATUS_SUCCESS) { \
+      | 
+/root/JHQ_GPU/jhq_v59_lutgroups/search.cu(542): warning #177-D: variable "s_q" was declared but never referenced
+      float* s_q = s_suf + (0 ? (M + 1) : 0);
+             ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/jhq_v59_lutgroups/search.cu(593): warning #177-D: variable "TILE_M" was declared but never referenced
+      const int TILE_M = tile_m;
+                ^
+
+/root/JHQ_GPU/jhq_v59_lutgroups/train_res_gpu.cu(160): warning #177-D: function "jhq_gpu::<unnamed>::assign_accum_kernel" was declared but never referenced
+            void assign_accum_kernel(
+                 ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+[100%] Linking CXX static library libjhq_v59_g4.a
+[100%] Built target jhq_v59_g4
+[100%] Building CUDA object CMakeFiles/demo_jhq_v59_g4.dir/examples/demo_jhq_v36.cu.o
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_fvecs(const char*, std::vector<float>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:13:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   13 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:26:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   26 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:27:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   27 |         fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_ivecs(const char*, std::vector<int>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:39:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   39 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:52:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   52 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:53:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   53 |         fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable demo_jhq_v59_g4
+[100%] Built target demo_jhq_v59_g4
+[100%] Built target jhq_cpu
+[100%] Building CUDA object CMakeFiles/jhq_v59_g8.dir/jhq_v59_lutgroups/search.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_g8.dir/jhq_v59_lutgroups/jhq_gpu_index.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_g8.dir/jhq_v59_lutgroups/encode.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_g8.dir/jhq_v59_lutgroups/train_pq_gpu.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_g8.dir/jhq_v59_lutgroups/train_res_gpu.cu.o
+In file included from /root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:13:
+/root/JHQ_GPU/common/cuda_utils.cuh:17: warning: "CUBLAS_CHECK" redefined
+   17 | #define CUBLAS_CHECK(call)                                                     \
+      | 
+/root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:9: note: this is the location of the previous definition
+    9 | #define CUBLAS_CHECK(x) do { cublasStatus_t _s = (x); if (_s != CUBLAS_STATUS_SUCCESS) { \
+      | 
+In file included from /root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:13:
+/root/JHQ_GPU/common/cuda_utils.cuh:17: warning: "CUBLAS_CHECK" redefined
+   17 | #define CUBLAS_CHECK(call)                                                     \
+      | 
+/root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:9: note: this is the location of the previous definition
+    9 | #define CUBLAS_CHECK(x) do { cublasStatus_t _s = (x); if (_s != CUBLAS_STATUS_SUCCESS) { \
+      | 
+/root/JHQ_GPU/jhq_v59_lutgroups/search.cu(542): warning #177-D: variable "s_q" was declared but never referenced
+      float* s_q = s_suf + (0 ? (M + 1) : 0);
+             ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/jhq_v59_lutgroups/search.cu(593): warning #177-D: variable "TILE_M" was declared but never referenced
+      const int TILE_M = tile_m;
+                ^
+
+/root/JHQ_GPU/jhq_v59_lutgroups/train_res_gpu.cu(160): warning #177-D: function "jhq_gpu::<unnamed>::assign_accum_kernel" was declared but never referenced
+            void assign_accum_kernel(
+                 ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+[100%] Linking CXX static library libjhq_v59_g8.a
+[100%] Built target jhq_v59_g8
+[100%] Building CUDA object CMakeFiles/demo_jhq_v59_g8.dir/examples/demo_jhq_v36.cu.o
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_fvecs(const char*, std::vector<float>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:13:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   13 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:26:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   26 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:27:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   27 |         fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_ivecs(const char*, std::vector<int>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:39:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   39 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:52:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   52 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:53:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   53 |         fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable demo_jhq_v59_g8
+[100%] Built target demo_jhq_v59_g8
+[100%] Built target jhq_cpu
+[100%] Building CUDA object CMakeFiles/jhq_v59_b_g1.dir/jhq_v59_lutgroups/encode.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_b_g1.dir/jhq_v59_lutgroups/train_res_gpu.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_b_g1.dir/jhq_v59_lutgroups/search.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_b_g1.dir/jhq_v59_lutgroups/jhq_gpu_index.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_b_g1.dir/jhq_v59_lutgroups/train_pq_gpu.cu.o
+In file included from /root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:13:
+/root/JHQ_GPU/common/cuda_utils.cuh:17: warning: "CUBLAS_CHECK" redefined
+   17 | #define CUBLAS_CHECK(call)                                                     \
+      | 
+/root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:9: note: this is the location of the previous definition
+    9 | #define CUBLAS_CHECK(x) do { cublasStatus_t _s = (x); if (_s != CUBLAS_STATUS_SUCCESS) { \
+      | 
+In file included from /root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:13:
+/root/JHQ_GPU/common/cuda_utils.cuh:17: warning: "CUBLAS_CHECK" redefined
+   17 | #define CUBLAS_CHECK(call)                                                     \
+      | 
+/root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:9: note: this is the location of the previous definition
+    9 | #define CUBLAS_CHECK(x) do { cublasStatus_t _s = (x); if (_s != CUBLAS_STATUS_SUCCESS) { \
+      | 
+/root/JHQ_GPU/jhq_v59_lutgroups/search.cu(542): warning #177-D: variable "s_q" was declared but never referenced
+      float* s_q = s_suf + (0 ? (M + 1) : 0);
+             ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/jhq_v59_lutgroups/train_res_gpu.cu(160): warning #177-D: function "jhq_gpu::<unnamed>::assign_accum_kernel" was declared but never referenced
+            void assign_accum_kernel(
+                 ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/jhq_v59_lutgroups/jhq_gpu_index.cu(661): warning #177-D: function "jhq_gpu::<unnamed>::repack_primary_words_kernel" was declared but never referenced
+            void repack_primary_words_kernel(
+                 ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+[100%] Linking CXX static library libjhq_v59_b_g1.a
+[100%] Built target jhq_v59_b_g1
+[100%] Building CUDA object CMakeFiles/demo_jhq_v59_b_g1.dir/examples/demo_jhq_v36.cu.o
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_fvecs(const char*, std::vector<float>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:13:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   13 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:26:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   26 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:27:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   27 |         fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_ivecs(const char*, std::vector<int>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:39:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   39 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:52:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   52 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:53:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   53 |         fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable demo_jhq_v59_b_g1
+[100%] Built target demo_jhq_v59_b_g1
+[ 50%] Built target jhq_cpu
+[ 50%] Building CUDA object CMakeFiles/jhq_v59_b_g2.dir/jhq_v59_lutgroups/encode.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_b_g2.dir/jhq_v59_lutgroups/search.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_b_g2.dir/jhq_v59_lutgroups/jhq_gpu_index.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_b_g2.dir/jhq_v59_lutgroups/train_pq_gpu.cu.o
+[100%] Building CUDA object CMakeFiles/jhq_v59_b_g2.dir/jhq_v59_lutgroups/train_res_gpu.cu.o
+In file included from /root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:13:
+/root/JHQ_GPU/common/cuda_utils.cuh:17: warning: "CUBLAS_CHECK" redefined
+   17 | #define CUBLAS_CHECK(call)                                                     \
+      | 
+/root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:9: note: this is the location of the previous definition
+    9 | #define CUBLAS_CHECK(x) do { cublasStatus_t _s = (x); if (_s != CUBLAS_STATUS_SUCCESS) { \
+      | 
+In file included from /root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:13:
+/root/JHQ_GPU/common/cuda_utils.cuh:17: warning: "CUBLAS_CHECK" redefined
+   17 | #define CUBLAS_CHECK(call)                                                     \
+      | 
+/root/JHQ_GPU/jhq_v59_lutgroups/encode.cu:9: note: this is the location of the previous definition
+    9 | #define CUBLAS_CHECK(x) do { cublasStatus_t _s = (x); if (_s != CUBLAS_STATUS_SUCCESS) { \
+      | 
+/root/JHQ_GPU/jhq_v59_lutgroups/search.cu(542): warning #177-D: variable "s_q" was declared but never referenced
+      float* s_q = s_suf + (0 ? (M + 1) : 0);
+             ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/jhq_v59_lutgroups/train_res_gpu.cu(160): warning #177-D: function "jhq_gpu::<unnamed>::assign_accum_kernel" was declared but never referenced
+            void assign_accum_kernel(
+                 ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/jhq_v59_lutgroups/jhq_gpu_index.cu(661): warning #177-D: function "jhq_gpu::<unnamed>::repack_primary_words_kernel" was declared but never referenced
+            void repack_primary_words_kernel(
+                 ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+[100%] Linking CXX static library libjhq_v59_b_g2.a
+[100%] Built target jhq_v59_b_g2
+[100%] Building CUDA object CMakeFiles/demo_jhq_v59_b_g2.dir/examples/demo_jhq_v36.cu.o
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_fvecs(const char*, std::vector<float>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:13:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   13 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:26:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   26 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:27:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   27 |         fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_ivecs(const char*, std::vector<int>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:39:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   39 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:52:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   52 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:53:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   53 |         fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable demo_jhq_v59_b_g2
+[100%] Built target demo_jhq_v59_b_g2
+23:47:27 build_rc=0 errors=0
+23:47:27 got the GPU
+23:47:27 ########## phase 1: do all four agree? vogue, nprobe=128 ##########
+  vogue-768      M=96   layout=word  G=1  np=128   recall=0.9641   qps=133289    smem=         rc=0
+  vogue-768      M=96   layout=word  G=2  np=128   recall=0.9642   qps=137785    smem=         rc=0
+  vogue-768      M=96   layout=word  G=4  np=128   recall=0.9641   qps=100484    smem=         rc=0
+  vogue-768      M=96   layout=word  G=8  np=128   recall=0.9642   qps=66751     smem=         rc=0
+23:47:46 ########## phase 2: the sweep, M=96 and M=384 ##########
+  vogue-768      M=96   layout=word  G=1  np=8     recall=0.6608   qps=260152    smem=         rc=0
+  openai3-3072   M=384  layout=word  G=1  np=8     recall=0.7466   qps=82999     smem=         rc=0
+  vogue-768      M=96   layout=word  G=2  np=8     recall=0.6608   qps=269456    smem=         rc=0
+  openai3-3072   M=384  layout=word  G=2  np=8     recall=0.7466   qps=89917     smem=         rc=0
+  vogue-768      M=96   layout=word  G=4  np=8     recall=0.6608   qps=252084    smem=         rc=0
+  openai3-3072   M=384  layout=word  G=4  np=8     recall=0.7466   qps=86349     smem=         rc=0
+  vogue-768      M=96   layout=word  G=8  np=8     recall=0.6607   qps=231858    smem=         rc=0
+  openai3-3072   M=384  layout=word  G=8  np=8     recall=0.7466   qps=81345     smem=         rc=0
+  vogue-768      M=96   layout=word  G=1  np=32    recall=0.8619   qps=208445    smem=         rc=0
+  openai3-3072   M=384  layout=word  G=1  np=32    recall=0.8648   qps=57879     smem=         rc=0
+  vogue-768      M=96   layout=word  G=2  np=32    recall=0.8619   qps=217291    smem=         rc=0
+  openai3-3072   M=384  layout=word  G=2  np=32    recall=0.8648   qps=63708     smem=         rc=0
+  vogue-768      M=96   layout=word  G=4  np=32    recall=0.8619   qps=186286    smem=         rc=0
+  openai3-3072   M=384  layout=word  G=4  np=32    recall=0.8648   qps=58167     smem=         rc=0
+  vogue-768      M=96   layout=word  G=8  np=32    recall=0.8619   qps=148719    smem=         rc=0
+  openai3-3072   M=384  layout=word  G=8  np=32    recall=0.8648   qps=50262     smem=         rc=0
+  vogue-768      M=96   layout=word  G=1  np=128   recall=0.9642   qps=133610    smem=         rc=0
+  openai3-3072   M=384  layout=word  G=1  np=128   recall=0.9411   qps=33320     smem=         rc=0
+  vogue-768      M=96   layout=word  G=2  np=128   recall=0.9642   qps=134482    smem=         rc=0
+  openai3-3072   M=384  layout=word  G=2  np=128   recall=0.9411   qps=40895     smem=         rc=0
+  vogue-768      M=96   layout=word  G=4  np=128   recall=0.9642   qps=97618     smem=         rc=0
+  openai3-3072   M=384  layout=word  G=4  np=128   recall=0.9411   qps=33081     smem=         rc=0
+  vogue-768      M=96   layout=word  G=8  np=128   recall=0.9642   qps=67692     smem=         rc=0
+  openai3-3072   M=384  layout=word  G=8  np=128   recall=0.9411   qps=24864     smem=         rc=0
+  vogue-768      M=96   layout=word  G=1  np=512   recall=0.9902   qps=67181     smem=         rc=0
+  openai3-3072   M=384  layout=word  G=1  np=512   recall=0.9814   qps=13513     smem=         rc=0
+  vogue-768      M=96   layout=word  G=2  np=512   recall=0.9903   qps=74238     smem=         rc=0
+  openai3-3072   M=384  layout=word  G=2  np=512   recall=0.9814   qps=20786     smem=         rc=0
+  vogue-768      M=96   layout=word  G=4  np=512   recall=0.9902   qps=47151     smem=         rc=0
+  openai3-3072   M=384  layout=word  G=4  np=512   recall=0.9814   qps=14024     smem=         rc=0
+  vogue-768      M=96   layout=word  G=8  np=512   recall=0.9902   qps=29106     smem=         rc=0
+  openai3-3072   M=384  layout=word  G=8  np=512   recall=0.9814   qps=8898      smem=         rc=0
+23:50:03 ########## phase 3: the 2x2, table x layout, matched ##########
+  vogue-768      M=96   layout=word  G=1  np=32    recall=0.8619   qps=208323    smem=         rc=0
+  vogue-768      M=96   layout=byte  G=1  np=32    recall=0.8619   qps=196084    smem=         rc=0
+  openai3-3072   M=384  layout=word  G=1  np=32    recall=0.8648   qps=57981     smem=         rc=0
+  openai3-3072   M=384  layout=byte  G=1  np=32    recall=0.8648   qps=51882     smem=         rc=0
+  vogue-768      M=96   layout=word  G=2  np=32    recall=0.8619   qps=199673    smem=         rc=0
+  vogue-768      M=96   layout=byte  G=2  np=32    recall=0.8619   qps=198990    smem=         rc=0
+  openai3-3072   M=384  layout=word  G=2  np=32    recall=0.8648   qps=63474     smem=         rc=0
+  openai3-3072   M=384  layout=byte  G=2  np=32    recall=0.8648   qps=58846     smem=         rc=0
+  vogue-768      M=96   layout=word  G=1  np=128   recall=0.9641   qps=132968    smem=         rc=0
+  vogue-768      M=96   layout=byte  G=1  np=128   recall=0.9641   qps=112162    smem=         rc=0
+  openai3-3072   M=384  layout=word  G=1  np=128   recall=0.9411   qps=33443     smem=         rc=0
+  openai3-3072   M=384  layout=byte  G=1  np=128   recall=0.9411   qps=27633     smem=         rc=0
+  vogue-768      M=96   layout=word  G=2  np=128   recall=0.9640   qps=135899    smem=         rc=0
+  vogue-768      M=96   layout=byte  G=2  np=128   recall=0.9642   qps=116584    smem=         rc=0
+  openai3-3072   M=384  layout=word  G=2  np=128   recall=0.9411   qps=40984     smem=         rc=0
+  openai3-3072   M=384  layout=byte  G=2  np=128   recall=0.9411   qps=34136     smem=         rc=0
+  vogue-768      M=96   layout=word  G=1  np=512   recall=0.9903   qps=66770     smem=         rc=0
+  vogue-768      M=96   layout=byte  G=1  np=512   recall=0.9903   qps=54017     smem=         rc=0
+  openai3-3072   M=384  layout=word  G=1  np=512   recall=0.9814   qps=13563     smem=         rc=0
+  openai3-3072   M=384  layout=byte  G=1  np=512   recall=0.9814   qps=10859     smem=         rc=0
+  vogue-768      M=96   layout=word  G=2  np=512   recall=0.9903   qps=74926     smem=         rc=0
+  vogue-768      M=96   layout=byte  G=2  np=512   recall=0.9903   qps=59281     smem=         rc=0
+  openai3-3072   M=384  layout=word  G=2  np=512   recall=0.9814   qps=20745     smem=         rc=0
+  openai3-3072   M=384  layout=byte  G=2  np=512   recall=0.9814   qps=14747     smem=         rc=0
+23:51:37 === G59_DONE ===
