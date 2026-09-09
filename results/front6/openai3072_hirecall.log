@@ -1,0 +1,21 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at 31d04cb The serialized RaBitQ index is 3.2 GB; keep it off the 30 GB system overlay
+[  0%] Built target jhq_cpu
+[100%] Built target jhq_v53_x1
+[100%] Built target demo_jhq_v53_x1
+02:08:22 build_rc=0
+02:08:22 got the GPU
+  np=512   a=4.0    recall=0.9814   qps=27478     rc=0
+  np=512   a=8.0    recall=0.9815   qps=27476     rc=0
+  np=512   a=16.0   recall=0.9815   qps=26852     rc=0
+  np=512   a=100.0  recall=0.9815   qps=19943     rc=0
+  np=1024  a=4.0    recall=0.9926   qps=14369     rc=0
+  np=1024  a=8.0    recall=0.9926   qps=14380     rc=0
+  np=1024  a=16.0   recall=0.9926   qps=14204     rc=0
+  np=1024  a=100.0  recall=0.9926   qps=11993     rc=0
+  np=2048  a=4.0    recall=0.9964   qps=7472      rc=0
+  np=2048  a=8.0    recall=0.9965   qps=7461      rc=0
+  np=2048  a=16.0   recall=0.9965   qps=7424      rc=0
+  np=2048  a=100.0  recall=0.9965   qps=6737      rc=0
+02:09:39 === HI2_DONE ===
