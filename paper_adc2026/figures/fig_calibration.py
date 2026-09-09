@@ -26,12 +26,11 @@ Section 6.3, the contribution's own evidence. Three panels.
     saturation point at all. It returns 100 and reports no gain, which is the
     right behaviour for a budget that is already too small.
 
-    What the construction guarantees is one-sided only with respect to its own
-    criterion and its own alpha_max: it stops at the first alpha whose sampled
-    top-k disagrees by more than the tolerance, so it cannot return less than
-    the smallest alpha that passes the sampled agreement test. The sample
-    estimates the true saturation point; it does not bound it, and arxiv-768
-    is what the difference looks like.
+    The grid is walked by bisection, so there is no "stop at the first
+    rejection" and no one-sidedness to claim -- see fig_rule. What the rule
+    returns is the smallest grid alpha its sampled criterion accepts, bounded
+    above by alpha_max. The sample estimates the true saturation point; it
+    does not bound it, and arxiv-768 is what the difference looks like.
 (b) Sample size. At S=8 openai3-3072 picks alpha=2 and gives up 0.0058 of
     recall; from S=32 on it is exact. The knee, not a chosen constant. The
     reference line is 1e-4 here for the same reason as in (c): one index, one

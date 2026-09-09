@@ -13,22 +13,19 @@ instead. Raw in `alpha_sample.log`.
 ## The rule
 
 Take S of the batch's own queries. Answer them once at a generous `alpha_max`
-and hold that answer as the reference. Answer the same S at successively
-smaller alpha and keep the smallest whose top-k still agrees with the
-reference to within eps; stop at the first rejection. Run the rest of the
-batch at that alpha.
+and hold that answer as the reference. Then """ + BISECT + """
 
-Two properties matter. It needs **no ground truth** — it asks "would a smaller
-budget change what I return", which the system can see, not "would it change
-recall", which needs labels it does not have. And stopping at the first
-rejection makes it **one-sided with respect to its own criterion**: it cannot
-return less than the smallest alpha whose sampled top-k agrees to within eps.
+Run the rest of the batch at that alpha.
 
-That is a weaker statement than "never smaller than necessary", and the
-difference matters twice. The sample only estimates the agreement the full
-batch would show, so the criterion itself is noisy. And the search is bounded
-above by `alpha_max`, so where the true saturation point lies beyond it — as
-on arxiv-768 below — the rule returns `alpha_max` and cannot do otherwise.
+It needs **no ground truth** — it asks "would a smaller budget change what I
+return", which the system can see, not "would it change recall", which needs
+labels it does not have.
+
+Two things bound what it can claim. The sample only estimates the agreement
+the full batch would show, so the criterion itself is noisy. And the search is
+bounded above by `alpha_max`, so where the true saturation point lies beyond
+it — as on arxiv-768 below — the rule returns `alpha_max` and cannot do
+otherwise.
 
 Agreement is set intersection per query, not position equality: the same
 neighbours in a different order are the same answer.

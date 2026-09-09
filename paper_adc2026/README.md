@@ -25,12 +25,15 @@ say how to choose it; this project used 100 from its first run to its last.
 that as the reference, answer the same S at smaller α, and keep the smallest
 whose top-k still agrees to within a slot. No ground truth: it asks whether a
 smaller budget changes what is returned, not whether it changes recall.
-Stopping at the first rejection makes it one-sided **with respect to its own
-criterion**: it cannot return less than the smallest α whose sampled top-k
-agrees to within a slot. That is weaker than "never smaller than needed" — the
-sample estimates the agreement the full batch would show, and the search is
-bounded above by α_max, so where the saturation point lies beyond α_max the
-rule returns α_max and cannot do otherwise. arxiv-768 is that case.
+The grid is walked by **bisection**, not stepped down — three probes for a
+seven-point grid. An earlier version of this note said the rule "stops at the
+first rejection, so it is one-sided". That describes a linear scan and is not
+what happens: on vogue-768 the first probe is rejected and the search
+continues upward. What bisection returns is the smallest grid α its sampled
+criterion accepts, which is sound because exact top-ck selection gives nested
+candidate sets and so the differing-slot count is monotone in α. It is bounded
+above by α_max, so where the saturation point lies beyond α_max the rule
+returns α_max and cannot do otherwise. arxiv-768 is that case.
 
 | claim | number | file |
 |---|---|---|
