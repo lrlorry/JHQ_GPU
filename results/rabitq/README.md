@@ -89,3 +89,44 @@ Replicating the set tenfold would let the tables and caches be reused across
 duplicates and inflate the throughput, so the comparison has to run at 1,000
 on both sides. By their own Figure 4 that is the batch where IVF-RaBitQ's
 advantage over CAGRA is smallest, so it is not a setting that flatters JHQ.
+
+## The self-query test, which ends it
+
+Every check above went through a real dataset on disk, and linking the fork's
+own `libivf_rabitq.a` ahead of the wheel's `libcuvs.so` changes nothing --
+`compile_rc=0`, recall still 0.0000.
+
+`examples/rabitq_selftest.cu` removes the dataset from the question. It
+generates its own Gaussian data, uses **rows of the index as the queries**,
+and probes **every list**. The correct answer is the row's own id at distance
+zero, and it cannot be missed by routing because there is no routing left.
+
+Both link paths, four configurations each (`selftest.log`):
+
+| N | d | nlist | bits | nprobe | index size | self in top-1 | self in top-10 |
+|---|---|---|---|---|---|---|---|
+| 50,000 | 128 | 256 | 8 | 256 (all) | 50,000 | 0 / 20 | 0 / 20 |
+| 50,000 | 128 | 64 | 8 | 64 (all) | 50,000 | 0 / 20 | 0 / 20 |
+| 200,000 | 768 | 512 | 8 | 512 (all) | 200,000 | 0 / 20 | 0 / 20 |
+| 50,000 | 128 | 256 | 4 | 256 (all) | 50,000 | 0 / 20 | 0 / 20 |
+
+The wheel build and the static build agree to the row. One cell reads 1 / 20,
+which is what chance gives.
+
+`build()` reports the right row count every time. Query 0 asks for id 0, whose
+distance to itself is 0, and gets id 21,397 at 117.11 back instead.
+
+**So: `cuvs::neighbors::ivf_rabitq` on this card cannot retrieve a vector that
+is in its own index, with every list probed, on data it was handed directly.**
+Nothing about the call site, the dataset, the reader, the metric, the search
+mode, `bits_per_dim`, the architecture or the link path is left to blame.
+
+## What this costs, and what to say instead
+
+A same-machine, same-batch comparison against IVF-RaBitQ is not available
+here. The comparison that is available runs through the baseline both papers
+share: each method's speedup over CAGRA fp32 measured on its own machine.
+PVLDB 19(11) reports 0.8x-8.2x at Recall 0.95 across eight datasets, 3.3x on
+average; this work measures 1.19x on openai3-3072, the one dataset in common.
+That normalisation assumes CAGRA and the compressed method scale alike across
+an L40S and a 5090, which is not verified.
