@@ -1945,6 +1945,46 @@ foreach(KL 8 16)
     target_link_libraries(demo_jhq_v15_kl${KL} PRIVATE jhq_v15_kl${KL})
 endforeach()
 
+# v59: the factorised table at four granularities.
+#
+# The half-split is one partition of the primary code's eight base-2 digits
+# out of several. Splitting into G groups of 8/G bits each gives G tables of
+# 2^(8/G) entries:
+#
+#   G=1   1 x 256 = 256 entries a subspace, 1 load a candidate a subspace
+#   G=2   2 x  16 =  32                     2                              <- shipped
+#   G=4   4 x   4 =  16                     4
+#   G=8   8 x   2 =  16                     8
+#
+# G=8 is dominated by construction -- the same table as G=4 for twice the work
+# -- and is built anyway, because a table that predicts a dominated point and
+# then measures it is worth more than one that assumes it.
+#
+# The question is G=2 against G=4. G=4 halves the shared-memory footprint
+# again: M*16*4 bytes is 6 KiB at M=96 and 24 KiB at M=384, against 12 and 48
+# KiB at G=2, and 48 KiB is where occupancy starts to bind on this card. It
+# pays for that with twice the loads and adds on the innermost line of the
+# scan. So the prediction is that G=2 wins at small M and G=4 at large M, and
+# if the crossover is real then the granularity is a design parameter of the
+# representation rather than a constant someone picked.
+#
+# G is compile-time. A runtime G would put a loop and a branch in the scan's
+# innermost line and measure those instead, which is why there are four
+# binaries rather than one with a flag.
+#
+# All four compute identical primary distances -- the identity is exact for
+# every partition -- so recall must agree to the tie-break floor across them,
+# and verify_split_lut() checks the Cartesian precondition per group at train
+# time rather than trusting the flag.
+set(V59 jhq_v59_lutgroups)
+foreach(G 1 2 4 8)
+  add_jhq_variant(v59_g${G} ${V59} JHQ_PAPER_FAITHFUL=1
+      JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+      JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+      JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1
+      JHQ_LUT_GROUPS=${G})
+endforeach()
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
 # Pure C++ (common/recall.cuh has no CUDA in it), so no CUDA toolchain needed
 # to run these.  ctest, or: ./build/test_recall
