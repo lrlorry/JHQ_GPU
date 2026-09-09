@@ -18,6 +18,46 @@ examples in defect 4. `bench_vogue768` takes base/query/gt on the command line,
 sweeps nprobe and prints Recall@10 and QPS against the authors\' own
 `IndexIVFJHQ`, which is what a CPU baseline needs.
 
+## What it took to build on the box (2026-09-10)
+
+Three attempts. The third worked; the first two are worth recording because
+each was a wrong guess about a different thing.
+
+1. **FAISS v1.9.0** -- wrong version. The modified `jhqlib` does not match its
+   `IndexIVF` API (`get_InvertedListScanner` gained an `IDSelector*` and
+   `decode_vectors` changed), 20 errors. The version is not a guess: the
+   working Mac build pins **v1.14.3-15-g4a2393741**, and that is what the box
+   now uses.
+2. **`-march=native`** -- too much. It lets `jhqlib`'s `#ifdef __AVX512F__`
+   blocks compile, but it also makes FAISS build
+   `impl/fast_scan/kernels_simd512.h`, which does not compile at that commit.
+   Both `__AVX512F__` blocks in `jhqlib` are in `IndexJHQTrain.cpp` and affect
+   **training only** -- the search path is `#if defined(__AVX2__)` -- so
+   `-mavx2 -mno-avx512f` costs build time and nothing the paper measures, and
+   it matches the ISA level of the validated Mac build exactly.
+3. **`-mavx2 -mfma -mno-avx512f -fopenmp -include immintrin.h`**, FAISS at
+   `4a2393741`, `FAISS_OPT_LEVEL=avx2`: `lib_rc=0`, `bench_rc=0`.
+
+Two Mac-isms have to be patched on any Linux host: the six absolute
+`/Users/apple/...` include paths in `jhq/examples/CMakeLists.txt`, and
+`#include </usr/local/opt/libomp/include/omp.h>` at `jhqlib/IndexJHQ.cpp:30`.
+
+### A real bug in bench_vogue768.cpp, found by openai3-3072
+
+`read_fvecs` and `read_ivecs` size their buffer as `*n * dim` with both
+operands `int`. At d=3072, `999000 * 3072 = 3,069,072,000` overflows a signed
+32-bit int, wraps negative, and the constructor throws
+`std::length_error: cannot create std::vector larger than max_size()`. The
+same expression indexes the read loop.
+
+It never fired before because d=768 gives `932328 * 768 = 716M`, inside the
+range -- so every previous run of this binary was on a dataset small enough to
+hide it. Fixed by casting both operands to `size_t` in both readers. The fix
+is in the local (untracked) `JHQ_official/jhq/examples/bench_vogue768.cpp`;
+this note is here because that file is in no repository.
+
+---
+
 The rest of this file is the original write-up and remains accurate about what
 goes wrong out of the box.
 
