@@ -1735,6 +1735,29 @@ target_compile_definitions(demo_jhq_v57 PRIVATE
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
 target_link_libraries(demo_jhq_v57 PRIVATE jhq_v57_exp)
 
+# v58: export the trained coarse quantiser, so the CPU reference can search the
+# same partitioning.
+#
+# JHQ_official reads its IVF centroids and assignments from files rather than
+# training its own, which is what makes a fair CPU-versus-GPU comparison
+# possible: hand both the same routing and the only difference left is the
+# quantisation and the search. Without it the comparison measures training --
+# JHQ_repro trains its IVF on 65,536 points with 20 iterations and its residual
+# codebook with 25, against this port's million-plus and 2000.
+#
+# The only source change from v57 is a centroids() accessor.
+set(V58 jhq_v58_export)
+add_jhq_variant(v58_exp ${V58} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+add_executable(export_ivf_for_cpu examples/export_ivf_for_cpu.cu)
+target_compile_definitions(export_ivf_for_cpu PRIVATE
+    JHQ_INDEX_HEADER="${V58}/jhq_gpu_index.cuh" JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+target_link_libraries(export_ivf_for_cpu PRIVATE jhq_v58_exp)
+
 # A probe of the cluster-centric premise, before writing the kernel for it.
 #
 # Sharing one list's codes across the queries that probe it only pays if those
