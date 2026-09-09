@@ -165,10 +165,22 @@ M, nprobe and the baseline parameters were chosen, and over what grids.
 
 Two things this project already knows and must disclose rather than have found:
 
-- **The IVF coarse quantiser was undertrained** — 6 points per centroid where
-  the usual guidance is ~39 — and fixing it was worth up to +96% QPS for five
-  seconds of build. Any frontier point measured before that fix is
-  self-handicapped. State which configuration the reported runs used.
+- **The coarse quantiser training density is already right, and §6.1 should
+  say so rather than leave a reviewer to wonder.** (Corrected twice, 2026-09-10:
+  this item first said "any frontier point is self-handicapped", then said the
+  two largest datasets still were. Both are wrong for the reported numbers.
+  `/root/_pa.sh`, the script behind `paper_fronts.log`, passes
+  `JHQ_N_TRAIN = 39 x nlist` on every dataset -- 1,277,952 for bge-m3 and
+  stella at nlist=32768, 159,744 for vogue and openai3-3072 at 4096, 319,488
+  for arxiv and openai3-1536 at 8192.)
+
+  The undertraining finding is real but historical: it applies to the runs
+  before that, where the gain from raising `JHQ_N_TRAIN` was +50 to +96% on
+  stella at 3.1 points a centroid and +42 to +60% on bge-m3 at 6.1. It is
+  monotone in points a centroid and crosses zero around 20, so on vogue at
+  24.4 more training is worth −8 to −47%. State the training rule in §6.1 and
+  cite the sweep; do not re-run it.
+
 - **vogue-768's own coarse quantiser has a collapsed list holding 14.5% of the
   data** (19,966 of 20,000 distinct vectors, mean cosine 0.623 to its
   centroid). It is a property of the dataset, not a bug, and it makes vogue's
