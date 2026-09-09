@@ -1648,6 +1648,35 @@ add_jhq_variant(v54_sign ${V54} JHQ_PAPER_FAITHFUL=1
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1
     JHQ_SIGN_IP=1)
 
+# v55: choose alpha by sampling instead of by sweeping it in advance.
+#
+# alpha fixes the refinement budget ck = alpha*k and the paper does not say how
+# to set it. results/front6/alpha_ds.log measures what that costs: the point
+# where ranking loss stops improving spans 25x across datasets, so one constant
+# is either wasteful or lossy and which it is cannot be known without a sweep.
+#
+# The rule needs no sweep and no labels: answer S of the batch's queries once
+# at a generous alpha_max, then again at smaller alpha, and keep the smallest
+# whose top-k still agrees with the reference. It asks "would a smaller budget
+# change what I return", which the system can see, rather than "would it change
+# recall", which needs ground truth it does not have.
+#
+# The only source change is a set_alpha() setter -- alpha sizes ck per search
+# call and nothing trained depends on it, and the captured graph is already
+# keyed on ck, so one index answers at several budgets. Rebuilding per alpha
+# would take minutes and fold training noise into the result.
+set(V55 jhq_v55_alpha_sample)
+add_jhq_variant(v55_exp ${V55} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+add_executable(demo_jhq_alpha_sample examples/demo_jhq_alpha_sample.cu)
+target_compile_definitions(demo_jhq_alpha_sample PRIVATE
+    JHQ_INDEX_HEADER="${V55}/jhq_gpu_index.cuh" JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+target_link_libraries(demo_jhq_alpha_sample PRIVATE jhq_v55_exp)
+
 # A probe of the cluster-centric premise, before writing the kernel for it.
 #
 # Sharing one list's codes across the queries that probe it only pays if those
