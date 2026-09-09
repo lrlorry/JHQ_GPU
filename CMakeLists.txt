@@ -1985,6 +1985,35 @@ foreach(G 1 2 4 8)
       JHQ_LUT_GROUPS=${G})
 endforeach()
 
+# The 2x2 the paper needs and did not have.
+#
+# Section 3 claims the admissible codebook pays twice -- once in the table,
+# where the Cartesian construction makes an exact factorisation possible, and
+# once in the code word, where one bit a dimension lets four subspaces share a
+# 32-bit load. Until now the two were measured in different version
+# directories (v47 for the table, v52 for the word), which is enough to say
+# each is worth something and not enough to say whether they are additive or
+# overlapping. The "pays twice" framing assumes additive without evidence.
+#
+# These two targets complete the square on one build: G=1 is the full
+# 256-entry table and G=2 the factorised one, and JHQ_WORD_LAYOUT=0 reads the
+# codes a byte at a time instead of a word. With the four v59_g* targets above
+# (which are all word layout) that gives
+#
+#            full table      factorised
+#   byte     v59_b_g1        v59_b_g2
+#   word     v59_g1          v59_g2
+#
+# all from one source tree at one commit, so the interaction term is a
+# measurement rather than an inference across versions.
+foreach(G 1 2)
+  add_jhq_variant(v59_b_g${G} ${V59} JHQ_PAPER_FAITHFUL=1
+      JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+      JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+      JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1
+      JHQ_LUT_GROUPS=${G} JHQ_WORD_LAYOUT=0)
+endforeach()
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
 # Pure C++ (common/recall.cuh has no CUDA in it), so no CUDA toolchain needed
 # to run these.  ctest, or: ./build/test_recall

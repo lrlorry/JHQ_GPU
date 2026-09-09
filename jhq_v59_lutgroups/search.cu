@@ -121,6 +121,25 @@ typedef jhq_gpu::jhq_lut_t lut_t;
 #define LUT_STORE(x) (x)
 #define LUT_LOAD(x)  (x)
 
+// The factorised primary distance for one subspace, unrolled over the groups.
+// At JHQ_LUT_GROUPS=2 this is exactly the two loads and one add the shipped
+// kernel had; the loop bound is a compile-time constant so nvcc unrolls it
+// away and no branch reaches the innermost line of the scan.
+//
+// A function rather than a macro: the call sites sit inside __device__ code
+// and an immediately-invoked lambda there is needlessly close to the edge of
+// what nvcc will take without --extended-lambda.
+template <typename LT>
+__device__ __forceinline__ float jhq_lut_sum(const LT* __restrict__ t,
+                                             int m, unsigned cm) {
+    float s = 0.0f;
+#pragma unroll
+    for (int g = 0; g < JHQ_LUT_GROUPS; ++g)
+        s += LUT_LOAD(t[m * JHQ_SPLIT_LUT + g * JHQ_LUT_GSIZE
+                        + JHQ_LUT_DIGIT(cm, g)]);
+    return s;
+}
+
 // Per-thread candidate slots kept by scan_ivf_coalesced_kernel. Compile-time
 // so ld[]/lp[] stay in registers.
 //
