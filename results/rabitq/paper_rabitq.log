@@ -44,3 +44,28 @@ HEAD is now at 30f5659 Open paper_adc2026/: every claim, its evidence file, and 
   arxiv-768      nlist=8192   np=1024  dev   recall=0.9946   qps=60589     build_ms=10132.3    rc=0
   openai3-1536   nlist=8192   np=1024  dev   recall=0.9892   qps=43761     build_ms=9369.7     rc=0
 13:05:08 ########## host input: stella and bge-m3, 72 GB and 41 GB of raw float ##########
+  stella         nlist=32768  np=32    host  recall=         qps=          build_ms=           rc=134
+      ! [345151][21:06:36:157654][info  ] Using streaming construction: dataset size (67.81 GB) exceeds comfortable GPU memory limit
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 34359738368 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  bge-m3         nlist=32768  np=32    host  recall=         qps=          build_ms=           rc=134
+      ! [345209][21:07:18:121825][info  ] Using streaming construction: dataset size (38.50 GB) exceeds comfortable GPU memory limit
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 34359738368 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  stella         nlist=32768  np=128   host  recall=         qps=          build_ms=           rc=134
+      ! [345237][21:08:37:963151][info  ] Using streaming construction: dataset size (67.81 GB) exceeds comfortable GPU memory limit
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 34359738368 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  bge-m3         nlist=32768  np=128   host  recall=         qps=          build_ms=           rc=134
+      ! [345283][21:09:25:490781][info  ] Using streaming construction: dataset size (38.50 GB) exceeds comfortable GPU memory limit
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 34359738368 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  stella         nlist=32768  np=512   host  recall=         qps=          build_ms=           rc=134
+      ! [345313][21:10:58:754147][info  ] Using streaming construction: dataset size (67.81 GB) exceeds comfortable GPU memory limit
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 34359738368 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+  bge-m3         nlist=32768  np=512   host  recall=         qps=          build_ms=           rc=134
+      ! [345381][21:11:44:641722][info  ] Using streaming construction: dataset size (38.50 GB) exceeds comfortable GPU memory limit
+      ! terminate called after throwing an instance of 'rmm::_RMM_26_8::out_of_memory'
+      !   what():  std::bad_alloc: out_of_memory: CUDA error (failed to allocate 34359738368 bytes) at: /__w/rmm/rmm/cpp/src/mr/cuda_memory_resource.cpp:26: cudaErrorMemoryAllocation out of memory
+13:11:46 === PB_DONE ===

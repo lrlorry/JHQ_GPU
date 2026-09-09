@@ -51,7 +51,7 @@ improving.
 
 This changes Algorithm 1, which fixes `ck = αk` with α given.
 
-## 2. Against IVF-RaBitQ (PVLDB 19(11), 2026)  ▸ four datasets of six
+## 2. Against IVF-RaBitQ (PVLDB 19(11), 2026)  ▸ finished: four datasets, and two it cannot index
 
 Same card, same 999-query batch, same timed region, same nlist. cuVS
 `ivf_rabitq` in QUANT4, its fastest mode here.
@@ -87,7 +87,19 @@ Three things the write-up must carry:
   reports on an L40S at batch 10⁴. The JHQ-vs-RaBitQ column is a direct
   measurement; that one is not.
 
-**Missing:** stella and bge-m3. Their raw vectors are 72 GB and 41 GB, so IVF-RaBitQ cannot be handed a device matrix on a 32 GB card at all; the host-input path is running.
+**stella and bge-m3 are missing because IVF-RaBitQ cannot index them on this
+card.** Their raw vectors are 67.81 GB and 38.50 GB, so a device matrix is out
+of the question, and the host-input path -- which logs "Using streaming
+construction: dataset size exceeds comfortable GPU memory limit" and is meant
+for exactly this -- then asks for 34,359,738,368 bytes in one allocation and
+throws `rmm::out_of_memory`. Six attempts, both datasets, three nprobe each
+(`data/paper_rabitq.log`).
+
+JHQ indexes both on the same card and has room: 20,837 MiB on stella and
+12,113 MiB on bge-m3, of 32,607 MiB (`data/paper_fronts.log`). CAGRA fp32
+cannot reach them either. **So on the two largest datasets here, JHQ is the
+only one of the three that produces a result at all**, and that is a library
+limit with its own error message behind it, not a gap in our measurement.
 
 ## 3. Against CAGRA and IVF-PQ  ▸ finished for JHQ, baselines are from the v47 sweep
 
@@ -146,7 +158,7 @@ far more often than it does for real queries.
 
 | | why it matters | state |
 |---|---|---|
-| IVF-RaBitQ on the other five datasets | one dataset is thin for a competitor comparison | running |
+| IVF-RaBitQ VRAM | its bits per dimension say 11% under JHQ; the measured figure is not captured | one run, queued |
 | Where the high-recall gap comes from | bytes, α, cache reuse and LUT divergence are each measured and each too small; the selection stage at high nprobe is the one untested candidate | the v42 split predates v47's factorised table and cannot run at this M and BLOCK; needs porting forward |
 | CPU baseline protocol | `max_iter`, `max_train_n`, thread pinning in `JHQ_repro` | not started; that repo is untouched |
 | Recall ties in the selection | `jhq_compact_topck` compares distance alone, which is the 1e-4 wobble between builds | not started |
