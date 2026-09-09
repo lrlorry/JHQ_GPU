@@ -1,0 +1,125 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at e5ce83b A script copied out of the tree cannot find the tree from $0
+21:38:11 HEAD e5ce83b A script copied out of the tree cannot find the tree from $0
+-- Configuring done (0.1s)
+-- Generating done (0.8s)
+-- Build files have been written to: /root/JHQ_GPU/build
+Built target jhq_cpu
+Built target jhq_v53_x1
+Building CUDA object CMakeFiles/demo_jhq_qdup.dir/examples/demo_jhq_qdup.cu.o
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_fvecs(const char*, std::vector<float>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:13:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   13 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:26:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   26 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:27:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   27 |         fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_ivecs(const char*, std::vector<int>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:39:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   39 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:52:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   52 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:53:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   53 |         fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Linking CXX executable demo_jhq_qdup
+Built target demo_jhq_qdup
+21:38:15 build_rc=0
+21:38:15 got the GPU
+  vogue          nlist=4096    np=128   dup=1   recall=0.9650   qps=138525    rc=0
+  bge            nlist=32768   np=128   dup=1   recall=0.9185   qps=102581    rc=0
+  stella         nlist=32768   np=128   dup=1   recall=0.9894   qps=86340     rc=0
+  openai3-3072   nlist=4096    np=128   dup=1   recall=0.9418   qps=40818     rc=0
+  vogue          nlist=4096    np=128   dup=2   recall=0.9680   qps=142850    rc=0
+  bge            nlist=32768   np=128   dup=2   recall=0.9130   qps=108632    rc=0
+  stella         nlist=32768   np=128   dup=2   recall=         qps=          rc=1
+      ! JHQ_QUERY_DUP=2 does not divide nq=999
+  openai3-3072   nlist=4096    np=128   dup=2   recall=0.9402   qps=43409     rc=0
+  vogue          nlist=4096    np=128   dup=4   recall=0.9632   qps=141073    rc=0
+  bge            nlist=32768   np=128   dup=4   recall=0.9096   qps=108468    rc=0
+  stella         nlist=32768   np=128   dup=4   recall=         qps=          rc=1
+      ! JHQ_QUERY_DUP=4 does not divide nq=999
+  openai3-3072   nlist=4096    np=128   dup=4   recall=0.9412   qps=43763     rc=0
+  vogue          nlist=4096    np=128   dup=8   recall=0.9592   qps=147610    rc=0
+  bge            nlist=32768   np=128   dup=8   recall=0.9064   qps=108871    rc=0
+  stella         nlist=32768   np=128   dup=8   recall=         qps=          rc=1
+      ! JHQ_QUERY_DUP=8 does not divide nq=999
+  openai3-3072   nlist=4096    np=128   dup=8   recall=0.9392   qps=45457     rc=0
+  vogue          nlist=4096    np=1024  dup=1   recall=0.9942   qps=57580     rc=0
+  bge            nlist=32768   np=1024  dup=1   recall=0.9824   qps=25635     rc=0
+  stella         nlist=32768   np=1024  dup=1   recall=0.9958   qps=17236     rc=0
+  openai3-3072   nlist=4096    np=1024  dup=1   recall=0.9933   qps=12004     rc=0
+  vogue          nlist=4096    np=1024  dup=2   recall=0.9956   qps=58043     rc=0
+  bge            nlist=32768   np=1024  dup=2   recall=0.9814   qps=30020     rc=0
+  stella         nlist=32768   np=1024  dup=2   recall=         qps=          rc=1
+      ! JHQ_QUERY_DUP=2 does not divide nq=999
+  openai3-3072   nlist=4096    np=1024  dup=2   recall=0.9930   qps=12708     rc=0
+  vogue          nlist=4096    np=1024  dup=4   recall=0.9956   qps=58519     rc=0
+  bge            nlist=32768   np=1024  dup=4   recall=0.9760   qps=30182     rc=0
+  stella         nlist=32768   np=1024  dup=4   recall=         qps=          rc=1
+      ! JHQ_QUERY_DUP=4 does not divide nq=999
+  openai3-3072   nlist=4096    np=1024  dup=4   recall=0.9928   qps=13102     rc=0
+  vogue          nlist=4096    np=1024  dup=8   recall=0.9920   qps=59998     rc=0
+  bge            nlist=32768   np=1024  dup=8   recall=0.9800   qps=30634     rc=0
+  stella         nlist=32768   np=1024  dup=8   recall=         qps=          rc=1
+      ! JHQ_QUERY_DUP=8 does not divide nq=999
+  openai3-3072   nlist=4096    np=1024  dup=8   recall=0.9936   qps=13367     rc=0
+21:49:14 === QDUP_DONE ===

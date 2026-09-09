@@ -1,0 +1,122 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at c0abd35 A self-query test for ivf_rabitq: can it find a row of its own index?
+01:20:03 HEAD c0abd35 A self-query test for ivf_rabitq: can it find a row of its own index?
+01:20:03 --- building against wheel ---
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp: In constructor ‘raft::resource::cusolver_sp_resource::cusolver_sp_resource(rmm::_RMM_26_8::cuda_stream_view)’:
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:25:54: warning: ‘cusolverStatus_t cusolverSpCreate(cusolverSpContext**)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   25 |     RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpCreate(&cusolver_res));
+      |                                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~      
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:67:61: note: declared here
+   67 |   CUSOLVER_DEPRECATED(cuDSS) cusolverStatus_t CUSOLVERAPI cusolverSpCreate(cusolverSpHandle_t *handle);
+      |                                                             ^~~~~~~~~~~~~~~~
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:26:57: warning: ‘cusolverStatus_t cusolverSpSetStream(cusolverSpHandle_t, cudaStream_t)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   26 |     RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpSetStream(cusolver_res, stream));
+      |                                      ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~    
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:70:1: note: declared here
+   70 |     cusolverSpSetStream(cusolverSpHandle_t handle, cudaStream_t streamId);
+      | ^   ~~~~~~~~~~~~~~~
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp: In destructor ‘virtual raft::resource::cusolver_sp_resource::~cusolver_sp_resource()’:
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:31:98: warning: ‘cusolverStatus_t cusolverSpDestroy(cusolverSpHandle_t)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   31 |   ~cusolver_sp_resource() override { RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpDestroy(cusolver_res)); }
+      |                                                                                 ~~~~~~~~~~~~~~~~~^~            
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:68:61: note: declared here
+   68 |   CUSOLVER_DEPRECATED(cuDSS) cusolverStatus_t CUSOLVERAPI cusolverSpDestroy(cusolverSpHandle_t handle);
+      |                                                             ^~~~~~~~~~~~~~~~~
+01:20:16 compile_wheel_rc=0
+01:20:16 --- building against static ---
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp: In constructor ‘raft::resource::cusolver_sp_resource::cusolver_sp_resource(rmm::_RMM_26_8::cuda_stream_view)’:
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:25:54: warning: ‘cusolverStatus_t cusolverSpCreate(cusolverSpContext**)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   25 |     RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpCreate(&cusolver_res));
+      |                                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~      
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:67:61: note: declared here
+   67 |   CUSOLVER_DEPRECATED(cuDSS) cusolverStatus_t CUSOLVERAPI cusolverSpCreate(cusolverSpHandle_t *handle);
+      |                                                             ^~~~~~~~~~~~~~~~
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:26:57: warning: ‘cusolverStatus_t cusolverSpSetStream(cusolverSpHandle_t, cudaStream_t)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   26 |     RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpSetStream(cusolver_res, stream));
+      |                                      ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~    
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:70:1: note: declared here
+   70 |     cusolverSpSetStream(cusolverSpHandle_t handle, cudaStream_t streamId);
+      | ^   ~~~~~~~~~~~~~~~
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp: In destructor ‘virtual raft::resource::cusolver_sp_resource::~cusolver_sp_resource()’:
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:31:98: warning: ‘cusolverStatus_t cusolverSpDestroy(cusolverSpHandle_t)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   31 |   ~cusolver_sp_resource() override { RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpDestroy(cusolver_res)); }
+      |                                                                                 ~~~~~~~~~~~~~~~~~^~            
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:68:61: note: declared here
+   68 |   CUSOLVER_DEPRECATED(cuDSS) cusolverStatus_t CUSOLVERAPI cusolverSpDestroy(cusolverSpHandle_t handle);
+      |                                                             ^~~~~~~~~~~~~~~~~
+01:20:28 compile_static_rc=0
+01:20:28 got the GPU
+01:20:28 === wheel : N/d/nlist/bits = 50000 128 256 8 ===
+N=50000 d=128 nlist=256 bits=8 nprobe=256 (all lists probed)
+index size=50000 dim=128
+self in top-1 : 0 / 20
+self in top-10: 0 / 20
+q0  want id 0        got  36348(102.5686)  32766(107.1843)  33942(109.5023)  5309(111.2439)  47159(113.9737)
+q1  want id 2500     got  27851(100.4610)  42470(104.6235)  29397(106.0723)  37877(108.2404)  26115(108.6095)
+q2  want id 5000     got  8439(117.0664)  28679(118.3546)  47020(119.4669)  49131(121.1687)  16062(121.3667)
+01:20:30 rc=0
+01:20:30 === wheel : N/d/nlist/bits = 50000 128 64 8 ===
+N=50000 d=128 nlist=64 bits=8 nprobe=64 (all lists probed)
+index size=50000 dim=128
+self in top-1 : 0 / 20
+self in top-10: 0 / 20
+q0  want id 0        got  34098(99.0861)  21806(106.1603)  46285(114.7445)  45242(116.4429)  3187(120.0974)
+q1  want id 2500     got  36219(95.2416)  22686(98.6764)  19419(101.8257)  48259(105.2901)  44195(105.9455)
+q2  want id 5000     got  8860(100.7182)  41726(106.5469)  16907(107.8344)  35344(108.5541)  40361(112.4433)
+01:20:31 rc=0
+01:20:31 === wheel : N/d/nlist/bits = 200000 768 512 8 ===
+N=200000 d=768 nlist=512 bits=8 nprobe=512 (all lists probed)
+index size=200000 dim=768
+self in top-1 : 0 / 20
+self in top-10: 0 / 20
+q0  want id 0        got  191616(1025.3578)  144158(1052.2147)  180669(1067.3990)  59176(1068.4561)  135367(1074.4823)
+q1  want id 10000    got  10305(1012.5847)  125073(1053.7830)  162121(1064.2888)  187448(1067.5709)  139647(1067.7097)
+q2  want id 20000    got  166600(1023.3143)  101458(1050.8396)  10789(1057.2490)  199568(1059.7362)  118826(1062.5146)
+01:20:37 rc=0
+01:20:37 === wheel : N/d/nlist/bits = 50000 128 256 4 ===
+N=50000 d=128 nlist=256 bits=4 nprobe=256 (all lists probed)
+index size=50000 dim=128
+self in top-1 : 0 / 20
+self in top-10: 0 / 20
+q0  want id 0        got  36326(127.1457)  27313(128.7952)  16431(130.6800)  34730(138.1094)  42534(138.6534)
+q1  want id 2500     got  771(108.5219)  41721(113.2502)  45585(120.2050)  1170(121.0798)  22109(128.9411)
+q2  want id 5000     got  45088(124.0612)  17825(129.6534)  17018(130.7616)  8993(132.4394)  32612(136.5275)
+01:20:38 rc=0
+01:20:38 === static : N/d/nlist/bits = 50000 128 256 8 ===
+N=50000 d=128 nlist=256 bits=8 nprobe=256 (all lists probed)
+index size=50000 dim=128
+self in top-1 : 0 / 20
+self in top-10: 0 / 20
+q0  want id 0        got  29509(94.7388)  26242(103.2242)  8249(109.4815)  13982(114.6702)  46143(114.8921)
+q1  want id 2500     got  4073(85.6351)  18794(98.0933)  36839(100.7896)  36495(102.1778)  28138(104.6329)
+q2  want id 5000     got  28754(101.7567)  34520(104.8102)  1254(105.2391)  20109(112.2439)  14321(112.5690)
+01:20:39 rc=0
+01:20:39 === static : N/d/nlist/bits = 50000 128 64 8 ===
+N=50000 d=128 nlist=64 bits=8 nprobe=64 (all lists probed)
+index size=50000 dim=128
+self in top-1 : 0 / 20
+self in top-10: 0 / 20
+q0  want id 0        got  21397(117.1125)  5920(120.5373)  20764(121.8180)  41205(122.4991)  35267(123.7993)
+q1  want id 2500     got  27016(106.7785)  31721(107.8369)  7247(108.2378)  10491(108.3965)  33467(109.4068)
+q2  want id 5000     got  18211(100.4345)  26106(101.9298)  27347(104.1466)  44489(116.1490)  41511(127.4023)
+01:20:39 rc=0
+01:20:39 === static : N/d/nlist/bits = 200000 768 512 8 ===
+N=200000 d=768 nlist=512 bits=8 nprobe=512 (all lists probed)
+index size=200000 dim=768
+self in top-1 : 0 / 20
+self in top-10: 0 / 20
+q0  want id 0        got  56417(1001.1867)  105997(1062.2179)  21981(1069.7336)  11042(1072.0107)  10834(1074.9276)
+q1  want id 10000    got  51242(1004.4212)  54295(1028.9961)  176456(1050.3230)  179481(1064.3956)  119502(1069.8729)
+q2  want id 20000    got  22679(1068.7140)  101071(1069.0796)  158371(1070.7910)  38587(1072.6281)  177738(1080.5125)
+01:20:43 rc=0
+01:20:43 === static : N/d/nlist/bits = 50000 128 256 4 ===
+N=50000 d=128 nlist=256 bits=4 nprobe=256 (all lists probed)
+index size=50000 dim=128
+self in top-1 : 1 / 20
+self in top-10: 1 / 20
+q0  want id 0        got  9328(127.1512)  42097(139.9149)  21660(142.0955)  13183(146.3106)  37472(147.2400)
+q1  want id 2500     got  15139(117.3666)  48700(122.8454)  10491(122.8707)  35719(124.7711)  48670(126.0614)
+q2  want id 5000     got  32388(129.0848)  283(139.1842)  15295(140.9912)  36394(141.4839)  46784(141.9574)
+01:20:44 rc=0
+01:20:44 === RQSELF_DONE ===

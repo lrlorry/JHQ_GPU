@@ -51,21 +51,25 @@ improving.
 
 This changes Algorithm 1, which fixes `ck = αk` with α given.
 
-## 2. Against IVF-RaBitQ (PVLDB 19(11), 2026)  ▸ one dataset of six
+## 2. Against IVF-RaBitQ (PVLDB 19(11), 2026)  ▸ four datasets of six
 
 Same card, same 999-query batch, same timed region, same nlist. cuVS
 `ivf_rabitq` in QUANT4, its fastest mode here.
 
-| Recall@10 | JHQ | IVF-RaBitQ | JHQ/RaBitQ |
-|---:|---:|---:|---:|
-| 0.95 | 72,910 | 53,763 | **1.36×** |
-| 0.96 | 59,263 | 48,456 | **1.22×** |
-| 0.97 | 44,635 | 42,062 | 1.06× |
-| 0.98 | 31,421 | 33,942 | 0.93× |
-| 0.99 | 18,258 | 25,489 | 0.72× |
+JHQ divided by IVF-RaBitQ at matched recall (`data/paper_rabitq.log`,
+`data/bench_quant.log`, JHQ from the rule arm of `data/paper_fronts.log`):
 
-`data/bench_quant.log`, `data/openai3072_v57_front.log`. **Crossover at about
-Recall 0.975.**
+| dataset | d | R=0.90 | R=0.93 | R=0.95 | R=0.97 | R=0.98 |
+|---|---:|---:|---:|---:|---:|---:|
+| vogue-768 | 768 | 1.24× | 1.11× | 1.02× | 1.00× | 0.94× |
+| arxiv-768 | 768 | 1.29× | 1.17× | 1.02× | 0.89× | 0.81× |
+| **openai3-1536** | 1536 | **2.35×** | **2.26×** | **1.98×** | **1.62×** | **1.36×** |
+| openai3-3072 | 3072 | 1.82× | 1.57× | 1.36× | 1.06× | 0.93× |
+
+**JHQ leads on all four through Recall 0.95, and the margin grows with
+dimensionality** — near parity at d=768, 1.36× to 2.35× across the whole range
+at d=1536. Where it gives way is the high-recall tail, earliest on arxiv-768
+(0.89× at 0.97) and latest on openai3-1536 (still 1.36× at 0.98).
 
 Three things the write-up must carry:
 
@@ -83,7 +87,7 @@ Three things the write-up must carry:
   reports on an L40S at batch 10⁴. The JHQ-vs-RaBitQ column is a direct
   measurement; that one is not.
 
-**Missing:** the other five datasets. Running.
+**Missing:** stella and bge-m3. Their raw vectors are 72 GB and 41 GB, so IVF-RaBitQ cannot be handed a device matrix on a 32 GB card at all; the host-input path is running.
 
 ## 3. Against CAGRA and IVF-PQ  ▸ finished for JHQ, baselines are from the v47 sweep
 

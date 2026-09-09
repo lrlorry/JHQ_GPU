@@ -1,0 +1,46 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at 30f5659 Open paper_adc2026/: every claim, its evidence file, and whether it is finished
+13:00:56 HEAD 30f5659 Open paper_adc2026/: every claim, its evidence file, and whether it is finished
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp: In constructor ‘raft::resource::cusolver_sp_resource::cusolver_sp_resource(rmm::_RMM_26_8::cuda_stream_view)’:
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:25:54: warning: ‘cusolverStatus_t cusolverSpCreate(cusolverSpContext**)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   25 |     RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpCreate(&cusolver_res));
+      |                                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~      
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:67:61: note: declared here
+   67 |   CUSOLVER_DEPRECATED(cuDSS) cusolverStatus_t CUSOLVERAPI cusolverSpCreate(cusolverSpHandle_t *handle);
+      |                                                             ^~~~~~~~~~~~~~~~
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:26:57: warning: ‘cusolverStatus_t cusolverSpSetStream(cusolverSpHandle_t, cudaStream_t)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   26 |     RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpSetStream(cusolver_res, stream));
+      |                                      ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~    
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:70:1: note: declared here
+   70 |     cusolverSpSetStream(cusolverSpHandle_t handle, cudaStream_t streamId);
+      | ^   ~~~~~~~~~~~~~~~
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp: In destructor ‘virtual raft::resource::cusolver_sp_resource::~cusolver_sp_resource()’:
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:31:98: warning: ‘cusolverStatus_t cusolverSpDestroy(cusolverSpHandle_t)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   31 |   ~cusolver_sp_resource() override { RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpDestroy(cusolver_res)); }
+      |                                                                                 ~~~~~~~~~~~~~~~~~^~            
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:68:61: note: declared here
+   68 |   CUSOLVER_DEPRECATED(cuDSS) cusolverStatus_t CUSOLVERAPI cusolverSpDestroy(cusolverSpHandle_t handle);
+      |                                                             ^~~~~~~~~~~~~~~~~
+13:01:09 compile_rc=0
+13:01:09 got the GPU
+13:01:09 ########## device input: the four that fit a 32 GB card ##########
+  vogue-768      nlist=4096   np=8     dev   recall=0.6397   qps=385692    build_ms=4461.1     rc=0
+  arxiv-768      nlist=8192   np=8     dev   recall=0.7960   qps=287267    build_ms=11481.4    rc=0
+  openai3-1536   nlist=8192   np=8     dev   recall=0.7219   qps=260248    build_ms=9882.2     rc=0
+  vogue-768      nlist=4096   np=32    dev   recall=0.8442   qps=275461    build_ms=4266.7     rc=0
+  arxiv-768      nlist=8192   np=32    dev   recall=0.9225   qps=230172    build_ms=10629.5    rc=0
+  openai3-1536   nlist=8192   np=32    dev   recall=0.8423   qps=168317    build_ms=9062.1     rc=0
+  vogue-768      nlist=4096   np=128   dev   recall=0.9566   qps=180474    build_ms=4314.6     rc=0
+  arxiv-768      nlist=8192   np=128   dev   recall=0.9765   qps=142574    build_ms=11190.6    rc=0
+  openai3-1536   nlist=8192   np=128   dev   recall=0.9321   qps=114631    build_ms=9971.9     rc=0
+  vogue-768      nlist=4096   np=256   dev   recall=0.9822   qps=132649    build_ms=4374.2     rc=0
+  arxiv-768      nlist=8192   np=256   dev   recall=0.9895   qps=116854    build_ms=10389.1    rc=0
+  openai3-1536   nlist=8192   np=256   dev   recall=0.9595   qps=85996     build_ms=9500.5     rc=0
+  vogue-768      nlist=4096   np=512   dev   recall=0.9908   qps=83579     build_ms=4419.1     rc=0
+  arxiv-768      nlist=8192   np=512   dev   recall=0.9922   qps=83677     build_ms=10343.0    rc=0
+  openai3-1536   nlist=8192   np=512   dev   recall=0.9771   qps=58241     build_ms=9080.6     rc=0
+  vogue-768      nlist=4096   np=1024  dev   recall=0.9930   qps=68743     build_ms=4251.0     rc=0
+  arxiv-768      nlist=8192   np=1024  dev   recall=0.9946   qps=60589     build_ms=10132.3    rc=0
+  openai3-1536   nlist=8192   np=1024  dev   recall=0.9892   qps=43761     build_ms=9369.7     rc=0
+13:05:08 ########## host input: stella and bge-m3, 72 GB and 41 GB of raw float ##########

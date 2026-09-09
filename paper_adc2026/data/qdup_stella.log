@@ -1,0 +1,92 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at 168e584 qdup must not require that D divides nq: stella has 999 queries
+22:03:14 HEAD 168e584 qdup must not require that D divides nq: stella has 999 queries
+Built target jhq_cpu
+Built target jhq_v53_x1
+Building CUDA object CMakeFiles/demo_jhq_qdup.dir/examples/demo_jhq_qdup.cu.o
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_fvecs(const char*, std::vector<float>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:13:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   13 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:26:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   26 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:27:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   27 |         fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_ivecs(const char*, std::vector<int>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:39:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   39 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:52:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   52 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:53:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   53 |         fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Linking CXX executable demo_jhq_qdup
+Built target demo_jhq_qdup
+22:03:17 build_rc=0
+22:03:17 got the GPU
+  stella  np=128   dup=1   recall=0.9894   qps=86082     rc=0
+  stella  np=128   dup=2   recall=0.9902   qps=94281     rc=0
+  stella  np=128   dup=4   recall=0.9904   qps=95150     rc=0
+  stella  np=128   dup=8   recall=0.9904   qps=96048     rc=0
+  stella  np=1024  dup=1   recall=0.9958   qps=17163     rc=0
+  stella  np=1024  dup=2   recall=0.9960   qps=21041     rc=0
+  stella  np=1024  dup=4   recall=0.9964   qps=21392     rc=0
+  stella  np=1024  dup=8   recall=0.9968   qps=21608     rc=0
+22:07:06 === QD2_DONE ===

@@ -1,0 +1,211 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at 596184d v57 measured: calibration falls 11x, and every reported QPS was 1-9% low
+09:16:20 HEAD 596184d v57 measured: calibration falls 11x, and every reported QPS was 1-9% low
+-- Configuring done (0.1s)
+-- Generating done (0.9s)
+-- Build files have been written to: /root/JHQ_GPU/build
+[100%] Built target jhq_cpu
+[100%] Built target jhq_v53_x1
+[100%] Built target demo_jhq_v53_x1
+[100%] Built target jhq_cpu
+[100%] Built target jhq_v42_full
+[100%] Built target demo_jhq_v42_full
+[ 50%] Built target jhq_cpu
+[ 50%] Built target jhq_v42_nocomp
+[100%] Building CUDA object CMakeFiles/demo_jhq_v42_nocomp.dir/examples/demo_jhq_v36.cu.o
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_fvecs(const char*, std::vector<float>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:13:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   13 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:26:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   26 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:27:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   27 |         fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_ivecs(const char*, std::vector<int>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:39:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   39 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:52:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   52 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:53:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   53 |         fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable demo_jhq_v42_nocomp
+[100%] Built target demo_jhq_v42_nocomp
+[ 50%] Built target jhq_cpu
+[100%] Built target jhq_v42_neither
+[100%] Building CUDA object CMakeFiles/demo_jhq_v42_neither.dir/examples/demo_jhq_v36.cu.o
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_fvecs(const char*, std::vector<float>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:13:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   13 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:26:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   26 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:27:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   27 |         fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_ivecs(const char*, std::vector<int>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:39:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   39 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:52:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   52 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:53:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   53 |         fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable demo_jhq_v42_neither
+[100%] Built target demo_jhq_v42_neither
+09:16:27 build_rc=0
+09:16:27 got the GPU
+09:16:27 ########## 1. bge-m3, the alpha sweep it never had ##########
+  demo_jhq_v53_x1      bge      np=128   a=4.0    recall=0.8921   qps=140730    ms=7.11      rc=0
+  demo_jhq_v53_x1      bge      np=128   a=8.0    recall=0.9093   qps=139404    ms=7.17      rc=0
+  demo_jhq_v53_x1      bge      np=128   a=16.0   recall=0.9149   qps=136282    ms=7.34      rc=0
+  demo_jhq_v53_x1      bge      np=128   a=32.0   recall=0.9179   qps=130015    ms=7.69      rc=0
+  demo_jhq_v53_x1      bge      np=128   a=100.0  recall=0.9187   qps=102122    ms=9.79      rc=0
+  demo_jhq_v53_x1      bge      np=512   a=4.0    recall=0.9361   qps=41841     ms=23.90     rc=0
+  demo_jhq_v53_x1      bge      np=512   a=8.0    recall=0.9555   qps=42031     ms=23.79     rc=0
+  demo_jhq_v53_x1      bge      np=512   a=16.0   recall=0.9625   qps=41689     ms=23.99     rc=0
+  demo_jhq_v53_x1      bge      np=512   a=32.0   recall=0.9659   qps=41035     ms=24.37     rc=0
+  demo_jhq_v53_x1      bge      np=512   a=100.0  recall=0.9672   qps=37610     ms=26.59     rc=0
+  demo_jhq_v53_x1      bge      np=1024  a=4.0    recall=0.9502   qps=27709     ms=36.09     rc=0
+  demo_jhq_v53_x1      bge      np=1024  a=8.0    recall=0.9698   qps=27469     ms=36.41     rc=0
+  demo_jhq_v53_x1      bge      np=1024  a=16.0   recall=0.9775   qps=27625     ms=36.20     rc=0
+  demo_jhq_v53_x1      bge      np=1024  a=32.0   recall=0.9808   qps=27424     ms=36.46     rc=0
+  demo_jhq_v53_x1      bge      np=1024  a=100.0  recall=0.9825   qps=25885     ms=38.63     rc=0
+09:21:14 ########## 2. scan split at nprobe 128 vs 1024, stella ##########
+  demo_jhq_v42_full    stella   np=128   a=100.0  recall=         qps=          ms=          rc=134
+      ! [res-train] residual codebook on 100000 vectors, whole-set (primary/IVF/sigma still from 1277952; rotated set would be 0.4 GB)
+      ! [res-train] subspaces 0-127: CAP at 2000 iterations, rel 3.451e-03, 15074 boundaries moving, 0 cells empty
+      ! terminate called after throwing an instance of 'std::runtime_error'
+  demo_jhq_v42_nocomp  stella   np=128   a=100.0  recall=         qps=          ms=          rc=134
+      ! terminate called after throwing an instance of 'std::runtime_error'
+      !   what():  select_probes_kernel needs 139264 B of shared memory for nlist=32768 but the device allows 101376; lower nlist or raise the block size
+      ! timeout: the monitored command dumped core
+  demo_jhq_v42_neither stella   np=128   a=100.0  recall=         qps=          ms=          rc=134
+      ! terminate called after throwing an instance of 'std::runtime_error'
+      !   what():  select_probes_kernel needs 139264 B of shared memory for nlist=32768 but the device allows 101376; lower nlist or raise the block size
+      ! timeout: the monitored command dumped core
+  demo_jhq_v42_full    stella   np=1024  a=100.0  recall=         qps=          ms=          rc=134
+      ! terminate called after throwing an instance of 'std::runtime_error'
+      !   what():  select_probes_kernel needs 139264 B of shared memory for nlist=32768 but the device allows 101376; lower nlist or raise the block size
+      ! timeout: the monitored command dumped core
+  demo_jhq_v42_nocomp  stella   np=1024  a=100.0  recall=         qps=          ms=          rc=134
+      ! terminate called after throwing an instance of 'std::runtime_error'
+      !   what():  select_probes_kernel needs 139264 B of shared memory for nlist=32768 but the device allows 101376; lower nlist or raise the block size
+      ! timeout: the monitored command dumped core
+  demo_jhq_v42_neither stella   np=1024  a=100.0  recall=         qps=          ms=          rc=134
+      ! terminate called after throwing an instance of 'std::runtime_error'
+      !   what():  select_probes_kernel needs 139264 B of shared memory for nlist=32768 but the device allows 101376; lower nlist or raise the block size
+      ! timeout: the monitored command dumped core
+09:23:46 === Q3_DONE ===

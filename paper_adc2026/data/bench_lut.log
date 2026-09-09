@@ -1,0 +1,41 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at 1b6d7eb The RaBitQ bench was searching an index build() had not made searchable
+01:42:45 HEAD 1b6d7eb The RaBitQ bench was searching an index build() had not made searchable
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp: In constructor ‘raft::resource::cusolver_sp_resource::cusolver_sp_resource(rmm::_RMM_26_8::cuda_stream_view)’:
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:25:54: warning: ‘cusolverStatus_t cusolverSpCreate(cusolverSpContext**)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   25 |     RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpCreate(&cusolver_res));
+      |                                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~      
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:67:61: note: declared here
+   67 |   CUSOLVER_DEPRECATED(cuDSS) cusolverStatus_t CUSOLVERAPI cusolverSpCreate(cusolverSpHandle_t *handle);
+      |                                                             ^~~~~~~~~~~~~~~~
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:26:57: warning: ‘cusolverStatus_t cusolverSpSetStream(cusolverSpHandle_t, cudaStream_t)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   26 |     RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpSetStream(cusolver_res, stream));
+      |                                      ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~    
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:70:1: note: declared here
+   70 |     cusolverSpSetStream(cusolverSpHandle_t handle, cudaStream_t streamId);
+      | ^   ~~~~~~~~~~~~~~~
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp: In destructor ‘virtual raft::resource::cusolver_sp_resource::~cusolver_sp_resource()’:
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:31:98: warning: ‘cusolverStatus_t cusolverSpDestroy(cusolverSpHandle_t)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   31 |   ~cusolver_sp_resource() override { RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpDestroy(cusolver_res)); }
+      |                                                                                 ~~~~~~~~~~~~~~~~~^~            
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:68:61: note: declared here
+   68 |   CUSOLVER_DEPRECATED(cuDSS) cusolverStatus_t CUSOLVERAPI cusolverSpDestroy(cusolverSpHandle_t handle);
+      |                                                             ^~~~~~~~~~~~~~~~~
+01:42:56 compile_rc=0
+01:42:56 got the GPU
+01:42:56 ########## sanity: does recall come back now? ##########
+  nlist=4096   bits=8   np=128   mode=0   recall=0.9407   qps=41225     build_ms=13022.1    nq=       rc=0
+01:43:21 ########## sweep: openai3-3072, nlist=4096, bits=8 ##########
+  nlist=4096   bits=8   np=8     mode=0   recall=0.7452   qps=78564     build_ms=14634.7    nq=       rc=0
+  nlist=4096   bits=8   np=32    mode=0   recall=0.8601   qps=57346     build_ms=13756.2    nq=       rc=0
+  nlist=4096   bits=8   np=64    mode=0   recall=0.9092   qps=50158     build_ms=13933.4    nq=       rc=0
+  nlist=4096   bits=8   np=256   mode=0   recall=0.9671   qps=29812     build_ms=14491.2    nq=       rc=0
+  nlist=4096   bits=8   np=512   mode=0   recall=0.9831   qps=19680     build_ms=14117.4    nq=       rc=0
+  nlist=4096   bits=8   np=1024  mode=0   recall=0.9940   qps=12055     build_ms=14529.8    nq=       rc=0
+  nlist=4096   bits=8   np=2048  mode=0   recall=0.9980   qps=6857      build_ms=14815.2    nq=       rc=0
+01:46:23 ########## the other inner-product mode ##########
+  nlist=4096   bits=8   np=32    mode=1   recall=0.8648   qps=38335     build_ms=14860.2    nq=       rc=0
+  nlist=4096   bits=8   np=128   mode=1   recall=0.9427   qps=28438     build_ms=14982.5    nq=       rc=0
+  nlist=4096   bits=8   np=512   mode=1   recall=0.9844   qps=13547     build_ms=14713.3    nq=       rc=0
+01:47:42 === RQB_DONE ===

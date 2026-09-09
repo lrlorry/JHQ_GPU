@@ -1,0 +1,16 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at 9ee5e15 Keep the qdup logs: QDUP.md cites them and *.log is ignored
+22:16:24 HEAD 9ee5e15 Keep the qdup logs: QDUP.md cites them and *.log is ignored
+Built target jhq_cpu
+Built target jhq_v53_x1
+Built target demo_jhq_v53_x1
+22:16:24 build_rc=0
+22:16:24 got the GPU
+  stella nlist=32768 np=8     recall=0.9028   qps=174353    rc=0
+  stella nlist=32768 np=32    recall=0.9689   qps=144106    rc=0
+  stella nlist=32768 np=128   recall=0.9893   qps=86436     rc=0
+  stella nlist=32768 np=256   recall=0.9935   qps=55471     rc=0
+  stella nlist=32768 np=512   recall=0.9949   qps=28195     rc=0
+  stella nlist=32768 np=1024  recall=0.9957   qps=17141     rc=0
+22:18:13 === SF_DONE ===

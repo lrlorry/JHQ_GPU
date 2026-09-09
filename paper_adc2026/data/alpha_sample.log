@@ -1,0 +1,197 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at 9d56a02 v55: choose alpha by sampling, instead of sweeping it in advance
+04:24:00 HEAD 9d56a02 v55: choose alpha by sampling, instead of sweeping it in advance
+-- Configuring done (0.1s)
+-- Generating done (0.8s)
+-- Build files have been written to: /root/JHQ_GPU/build
+[  0%] Built target jhq_cpu
+[  0%] Built target jhq_v55_exp
+[100%] Built target demo_jhq_alpha_sample
+04:24:01 build_rc=0
+04:24:01 got the GPU
+04:24:01 --- openai3-3072  nprobe=128  BLOCK=1024  S=32 ---
+    calibration on 32 of 1000 queries, eps=0.0010
+      100      1.0000     (reference)
+      64       1.0000     accept
+      32       1.0000     accept
+      16       1.0000     accept
+      8        1.0000     accept
+      4        1.0000     accept
+      2        0.9906     reject -> stop
+    picked alpha = 4   (calibration 98.8 ms)
+    picked     alpha=4      recall=0.9413  qps=81920  (12.21 ms)
+    alpha_max  alpha=100    recall=0.9413  qps=40833  (24.49 ms)
+    AS_RESULT picked=4 recall_picked=0.9413 qps_picked=81920 recall_max=0.9413 qps_max=40833 gain=2.006 cal_ms=98.8 cal_share=4.0344
+04:24:07 rc=0
+04:24:07 --- stella  nprobe=128  BLOCK=512  S=32 ---
+    calibration on 32 of 999 queries, eps=0.0010
+      100      1.0000     (reference)
+      64       1.0000     accept
+      32       1.0000     accept
+      16       1.0000     accept
+      8        0.9938     reject -> stop
+    picked alpha = 16   (calibration 35.8 ms)
+    picked     alpha=16     recall=0.9891  qps=109857  (9.09 ms)
+    alpha_max  alpha=100    recall=0.9894  qps=86319  (11.57 ms)
+    AS_RESULT picked=16 recall_picked=0.9891 qps_picked=109857 recall_max=0.9894 qps_max=86319 gain=1.273 cal_ms=35.8 cal_share=3.0975
+04:24:46 rc=0
+04:24:46 --- vogue-768  nprobe=128  BLOCK=512  S=32 ---
+    calibration on 32 of 1000 queries, eps=0.0010
+      100      1.0000     (reference)
+      64       1.0000     accept
+      32       0.9938     reject -> stop
+    picked alpha = 64   (calibration 13.8 ms)
+    picked     alpha=64     recall=0.9647  qps=171793  (5.82 ms)
+    alpha_max  alpha=100    recall=0.9649  qps=135774  (7.37 ms)
+    AS_RESULT picked=64 recall_picked=0.9647 qps_picked=171793 recall_max=0.9649 qps_max=135774 gain=1.265 cal_ms=13.8 cal_share=1.8698
+04:24:49 rc=0
+04:24:49 --- arxiv-768  nprobe=128  BLOCK=512  S=32 ---
+    calibration on 32 of 1000 queries, eps=0.0010
+      100      1.0000     (reference)
+      64       0.9938     reject -> stop
+    picked alpha = 100   (calibration 10.0 ms)
+    picked     alpha=100    recall=0.9768  qps=122157  (8.19 ms)
+    alpha_max  alpha=100    recall=0.9768  qps=121951  (8.20 ms)
+    AS_RESULT picked=100 recall_picked=0.9768 qps_picked=122157 recall_max=0.9768 qps_max=121951 gain=1.002 cal_ms=10.0 cal_share=1.2163
+04:24:52 rc=0
+04:24:52 --- openai3-3072  nprobe=512  BLOCK=1024  S=32 ---
+    calibration on 32 of 1000 queries, eps=0.0010
+      100      1.0000     (reference)
+      64       1.0000     accept
+      32       1.0000     accept
+      16       1.0000     accept
+      8        1.0000     accept
+      4        1.0000     accept
+      2        0.9906     reject -> stop
+    picked alpha = 4   (calibration 256.3 ms)
+    picked     alpha=4      recall=0.9814  qps=27327  (36.59 ms)
+    alpha_max  alpha=100    recall=0.9815  qps=19796  (50.52 ms)
+    AS_RESULT picked=4 recall_picked=0.9814 qps_picked=27327 recall_max=0.9815 qps_max=19796 gain=1.380 cal_ms=256.3 cal_share=5.0728
+04:25:05 rc=0
+04:25:05 --- stella  nprobe=512  BLOCK=512  S=32 ---
+    calibration on 32 of 999 queries, eps=0.0010
+      100      1.0000     (reference)
+      64       1.0000     accept
+      32       1.0000     accept
+      16       1.0000     accept
+      8        0.9938     reject -> stop
+    picked alpha = 16   (calibration 117.9 ms)
+    picked     alpha=16     recall=0.9947  qps=30415  (32.85 ms)
+    alpha_max  alpha=100    recall=0.9950  qps=28228  (35.39 ms)
+    AS_RESULT picked=16 recall_picked=0.9947 qps_picked=30415 recall_max=0.9950 qps_max=28228 gain=1.077 cal_ms=117.9 cal_share=3.3313
+04:25:25 rc=0
+04:25:25 --- vogue-768  nprobe=512  BLOCK=512  S=32 ---
+    calibration on 32 of 1000 queries, eps=0.0010
+      100      1.0000     (reference)
+      64       0.9969     reject -> stop
+    picked alpha = 100   (calibration 18.9 ms)
+    picked     alpha=100    recall=0.9911  qps=75664  (13.22 ms)
+    alpha_max  alpha=100    recall=0.9911  qps=75846  (13.18 ms)
+    AS_RESULT picked=100 recall_picked=0.9911 qps_picked=75664 recall_max=0.9911 qps_max=75846 gain=0.998 cal_ms=18.9 cal_share=1.4309
+04:25:28 rc=0
+04:25:28 --- arxiv-768  nprobe=512  BLOCK=512  S=32 ---
+    calibration on 32 of 1000 queries, eps=0.0010
+      100      1.0000     (reference)
+      64       0.9844     reject -> stop
+    picked alpha = 100   (calibration 21.8 ms)
+    picked     alpha=100    recall=0.9884  qps=62603  (15.97 ms)
+    alpha_max  alpha=100    recall=0.9884  qps=62434  (16.02 ms)
+    AS_RESULT picked=100 recall_picked=0.9884 qps_picked=62603 recall_max=0.9884 qps_max=62434 gain=1.003 cal_ms=21.8 cal_share=1.3635
+04:25:34 rc=0
+04:25:34 ########## how many samples are enough ##########
+04:25:34 --- openai3-3072  nprobe=128  BLOCK=1024  S=8 ---
+    calibration on 8 of 1000 queries, eps=0.0010
+      100      1.0000     (reference)
+      64       1.0000     accept
+      32       1.0000     accept
+      16       1.0000     accept
+      8        1.0000     accept
+      4        1.0000     accept
+      2        1.0000     accept
+    picked alpha = 2   (calibration 99.6 ms)
+    picked     alpha=2      recall=0.9355  qps=82168  (12.17 ms)
+    alpha_max  alpha=100    recall=0.9413  qps=40791  (24.52 ms)
+    AS_RESULT picked=2 recall_picked=0.9355 qps_picked=82168 recall_max=0.9413 qps_max=40791 gain=2.014 cal_ms=99.6 cal_share=4.0633
+04:25:48 rc=0
+04:25:48 --- arxiv-768  nprobe=128  BLOCK=512  S=8 ---
+    calibration on 8 of 1000 queries, eps=0.0010
+      100      1.0000     (reference)
+      64       1.0000     accept
+      32       0.9875     reject -> stop
+    picked alpha = 64   (calibration 13.2 ms)
+    picked     alpha=64     recall=0.9754  qps=169777  (5.89 ms)
+    alpha_max  alpha=100    recall=0.9768  qps=122334  (8.17 ms)
+    AS_RESULT picked=64 recall_picked=0.9754 qps_picked=169777 recall_max=0.9768 qps_max=122334 gain=1.388 cal_ms=13.2 cal_share=1.6151
+04:25:52 rc=0
+04:25:52 --- openai3-3072  nprobe=128  BLOCK=1024  S=16 ---
+    calibration on 16 of 1000 queries, eps=0.0010
+      100      1.0000     (reference)
+      64       1.0000     accept
+      32       1.0000     accept
+      16       1.0000     accept
+      8        1.0000     accept
+      4        1.0000     accept
+      2        0.9875     reject -> stop
+    picked alpha = 4   (calibration 99.4 ms)
+    picked     alpha=4      recall=0.9413  qps=81388  (12.29 ms)
+    alpha_max  alpha=100    recall=0.9413  qps=40945  (24.42 ms)
+    AS_RESULT picked=4 recall_picked=0.9413 qps_picked=81388 recall_max=0.9413 qps_max=40945 gain=1.988 cal_ms=99.4 cal_share=4.0688
+04:25:59 rc=0
+04:25:59 --- arxiv-768  nprobe=128  BLOCK=512  S=16 ---
+    calibration on 16 of 1000 queries, eps=0.0010
+      100      1.0000     (reference)
+      64       1.0000     accept
+      32       0.9875     reject -> stop
+    picked alpha = 64   (calibration 13.5 ms)
+    picked     alpha=64     recall=0.9754  qps=169170  (5.91 ms)
+    alpha_max  alpha=100    recall=0.9768  qps=121551  (8.23 ms)
+    AS_RESULT picked=64 recall_picked=0.9754 qps_picked=169170 recall_max=0.9768 qps_max=121551 gain=1.392 cal_ms=13.5 cal_share=1.6443
+04:26:02 rc=0
+04:26:02 --- openai3-3072  nprobe=128  BLOCK=1024  S=64 ---
+    calibration on 64 of 1000 queries, eps=0.0010
+      100      1.0000     (reference)
+      64       1.0000     accept
+      32       1.0000     accept
+      16       1.0000     accept
+      8        1.0000     accept
+      4        1.0000     accept
+      2        0.9922     reject -> stop
+    picked alpha = 4   (calibration 99.4 ms)
+    picked     alpha=4      recall=0.9413  qps=81234  (12.31 ms)
+    alpha_max  alpha=100    recall=0.9413  qps=40836  (24.49 ms)
+    AS_RESULT picked=4 recall_picked=0.9413 qps_picked=81234 recall_max=0.9413 qps_max=40836 gain=1.989 cal_ms=99.4 cal_share=4.0584
+04:26:09 rc=0
+04:26:09 --- arxiv-768  nprobe=128  BLOCK=512  S=64 ---
+    calibration on 64 of 1000 queries, eps=0.0010
+      100      1.0000     (reference)
+      64       0.9969     reject -> stop
+    picked alpha = 100   (calibration 9.9 ms)
+    picked     alpha=100    recall=0.9768  qps=121824  (8.21 ms)
+    alpha_max  alpha=100    recall=0.9768  qps=121411  (8.24 ms)
+    AS_RESULT picked=100 recall_picked=0.9768 qps_picked=121824 recall_max=0.9768 qps_max=121411 gain=1.003 cal_ms=9.9 cal_share=1.1980
+04:26:12 rc=0
+04:26:12 --- openai3-3072  nprobe=128  BLOCK=1024  S=128 ---
+    calibration on 128 of 1000 queries, eps=0.0010
+      100      1.0000     (reference)
+      64       1.0000     accept
+      32       1.0000     accept
+      16       1.0000     accept
+      8        1.0000     accept
+      4        1.0000     accept
+      2        0.9914     reject -> stop
+    picked alpha = 4   (calibration 99.4 ms)
+    picked     alpha=4      recall=0.9413  qps=81416  (12.28 ms)
+    alpha_max  alpha=100    recall=0.9413  qps=40735  (24.55 ms)
+    AS_RESULT picked=4 recall_picked=0.9413 qps_picked=81416 recall_max=0.9413 qps_max=40735 gain=1.999 cal_ms=99.4 cal_share=4.0501
+04:26:18 rc=0
+04:26:18 --- arxiv-768  nprobe=128  BLOCK=512  S=128 ---
+    calibration on 128 of 1000 queries, eps=0.0010
+      100      1.0000     (reference)
+      64       0.9984     reject -> stop
+    picked alpha = 100   (calibration 10.0 ms)
+    picked     alpha=100    recall=0.9768  qps=121365  (8.24 ms)
+    alpha_max  alpha=100    recall=0.9768  qps=121713  (8.22 ms)
+    AS_RESULT picked=100 recall_picked=0.9768 qps_picked=121365 recall_max=0.9768 qps_max=121713 gain=0.997 cal_ms=10.0 cal_share=1.2130
+04:26:21 rc=0
+04:26:21 === AS2_DONE ===
