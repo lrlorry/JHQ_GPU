@@ -2,21 +2,18 @@
 \label{sec:intro}
 
 High-dimensional approximate nearest-neighbour (ANN) search is a core primitive
-in retrieval, recommendation, and vector databases. On a GPU, compressed search
-is not governed by memory footprint alone: a representation can reduce bytes yet
+in retrieval, recommendation and vector databases, and on a GPU compressed
+search is not governed by footprint alone: a representation can reduce bytes yet
 raise lookup pressure or instruction issue, and an implementation can move the
-same logical bytes and still accelerate. The systems problem is to map the
-algorithm's structure to the hardware bottleneck rather than to assume that
-smaller is faster.
-
-JHQ~\cite{jhq} is a useful case study because its hierarchy exposes two costs of
-different shape. After IVF routing, a compact primary code scores every routed
-candidate at $O(n_c M)$; a per-dimension residual code is then read only for the
-$c_k$ survivors of primary filtering, at $O(c_k d)$ with $c_k \ll n_c$. JHQ also
-leaves the refinement factor $\alpha$ in $c_k=\alpha k$ externally specified.
-The GPU port therefore raises two coupled questions with different causes:
-\emph{how should the primary representation execute}, and \emph{how much of the
-expensive hierarchy should execute}?
+same logical bytes and still accelerate. JHQ~\cite{jhq} makes that concrete
+because its hierarchy exposes two costs of different shape. After IVF routing a
+compact primary code scores every routed candidate at $O(n_c M)$; a
+per-dimension residual code is then read only for the $c_k$ survivors of primary
+filtering, at $O(c_k d)$ with $c_k \ll n_c$. JHQ also leaves the refinement
+factor $\alpha$ in $c_k=\alpha k$ externally specified. The port therefore
+raises two coupled questions with different causes: \emph{how should the primary
+representation execute}, and \emph{how much of the expensive hierarchy should
+execute}?
 
 Our answer to the first begins from prior art rather than against it. Grouping
 code bits into small tables and choosing the group size by trading on-chip
@@ -61,14 +58,14 @@ build time and a comparable code budget.
 
 \smallskip\noindent\textbf{Contributions.}
 \textbf{(i)} Evidence that the primary scan's cost divides into an issue term
-and a residency term, from six controlled comparisons in which fewer bytes or
-less state fails to predict throughput together with a static instruction count
-read off the disassembled kernel, against which the granularity whose table does
-not fit is slower than its instruction count alone can explain.
-\textbf{(ii)} An exact Cartesian factorisation of JHQ's primary distance table,
-derived from separability the codebook already has rather than from a different
-quantiser, together with the regime in which it pays.
-\textbf{(iii)} A label-free, predictor-free policy for JHQ's residual budget,
-evaluated on gain, quality cost, amortisation, and sampling risk.
-\textbf{(iv)} An evaluation that reports where the compared systems are faster
-than ours and where our evidence does not generalise.
+and a residency term: six controls in which fewer bytes or less state fails to
+predict throughput, and a static instruction count from the disassembled kernel
+against which the granularity whose table does not fit is slower than its
+instruction count alone can explain. \textbf{(ii)} An exact Cartesian
+factorisation of JHQ's primary distance table, derived from separability the
+codebook already has rather than from a different quantiser, with the regime in
+which it pays. \textbf{(iii)} A label-free policy for JHQ's residual budget,
+evaluated on gain, quality cost, amortisation and sampling risk against fixed
+budgets and a ground-truth reference. \textbf{(iv)} An evaluation that reports
+where the compared systems are faster than ours and where our evidence does not
+generalise.

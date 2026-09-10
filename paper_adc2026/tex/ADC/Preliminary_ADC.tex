@@ -1,23 +1,20 @@
 \section{Preliminaries}
 \label{sec:preli}
 
-JHQ represents each vector with a square orthogonal transform, a Cartesian
-primary codebook, and a per-dimension residual code~\cite{jhq}. We introduce
-only what later sections need.
+
 
 For a database vector $x$ and query $q$ in $\mathbb{R}^d$, JHQ applies an
 orthogonal $Q\in\mathbb{R}^{d\times d}$: $y=Qx$, $q'=Qq$ (row-major batches use
-$Y=XQ^{\top}$). $Q$ is square, so this is a change of coordinates, not
-dimensionality reduction, and it preserves Euclidean distance and hence the
-neighbour ordering.
-
-The transformed vector is split into $M$ subspaces of dimension $D_s$, with
-$d=MD_s$. Each primary subspace code has $B$ bits and selects one of $K=2^{B}$
-codewords, and each codeword is a Cartesian product of $D_s$ one-dimensional
-Lloyd--Max levels. With $L$ levels per coordinate, $L=2^{B/D_s}$, so the
-implementation admits only $D_s$ dividing $B$: at $B{=}8$, $D_s\in\{1,2,4,8\}$
-gives $\{8,4,2,1\}$ primary bits per coordinate. We use $D_s{=}8$, so each
-coordinate carries one primary bit and each subspace is one byte. This Cartesian
+$Y=XQ^{\top}$). $Q$ is square, so this is a change of coordinates preserving
+Euclidean distance and hence the neighbour ordering, not dimensionality
+reduction. The transformed vector is split into $M$ subspaces of dimension
+$D_s$, $d=MD_s$; each primary subspace code has $B$ bits selecting one of
+$K=2^{B}$ codewords, and each codeword is a Cartesian product of $D_s$
+one-dimensional Lloyd--Max levels. With $L$ levels per coordinate $L=2^{B/D_s}$,
+so the implementation admits only $D_s$ dividing $B$: at $B{=}8$,
+$D_s\in\{1,2,4,8\}$ gives $\{8,4,2,1\}$ primary bits per coordinate. We use
+$D_s{=}8$, so each coordinate carries one primary bit and each subspace is one
+byte. This Cartesian
 construction is what Section~\ref{sec:designspace} exploits.
 
 The residual is $r=y-\hat{y}_{\mathrm{primary}}$, the displacement from the

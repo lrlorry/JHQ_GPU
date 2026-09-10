@@ -99,8 +99,4 @@ survivors trigger residual access. Fusing the two phases is a plausible
 alternative --- it removes a round trip and a kernel boundary --- and
 Section~\ref{sec:rq4} reports why we reject it.
 
-The representation says how to execute each unit of JHQ work cheaply, not how
-many expensive units are useful. A global $\alpha$ large enough for a hard
-workload wastes the residual stage on an easy one; a small one filters
-irreversibly. Section~\ref{sec:method2} therefore treats $\alpha$ as a workload
-control problem, not another kernel constant.
+
