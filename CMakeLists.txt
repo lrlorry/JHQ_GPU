@@ -1731,6 +1731,16 @@ target_compile_definitions(demo_jhq_alpha_v57 PRIVATE
     JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
 target_link_libraries(demo_jhq_alpha_v57 PRIVATE jhq_v57_exp)
+
+# Every budget arm on one index: fixed alphas, the sampled rule, the same
+# criterion on all queries, and a ground-truth oracle. v57 so the numbers sit
+# on the same build as the reported frontier.
+add_executable(demo_jhq_budget_arms examples/demo_jhq_budget_arms.cu)
+target_compile_definitions(demo_jhq_budget_arms PRIVATE
+    JHQ_INDEX_HEADER="${V57}/jhq_gpu_index.cuh" JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+target_link_libraries(demo_jhq_budget_arms PRIVATE jhq_v57_exp)
 # The plain front demo too, since sizing the launch changes every search, not
 # only calibration -- a 999-query batch on a 1024 workspace included 25
 # queries of zeros in every number this project has reported.
