@@ -1,0 +1,115 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at 0e202cf A step-timing target on the head, for the Section 3 to Section 4 link
+00:48:48 HEAD 0e202cf A step-timing target on the head, for the Section 3 to Section 4 link
+-- Configuring done (0.3s)
+-- Generating done (1.9s)
+-- Build files have been written to: /root/JHQ_GPU/build
+[  0%] Built target jhq_cpu
+[100%] Built target jhq_v57_exp
+[100%] Built target demo_jhq_v57
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp: In constructor ‘raft::resource::cusolver_sp_resource::cusolver_sp_resource(rmm::_RMM_26_8::cuda_stream_view)’:
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:25:54: warning: ‘cusolverStatus_t cusolverSpCreate(cusolverSpContext**)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   25 |     RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpCreate(&cusolver_res));
+      |                                      ~~~~~~~~~~~~~~~~^~~~~~~~~~~      
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:67:61: note: declared here
+   67 |   CUSOLVER_DEPRECATED(cuDSS) cusolverStatus_t CUSOLVERAPI cusolverSpCreate(cusolverSpHandle_t *handle);
+      |                                                             ^~~~~~~~~~~~~~~~
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:26:57: warning: ‘cusolverStatus_t cusolverSpSetStream(cusolverSpHandle_t, cudaStream_t)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   26 |     RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpSetStream(cusolver_res, stream));
+      |                                      ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~    
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:70:1: note: declared here
+   70 |     cusolverSpSetStream(cusolverSpHandle_t handle, cudaStream_t streamId);
+      | ^   ~~~~~~~~~~~~~~~
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp: In destructor ‘virtual raft::resource::cusolver_sp_resource::~cusolver_sp_resource()’:
+/root/miniconda3/lib/python3.12/site-packages/libraft/include/raft/core/resource/cusolver_sp_handle.hpp:31:98: warning: ‘cusolverStatus_t cusolverSpDestroy(cusolverSpHandle_t)’ is deprecated: please use cuDSS instead [-Wdeprecated-declarations]
+   31 |   ~cusolver_sp_resource() override { RAFT_CUSOLVER_TRY_NO_THROW(cusolverSpDestroy(cusolver_res)); }
+      |                                                                                 ~~~~~~~~~~~~~~~~~^~            
+/usr/local/cuda/bin/../targets/x86_64-linux/include/cusolverSp.h:68:61: note: declared here
+   68 |   CUSOLVER_DEPRECATED(cuDSS) cusolverStatus_t CUSOLVERAPI cusolverSpDestroy(cusolverSpHandle_t handle);
+      |                                                             ^~~~~~~~~~~~~~~~~
+00:49:53 build_rc=0/0
+00:56:01 got the GPU
+00:56:01 ########## openai3-3072: batch x nprobe, both systems ##########
+  JHQ     openai3-3072   np=32    a=4.0   batch=32     recall=0.8648   qps=34421    
+  RaBitQ  openai3-3072   np=32                batch=32     recall=0.8632   qps=10054    
+  JHQ     openai3-3072   np=64    a=4.0   batch=32     recall=0.9093   qps=18466    
+  RaBitQ  openai3-3072   np=64                batch=32     recall=0.9065   qps=8543     
+  JHQ     openai3-3072   np=128   a=4.0   batch=32     recall=0.9414   qps=12844    
+  RaBitQ  openai3-3072   np=128               batch=32     recall=0.9437   qps=8372     
+  JHQ     openai3-3072   np=256   a=4.0   batch=32     recall=0.9647   qps=8192     
+  RaBitQ  openai3-3072   np=256               batch=32     recall=0.9660   qps=4723     
+  JHQ     openai3-3072   np=512   a=4.0   batch=32     recall=0.9813   qps=4800     
+  RaBitQ  openai3-3072   np=512               batch=32     recall=0.9833   qps=6453     
+  JHQ     openai3-3072   np=32    a=4.0   batch=128    recall=0.8648   qps=73538    
+  RaBitQ  openai3-3072   np=32                batch=128    recall=0.8587   qps=25307    
+  JHQ     openai3-3072   np=64    a=4.0   batch=128    recall=0.9094   qps=60994    
+  RaBitQ  openai3-3072   np=64                batch=128    recall=0.9068   qps=28268    
+  JHQ     openai3-3072   np=128   a=4.0   batch=128    recall=0.9414   qps=44180    
+  RaBitQ  openai3-3072   np=128               batch=128    recall=0.9415   qps=24186    
+  JHQ     openai3-3072   np=256   a=4.0   batch=128    recall=0.9647   qps=19733    
+  RaBitQ  openai3-3072   np=256               batch=128    recall=0.9664   qps=17536    
+  JHQ     openai3-3072   np=512   a=4.0   batch=128    recall=0.9813   qps=22129    
+  RaBitQ  openai3-3072   np=512               batch=128    recall=0.9843   qps=11562    
+  JHQ     openai3-3072   np=32    a=4.0   batch=512    recall=0.8648   qps=90077    
+  RaBitQ  openai3-3072   np=32                batch=512    recall=0.8615   qps=41938    
+  JHQ     openai3-3072   np=64    a=4.0   batch=512    recall=0.9094   qps=77345    
+  RaBitQ  openai3-3072   np=64                batch=512    recall=0.9094   qps=35621    
+  JHQ     openai3-3072   np=128   a=4.0   batch=512    recall=0.9414   qps=58543    
+  RaBitQ  openai3-3072   np=128               batch=512    recall=0.9425   qps=35012    
+  JHQ     openai3-3072   np=256   a=4.0   batch=512    recall=0.9647   qps=39360    
+  RaBitQ  openai3-3072   np=256               batch=512    recall=0.9670   qps=23947    
+  JHQ     openai3-3072   np=512   a=4.0   batch=512    recall=0.9813   qps=22828    
+  RaBitQ  openai3-3072   np=512               batch=512    recall=0.9827   qps=26534    
+  JHQ     openai3-3072   np=32    a=4.0   batch=1024   recall=0.8648   qps=166903   
+  RaBitQ  openai3-3072   np=32                batch=1024   recall=0.8608   qps=32083    
+  JHQ     openai3-3072   np=64    a=4.0   batch=1024   recall=0.9094   qps=119076   
+  RaBitQ  openai3-3072   np=64                batch=1024   recall=0.9079   qps=66379    
+  JHQ     openai3-3072   np=128   a=4.0   batch=1024   recall=0.9414   qps=86733    
+  RaBitQ  openai3-3072   np=128               batch=1024   recall=0.9416   qps=57864    
+  JHQ     openai3-3072   np=256   a=4.0   batch=1024   recall=0.9647   qps=53191    
+  RaBitQ  openai3-3072   np=256               batch=1024   recall=0.9662   qps=42239    
+  JHQ     openai3-3072   np=512   a=4.0   batch=1024   recall=0.9813   qps=29586    
+  RaBitQ  openai3-3072   np=512               batch=1024   recall=0.9845   qps=31064    
+01:10:53 ########## vogue-768: batch x nprobe, both systems ##########
+  JHQ     vogue-768      np=32    a=64.0  batch=32     recall=0.8617   qps=36872    
+  RaBitQ  vogue-768      np=32                batch=32     recall=0.8506   qps=47846    
+  JHQ     vogue-768      np=64    a=64.0  batch=32     recall=0.9255   qps=27864    
+  RaBitQ  vogue-768      np=64                batch=32     recall=0.9157   qps=46049    
+  JHQ     vogue-768      np=128   a=64.0  batch=32     recall=0.9645   qps=19920    
+  RaBitQ  vogue-768      np=128               batch=32     recall=0.9564   qps=40815    
+  JHQ     vogue-768      np=256   a=64.0  batch=32     recall=0.9828   qps=14229    
+  RaBitQ  vogue-768      np=256               batch=32     recall=0.9788   qps=37595    
+  JHQ     vogue-768      np=512   a=64.0  batch=32     recall=0.9905   qps=10339    
+  RaBitQ  vogue-768      np=512               batch=32     recall=0.9916   qps=22693    
+  JHQ     vogue-768      np=32    a=64.0  batch=128    recall=0.8617   qps=123408   
+  RaBitQ  vogue-768      np=32                batch=128    recall=0.8451   qps=119666   
+  JHQ     vogue-768      np=64    a=64.0  batch=128    recall=0.9255   qps=97243    
+  RaBitQ  vogue-768      np=64                batch=128    recall=0.9147   qps=105782   
+  JHQ     vogue-768      np=128   a=64.0  batch=128    recall=0.9645   qps=73010    
+  RaBitQ  vogue-768      np=128               batch=128    recall=0.9575   qps=86010    
+  JHQ     vogue-768      np=256   a=64.0  batch=128    recall=0.9828   qps=53786    
+  RaBitQ  vogue-768      np=256               batch=128    recall=0.9816   qps=60273    
+  JHQ     vogue-768      np=512   a=64.0  batch=128    recall=0.9905   qps=40142    
+  RaBitQ  vogue-768      np=512               batch=128    recall=0.9910   qps=48835    
+  JHQ     vogue-768      np=32    a=64.0  batch=512    recall=0.8616   qps=219896   
+  RaBitQ  vogue-768      np=32                batch=512    recall=0.8466   qps=220467   
+  JHQ     vogue-768      np=64    a=64.0  batch=512    recall=0.9255   qps=182916   
+  RaBitQ  vogue-768      np=64                batch=512    recall=0.9090   qps=174657   
+  JHQ     vogue-768      np=128   a=64.0  batch=512    recall=0.9645   qps=137784   
+  RaBitQ  vogue-768      np=128               batch=512    recall=0.9580   qps=140297   
+  JHQ     vogue-768      np=256   a=64.0  batch=512    recall=0.9828   qps=98209    
+  RaBitQ  vogue-768      np=256               batch=512    recall=0.9804   qps=111409   
+  JHQ     vogue-768      np=512   a=64.0  batch=512    recall=0.9905   qps=70852    
+  RaBitQ  vogue-768      np=512               batch=512    recall=0.9900   qps=76008    
+  JHQ     vogue-768      np=32    a=64.0  batch=1024   recall=0.8617   qps=277629   
+  RaBitQ  vogue-768      np=32                batch=1024   recall=0.8386   qps=275535   
+  JHQ     vogue-768      np=64    a=64.0  batch=1024   recall=0.9255   qps=225968   
+  RaBitQ  vogue-768      np=64                batch=1024   recall=0.9157   qps=218318   
+  JHQ     vogue-768      np=128   a=64.0  batch=1024   recall=0.9645   qps=171039   
+  RaBitQ  vogue-768      np=128               batch=1024   recall=0.9594   qps=27802    
+  JHQ     vogue-768      np=256   a=64.0  batch=1024   recall=0.9827   qps=122177   
+  RaBitQ  vogue-768      np=256               batch=1024   recall=0.9812   qps=45750    
+  JHQ     vogue-768      np=512   a=64.0  batch=1024   recall=0.9905   qps=87251    
+  RaBitQ  vogue-768      np=512               batch=1024   recall=0.9914   qps=18341    
+01:14:15 === BT2_DONE ===
