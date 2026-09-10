@@ -139,13 +139,11 @@ assert sorted(tol) == [0, 1, 2], sorted(tol)
 
 # Two measures on one x is two stacked axes, not one axes with two y-scales:
 # a twin axis lets the reader compare bar heights that share no unit.
-fig = plt.figure(figsize=(WIDE, 3.15))
-gs = fig.add_gridspec(2, 3, height_ratios=[1, 1], hspace=0.16,
+fig = plt.figure(figsize=(WIDE, 2.35))
+gs = fig.add_gridspec(1, 2, hspace=0.16,
                       wspace=0.52)
-a = fig.add_subplot(gs[:, 0])
-b = fig.add_subplot(gs[:, 1])
-c = fig.add_subplot(gs[0, 2])
-d = fig.add_subplot(gs[1, 2], sharex=c)
+a = fig.add_subplot(gs[0, 0])
+b = fig.add_subplot(gs[0, 1])
 
 # (a) One row per configuration, sweep marker to rule marker. A scatter
 # against the diagonal cannot carry eight labelled points at this width, and
@@ -229,31 +227,12 @@ b.text(0.97, 0.95, "line: mean of 2000 draws\ndotted: 95th percentile",
        transform=b.transAxes, ha="right", va="top", fontsize=7,
        color="#898781", linespacing=1.3)
 b.text(0.97, 0.05, "(b)", transform=b.transAxes, fontsize=8, ha="right")
-b.text(8.4, 1.05e-4, "  exactly 0", fontsize=7, color="#898781",
-       va="bottom")
+b.text(90, 1.06e-4, "exactly 0", fontsize=7, color="#898781",
+       ha="right", va="bottom")
 
-# (c) upper: what the tolerance costs.  lower: what it buys.
-xs = sorted(tol)
-c.bar(xs, [-tol[x][1] for x in xs], width=0.5, color="#e34948")
-c.axhline(1e-4, color="0.35", lw=0.7, ls=":")
-c.text(2.45, 1.3e-4, "$10^{-4}$", fontsize=7, color="0.35", ha="right",
-       va="bottom")
-c.set_ylabel("recall\ngiven up", linespacing=1.2)
-c.tick_params(labelbottom=False)
-c.set_xlim(-0.55, 2.55)
-for x in xs:
-    c.text(x, -tol[x][1], r"$\alpha^{*}{=}%.0f$" % tol[x][0], fontsize=7,
-           ha="center", va="bottom", color="#52514e")
-c.set_ylim(0, max(-tol[x][1] for x in xs) * 1.42)
-c.text(0.04, 0.90, "(c) %s, nprobe$=$%d" % (TOL_DS, TOL_NP),
-       transform=c.transAxes, fontsize=7.5, va="top")
-
-d.bar(xs, [tol[x][2] for x in xs], width=0.5, color=S["jhq"]["color"])
-d.axhline(1.0, color="0.35", lw=0.7, ls=":")
-d.set_ylabel(r"QPS $\div$" "\n" r"fixed $\alpha$", linespacing=1.2)
-d.set_xlabel("disagreeing slots allowed")
-d.set_xticks(xs)
-d.set_ylim(0.95, max(tol[x][2] for x in xs) * 1.06)
+# Panels (c) and (d) removed for the 12-page limit: their two numbers --
+# 26% of attainable throughput unclaimed at zero slots, 0.0035 recall at
+# two -- are stated in the text, and a third column is 1.5in wide here.
 
 fig.subplots_adjust(left=0.075, right=0.995, top=0.97, bottom=0.17)
 save(fig, "fig_calibration")

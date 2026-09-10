@@ -35,7 +35,7 @@ def arrow(ax, x1, y1, x2, y2, style="-|>", col="#52514e", lw=0.7):
     ax.add_patch(FancyArrowPatch((x1, y1), (x2, y2), arrowstyle=style,
                                  mutation_scale=7, lw=lw, color=col, zorder=1))
 
-fig, ax = plt.subplots(figsize=(WIDE, 2.45))
+fig, ax = plt.subplots(figsize=(WIDE, 2.05))
 ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
 
 # ── build ───────────────────────────────────────────────────────────────────

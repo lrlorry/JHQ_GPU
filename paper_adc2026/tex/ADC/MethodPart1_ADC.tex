@@ -1,99 +1,64 @@
 \section{GPU-Native JHQ}
 \label{sec:method1}
 
-\subsection{Design from the cost structure}
-We do not begin with CUDA primitives; we begin with the work JHQ requires after
-routing. Let $n_c$ be the routed candidate count. The primary stage performs
-work proportional to $n_c M$ over compact codes, while the residual stage
-performs work proportional to $c_k d$ over richer per-dimension codes, with
-$c_k=\alpha k$ and typically $c_k \ll n_c$. This asymmetry yields three design
-requirements: (i) make the primary code access match candidate-parallel warp
-execution; (ii) keep the primary distance representation resident without
-replacing JHQ's quantiser; and (iii) preserve selective residual access rather
-than fusing accurate scoring into the broad scan. Figure~\ref{fig:pipeline}
-shows the resulting pipeline. The semantic invariants are fixed: the orthogonal
-transform, primary codebook, residual definition, and hierarchical ordering
-remain JHQ's; only physical representation, execution, and the external
-refinement policy change.
+\subsection{Execution and representation}
+We begin from the work JHQ requires after routing rather than from CUDA
+primitives. The primary stage is $O(n_c M)$ over compact codes and the residual
+stage $O(c_k d)$ over per-dimension codes, so three requirements follow: make
+primary access match candidate-parallel warp execution, keep the primary
+distance representation resident without replacing JHQ's quantiser, and preserve
+selective residual access instead of fusing accurate scoring into the broad
+scan. Figure~\ref{fig:pipeline} shows the pipeline. The orthogonal transform,
+primary codebook, residual definition and hierarchical ordering remain JHQ's;
+physical representation, execution and the external refinement policy change.
 
-\begin{figure}[t]
+During the broad scan, warp lanes score different candidates while advancing
+through the same subspace $m$, so candidate-major $[N,M]$ storage has the warp
+read one byte per lane with stride $M$. We store the scan copy subspace-major,
+$[M,N]$, which makes those 32 bytes adjacent: the transpose aligns the
+contiguous memory dimension with the dimension the warp shares. It is standard
+practice, not a claim. Separately, $D_s{=}B{=}8$ makes four subspace codes a
+native 32-bit word that a packed scan loads once and unpacks in registers. After
+the layout fix the fetched sectors are already right, so packing reduces load
+instructions, addresses and loop iterations rather than logical bytes. We do not
+claim wider words are universally better; they add unpacking, dependencies and
+register pressure.
+
+\begin{figure}[tbp]
   \centering
   \includegraphics[width=\linewidth]{figs/fig_pipeline.pdf}
   \caption{JHQ build and query pipeline. GPU redesign changes execution and
   physical layout while preserving the original hierarchy. The scan uses bounded
   per-thread top-$\alpha k$ selection; Proposition~\ref{prop:mono} characterises
-  the ideal exact selector, while Section~\ref{sec:mono} quantifies the
+  the ideal exact selector and Section~\ref{sec:mono} quantifies the
   implementation's measured deviation.}
   \label{fig:pipeline}
 \end{figure}
 
-\subsection{Access pattern determines physical layout}
-Logically the primary codes form an $N\times M$ matrix. During the broad scan,
-warp lanes score different candidates while advancing through the same subspace
-$m$. Under candidate-major $[N,M]$ storage, the warp therefore reads one byte
-per lane with stride $M$; the layout is convenient for reconstructing one vector
-but mismatched to the hot access pattern. Storing the scan copy in
-subspace-major $[M,N]$ order makes those 32 candidate bytes adjacent. The reason
-for the transpose is thus specific and falsifiable: it aligns the contiguous
-memory dimension with the dimension shared by the warp. Transposition itself is
-standard GPU engineering and is not a novelty claim.
-
-The $D_s \mid B$ representation constraint creates a separate instruction-level
-opportunity. In the paper setting $D_s{=}B{=}8$, one subspace code is one byte,
-so four subspace codes form a natural 32-bit unit. A packed scan can load that
-word once and unpack in registers. This is not another coalescing argument:
-after the layout fix, the required sectors are already appropriate, and packing
-does not reduce the logical code bytes. It reduces load instructions, address
-calculations, and loop iterations. We choose 32-bit packing because it is the
-first native word width exposed directly by four one-byte subspaces; we do not
-claim that ever-wider packing is universally better, since wider words can add
-unpacking, dependencies, alignment constraints, and register pressure. That
-unmeasured design space is deliberately outside the claim.
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{figs/fig_layout.pdf}
-  \caption{Logical candidate-major versus GPU scan layout, and the separate role
-  of packed 32-bit access.}
-  \label{fig:layout}
-\end{figure}
-
-\subsection{The primary-distance design space}
+\subsection{Cartesian factorisation of the primary table}
 \label{sec:designspace}
-The central question is not ``how small can the LUT be?'' but ``how much table
-state should be materialised before saved residency is outweighed by additional
-issued work?'' Three points define the space: a full table minimises
-per-candidate lookup count but maximises resident state; a table-free symbolic
-form minimises table state but adds arithmetic; and Cartesian factorisation
-trades one extra lookup for a large reduction in resident entries while
-preserving the represented distance. We use the latter only if its
-representation-specific algebra supports it.
-
-\subsubsection{Cartesian-factorised primary distance.}
-For subspace $m$ and code $c$, let
-$T_m[c]=\lVert q'_m - C_m[c]\rVert_2^2$. A conventional 8-bit implementation
-materialises 256 values per subspace. Because JHQ constructs $C_m[c]$ as a
-Cartesian product of one-dimensional levels and squared Euclidean distance is
-additive, any partition of the eight base-2 code decisions induces an exact sum
-of smaller tables. For the two-way partition used here, $c_{\mathrm{hi}}=c\gg 4$
-and $c_{\mathrm{lo}}=c \bmod 16$, giving
+The question is not how small the table can be but how much table state to
+materialise before saved residency is outweighed by added issued work. For
+subspace $m$ and code $c$, let $T_m[c]=\lVert q'_m - C_m[c]\rVert_2^2$. Because
+$C_m[c]$ is a Cartesian product of one-dimensional levels and squared Euclidean
+distance is additive, any partition of the eight code decisions induces an exact
+sum of smaller tables. For the two-way partition, with $c_{\mathrm{hi}}=c\gg 4$
+and $c_{\mathrm{lo}}=c \bmod 16$,
 \begin{equation}
-  T_m[c] \;=\; T_m^{\mathrm{hi}}[c_{\mathrm{hi}}] \;+\;
+  T_m[c] \;=\; T_m^{\mathrm{hi}}[c_{\mathrm{hi}}] +
                T_m^{\mathrm{lo}}[c_{\mathrm{lo}}].
   \label{eq:split}
 \end{equation}
-Each component table has 16 entries, so $G{=}2$ stores 32 entries per subspace
-and performs two lookups. The reduction in table-construction work is
-$16\times$, not merely the $8\times$ reduction in resident entries: the full
-table evaluates $256 D_s$ coordinate contributions per subspace, whereas the
-split form evaluates $32(D_s/2)=16D_s$ contributions. More generally, an equal
-$G$-way partition stores $G\cdot 2^{8/G}$ entries but requires $G$ lookups per
-candidate--subspace. This exposes the trade-off analytically: increasing $G$
-lowers resident table state only until the table fits the target on-chip regime,
-while instruction demand continues to rise.
+Each component holds 16 entries, so $G{=}2$ stores 32 per subspace and performs
+two lookups. Table construction falls by $16\times$, not the $8\times$ of
+resident entries: the full table evaluates $256 D_s$ coordinate contributions
+per subspace and the split form $32(D_s/2)=16D_s$. An equal $G$-way partition
+stores $G\cdot 2^{8/G}$ entries and needs $G$ lookups per candidate--subspace,
+which states the trade-off analytically --- state falls only until the table
+fits, while instruction demand keeps rising.
 
 The residency target is narrower than the device's shared-memory limit, because
-the table is not the only claimant. The scan kernel's own admission test is
+the table is not the only claimant. The scan kernel's admission test is
 \begin{equation}
   \texttt{scan\_base} + M \cdot G\cdot 2^{8/G} \cdot 4 \;\le\;
   \texttt{smem\_optin},
@@ -101,97 +66,46 @@ the table is not the only claimant. The scan kernel's own admission test is
   \texttt{scan\_base} = 40\,\cdot\,\texttt{BLOCK}\ \text{bytes},
   \label{eq:resid}
 \end{equation}
-where \texttt{scan\_base} is the per-thread candidate scratch claimed before the
-table. On the tested card $\texttt{smem\_optin}=101{,}376$\,B, so the budget
-actually left for the table is $94.0$\,KiB at $\texttt{BLOCK}{=}128$ and falls
-to $59.0$\,KiB at $\texttt{BLOCK}{=}1024$. The full $G{=}1$ table is
-$M\cdot 256\cdot 4$ bytes: $98{,}304$\,B $=96$\,KiB at $M{=}96$ and
-$393{,}216$\,B $=384$\,KiB at $M{=}384$. \emph{Neither} clears the budget at any
-admissible block size --- $M{=}96$ misses the most generous of them by 2\,KiB
---- whereas every factorised table clears the least generous, at $12$\,KiB and
-$48$\,KiB respectively (Figure~\ref{fig:lut}). The full table is therefore off
-chip at both $M$, and what grows with $M$ is not whether the table is resident
-but the cost of the lookups that miss: the scan performs one lookup per
-candidate per subspace, so a non-resident table is paid $M$ times per candidate.
-$G{=}2$ is thus a hypothesis about staying inside a residency budget that the
-full table never meets, at the smallest added lookup count --- not an arbitrary
-split.
+with \texttt{scan\_base} the per-thread candidate scratch claimed first. At the
+tested $\texttt{smem\_optin}=101{,}376$\,B this leaves the table $94.0$\,KiB at
+$\texttt{BLOCK}{=}128$, falling to $59.0$\,KiB at $\texttt{BLOCK}{=}1024$. The
+full table is $M\cdot 256\cdot 4$ bytes --- $96$\,KiB at $M{=}96$ and
+$384$\,KiB at $M{=}384$ --- so \emph{neither} clears the budget at any
+admissible block size, $M{=}96$ missing the most generous by 2\,KiB, while both
+factorised tables clear the least generous at $12$ and $48$\,KiB
+(Figure~\ref{fig:lut}). The full table is thus off chip at both $M$, and what
+grows with $M$ is the cost of the lookups that miss, since the scan pays one per
+candidate per subspace. The prediction we test in Section~\ref{sec:rq3} is
+therefore directional: reducing table state should help until the extra lookup
+work outweighs the residency it buys, and the crossing should move with $M$ and
+with probe depth together.
 
-\begin{figure}[t]
+\begin{figure}[tbp]
   \centering
   \includegraphics[width=\linewidth]{figs/fig_lut.pdf}
   \caption{Exact Cartesian factorisation of an 8-bit JHQ primary lookup table:
-  256 resident entries become two 16-entry tables. The shaded band on the right
-  is the budget Equation~\ref{eq:resid} leaves for the table across the
-  admissible block sizes. Every full table falls outside it and every factorised
-  table inside.}
+  256 resident entries become two 16-entry tables. The band on the right is what
+  Equation~\ref{eq:resid} leaves for the table across the admissible block
+  sizes; every full table falls outside it and every factorised table inside.}
   \label{fig:lut}
 \end{figure}
 
-Section~\ref{sec:rq3} tests both sides of that hypothesis. $G{=}2$ is at least
-as fast as $G{=}1$, $G{=}4$ and $G{=}8$ in all eight reported configurations,
-with one exact tie against $G{=}1$. At $M{=}96$ the factorisation is worth
-$0$--$11\%$; at $M{=}384$ it is worth $8$--$53\%$, rising monotonically with
-probe depth in both cases. Crucially, $G{=}4$ and $G{=}8$ store
-\emph{byte-identical} tables --- $G\cdot 2^{8/G}$ is 16 for both --- and differ
-only in performing four versus eight lookups per candidate--subspace; the
-eight-way form is $5.8$--$38.3\%$ slower. That pair is the one control in this
-paper where table residency is held exactly fixed while issued work doubles. A
-table-free exact formulation goes further in the ``less state'' direction and
-still loses $30$--$52\%$. Thus the objective is not minimum bytes or maximum
-occupancy in isolation. The chosen point balances residency against issued
-lookup and arithmetic work. Stage timing also shows LUT construction is only
-$0.2$--$2.3\%$ of a batch, so the $16\times$ reduction in table-construction
-work cannot explain the end-to-end gain by itself.
-
-This contribution must also be separated from generic small-table ADC. PQ Fast
-Scan~\cite{fastscan} and Quicker ADC~\cite{quickeradc} already show that
-lookup-table organisation is central to quantised search. The distinction is not
-that prior small-table methods are lossy --- it is where the small table comes
-from. Quicker ADC obtains one by \emph{changing the quantiser}, using narrower
-irregular sub-quantisers whose tables are small by construction. We change
-nothing: JHQ's existing 8-bit Cartesian codebook already satisfies
-Equation~\ref{eq:split} exactly, so the same represented distance is recovered
-from 32 entries instead of 256 without touching a codeword. The research
-question is therefore representation-to-hardware mapping: when does this exact
-reorganisation move JHQ into a better residency/issue regime? Algebraic
-exactness is in real arithmetic and does not promise bitwise-identical
+This is not generic small-table ADC. The distinction from Quicker
+ADC~\cite{quickeradc} is provenance, not loss: it obtains small tables by
+changing the quantiser to narrower irregular sub-quantisers, whereas
+Equation~\ref{eq:split} holds for JHQ's existing 8-bit codebook without touching
+a codeword. Exactness is in real arithmetic; it promises no bitwise-identical
 floating-point association or tie order.
 
-\subsubsection{Instruction-aware primary scan.}
-After routing, $D_P(i)=\sum_m T_m[c_{i,m}]$, or the equivalent sum of factorised
-components. Subspace-major storage addresses memory transaction shape; packed
-loading addresses instruction count. The distinction matters because the latter
-can improve throughput even when the same logical bytes move. On openai3-3072,
-factorisation gains remain similar on byte and packed layouts, so the two
-changes are complementary rather than one merely repairing the other. This is
-also why we keep packing out of the novelty claim: its scientific role is as
-evidence that the primary kernel is sensitive to issue work, while the
-JHQ-specific contribution is the exact factorisation that changes the
-table-residency regime.
+\subsection{Selective residual refinement, and what it leaves open}
+Reading the per-dimension residual for every routed candidate would turn an
+$O(c_k d)$ stage into work closer to $O(n_c d)$, so only the $c_k$ primary
+survivors trigger residual access. Fusing the two phases is a plausible
+alternative --- it removes a round trip and a kernel boundary --- and
+Section~\ref{sec:rq4} reports why we reject it.
 
-\subsubsection{Preserve selective residual refinement.}
-The residual code is per dimension and therefore much richer than the one-byte
-primary subspace code. Reading it for every routed candidate would turn an
-$O(c_k d)$ selective stage into work closer to $O(n_c d)$, discarding the
-hierarchy's central systems advantage. We therefore keep primary screening and
-residual refinement separate: only the $c_k$ primary survivors trigger residual
-accesses. A fused design is still a plausible alternative because it removes the
-intermediate top-$c_k$ write/read round trip and one kernel boundary. The frozen
-negative control shows why we reject it: on stella-trec24 it is $14.2\%$ slower
-than the $68{,}565$-QPS baseline at $\mathit{nprobe}{=}128$ and $14.8\%$ slower
-than the $16{,}126$-QPS baseline at $\mathit{nprobe}{=}512$, because the fused
-kernel combines the shared-memory and register footprints of both phases and
-remains resident for the full scan. Larger $\alpha$ reduces only
-primary-filtering risk and increases this expensive residual work; it cannot
-recover neighbours lost during IVF routing.
-
-\subsection{What the execution design deliberately leaves unresolved}
-The representation tells us how to execute each unit of JHQ work cheaply, but it
-does not tell us how many expensive residual units are useful. The interface
-still ends at $\alpha$, which scales the survivor budget $c_k$ approximately as
-$\alpha k$ (with integer rounding and the $k$ floor in the implementation). A
-global $\alpha$ large enough for a difficult workload can waste most of the
-residual stage on an easy one, while a small value can irreversibly filter
-useful candidates. Section~\ref{sec:method2} therefore treats $\alpha$ as a
-workload control problem rather than another kernel constant.
+The representation says how to execute each unit of JHQ work cheaply, not how
+many expensive units are useful. A global $\alpha$ large enough for a hard
+workload wastes the residual stage on an easy one; a small one filters
+irreversibly. Section~\ref{sec:method2} therefore treats $\alpha$ as a workload
+control problem, not another kernel constant.

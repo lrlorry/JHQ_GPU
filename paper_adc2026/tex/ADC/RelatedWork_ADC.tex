@@ -23,11 +23,11 @@ quantiser, replacing 8-bit sub-quantisers with narrower irregular ones whose
 tables are small by construction. Our table is small because JHQ's existing
 8-bit Cartesian subspace code already separates exactly
 (Equation~\ref{eq:split}), so we preserve the represented codebook and derive an
-identity for its distance table rather than choosing a different one. We also
-show empirically that making the table even smaller can be slower because extra
-lookup instructions dominate --- most sharply between $G{=}4$ and $G{=}8$, whose
-tables are byte-identical. Thus our claim is about exploiting a particular
-representation, not about inventing small-table ADC in general.
+identity for its distance table rather than choosing a different one. We also show
+empirically that a smaller table can be slower once extra lookup instructions
+dominate, most sharply between $G{=}4$ and $G{=}8$, which occupy the same
+nominal footprint. Our claim is about exploiting a particular representation,
+not about inventing small-table ADC in general.
 
 \paragraph{Adaptive ANN control.}
 ANN libraries such as FAISS~\cite{faiss} commonly expose parameter sweeps and

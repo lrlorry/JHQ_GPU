@@ -1,316 +1,240 @@
-\section{Experiments}
+\section{Evaluation}
 \label{sec:experi}
 
-\subsection{Experimental setup and protocol}
+\subsection{Setup and protocol}
 \label{sec:setup}
-We evaluate on one NVIDIA RTX 5090. The frozen run records 32{,}607 MiB device
-memory, 170 SMs, a 101{,}376-byte opt-in shared-memory limit per block, and
-1{,}792 GB/s nominal device bandwidth; the host has 208 logical cores and 754 GB
-RAM. All compared GPU systems in our measurements use this card. The six
-datasets are vogue-768 (about $1.0\text{M}\times 768$), arxiv-768
-($2.25\text{M}\times 768$), bge-m3 ($10.1\text{M}\times 1024$), stella-trec24
-($17.8\text{M}\times 1024$), openai3-1536 ($1.0\text{M}\times 1536$), and
-openai3-3072 ($1.0\text{M}\times 3072$). When we refer to attainable occupancy,
-it is derived from per-block shared-memory budgets and resident-block limits,
-not from hardware performance counters: Nsight Compute counters were unavailable
-in the benchmark container (\texttt{ERR\_NVGPUCTRPERM}). We therefore do not
-report profiler-measured occupancy. Where a configuration was measured more
-than once --- repetition counts range from one to three across the granularity
-grid --- every ratio we quote is the median of its repeats, so a single
-outlying run cannot set an interval endpoint.
+All GPU systems run on one NVIDIA RTX 5090: 32{,}607 MiB device memory, 170 SMs,
+a 101{,}376-byte opt-in shared-memory limit per block; the host has 208 logical
+cores and 754 GB RAM. Datasets are vogue-768 ($1.0\text{M}\times 768$),
+arxiv-768 ($2.25\text{M}\times 768$), bge-m3 ($10.1\text{M}\times 1024$),
+stella-trec24 ($17.8\text{M}\times 1024$), openai3-1536
+($1.0\text{M}\times 1536$) and openai3-3072 ($1.0\text{M}\times 3072$).
 
-We report Recall@10 against true top-10 ground truth and use $k{=}10$ throughout
-the current evaluation. Because the integer survivor budget $c_k$ scales with
-$\alpha k$, generalisation to other $k$ is not yet established. The common
-timing boundary is host query input to host result output. Recall--QPS frontiers
-use steady-state throughput at a batch of 1{,}024, which is the whole query set
-in one call; Section~\ref{sec:rq5} shows this choice matters and reports the
-batch sweep separately. Calibration time is reported separately and incorporated
-through break-even analysis. Diagnostic $\alpha$-sweep QPS values that include
-readback instrumentation are not used in the frontier.
+We report Recall@10 against true top-10 ground truth at $k{=}10$; because $c_k$
+scales with $\alpha k$, other $k$ are not established. Timing runs host query
+input to host result output, and frontiers use steady-state throughput at batch
+1{,}024 --- the whole query set in one call --- which Section~\ref{sec:rq5}
+shows is a consequential choice. Occupancy statements are analytical
+resource-budget calculations: Nsight Compute counters were unavailable in the
+container (\texttt{ERR\_NVGPUCTRPERM}), so we report none measured. Two recall
+noise floors are kept distinct: about $10^{-3}$ across builds in the documented
+cold-start experiment, and $\approx 10^{-4}$ for paired comparisons on one index
+from top-$c_k$ tie breaking. Fronts bucket recall at $10^{-3}$ so a
+tie-break-sized difference cannot buy a point a place, and every quoted ratio is
+the median of its one to three repeats. We do not enlarge batches by duplicating
+the roughly 1k available queries: duplication alone raises throughput
+$4$--$26\%$, so such a batch would measure an artefact.
 
-The main GPU baselines are IVF-RaBitQ, CAGRA (fp32 or int8 where necessary), and
-IVF-PQ. The reported JHQ runs use dense coarse training with
-$\texttt{JHQ\_N\_TRAIN}=39\cdot\mathit{nlist}$. We do not mix earlier
-under-trained or pre-fix points into the final frontier, and we do not union
-fronts measured by different binaries. A scan endpoint is a measured endpoint,
-not an architectural recall ceiling. Cross-build recall variability is about
-$10^{-3}$ in the documented cold-start experiment, while paired comparisons on
-the same index show a lower approximately $10^{-4}$ floor from top-$c_k$ tie
-breaking. Those two floors serve different purposes and are not interchangeable;
-in particular, Pareto fronts are built after bucketing recall at $10^{-3}$, so a
-tie-break-sized difference cannot buy a point a place on a front. All figures
-are taken directly from the frozen project plotting outputs; we do not redraw
-benchmark curves or reconstruct values from prose summaries.
+Baselines are the cuVS implementations of IVF-RaBitQ~\cite{ivfrabitq}, IVF-PQ,
+and CAGRA~\cite{cagra} in fp32 and int8. Our primary comparison line is the
+quantised IVF family, which shares JHQ's routing structure and interface; CAGRA
+is a graph index with a different build-cost profile and we report it as
+context, in both variants, without excluding the one that wins. JHQ runs use
+dense coarse training, $\texttt{JHQ\_N\_TRAIN}=39\cdot\mathit{nlist}$; we mix in
+no under-trained points and union no fronts across binaries. The CPU JHQ
+baseline runs the same index parameters on the same host with threads pinned
+(\texttt{OMP\_PROC\_BIND=close}, \texttt{OMP\_PLACES=cores}) and its own
+$(\alpha,\mathit{nprobe})$ sweep, sharing the training procedure but not a
+codebook, with one measurement per cell.
 
-The CPU JHQ baseline runs the same index parameters on the same host with
-threads pinned (\texttt{OMP\_PROC\_BIND=close}, \texttt{OMP\_PLACES=cores}) and
-its own $(\alpha, \mathit{nprobe})$ sweep, so both sides are compared on their
-own envelopes rather than one side's envelope against the other's worst point.
-It shares the training procedure and parameters with the GPU index but not a
-codebook, and each cell is measured once; Section~\ref{sec:rq7} states the
-resulting precision.
-
-\subsection{RQ1: end-to-end recall--throughput frontier}
+\subsection{RQ1: where does JHQ actually lead?}
 \label{sec:rq1}
-Figure~\ref{fig:frontier} shows the measured Recall@10--QPS frontiers for JHQ
-and the available GPU baselines across all six datasets, at batch 1{,}024. Four
-datasets have complete JHQ/IVF-RaBitQ comparisons; bge-m3 and stella-trec24 show
-the baselines that could be constructed and searched on the tested card. We use
-the measured curves as the primary evidence and quote matched-recall ratios only
-as summaries. On the four directly comparable datasets, JHQ leads through
-Recall@$10{=}0.95$ at this batch. At $d{=}768$ the margin is close to parity by
-0.95 and reverses at higher recall. At $d{=}1536$, openai3-1536 remains
-$1.36$--$2.35\times$ ahead across the reported $0.90$--$0.98$ range.
-Openai3-3072 is $1.82\times$ at 0.90, $1.36\times$ at 0.95, $1.06\times$ at
-0.97, and $0.93\times$ at 0.98. These ratios are batch-conditional:
-Section~\ref{sec:rq5} shows the same openai3-3072 comparison ranging from
-$1.34\times$ to $2.14\times$ at Recall@$10{=}0.95$ as batch varies, and vogue-768
-falling below parity at small batch. These observations define an operating
-region; they do not establish dimension alone as a causal explanation.
+Figure~\ref{fig:frontier} gives the measured frontiers and Table~\ref{tab:front}
+reduces them to a single question: at each matched recall, which system is
+fastest? JHQ owns 4 of the 26 comparable cells, and all four are at
+Recall@$10\ge 0.97$. Below $0.95$ CAGRA-int8 leads on every dataset where both
+run, by $1.6$--$2.9\times$. We state this rather than scope it away, because it
+bounds the claim precisely: JHQ's region is the high-recall end, most clearly at
+high dimension, where openai3-1536 leads at $0.97$ and $0.98$ and openai3-3072
+at $0.97$.
 
-\begin{figure}[t]
+\begin{table}[tbp]
+  \centering
+  \caption{Fastest system at each matched recall, batch 1{,}024, with its margin
+  over JHQ. C-int8 and C-fp32 are cuVS CAGRA; ``--'' is a recall no two systems
+  both reach. JHQ is fastest in 4 of 26 cells, all at Recall@$10\ge0.97$.}
+  \label{tab:front}
+  \input{tables/frontier}
+\end{table}
+
+Two things beside the table complete the picture. On bge-m3 and stella-trec24
+the tested cuVS IVF-RaBitQ host-input build path fails with an out-of-memory
+allocation after entering streaming construction and CAGRA fp32 does not fit the
+card, while JHQ indexes both --- a statement about the measured library and
+configuration paths on this device, not about those algorithms in general. And
+the throughput ordering has a build-time counterpart: JHQ builds in
+$1.1$--$14.3$\,s against $9$--$75$\,s for CAGRA int8. JHQ therefore trades
+search throughput below $0.95$ for build time and for indexability at a code
+budget --- about 9 bits per dimension --- that is not smaller than int8's.
+
+\begin{figure}[tbp]
   \centering
   \includegraphics[width=\linewidth]{figs/fig_frontier.pdf}
-  \caption{Measured Recall@10--QPS frontiers across all six datasets, at batch
-  1{,}024. Four datasets include complete JHQ/IVF-RaBitQ curves; the two larger
-  datasets show the baselines available on the tested GPU. Sweep endpoints are
-  measured endpoints, not architectural recall ceilings.}
+  \caption{Measured Recall@10--QPS frontiers, batch 1{,}024. Four datasets carry
+  complete JHQ/IVF-RaBitQ curves; the two largest show the baselines that could
+  be built and searched on the tested card. Sweep endpoints are measured
+  endpoints, not architectural recall ceilings.}
   \label{fig:frontier}
 \end{figure}
 
-On bge-m3 and stella-trec24, the tested cuVS IVF-RaBitQ host-input build path
-fails with an out-of-memory allocation after entering its streaming construction
-path, and CAGRA fp32 does not fit the card. JHQ indexes both in the measured
-configuration. We phrase this narrowly: the measured library/configuration paths
-do not produce a comparable index on this device. It would be incorrect to claim
-that the underlying algorithms can never index those datasets. CAGRA int8 and
-IVF-PQ remain useful comparison points where their measured recall ranges
-overlap.
-
-\subsection{RQ2: adaptive refinement}
-\label{sec:rq2}
-At $\mathit{nprobe}{=}128$, the output-stability rule recovers the $\alpha$
-selected by the diagnostic sweep in three of four evaluated configurations. The
-remaining arxiv configuration is censored by $\alpha_{\max}$: its sweep is still
-improving at $\alpha{=}200$ while the rule cannot select beyond its own upper
-bound. This is a limitation of the chosen grid, not evidence that the rule
-discovered the true saturation point.
-
-Sampling risk is workload dependent. In 2{,}000 held-out resampled draws,
-$S{=}32$ keeps held-out loss within $10^{-3}$ in $76\%$ of draws for
-openai3-3072 but only $27\%$ for vogue-768. Vogue's mean held-out loss at
-$S{=}32$ is $0.0033$ and its 95th percentile is $0.0110$. Openai3-3072 reaches
-$98\%$ within $10^{-3}$ at $S{=}64$, whereas vogue still has $11\%$ of draws
-outside the threshold at $S{=}128$. Therefore $S{=}32$ is not a universal knee.
-A production policy should choose sample size against an explicit risk target
-for each workload.
-
-Tolerance also matters. With the current grid, zero disagreeing slots leaves
-about $26\%$ of attainable throughput on the table, whereas allowing two slots
-incurs about $0.0035$ recall loss in the reported experiment. We use
-$\epsilon{=}1$ as an empirical compromise, not a guarantee. The
-$\mathit{nprobe}{=}512$ full-sweep validation remains unavailable and is not
-inferred from $\mathit{nprobe}{=}128$.
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{figs/fig_calibration.pdf}
-  \caption{Calibration validation. (a) Selected $\alpha$ versus the exhaustive
-  sweep where a same-operating-point sweep exists, annotated with the throughput
-  the selection gains; (b) held-out resampling shows that sample-size risk is
-  workload dependent; (c) tolerance changes the selected budget and
-  quality--cost trade-off.}
-  \label{fig:calibration}
-\end{figure}
-
-\subsection{RQ3: do the design trade-offs behave as predicted?}
+\subsection{RQ2: does the design prediction hold?}
 \label{sec:rq3}
-We test the alternatives that Section~\ref{sec:method1} rejected, not only the
-final implementation. Figure~\ref{fig:lutgroups} first varies the factorisation
-granularity $G$ while holding the represented distance fixed. If table size
-alone governed performance, $G{=}4$ or $G{=}8$ should dominate $G{=}2$ because
-their tables are smaller. They do not: $G{=}2$ is never beaten across the eight
-configurations, while throughput falls as lookups per candidate rise. The
-sharpest form of that result is internal to the losers. $G\cdot 2^{8/G}$ is 16
-for both $G{=}4$ and $G{=}8$, so those two tables are byte-identical and the
-only difference between them is four versus eight lookups per
-candidate--subspace; the eight-way form is $5.8\%$ slower at
-$\mathit{nprobe}{=}8$ and $38.3\%$ slower at $\mathit{nprobe}{=}512$. Residency
-is held exactly constant and issued work doubles, which is the cleanest
-separation of the two effects in this paper.
+Section~\ref{sec:designspace} predicted that reducing table state helps only
+until extra lookups outweigh the residency saved. Figure~\ref{fig:lutgroups}
+varies $G$ with the represented distance fixed. If state alone governed
+throughput, $G{=}4$ and $G{=}8$ should win, since they store fewer entries than
+$G{=}2$. They do not: $G{=}2$ is never beaten across the eight configurations,
+with one exact tie against $G{=}1$, and throughput falls as lookups per
+candidate rise. The sharpest form is internal to the losers. $G\cdot 2^{8/G}$ is
+16 for both $G{=}4$ and $G{=}8$, so they occupy the same nominal table footprint
+and differ in the number of lookups and the address arithmetic those lookups
+need; the eight-way form is $5.8\%$ slower at $\mathit{nprobe}{=}8$ and $38.3\%$
+slower at $512$. Residency is held fixed and issued work rises --- which is why
+this pair, rather than the table-free control, separates the two effects most
+cleanly.
 
-The same figure shows the expected regime change with $M$. Against the full
-table, factorisation is worth $0$--$11\%$ at $M{=}96$ and $8$--$53\%$ at
-$M{=}384$, and in both cases the gain rises monotonically with probe depth: on
-openai3-3072 it is $+8.3\%$ at $\mathit{nprobe}{=}8$, $+9.8\%$ at 32, $+22.6\%$
-at 128 and $+53.4\%$ at 512. We report the trend rather than a flat interval
-because the trend is the mechanism: a non-resident table is paid once per
-candidate per subspace, so its cost grows both with $M$ and with the number of
-candidates scanned. This is evidence for a residency budget followed by an
-instruction-cost trade-off, not for a monotonic ``smaller LUT is faster'' rule.
+The regime change with $M$ appears as predicted. Against the full table,
+factorisation is worth $0$--$11\%$ at $M{=}96$ and $8$--$53\%$ at $M{=}384$, and
+the gain rises monotonically with probe depth in both: on openai3-3072
+$+8.3\%$, $+9.8\%$, $+22.6\%$ and $+53.4\%$ at $\mathit{nprobe}=8, 32, 128, 512$.
+We report the trend rather than a flat interval because the trend is the
+mechanism --- a table that misses is paid once per candidate per subspace, so
+its cost grows with $M$ and with the candidates scanned together. The failure
+edge is kept too: at $M{=}96$, $\mathit{nprobe}{=}32$ on the packed layout,
+factorisation loses $4.2\%$ against the full table in the slowest repeat.
 
-\begin{figure}[t]
+\begin{figure}[tbp]
   \centering
   \includegraphics[width=\linewidth]{figs/fig_lutgroups.pdf}
-  \caption{Why the exact LUT is split into two groups. (a) $G{=}2$ is never
-  beaten, although $G{=}4$ and $G{=}8$ use smaller tables and are byte-identical
-  to each other, exposing the lookup-instruction trade-off; (b) factorisation
-  matters far more at $M{=}384$ than $M{=}96$ and remains complementary to
-  packed loading. Panel (b) is the two-by-two layout phase, measured at
-  $\mathit{nprobe}\in\{32,128,512\}$; the $\mathit{nprobe}{=}8$ point quoted in
-  the text is the lightest probe-depth line of panel (a).}
+  \caption{(a) $G{=}2$ is never beaten although $G{=}4$ and $G{=}8$ store fewer
+  entries and occupy the same footprint as each other. (b) Factorisation matters
+  far more at $M{=}384$ than $M{=}96$ and stays complementary to packed loading;
+  panel (b) is the two-by-two layout phase at
+  $\mathit{nprobe}\in\{32,128,512\}$, while the $\mathit{nprobe}{=}8$ point
+  quoted above is panel (a)'s lightest probe-depth line.}
   \label{fig:lutgroups}
 \end{figure}
 
-Two further controls separate bytes from issued work. Packed loading moves the
-same logical primary-code bytes but gains $30$--$48\%$, while carrying a private
-probe cursor removes redundant inner-loop work and yields $+2.5\%$ to $+148\%$
-across measured settings. The latter is the largest effect size but an
-implementation correction, not a research contribution. Its value is diagnostic:
-together with the packing result, it predicts that reductions in issued
-instructions can matter even when memory volume is unchanged. Adaptive $\alpha$
-is excluded from this ablation because it changes the amount of algorithmic work
-and can change recall.
-
-\subsection{RQ4: can plausible alternative explanations be rejected?}
+\subsection{RQ3: can the byte-count explanation be rejected?}
 \label{sec:rq4}
-Figure~\ref{fig:negatives} provides two negative controls. First, the table-free
-exact primary distance removes most LUT state and, on openai3-3072, raises the
-attainable resident-block count implied by the shared-memory budget;
-nevertheless it is $30$--$52\%$ slower. This rejects the simple explanation that
-table residency or attainable occupancy alone is the bottleneck. These occupancy
-statements are analytical resource-budget calculations as specified in
-Section~\ref{sec:setup}, not Nsight measurements. Second, duplicating queries
-creates an intentionally strong cross-query-reuse proxy. Throughput improves
-only $4$--$26\%$ and the gain largely saturates by duplication factor two,
-consistent with much of the reusable working set already being absorbed by the
-96 MB L2 cache. This does not prove that a cluster-centric scheduler cannot help
---- such a rewrite would also change scheduling and table amortisation --- but
-it shows that the reuse term by itself is modest.
+Table~\ref{tab:neg} collects the controls that vary bytes and issued work
+independently. Removing almost all table state loses $30$--$52\%$ even though it
+raises the resident-block count the shared-memory budget implies --- so neither
+table residency nor attainable occupancy alone is the bottleneck. Moving
+identical bytes in 32-bit words gains $30$--$48\%$. Giving each thread a private
+probe cursor removes redundant inner-loop work for up to $+148\%$; it is an
+implementation correction, not a contribution, and its value here is diagnostic.
+Fusing residual refinement removes an intermediate round trip and still loses,
+because the fused kernel carries both phases' shared-memory and register
+footprints for the whole scan. LUT construction is $0.2$--$2.3\%$ of a batch,
+which rules out faster table building as the explanation for factorisation.
 
-\begin{figure}[t]
+\begin{table}[tbp]
   \centering
-  \includegraphics[width=\linewidth]{figs/fig_negatives.pdf}
-  \caption{Negative controls for mechanism. (a) Table-free exact primary
-  distance reduces LUT state yet loses $30$--$52\%$; (b) controlled query
-  duplication isolates cross-query reuse and shows only modest additional
-  throughput. These reject simplistic ``fewer bytes is always faster'' and
-  ``reuse alone will solve the scan'' explanations.}
-  \label{fig:negatives}
+  \caption{Controls that separate bytes moved from work issued. Every row holds
+  the represented distance fixed.}
+  \label{tab:neg}
+  \begin{tabular}{lll}
+    \toprule
+    change & effect on throughput & what it rules out \\
+    \midrule
+    table-free exact distance & $-30$ to $-52\%$ & least state is fastest \\
+    $G{=}8$ against $G{=}4$   & $-5.8$ to $-38.3\%$ & same footprint, same speed \\
+    packed 32-bit loads       & $+30$ to $+48\%$ & bytes moved predict speed \\
+    private probe cursor      & $+2.5$ to $+148\%$ & loop work is negligible \\
+    fused residual refinement & $-14.2\%$, $-14.8\%$ & fewer kernels is better \\
+    query duplication $D{=}8$ & $+4$ to $+26\%$ & reuse alone drives the scan \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Together these are consistent with an issue-sensitive primary scan on this RTX
+5090. The qualifier is deliberate: the controls isolate competing explanations
+on one architecture, we infer issue sensitivity from comparisons rather than
+counters, and cross-GPU validation is open.
+
+\subsection{RQ4: what does the budget rule cost and return?}
+\label{sec:rq2}
+Three things must hold together for the policy to be usable. \emph{Gain}: across
+32 configurations where the rule changes the budget, steady-state throughput
+improves $1.044$--$2.653\times$. \emph{Quality cost}: the rule gives up at most
+$0.0048$ recall over 36 configurations, so the gain is not free.
+\emph{Amortisation}: payback ranges $0.5$--$21.0$ batches with median $1.75$;
+large payback near unit gain is partly definitional through the denominator, so
+we do not present that correlation as a mechanism.
+
+The fourth thing is sampling risk, and it is where the policy is weakest. In
+2{,}000 held-out resampled draws, $S{=}32$ keeps held-out loss within $10^{-3}$
+in $76\%$ of draws for openai3-3072 but only $27\%$ for vogue-768, whose mean
+loss at $S{=}32$ is $0.0033$ with a 95th percentile of $0.0110$. Openai3-3072
+reaches $98\%$ at $S{=}64$; vogue still has $11\%$ of draws outside the
+threshold at $S{=}128$. $S{=}32$ is therefore not a universal knee, and a
+deployment must pick $S$ against a stated risk target.
+Tolerance behaves similarly --- zero disagreeing slots leaves about $26\%$ of
+attainable throughput unclaimed, two costs about $0.0035$ recall --- and at
+$\mathit{nprobe}{=}128$ the rule recovers the swept $\alpha$ in three of four
+configurations, the fourth censored by $\alpha_{\max}$ rather than solved. The
+$\mathit{nprobe}{=}512$ full sweep is unavailable and is not inferred.
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=\linewidth]{figs/fig_calibration.pdf}
+  \caption{Calibration validation. (a) Selected $\alpha$ against the exhaustive
+  sweep where a same-operating-point sweep exists, annotated with the throughput
+  the selection gains; (b) held-out resampling, showing that sample-size risk is
+  workload dependent; (c) tolerance changes both the selected budget and the
+  quality it costs.}
+  \label{fig:calibration}
 \end{figure}
 
-The remaining negatives point in the same direction. $G{=}4$ and $G{=}8$ reduce
-table entries further but lose to extra lookups. In the frozen negative-control
-records for stella-trec24, fusing residual refinement is $14.2\%$ slower than
-the $68{,}565$-QPS baseline at $\mathit{nprobe}{=}128$ and $14.8\%$ slower than
-the $16{,}126$-QPS baseline at $\mathit{nprobe}{=}512$; the removed intermediate
-round trip is outweighed by the combined shared-memory/register footprint and
-longer fused-kernel residency. LUT construction occupies only $0.2$--$2.3\%$ of
-a batch, ruling out faster table building as the main explanation for
-factorisation. Taken together with packing and cursor controls, the evidence is
-consistent with an issue-sensitive primary scan on this RTX 5090. We
-deliberately say ``consistent with'' rather than claim a universal GPU law: the
-experiments isolate several competing explanations on one architecture, but
-cross-GPU validation remains open, and without profiler counters we infer issue
-sensitivity from controlled comparisons rather than measure it directly.
-
-\subsection{RQ5: batch-size sensitivity at equal recall}
+\subsection{RQ5: batch size and the CPU reference}
 \label{sec:rq5}
-Figure~\ref{fig:batch} replaces a fixed-nprobe comparison with matched-recall
-measurements at Recall@$10{=}0.90$ and $0.95$. On openai3-3072, JHQ is faster at
-every measured batch and both recall targets: for batches 32, 128, 512, and
-1{,}024, the JHQ/IVF-RaBitQ ratios are $2.23/1.34$, $3.19/2.14$, $2.30/1.51$,
-and $1.89/1.41$ at $R{=}0.90/R{=}0.95$. On vogue-768, JHQ begins below parity
-but crosses between batch 128 and 512: the corresponding ratios are $0.68/0.55$,
-$0.99/0.92$, $1.06/1.01$, and $1.09/1.33$. Thus batch size can change the system
-ordering, and the frontier ratios of Section~\ref{sec:rq1} should be read as the
-batch-1{,}024 column of this sweep rather than as batch-independent summaries.
-The openai3-3072 batch-1{,}024, $R{=}0.97$ cell is deliberately not used because
-its RaBitQ anchor is the one matched point that failed the project's
-monotonicity check. We also do not manufacture a 10k-query point by duplicating
-the roughly 1k available queries, because the reuse control in
-Figure~\ref{fig:negatives} shows that repetition itself inflates throughput.
+Table~\ref{tab:batch} gives matched-recall ratios against IVF-RaBitQ at four
+batch sizes. Two readings matter: on openai3-3072 JHQ leads at every measured
+point, and on vogue-768 it crosses parity between batch 128 and 512. Batch size
+can therefore change the ordering, and the frontier ratios of
+Section~\ref{sec:rq1} should be read as the batch-1{,}024 column of this sweep
+rather than as batch-independent summaries. The openai3-3072 batch-1{,}024,
+$R{=}0.97$ cell is excluded: its RaBitQ anchor is the one matched point that
+failed the project's monotonicity check.
 
-\begin{figure}[t]
+\begin{table}[tbp]
   \centering
-  \includegraphics[width=\linewidth]{figs/fig_batch.pdf}
-  \caption{Equal-recall batch-size sensitivity. Curves show JHQ/IVF-RaBitQ
-  throughput at matched Recall@$10{=}0.90$ and $0.95$. JHQ leads at every shown
-  openai3-3072 point, while vogue-768 crosses parity between batch 128 and 512
-  at both recall targets. The excluded openai3-3072 batch-1{,}024, $R{=}0.97$
-  cell is not shown.}
-  \label{fig:batch}
-\end{figure}
+  \caption{Matched-recall JHQ\,/\,IVF-RaBitQ throughput, by batch size, at
+  Recall@$10$ of $0.90$ and $0.95$. Each system's curve is interpolated at the
+  target recall.}
+  \label{tab:batch}
+  \input{tables/batch}
+\end{table}
 
-\subsection{RQ6: what the adaptive budget is worth, CPU against GPU}
-\label{sec:rq7}
-Figure~\ref{fig:cpu}(a) places both devices' $(\alpha,\mathit{nprobe})$
-envelopes on one recall axis. At matched recall the GPU rule arm reaches
-$52\times$ the CPU envelope on vogue-768 at Recall@10 of $0.9645$,
-and $54\times$ at $0.9828$. On openai3-3072 it is $75$--$77\times$ over the range
-$0.94$ to $0.98$. With $\alpha$ pinned to 100 on both sides the same comparison
-gives $43$--$48\times$ and $35$--$54\times$. Above Recall@10 of $0.9911$ on
-vogue-768 and $0.9900$ on openai3-3072 the CPU envelope has no points, and we report those GPU operating
-points as outside its range rather than dividing by the CPU's last measurement.
+The CPU reference answers a different question: what the port buys over CPU JHQ
+at the same index parameters. Sweeping $\alpha$ and $\mathit{nprobe}$ on both
+sides, the GPU reaches $52$--$54\times$ the CPU envelope on vogue-768 across
+Recall@$10$ of $0.9645$ to $0.9905$, and $75$--$77\times$ on openai3-3072 from
+$0.9414$ to $0.9813$; pinning $\alpha{=}100$ on both sides gives $43$--$48\times$
+and $35$--$54\times$. Above Recall@10 of $0.9911$ and $0.9900$ respectively the
+CPU sweep has no points, and those GPU operating points are reported as outside
+its range rather than divided by the CPU's last measurement. Three limits apply.
+The GPU side of the vogue comparison is the rule's chosen $\alpha$ at each
+$\mathit{nprobe}$, not an exhaustive $\alpha$ sweep. CPU rows below
+$\mathit{nprobe}{=}128$ are dropped, because 1{,}000 queries complete fast enough
+there that thread start-up dominates the timer and measured throughput rises
+with $\mathit{nprobe}$; the recall column is unaffected. And each cell is
+measured once, so the ratios are order-of-magnitude figures --- the envelope
+keeps the fastest point per recall bucket, which biases the CPU side upward and
+so does not inflate the ratio, but with one measurement per cell we do not claim
+a statistical bound.
 
-Two properties of this measurement bound how it should be read. Each cell is
-measured once and cell-level throughput noise reaches roughly $2\times$ --- the
-same $\alpha{=}2$ configuration reads 9{,}015 QPS at 16 threads and 4{,}090 at
-32 --- so these are order-of-magnitude figures. The bias direction, however, is
-known: the envelope keeps the fastest point in each recall bucket, so noise
-raises the CPU side and lowers the ratio. The reported range is a lower bound
-with respect to it. We also drop CPU rows below $\mathit{nprobe}{=}128$, where
-1{,}000 queries complete fast enough that thread start-up dominates the timer
-and measured throughput rises with $\mathit{nprobe}$; the recall column is
-unaffected and the throughput column is not usable there.
-
-The comparison worth making is not the raw ratio. Figure~\ref{fig:cpu}(b) asks
-the same question of both devices: how much throughput does pinning
-$\alpha{=}100$ give up, at equal recall, on the same dataset and nprobe grid? On
-the CPU it costs $41.8\%$, $25.1\%$, $16.0\%$ and $8.7\%$ at
-$\mathit{nprobe}=128, 256, 512, 1024$; on the GPU it costs $112.5\%$, $74.1\%$,
-$41.3\%$ and $21.8\%$ --- between $2.5$ and $3.0\times$ more at every point. The
-mechanism is the stage decomposition already measured: the GPU scan is fast
-enough that residual refinement occupies a larger share of the total, so the
-same reduction in survivors buys more. Selective refinement is therefore not a
-CPU idea carried across unchanged; the control JHQ leaves externally specified
-is worth several times more on the device we port it to, which is why
-Section~\ref{sec:method2} spends a calibration pass on choosing it.
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{figs/fig_cpu.pdf}
-  \caption{CPU baseline. (a) Both devices' $(\alpha,\mathit{nprobe})$ envelopes,
-  with the matched-recall ratio annotated only where both cover the recall; the
-  tick marks where the CPU envelope ends. (b) The cost of pinning
-  $\alpha{=}100$ at matched recall is $2.5$--$3\times$ larger on the GPU than on
-  the CPU at every probe depth.}
-  \label{fig:cpu}
-\end{figure}
-
-\subsection{RQ7: construction and memory}
+\subsection{Construction and memory}
 \label{sec:rq6}
-Across the tested datasets, observed build-time ranges are $1.1$--$14.3$\,s for
-JHQ, $9$--$75$\,s for CAGRA int8, $6.4$--$43$\,s for IVF-PQ, and
-$4.5$--$14.0$\,s for IVF-RaBitQ where that path builds. These ranges describe
-tested configurations rather than intrinsic algorithmic bounds. Build accounting
-must also respect caching: training can be cached while add is not, so
-independently taking maxima and summing them can fabricate a time that never
-occurred in one run.
-
-JHQ's logical code budget in the paper setting is about 9 bits per dimension
-before routing and implementation metadata. In the four datasets with measured
-IVF-RaBitQ VRAM, the current evidence reports IVF-RaBitQ using $22$--$39\%$ less
-device memory than JHQ. We therefore do not claim a universal memory advantage.
-JHQ instead occupies a different memory--accuracy--throughput operating region
-and, in our tested paths, still indexes the two largest datasets where the
-compared RaBitQ/CAGRA paths fail or do not fit. Memory accounting also contains
-an ``other/unaccounted'' component; it should not be relabelled as allocator or
-context overhead without a direct measurement.
-
-Overall, the experiments support a bounded thesis. Exact representation-aware
-changes matter most when they alter the hardware regime; output-stability
-calibration can remove unnecessary residual work, but its sample size and its
-amortisation are both workload dependent; and the resulting system is
-competitive over a substantial, but not universal, region of the frontier.
+Build times are $1.1$--$14.3$\,s for JHQ, $9$--$75$\,s for CAGRA int8,
+$6.4$--$43$\,s for IVF-PQ and $4.5$--$14.0$\,s for IVF-RaBitQ where that path
+builds --- tested configurations, not intrinsic bounds. Accounting must respect
+caching: training can be cached while add is not, so taking maxima independently
+and summing them fabricates a time that never occurred. On memory we claim no
+advantage: in the four datasets with measured VRAM IVF-RaBitQ uses $22$--$39\%$
+less than JHQ, and JHQ's budget is not smaller than int8's. JHQ occupies a
+different memory--accuracy--throughput point and still indexes the two largest
+datasets where the compared paths fail. The accounting carries an unattributed
+component that should not be relabelled as allocator overhead without direct
+measurement.

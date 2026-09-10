@@ -21,7 +21,7 @@ from style import *
 
 fronts, rq, base = load_fronts(), load_rabitq(), load_baselines()
 
-fig, axes = plt.subplots(3, 2, figsize=(WIDE, 5.1), sharex=True, sharey=True)
+fig, axes = plt.subplots(3, 2, figsize=(WIDE, 3.65), sharex=True, sharey=True)
 for ax, ds in zip(axes.flat, DATASETS):
     b = base[ds]
 

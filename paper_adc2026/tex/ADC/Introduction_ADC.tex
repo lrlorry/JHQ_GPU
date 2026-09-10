@@ -3,91 +3,61 @@
 
 High-dimensional approximate nearest-neighbour (ANN) search is a core primitive
 in retrieval, recommendation, and vector databases. On a GPU, compressed search
-is not governed by memory footprint alone. A representation can reduce bytes yet
-increase lookup pressure, instruction issue, or irregular access; conversely, an
-implementation can move the same logical bytes and still accelerate by issuing
-fewer instructions. The systems problem is therefore to map the algorithm's
-structure to the hardware bottleneck, not to assume that every reduction in
-storage or every wider load is automatically beneficial.
+is not governed by memory footprint alone: a representation can reduce bytes yet
+raise lookup pressure or instruction issue, and an implementation can move the
+same logical bytes and still accelerate. The systems problem is to map the
+algorithm's structure to the hardware bottleneck rather than to assume that
+smaller is faster.
 
-JHQ~\cite{jhq} is a useful case study because its hierarchy exposes two
-qualitatively different costs. After IVF routing, a compact primary code scores
-many candidates, whereas a per-dimension residual code is read only for the
-$c_k$ survivors of primary filtering. A naive port can mishandle both sides:
-generic candidate-major codes give the warp a strided primary access pattern,
-conventional 8-bit query tables grow with the number of subspaces, and an
-over-large $c_k$ converts a selective residual stage into unnecessary work. JHQ
-also leaves the refinement factor $\alpha$ in $c_k=\alpha k$ externally
-specified. Thus the GPU problem has two coupled performance questions with two
-different causes: how should the representation execute, and how much of the
-expensive hierarchy should execute?
+JHQ~\cite{jhq} is a useful case study because its hierarchy exposes two costs of
+different shape. After IVF routing, a compact primary code scores every routed
+candidate at $O(n_c M)$; a per-dimension residual code is then read only for the
+$c_k$ survivors of primary filtering, at $O(c_k d)$ with $c_k \ll n_c$. JHQ also
+leaves the refinement factor $\alpha$ in $c_k=\alpha k$ externally specified.
+The GPU port therefore raises two coupled questions with different causes:
+\emph{how should the primary representation execute}, and \emph{how much of the
+expensive hierarchy should execute}?
 
-Our premise is that a GPU design should follow from explicit constraints and
-rejected alternatives. We preserve the represented JHQ distances and ask, for
-each hot-path decision, what resource is under pressure, what representation
-property can relieve it, and what the alternative would cost. This separates
-research claims from engineering controls: a transpose is useful because the
-scan is candidate-parallel at fixed subspace, not because transposes are novel;
-packing is useful because it removes issued work, not because it magically moves
-fewer bytes; and a smaller LUT is useful only until extra lookups cost more than
-additional residency saves.
+Our answer to the first is representation-specific. A conventional 8-bit ADC
+table materialises 256 distances per subspace. JHQ builds each codeword as a
+Cartesian product of one-dimensional levels, and squared Euclidean distance is
+additive across them, so the same represented distance follows exactly from two
+16-entry tables. This is not ``smaller is better''. Full-table state grows as
+$256M$ entries while the two-way split grows as $32M$, an $8\times$ smaller
+coefficient against a fixed on-chip budget, but each extra split costs another
+lookup per candidate--subspace. Our answer to the second is a label-free
+workload policy: sample queries from the running workload, compare the top-$k$
+sets they return at a candidate budget against a generous reference, and take
+the smallest budget that leaves them unchanged. It needs neither ground-truth
+neighbours nor a learned difficulty model, at the cost of assuming a reasonably
+stable query distribution.
 
-The strongest representation-specific result comes from this last trade-off. A
-conventional 8-bit ADC table materialises 256 distances per subspace. JHQ's
-primary codebook is Cartesian, so squared Euclidean distance separates across
-its one-dimensional levels. The same represented distance can therefore be
-computed from two 16-entry tables. This is not simply ``smaller is better'': the
-full table minimises lookups but competes for the same on-chip budget as the
-scan's own candidate scratch, while a table-free formulation minimises table
-storage but adds arithmetic and issued instructions. The two-table factorisation
-is a middle point in this computation--residency design space. Mechanistically,
-full-table state grows as $256M$ entries while the two-way factorised state
-grows as $32M$, so the factorised representation approaches any fixed on-chip
-capacity limit with an $8\times$ smaller coefficient. Experiments confirm the
-prediction: the factorisation matters much more at $M{=}384$ than at $M{=}96$,
-whereas still-smaller four- and eight-group tables are consistently slower.
+We evaluate on six datasets from 768 to 3{,}072 dimensions, up to 17.8M vectors,
+on one RTX 5090, and we test the alternatives we rejected rather than only the
+implementation we kept. Six controls contradict the byte-count prediction, most
+sharply between the four- and eight-way splits, which hold the same number of
+entries and differ only in how many lookups reach them. The budget rule is worth
+$1.044$--$2.653\times$ in steady state for at most $0.0048$ recall and repays
+its calibration in a median of $1.75$ batches, while its sampling risk varies
+enough by workload that no single sample size is safe.
 
-The second contribution addresses a different decision: residual work. Refining
-every routed candidate would erase the hierarchy's main advantage, while a fixed
-small $\alpha$ can discard neighbours before the accurate stage sees them. We
-therefore treat $c_k$ as a workload-level control variable. Our output-stability
-criterion compares the returned top-$k$ set at a smaller budget with a generous
-$\alpha_{\max}$ reference on sampled workload queries. We choose this signal
-because it is available at deployment time without labelled nearest neighbours
-or a learned query-difficulty model; the trade-off is that it is a proxy, not a
-recall certificate, and its sample size must be chosen for the workload. A
-matched CPU baseline shows this knob is not a portable one: pinning
-$\alpha{=}100$ costs the CPU $8.7$--$41.8\%$ of its throughput and the GPU
-$21.8$--$112.5\%$ on the same dataset and the same recall targets, so the
-control JHQ leaves external is worth $2.5$ to $3\times$ more on the device we
-port it to.
-
-Our evaluation uses six datasets from 768 to 3{,}072 dimensions, up to 17.8M
-vectors, on one RTX 5090. We use positive and negative controls to test the
-design hypotheses rather than report only the winning implementation. Table-free
-distance reduces table state yet loses $30$--$52\%$; four- and eight-way
-factorisations are byte-identical to each other yet the eight-way form is
-$5.8$--$38.3\%$ slower; packed loading moves the same logical bytes yet gains
-$30$--$48\%$; a probe-cursor correction reduces issued loop work and can have
-the largest speedup despite zero algorithmic novelty. These results jointly
-indicate an issue-sensitive primary scan whose optimal design is not predicted
-by byte counting alone. End-to-end, JHQ leads IVF-RaBitQ through
-Recall@$10{=}0.95$ at large batch on four directly comparable datasets but
-yields in parts of the high-recall tail, and batch size can change the relative
-winner.
+The competitive picture is bounded and we state it as such. Among quantised IVF
+methods JHQ leads through Recall@$10{=}0.95$ at large batch, owns the
+high-recall end at high dimension, and indexes two datasets where the tested
+cuVS IVF-RaBitQ build path runs out of memory. It is not the fastest system
+measured: graph-based CAGRA-int8 is $1.6$--$2.9\times$ faster below
+Recall@$10{=}0.95$ on every dataset where both run, at $5$--$8\times$ the build
+time and a comparable code budget.
 
 \smallskip\noindent\textbf{Contributions.}
-First, we derive and evaluate a representation-driven GPU primary path for JHQ:
-access-pattern-driven layout, representation-aligned packed loads, and an exact
-Cartesian LUT factorisation whose two-way split is justified against full-table,
-finer-factorisation, and table-free alternatives. The JHQ-specific research
-claim is the factorisation and its hardware regime; standard layout and
-instruction-level changes are supporting engineering.
-Second, we propose a label-free, predictor-free workload policy for selecting
-JHQ's residual refinement budget, quantify its sample risk and amortisation, and
-show on a matched CPU baseline that the payoff of this control is several times
-larger on the GPU than on the CPU.
-Third, we evaluate the system with mechanism-oriented ablations, negative
-results, recall--QPS frontiers, batch sensitivity, and build/memory costs,
-explicitly reporting where competing GPU methods are stronger and where current
-evidence does not generalise.
+\textbf{(i)} Six controlled comparisons in which reducing table state or moving
+fewer bytes fails to predict throughput, including one pair whose tables hold
+the same number of entries; together they locate the primary scan's cost in
+issued work rather than in bytes moved, on the tested card.
+\textbf{(ii)} An exact Cartesian factorisation of JHQ's primary distance table,
+derived from separability the codebook already has rather than from a different
+quantiser, together with the regime in which it pays.
+\textbf{(iii)} A label-free, predictor-free policy for JHQ's residual budget,
+evaluated on gain, quality cost, amortisation, and sampling risk.
+\textbf{(iv)} An evaluation that reports where the compared systems are faster
+than ours and where our evidence does not generalise.
