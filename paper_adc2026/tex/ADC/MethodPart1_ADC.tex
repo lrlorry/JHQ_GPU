@@ -82,12 +82,15 @@ with probe depth together.
   \label{fig:lut}
 \end{figure}
 
-This is not generic small-table ADC. The distinction from Quicker
-ADC~\cite{quickeradc} is provenance, not loss: it obtains small tables by
-changing the quantiser to narrower irregular sub-quantisers, whereas
-Equation~\ref{eq:split} holds for JHQ's existing 8-bit codebook without touching
-a codeword. Exactness is in real arithmetic; it promises no bitwise-identical
-floating-point association or tie order.
+Grouped tables and the capacity-against-arithmetic trade-off are not new: GPU
+IVF-RaBitQ~\cite{ivfrabitq} groups $U$ bits into $2^{U}$-entry tables and picks
+$U{=}4$ on exactly that basis, and we claim neither. What
+Equation~\ref{eq:split} adds is that the grouping exists at all here --- JHQ's
+8-bit code indexes 256 codewords with no grouped structure on its face, and the
+split follows from the Cartesian construction rather than from choosing a
+different quantiser. It does not exist for an ordinary $k$-means product
+quantiser at the same width. Exactness is in real arithmetic; it promises no
+bitwise-identical floating-point association or tie order.
 
 \subsection{Selective residual refinement, and what it leaves open}
 Reading the per-dimension residual for every routed candidate would turn an

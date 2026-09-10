@@ -109,10 +109,12 @@ Mengxuan Zhang\orcidID{0000-0001-8155-4942}}
 JHQ scores approximate nearest neighbours in two stages: a compact primary code
 over many candidates, then a per-dimension residual code over a small survivor
 set. Porting it to a GPU raises two questions that byte counting does not
-answer. First, how should the primary representation execute? JHQ's primary
-codebook is Cartesian, so its 256-entry query table separates exactly into two
-16-entry tables; full-table state grows as $256M$ entries against $32M$ for the
-split, an $8\times$ smaller coefficient against a fixed on-chip budget. Second,
+answer. First, how should the primary representation execute? Grouped lookup tables and
+the shared-memory-against-arithmetic trade-off they imply are established; what
+is not is how to choose the grouping without tuning, or that JHQ's 256-entry
+table admits one at all --- its Cartesian codebook makes the table separate
+exactly into two 16-entry halves, an identity an ordinary product quantiser does
+not have. Second,
 how many survivors are worth refining? We select that budget with a label-free
 rule that compares the returned top-$k$ sets at a candidate budget against a
 generous reference on sampled workload queries. On six datasets from 768 to

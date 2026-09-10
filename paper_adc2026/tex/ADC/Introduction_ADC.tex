@@ -18,14 +18,18 @@ The GPU port therefore raises two coupled questions with different causes:
 \emph{how should the primary representation execute}, and \emph{how much of the
 expensive hierarchy should execute}?
 
-Our answer to the first is representation-specific. A conventional 8-bit ADC
-table materialises 256 distances per subspace. JHQ builds each codeword as a
-Cartesian product of one-dimensional levels, and squared Euclidean distance is
-additive across them, so the same represented distance follows exactly from two
-16-entry tables. This is not ``smaller is better''. Full-table state grows as
-$256M$ entries while the two-way split grows as $32M$, an $8\times$ smaller
-coefficient against a fixed on-chip budget, but each extra split costs another
-lookup per candidate--sub\-space. Our answer to the second is a label-free
+Our answer to the first begins from prior art rather than against it. Grouping
+code bits into small tables and choosing the group size by trading on-chip
+capacity against arithmetic is established --- GPU IVF-RaBitQ~\cite{ivfrabitq}
+does exactly this, at $U{=}4$ --- and we claim none of it. Two things are not
+established. That JHQ admits the grouping at all: its 8-bit code indexes 256
+codewords with no grouped structure on its face, and only because each codeword
+is a Cartesian product of one-dimensional levels does the table separate exactly
+into two 16-entry halves, an identity an ordinary $k$-means product quantiser
+does not have. And how to choose the grouping without tuning: full-table state
+grows as $256M$ entries against $32M$ for the split, but each further split
+costs another lookup per candidate--sub\-space, and which term dominates is
+what we measure rather than search. Our answer to the second is a label-free
 workload policy: sample queries from the running workload, compare the top-$k$
 sets they return at a candidate budget against a generous reference, and take
 the smallest budget that leaves them unchanged. It needs neither ground-truth

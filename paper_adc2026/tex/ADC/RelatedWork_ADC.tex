@@ -12,22 +12,30 @@ quantiser, and hierarchical residual refinement. We do not claim JHQ's
 hierarchy or orthogonal transform as contributions; our work begins from that
 representation and asks how its specific structure should execute on a GPU.
 
-\paragraph{Small-table distance evaluation.}
-PQ Fast Scan~\cite{fastscan} showed that cache residency alone is insufficient
-for fast ADC and reorganised PQ scanning around small tables and SIMD-register
-lookups. Quicker ADC~\cite{quickeradc} generalised this direction with irregular
-product quantisers and split tables for wider code widths. These works make it
-essential not to claim novelty merely from ``smaller LUTs.'' The distinction is
-in provenance, not in loss: Quicker ADC obtains small tables by changing the
-quantiser, replacing 8-bit sub-quantisers with narrower irregular ones whose
-tables are small by construction. Our table is small because JHQ's existing
-8-bit Cartesian subspace code already separates exactly
-(Equation~\ref{eq:split}), so we preserve the represented codebook and derive an
-identity for its distance table rather than choosing a different one. We also show
-empirically that a smaller table can be slower once extra lookup instructions
-dominate, most sharply between $G{=}4$ and $G{=}8$, which occupy the same
-nominal footprint. Our claim is about exploiting a particular representation,
-not about inventing small-table ADC in general.
+\paragraph{Grouped lookup tables.}
+This is the closest prior work and we state the overlap plainly. PQ Fast
+Scan~\cite{fastscan} showed that cache residency alone is insufficient for fast
+ADC; Quicker ADC~\cite{quickeradc} generalised it with irregular product
+quantisers and split tables. Most directly, GPU IVF-RaBitQ~\cite{ivfrabitq}
+partitions dimensions into groups of $U$ bits, builds one $2^{U}$-entry table
+per group, sums $D/U$ lookups per candidate, and selects $U{=}4$ by trading
+shared-memory capacity against arithmetic. That trade-off is the same one
+Section~\ref{sec:designspace} navigates, it is prior art, and we do not claim
+it.
+
+Two things are ours. First, the object: RaBitQ groups a representation designed
+to be grouped --- its code \emph{is} the bit pattern its table is indexed by ---
+whereas JHQ's primary code is an 8-bit index into 256 codewords with no grouped
+structure on its face. Equation~\ref{eq:split} is an identity that has to be
+derived from the codebook's Cartesian construction, and it does not exist for an
+ordinary $k$-means product quantiser at the same code width. Second, and more
+useful, the method: RaBitQ selects its group size by measuring which performs
+best, while Section~\ref{sec:rq3} decomposes the choice into an issue term read
+off the disassembled kernel and a residency term measured as the residual
+against it. That decomposition also produces a result the tuned-choice approach
+would not surface --- at JHQ's code width the 16-entry tables that RaBitQ
+settles on ($G{=}4$ here) are $4$--$36\%$ slower than 32-entry ones, so the
+optimal group size is a property of the code width and not a constant.
 
 \paragraph{Adaptive ANN control.}
 ANN libraries such as FAISS~\cite{faiss} commonly expose parameter sweeps and

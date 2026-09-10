@@ -62,9 +62,14 @@ Two things beside the table complete the picture. On bge-m3 and stella-trec24
 the tested cuVS IVF-RaBitQ host-input build path fails with an out-of-memory
 allocation after entering streaming construction and CAGRA fp32 does not fit the
 card, while JHQ indexes both --- a statement about the measured library and
-configuration paths on this device, not about those algorithms in general. And
-the throughput ordering has a build-time counterpart: JHQ builds in
-$1.1$--$14.3$\,s against $9$--$75$\,s for CAGRA int8. JHQ therefore trades
+configuration paths on this device, not about those algorithms in general. And the
+throughput ordering has a build-time counterpart. Comparing cold builds per
+dataset, JHQ takes $1.1$--$13.4$\,s against $4.9$--$73.3$\,s for CAGRA int8,
+between $3.8\times$ and $13.4\times$ faster. Stated as a crossover rather than a
+ratio: CAGRA int8's faster search repays its slower build after $1.6$M queries
+on vogue-768 and $2.1$--$8.9$M on the others, at Recall@10 of $0.90$ and $0.95$.
+Below that volume JHQ costs less end to end, and we use CAGRA's fastest observed
+build so the crossover is the one least favourable to us. JHQ therefore trades
 search throughput below $0.95$ for build time and for indexability at a code
 budget --- about 9 bits per dimension --- that is not smaller than int8's.
 
@@ -241,10 +246,15 @@ failed the project's monotonicity check.
 
 The CPU reference answers a different question: what the port buys over CPU JHQ
 at the same index parameters. Sweeping $\alpha$ and $\mathit{nprobe}$ on both
-sides, the GPU reaches $52$--$54\times$ the CPU envelope on vogue-768 across
-Recall@$10$ of $0.9645$ to $0.9905$, and $75$--$77\times$ on openai3-3072 from
-$0.9414$ to $0.9813$; pinning $\alpha{=}100$ on both sides gives $43$--$48\times$
-and $35$--$54\times$. Above Recall@10 of $0.9911$ and $0.9900$ respectively the
+sides, the GPU reaches $52\times$, $53\times$ and $90\times$ the CPU envelope on
+vogue-768 at Recall@10 of $0.9645$, $0.9828$ and $0.9905$, and $75$--$77\times$
+on openai3-3072 from $0.9414$ to $0.9813$; pinning $\alpha{=}100$ on both sides
+gives $43\times$, $48\times$ and $80\times$ on vogue-768 and $35$--$54\times$ on
+openai3-3072. The vogue figure rises steeply at the top because the CPU degrades
+faster than the GPU as $\mathit{nprobe}$ grows, and its highest point rests on
+the noisiest CPU cell we measured --- at $\mathit{nprobe}{=}1024$ and 32 threads
+the six $\alpha$ settings span $792$ to $1{,}072$ QPS --- so we quote it as a
+point rather than fold it into a range. Above Recall@10 of $0.9911$ and $0.9900$ respectively the
 CPU sweep has no points, and those GPU operating points are reported as outside
 its range rather than divided by the CPU's last measurement. Three limits apply.
 The GPU side of the vogue comparison is the rule's chosen $\alpha$ at each
@@ -259,9 +269,11 @@ a statistical bound.
 
 \subsection{Construction and memory}
 \label{sec:rq6}
-Build times are $1.1$--$14.3$\,s for JHQ, $9$--$75$\,s for CAGRA int8,
+Cold build times are $1.1$--$13.4$\,s for JHQ, $4.9$--$73.3$\,s for CAGRA int8,
 $6.4$--$43$\,s for IVF-PQ and $4.5$--$14.0$\,s for IVF-RaBitQ where that path
-builds --- tested configurations, not intrinsic bounds. Accounting must respect
+builds --- tested configurations, not intrinsic bounds. JHQ's figure is the
+cold-cache run at $\mathit{nprobe}{=}8$; its coarse training is cached in later
+runs, so a warm build is several times cheaper and is not what we report. Accounting must respect
 caching: training can be cached while add is not, so taking maxima independently
 and summing them fabricates a time that never occurred. On memory we claim no
 advantage: in the four datasets with measured VRAM IVF-RaBitQ uses $22$--$39\%$
