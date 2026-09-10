@@ -89,7 +89,7 @@ def corpus():
     # and whatever the generators print, since ranges are computed not stored
     for g in ("table_frontier.py", "build_crossover.py", "budget_arms.py",
               "cpu_gpu_envelope.py", "fig_issue.py", "fig_lutgroups.py",
-              "fig_build.py"):
+              "fig_build.py", "fig_negatives.py", "fig_memory.py"):
         p = os.path.join(HERE, g)
         if not os.path.exists(p):
             continue
@@ -100,6 +100,31 @@ def corpus():
         except Exception:
             pass
     return "\n".join(text)
+
+
+# Every number in the corpus, parsed once; rounds_to() scans this instead of
+# the raw text.
+_CORPUS_VALS = None
+
+
+def rounds_to(v, hay):
+    """True if some number in the corpus rounds to v at v's own precision."""
+    global _CORPUS_VALS
+    if _CORPUS_VALS is None:
+        _CORPUS_VALS = set()
+        for m in re.finditer(r"(?<![\w.])\d+(?:\.\d+)?", hay):
+            try:
+                _CORPUS_VALS.add(float(m.group(0)))
+            except ValueError:
+                pass
+    dp = len(v.split(".")[1]) if "." in v else 0
+    try:
+        target = float(v)
+    except ValueError:
+        return False
+    # A 2-digit integer quoted as "77" must not be satisfied by 77.4 from an
+    # unrelated log unless it really rounds there; that is the whole point.
+    return any(round(x, dp) == target for x in _CORPUS_VALS)
 
 
 def main():
@@ -121,8 +146,16 @@ def main():
             pats.append(L + re.escape(v) + r"\.\d+" + R)
         if len(v) > 3 and "." not in v:
             pats.append(L + re.escape(v[:-3]) + "," + re.escape(v[-3:]) + R)
-        if not any(re.search(p, hay) for p in pats):
-            missing.append((v, where))
+        if any(re.search(p, hay) for p in pats):
+            continue
+        # The body rounds; the log does not.  "1.1" is a legitimate quote of
+        # 1.09 and "77" of 76.7, and prefix matching cannot see either -- it
+        # only accepts a log that carries *more* digits of the same value.
+        # Rounding is checked numerically instead, at the precision the body
+        # chose to quote.
+        if rounds_to(v, hay):
+            continue
+        missing.append((v, where))
     print("body carries %d distinct measured numbers; %d have no source"
           % (len(nums), len(missing)))
     if missing:

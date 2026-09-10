@@ -136,4 +136,15 @@ fig.legend(h, l, loc="upper center", bbox_to_anchor=(0.5, 1.0), ncol=4,
 
 fig.tight_layout(pad=0.3, rect=(0, 0, 1, 0.80))
 fig.subplots_adjust(wspace=0.10)
+# Section 6.7's VRAM comparison, printed both ways round.  The two differ by
+# their denominator and the body once quoted one while phrasing the other:
+# "RaBitQ uses 22-39% less than JHQ" is the JHQ-denominated statement, and
+# 22-39 is the RaBitQ-denominated one.
+_a = [100 * (1 - rq[d] / meas[d]) for d in order if d in rq]
+_b = [100 * (meas[d] / rq[d] - 1) for d in order if d in rq]
+if _a:
+    print("  VRAM over %d datasets: IVF-RaBitQ uses %.0f%%-%.0f%% less than JHQ; "
+          "equivalently JHQ uses %.0f%%-%.0f%% more than IVF-RaBitQ"
+          % (len(_a), min(_a), max(_a), min(_b), max(_b)))
+
 save(fig, "fig_memory")

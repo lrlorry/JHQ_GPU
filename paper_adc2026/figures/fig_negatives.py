@@ -90,4 +90,11 @@ b.text(0.03, 0.90, "(b) cross-query reuse, controlled proxy",
        transform=b.transAxes, fontsize=7)
 
 fig.tight_layout(pad=0.3)
+# The range Table 2 and Section 6.3 quote for the table-free control.
+_tf = [100 * (v["v54_sign"] / v["v54_lut"] - 1)
+       for v in v54.values() if "v54_lut" in v and "v54_sign" in v]
+if _tf:
+    print("  table-free primary distance: %+.1f%% to %+.1f%% over %d cells"
+          % (min(_tf), max(_tf), len(_tf)))
+
 save(fig, "fig_negatives")

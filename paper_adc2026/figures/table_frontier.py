@@ -30,6 +30,7 @@ RECALLS = (0.90, 0.93, 0.95, 0.97, 0.98, 0.99)
 
 
 MARGINS = collections.defaultdict(list)
+MARGINS_LOW = collections.defaultdict(list)
 
 
 def frontier_table():
@@ -70,6 +71,12 @@ def frontier_table():
                 short = best.replace("CAGRA-", "").replace("RaBitQ", "RaBitQ")
                 if jhq:
                     MARGINS[best].append(row[0][0] / jhq)
+                    # The introduction makes a narrower claim than the table --
+                    # the cells below R=0.95 -- and it needs its own range, or
+                    # it gets written by hand from a different subset than the
+                    # one it names.
+                    if R < 0.95:
+                        MARGINS_LOW[best].append(row[0][0] / jhq)
                 cells.append("%s $%.1f\\times$" % (short, row[0][0] / jhq)
                              if jhq else short)
         lines.append("%s & %s \\\\" % (style.PRETTY[ds], " & ".join(cells)))
@@ -124,6 +131,10 @@ def main():
           % (win, tot))
     print("  ranges for the body, so they are not typed by hand:")
     for nm, v in sorted(MARGINS.items()):
+        print("     %-11s leads in %2d cells, margin over JHQ %.1fx to %.1fx"
+              % (nm, len(v), min(v), max(v)))
+    print("  and over the cells below Recall@10=0.95 only:")
+    for nm, v in sorted(MARGINS_LOW.items()):
         print("     %-11s leads in %2d cells, margin over JHQ %.1fx to %.1fx"
               % (nm, len(v), min(v), max(v)))
     print("  wrote tex/tables/batch.tex")

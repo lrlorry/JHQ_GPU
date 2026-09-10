@@ -143,6 +143,14 @@ def main():
               % (style.PRETTY[ds], np_, c["oracle"][0], fa, fcal,
                  max(c["rule"]), r["alpha"], r["cal_ms"]))
 
+    # Section 6.4 quotes what the full pool costs against S=128; printing the
+    # two times but not their ratio is how that ratio came to be typed by hand.
+    _r = [c["full"][3] / c["rule"][128]["cal_ms"] for c in C.values()
+          if "full" in c and 128 in c["rule"]]
+    if _r:
+        print("\n   full pool against S=128, calibration cost: %.2fx to %.2fx"
+              % (min(_r), max(_r)))
+
     print("\n5. Payback of the rule at S=128 against the alpha=100 default:\n")
     for (ds, np_), c in C.items():
         fx = {a: (r, q) for a, r, q in c["fixed"]}

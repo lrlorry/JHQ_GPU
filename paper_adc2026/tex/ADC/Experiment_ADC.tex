@@ -336,8 +336,8 @@ cold-cache run at $\mathit{nprobe}{=}8$; its coarse training is cached in later
 runs, so a warm build is several times cheaper and is not what we report. Accounting must respect
 caching: training can be cached while add is not, so taking maxima independently
 and summing them fabricates a time that never occurred. On memory we claim no
-advantage: in the four datasets with measured VRAM IVF-RaBitQ uses $22$--$39\%$
-less than JHQ, and JHQ's budget is not smaller than int8's. JHQ occupies a
+advantage: in the four datasets with measured VRAM JHQ uses $22$--$40\%$ more
+than IVF-RaBitQ, and its budget is not smaller than int8's. JHQ occupies a
 different memory--accuracy--throughput point and still indexes the two largest
 datasets where the compared paths fail. The accounting carries an unattributed
 component that should not be relabelled as allocator overhead without direct
