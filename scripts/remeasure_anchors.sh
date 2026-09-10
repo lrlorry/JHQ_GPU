@@ -48,18 +48,30 @@ cpu_pass(){   # $1 = pass label
     | awk '/^JQ \(/{t="JQ"} /^JHQ \(/{t="JHQ"} /^(32|100)\.0[ \t]+1024/{print t, $0}'
   echo "cpu_rc=$? pass=$1"
 }
+# Two different comparisons, two different batches, and the first version used
+# one batch for both. The CPU anchors sit on the frontier, which is batch 1024;
+# measuring them at 512 gave 71,050 QPS against the frontier's 86,583 at the
+# same recall, a 22% gap that is entirely the batch. The near-parity point
+# against IVF-RaBitQ is a batch-512 cell and stays there.
 gpu_pass(){   # $1 = pass label
   echo "--- GPU pass=$1 $(date -u +%T)"
   for np in 128 256 512; do
     env $E JHQ_INDEX_CACHE=$C JHQ_BLOCK=512 JHQ_TILE_M_RT=96 JHQ_N_TRAIN=159744 \
-        timeout 9000 build/demo_jhq_v57 $VG 96 8 8 64.0 10 4096 $np 8 512 "" 3 \
+        timeout 9000 build/demo_jhq_v57 $VG 96 8 8 64.0 10 4096 $np 8 1024 "" 3 \
       2>/dev/null | awk -v n=$np -v p="$1" \
         '/^Recall@10/{r=$3} /^QPS/{q=$3} END{printf "JHQ  np=%-5s pass=%-4s recall=%s qps=%s\n",n,p,r,q}'
-    # argv is paths nlist 8 nprobe k mode reps -- the first attempt put M where
-    # nlist goes and then filtered for a line the binary never prints.
+  done
+  # The parity cell: batch 512, both systems, swept so each can be interpolated
+  # onto Recall@10 0.95. argv is paths nlist 8 nprobe k mode reps -- the first
+  # attempt put M where nlist goes and filtered for a line never printed.
+  for np in 64 128 256; do
+    env $E JHQ_INDEX_CACHE=$C JHQ_BLOCK=512 JHQ_TILE_M_RT=96 JHQ_N_TRAIN=159744 \
+        timeout 9000 build/demo_jhq_v57 $VG 96 8 8 64.0 10 4096 $np 8 512 "" 3 \
+      2>/dev/null | awk -v n=$np -v p="$1" \
+        '/^Recall@10/{r=$3} /^QPS/{q=$3} END{printf "PJHQ np=%-5s pass=%-4s recall=%s qps=%s\n",n,p,r,q}'
     env JHQ_RQ_BATCH=512 timeout 9000 build/bench_rq_batch2 $VG 4096 8 $np 10 2 3 \
       2>/dev/null | awk -v n=$np -v p="$1" \
-        '/^Recall@10/{r=$3} /^QPS/{q=$3} END{printf "RQ   np=%-5s pass=%-4s recall=%s qps=%s\n",n,p,r,q}'
+        '/^Recall@10/{r=$3} /^QPS/{q=$3} END{printf "PRQ  np=%-5s pass=%-4s recall=%s qps=%s\n",n,p,r,q}'
   done
   echo "gpu_rc=$? pass=$1"
 }
