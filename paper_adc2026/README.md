@@ -41,9 +41,14 @@ returns α_max and cannot do otherwise. arxiv-768 is that case.
 | recovers the swept saturation α | 3 of 4 at nprobe=128; the 4th is arxiv-768, still improving past the rule's α_max | `data/alpha_sample.log`, `data/alpha6.log` |
 | the nprobe=512 rows are **withdrawn** — no sweep was run there, and the earlier table reused the nprobe=128 answer | — | `results/front6/ALPHA_RULE.md` |
 | recall cost | ≤0.003, except bge-m3 at nprobe=1024 (0.0048) | `data/paper_fronts.log` |
-| S=32 is the knee | S=8 picks α=2 on openai3-3072 and loses 0.0058 | `data/alpha_sample.log` |
+| ~~S=32 is the knee~~ **withdrawn** — the knee is per workload | 2000 draws, scored on held-out queries: at S=32, 76% inside 1e-3 on openai3-3072 but only **27% on vogue-768**, where the mean held-out loss is 0.0033 and p95 is 0.0110 | `data/alpha_resample.json`, `figures/alpha_resample.py` |
+| S for a stated risk | openai3-3072: S=64 → 98% inside 1e-3. vogue-768: still 11% outside at S=128 | `data/alpha_resample.json` |
 | one slot of tolerance is the knee | 0 slots leaves 26% on the table, 2 slots costs 0.0035 | `data/alpha_fast.log` |
 | calibration cost | 6–29 ms, 0.7 batches to repay on openai3-3072 | `data/v57_launch.log` |
+| the factorised LUT is **M-dependent**, not a constant | −4% at M=96 where the 256-entry table still fits shared memory, **+53% at M=384** where it does not | `data/lut_groups.log` |
+| halves are the right split | G=2 beats G=1, G=4 and G=8 in all 8 configurations; the smaller tables (G=4, G=8) lose in proportion to their loads a candidate | `data/lut_groups.log` |
+| the table gain and the word gain **multiply** | on openai3-3072 the factorisation is worth 1.13/1.24/1.36 on the byte layout and 1.10/1.23/1.53 on the packed one | `data/lut_groups.log` |
+| index build, all five methods | JHQ 1.1–14.3 s; CAGRA int8 9–75 s; IVF-PQ 6.4–43 s; IVF-RaBitQ 4.5–14.0 s where it builds | `figures/fig_build.py` |
 
 **The observation behind it.** α's saturation point spans 25× across the six
 datasets — flat from α=4 on openai3-3072, still improving at 200 on

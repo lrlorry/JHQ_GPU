@@ -29,6 +29,35 @@ conflict-free shared rather than an 8-way-conflicting shared or a global read.
 
 ## Measured, 28 cells, none negative
 
+> **Qualified 2026-09-10.** These 28 cells are all at M=96 and M=128, and the
+> effect turns out to be strongly M-dependent -- which this note could not see,
+> because it never varied M. `jhq_v59_lutgroups` measures the same
+> factorisation against the full 256-entry table on one build:
+>
+> | | nprobe=32 | 128 | 512 |
+> |---|---|---|---|
+> | vogue-768, M=96 | +1.5% / **−4.2%** | +3.9% / +2.2% | +9.7% / +12.2% |
+> | openai3-3072, M=384 | +13.4% / +9.5% | +23.5% / +22.5% | +35.8% / **+53.0%** |
+>
+> (byte layout / packed layout.) So "+6 to +14.5%, none negative" holds for
+> the M it was measured at and understates the effect by a factor of four at
+> M=384 -- while one cell at M=96 does come out negative.
+>
+> The mechanism is the table's size against shared memory. 256 entries a
+> subspace is M*256*4 bytes: 98 KiB at M=96, which the carveout still holds,
+> and 393 KiB at M=384, which it does not, so the unfactorised table there is
+> read from global memory. **The factorisation matters exactly where the full
+> table stops fitting**, which is a scaling property and a better claim than
+> the average. See `paper_adc2026/figures/fig_lutgroups.py`.
+>
+> The same sweep also answers a question this note did not ask -- why halves,
+> and not quarters. G=4 and G=8 give *smaller* tables (16 entries against 32)
+> and are monotonically slower, in proportion to their loads a candidate: on
+> vogue at nprobe=512 the ratios to G=2 are 0.90, 1.00, 0.64, 0.39. The scan
+> is issue-bound, so past the point where the table fits, shrinking it further
+> only costs instructions.
+
+
 | | nprobe=8 | 32 | 128 | 256 |
 |---|---|---|---|---|
 | **alpha=100** | | | | |

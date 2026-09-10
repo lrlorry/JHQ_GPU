@@ -69,20 +69,62 @@ not about the rule against the saturation point, which is not.
 
 ## How many samples
 
-openai3-3072 and arxiv-768 at nprobe=128:
+> **Superseded 2026-09-10.** The table that stood here reported one
+> calibration draw per S, on two datasets, and read a knee off it. That is
+> where "S=32 is the knee" came from. It does not survive resampling, and the
+> single draw it rested on was a lucky one. The old table is kept at the
+> bottom of this section for the record.
+
+`alpha_resample.py` replays the rule offline. `demo_jhq_v36` has always
+written per-query ids to `out_prefix`, so one frozen index and the full alpha
+grid (`paper_adc2026/data/alpha_perquery/`) is enough to sample S queries, run
+the rule on exactly what it would have seen, and score the alpha it picks **on
+the queries it did not see**. 2000 draws a cell, no GPU.
+
+Held-out recall given up, mean and 95th percentile over 2000 draws, and the
+share of draws inside the 1e-3 floor:
+
+| S | vogue-768, np=128 | | | openai3-3072, np=128 | | |
+|---|---|---|---:|---|---|---:|
+| | mean | p95 | <1e-3 | mean | p95 | <1e-3 |
+| 8 | 0.0165 | 0.0333 | 4% | 0.0049 | 0.0059 | 16% |
+| 16 | 0.0073 | 0.0109 | 12% | 0.0033 | 0.0059 | 44% |
+| **32** | **0.0033** | **0.0110** | **27%** | **0.0014** | **0.0060** | **76%** |
+| 64 | 0.0013 | 0.0026 | 54% | 0.0001 | 0.0000 | 98% |
+| 128 | 0.0005 | 0.0026 | 89% | 0.0000 | 0.0000 | 100% |
+
+**The knee is a property of the workload, not a constant.** On openai3-3072,
+whose saturation point is alpha=4, S=32 already keeps 76% of draws inside 1e-3
+and S=64 keeps 98%. On vogue-768 the curve is still falling at S=128, and even
+there 11% of draws fall outside.
+
+**And the single-draw number was luck.** That draw picked alpha=64 on vogue at
+nprobe=128 and gave up 0.0002. Across 2000 draws at the same S=32 the modal
+pick is 32, not 64; the mean held-out loss is 0.0033, sixteen times larger;
+and the 95th percentile is 0.0110, a full point of recall.
+
+So the paper should give S per workload with its measured risk -- "S such that
+95% of draws stay inside 1e-3" is a criterion the sweep can answer -- rather
+than print one constant. On these two that is S=64 for openai3-3072 and beyond
+S=128 for vogue-768.
+
+<details><summary>The superseded single-draw table</summary>
+
+openai3-3072 and arxiv-768 at nprobe=128, one draw each:
 
 | S | openai3-3072 | arxiv-768 |
 |---|---|---|
-| 8 | alpha=2, recall **−0.0058** | alpha=64, recall −0.0014 |
+| 8 | alpha=2, recall −0.0058 | alpha=64, recall −0.0014 |
 | 16 | alpha=4, +0.0000 | alpha=64, recall −0.0014 |
-| **32** | **alpha=4, +0.0000** | **alpha=100, +0.0000** |
+| 32 | alpha=4, +0.0000 | alpha=100, +0.0000 |
 | 64 | alpha=4, +0.0000 | alpha=100, +0.0000 |
 | 128 | alpha=4, +0.0000 | alpha=100, +0.0000 |
 
-**S=32 is the knee**, and it is 3% of a 1000-query batch. At S=8 the sample is
-small enough that agreement on it does not imply agreement on the batch, and
-openai3-3072 loses 0.6 points of recall for a gain it would have had anyway at
-S=32.
+Read as a knee at S=32. The resampled figures above are what those cells look
+like when they are not a single draw, and note that this table also scored the
+draw on the whole batch, including the S queries it calibrated on.
+
+</details>
 
 ## What it costs
 

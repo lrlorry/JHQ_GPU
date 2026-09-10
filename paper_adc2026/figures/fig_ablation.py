@@ -9,7 +9,11 @@ Sections 6.4 and 6.5, two panels.
 
       * **JHQ-specific.** The factorised Cartesian LUT is exact only because
         the primary codebook is a Cartesian product of one-dimensional levels.
-        No change to the code, the codebook or the distances.
+        No change to the code, the codebook or the distances. Its range is the
+        widest here and the width is the finding, not noise: -4% at M=96,
+        where the full 256-entry table still fits in shared memory, to +53% at
+        M=384, where it does not. fig_lutgroups has that against M; a bar can
+        only carry the span.
       * **Representation-enabled.** Four subspaces share a 32-bit load only
         because Ds | B at B=8 forces one bit a dimension. A consequence of the
         admissibility rule rather than an independent idea.
@@ -42,7 +46,7 @@ import numpy as np
 # label, low %, high %, kind.  kind: "jhq" the representation makes it exact,
 # "repr" the admissibility rule enables it, "corr" it removes unintended work.
 pos = [
-    ("Factorised Cartesian LUT",        6,   14.5, "jhq"),
+    ("Factorised Cartesian LUT",       -4,   53,   "jhq"),
     ("Packed 32-bit code loads",       30,   48,   "repr"),
     ("Per-thread probe cursor",         2.5, 148,  "corr"),
     ("Launch sized to the batch",       1,    9,   "corr"),
