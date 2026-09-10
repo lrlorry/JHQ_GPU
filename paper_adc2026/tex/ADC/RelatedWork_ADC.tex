@@ -1,16 +1,16 @@
 \section{Related Work}
+\label{sec:related}
 \label{sec:relatedwork}
 
 We organise related work around the novelty threats that matter for this paper
 rather than as a catalogue.
 
 \paragraph{Quantisation and JHQ.}
-Product Quantization (PQ)~\cite{pq} established Cartesian decomposition across
-subspaces and asymmetric distance computation. JHQ~\cite{jhq} targets
-high-dimensional ANN with an orthogonal transform, a Cartesian primary
-quantiser, and hierarchical residual refinement. We do not claim JHQ's
-hierarchy or orthogonal transform as contributions; our work begins from that
-representation and asks how its specific structure should execute on a GPU.
+Product Quantization~\cite{pq} established Cartesian decomposition across
+subspaces and asymmetric distance computation; JHQ~\cite{jhq} adds an
+orthogonal transform and hierarchical residual refinement. We claim neither as
+a contribution: our work begins from that representation and asks how its
+specific structure should execute on a GPU.
 
 \paragraph{Grouped lookup tables.}
 This is the closest prior work and we state the overlap plainly. PQ Fast
@@ -41,22 +41,18 @@ representations reaching the same group width is corroboration that the
 trade-off is real, not evidence that either is novel for choosing it.
 
 \paragraph{Adaptive ANN control.}
-ANN libraries such as FAISS~\cite{faiss} commonly expose parameter sweeps and
-tuning utilities, while learned approaches can adapt search termination to the
-query~\cite{earlyterm}. We therefore do not claim sampling or parameter
-selection as new. Our output-stability rule differs in its signal and deployment
-assumptions: it needs no labelled nearest neighbours and no learned predictor,
-compares the system's own returned top-$k$ sets to a generous-budget reference,
-and chooses the externally specified JHQ refinement budget. The evaluation
-separately quantifies selection error and amortisation, which are necessary
-because a label-free proxy is not a recall guarantee.
+ANN libraries such as FAISS~\cite{faiss} expose parameter sweeps, and learned
+approaches adapt search termination to the query~\cite{earlyterm}; we claim
+neither sampling nor parameter selection as new. Our rule differs in its signal:
+it needs no labelled neighbours and no learned predictor, comparing the system's
+own returned top-$k$ sets against a generous-budget reference. Because a
+label-free proxy is not a recall guarantee, the evaluation quantifies its
+selection error and its amortisation separately.
 
 \paragraph{GPU ANN systems.}
-CAGRA~\cite{cagra} represents the graph-based GPU frontier, and cuVS provides
-production implementations of CAGRA, IVF-PQ, and IVF-RaBitQ. GPU
-IVF-RaBitQ~\cite{ivfrabitq} combines inverted-file routing with low-bit RaBitQ
-codes and reports a strong recall--throughput/build/storage trade-off. These
-systems are not uniformly weaker than JHQ: our matched experiments show regime
-crossings in the high-recall tail and with batch size. This is why we report
+CAGRA~\cite{cagra} represents the graph-based GPU frontier and cuVS provides
+production implementations of it, IVF-PQ and IVF-RaBitQ~\cite{ivfrabitq}. These
+are not uniformly weaker than JHQ --- our matched experiments show regime
+crossings in the high-recall tail and with batch size --- which is why we report
 nondominated frontiers and configuration-specific build failures rather than a
 single aggregate speedup.

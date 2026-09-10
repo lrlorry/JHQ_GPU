@@ -82,22 +82,19 @@ stopping behaviour is conservative with respect to the sampled criterion.
 Floating-point ties are a separate matter --- the proposition assumes a
 deterministic total order, not bitwise-identical association.
 
-Sampled parameter tuning is not itself new: FAISS~\cite{faiss} exposes
-parameter-space exploration and Li et al.~\cite{earlyterm} learn adaptive
-termination. Our contribution is narrower --- a predictor-free top-$k$ stability
-signal applied to JHQ's external residual budget, with its proxy error and
-economics quantified.
+Against the prior art of Section~\ref{sec:related}, our contribution here is
+narrow: a predictor-free top-$k$ stability signal applied to JHQ's external
+residual budget, with its proxy error and economics quantified.
 
 \subsection{Calibration economics}
 With $T_{\mathrm{cal}}$ the calibration time and $T_{\mathrm{fixed}}$,
 $T_{\mathrm{rule}}$ the per-batch times before and after selection, the
 break-even batch count is
 $B^{*}=T_{\mathrm{cal}}/(T_{\mathrm{fixed}}-T_{\mathrm{rule}})$ whenever
-$T_{\mathrm{rule}}<T_{\mathrm{fixed}}$. A more expensive calibration is rational only when the budget saves enough
-steady-state work and the operating point persists; Section~\ref{sec:rq2}
-reports both terms. Reuse assumes the query distribution, routing configuration,
-$k$ and index stay stable --- the price of workload-level rather than per-query
-adaptation. Drift is unmeasured: recalibrating every $H$ batches adds
+$T_{\mathrm{rule}}<T_{\mathrm{fixed}}$; Section~\ref{sec:rq2} reports both
+terms. Reuse assumes the query distribution, routing configuration, $k$ and
+index stay stable --- the price of workload-level rather than per-query
+adaptation --- and drift is unmeasured: recalibrating every $H$ batches adds
 $T_{\mathrm{cal}}/H$ per batch, but choosing $H$ is a drift-detection problem
 outside this evidence. The timer starts after sample copying, so the cost is
-algorithm-level, not a full control-plane cost.
+algorithm-level.

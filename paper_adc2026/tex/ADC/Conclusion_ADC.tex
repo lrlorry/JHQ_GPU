@@ -4,17 +4,16 @@
 We asked how JHQ's primary representation should execute on a GPU and how much
 of its hierarchy is worth executing. For the first, the Cartesian codebook
 admits an exact two-table factorisation whose state grows as $32M$ against
-$256M$, and the measurements show the payoff rising with both $M$ and probe
-depth --- $-4$ to $+12\%$ at $M{=}96$ against $+8$ to $+54\%$ at $M{=}384$ ---
-while still-smaller splits lose to their extra lookups. Disassembling the kernel
-adds the term the controls could not reach: the granularity whose table does not
-fit issues the fewest instructions per candidate--sub\-space and is slower
-anyway, so the target is a residency budget rather than minimum bytes. For the second, a label-free
-stability rule buys $1.095$--$1.469\times$ at $S{=}128$, repaid within $4.0$ to
-$19.2$ batches of 500 queries, and its median choice over 64 samples matches the offline reference budget in
-all four measured cells --- but $5$ of $64$ samples still exceed a $10^{-3}$ loss
-on one of them, so the sample size is a risk decision, not a default.
-The region this defines is bounded: among quantised IVF methods JHQ leads to
-Recall@$10{=}0.95$ at large batch and owns the high-recall end at high
-dimension, while CAGRA-int8 is faster below that at several times the build
-cost. Remaining gaps are $k$ beyond 10, workload drift, and cross-GPU validation.
+$256M$, and the payoff rises with both $M$ and probe depth while still-smaller
+splits lose to their extra lookups. Disassembling the kernel adds the term the
+controls could not reach: the granularity whose table does not fit issues the
+fewest instructions per candidate--sub\-space and is slower anyway, so the
+target is a residency budget rather than minimum bytes. For the second, a
+label-free stability rule buys $1.095$--$1.469\times$ at $S{=}128$ and selects
+the offline reference budget wherever that reference is resolved --- but some
+samples still exceed a $10^{-3}$ loss, so the sample size is a risk decision,
+not a default. The region this defines is bounded: among quantised IVF methods
+JHQ leads to Recall@$10{=}0.95$ at large batch and owns the high-recall end at
+high dimension, while CAGRA-int8 is faster below that at several times the build
+cost. Remaining gaps are $k$ beyond 10, workload drift, and cross-GPU
+validation.
