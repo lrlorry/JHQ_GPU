@@ -13,7 +13,7 @@ label-free stability rule buys $1.095$--$1.469\times$ at $S{=}128$ and selects
 the offline reference budget wherever that reference is resolved --- but some
 samples still exceed a $10^{-3}$ loss, so the sample size is a risk decision,
 not a default. The region this defines is bounded: among quantised IVF methods
-JHQ leads to Recall@$10{=}0.95$ at large batch and owns the high-recall end at
-high dimension, while CAGRA-int8 is faster below that at several times the build
-cost. Remaining gaps are $k$ beyond 10, workload drift, and cross-GPU
+JHQ is fastest in 18 of the 24 cells it shares with the other IVF-routed
+methods, while the graph baseline is faster below Recall@$10{=}0.95$ at several
+times the build cost. Remaining gaps are $k$ beyond 10, workload drift, and cross-GPU
 validation.

@@ -26,10 +26,12 @@ duplication alone raises throughput (Table~\ref{tab:neg}), so such a batch
 would measure an artefact.
 
 Baselines are the cuVS implementations of IVF-RaBitQ~\cite{ivfrabitq}, IVF-PQ,
-and CAGRA~\cite{cagra} in fp32 and int8. Our primary comparison line is the
-quantised IVF family, which shares JHQ's routing structure and interface; CAGRA
-is a graph index with a different build-cost profile and we report it as
-context, in both variants, without excluding the one that wins. JHQ runs use
+and CAGRA~\cite{cagra} in fp32 and int8. The frontier's comparison line is the
+IVF-routed family, which shares JHQ's routing structure, build-cost profile and
+interface; CAGRA is a graph index and is reported in
+Section~\ref{sec:graph} with its margins, its build cost and the query volume
+at which the two repay each other --- separately, and in both variants, so that
+neither the one that wins nor the one that loses is the one we chose to show. JHQ runs use
 dense coarse training, $\texttt{JHQ\_N\_TRAIN}=39\cdot\mathit{nlist}$; we mix in
 no under-trained points and union no fronts across binaries. The CPU JHQ
 baseline runs the same index parameters on the same host with threads pinned
@@ -41,21 +43,22 @@ codebook, with one measurement per cell.
 \label{sec:rq1}
 Figure~\ref{fig:frontier} gives the measured frontiers and Table~\ref{tab:front}
 reduces them to a single question: at each matched recall, which system is
-fastest? The answer is that JHQ owns 4 of the 25 cells and every one of them is
-at Recall@$10\ge 0.97$, while CAGRA-int8 owns the low-recall end outright. We
-state that rather than scope it away, because it bounds the claim precisely:
-JHQ's region is the high-recall end, most clearly at high dimension, and the
-margins by which it loses elsewhere are in the table. One row is excluded
-throughout --- stella-trec24's CAGRA-int8 point at Recall@10 $0.9692$ is
-\texttt{status=CONTAMINATED} in the harness's own record, and the frontier
-generator had dropped only \texttt{FAILED} rows.
+fastest? Among IVF-routed methods JHQ owns 18 of the 24 comparable cells and
+IVF-RaBitQ the other 6, by $1.0$--$1.4\times$. The line drawn here is the index
+family: JHQ, IVF-RaBitQ and IVF-PQ share a routing structure, a build-cost
+profile and an interface, and the graph baseline is reported separately in
+Section~\ref{sec:graph} rather than dropped. On stella-trec24 no compared
+baseline builds at all, which is why its panel carries one curve. One further
+row is excluded throughout: stella-trec24's CAGRA-int8 point at Recall@10
+$0.9692$ is \texttt{status=CONTAMINATED} in the harness's own record, and the
+frontier generator had dropped only \texttt{FAILED} rows.
 
 \begin{table}[tbp]
   \centering
   \caption{Fastest system at each matched recall, batch 1{,}024, with its margin
   over JHQ. \textsf{int8} and \textsf{fp32} are cuVS CAGRA, \textsf{RaBitQ} is
   cuVS IVF-RaBitQ; ``--'' is a recall no two systems both reach. JHQ is fastest
-  in 4 of 25 cells, all at Recall@$10\ge0.97$.}
+  in 18 of 25 cells; the graph baseline is Section~\ref{sec:graph}.}
   \label{tab:front}
   \input{tables/frontier}
 \end{table}
@@ -295,13 +298,27 @@ statistical bound.
   \label{fig:cpu}
 \end{figure}
 
+\subsection{The graph baseline}
+\label{sec:graph}
+CAGRA is off the frontier of Section~\ref{sec:rq1} because it is a different
+index family, not because of how it scores. It is faster than JHQ where both
+run and the recall target is not high: CAGRA-int8 leads in 13 of the 15 cells
+they share, by $1.3$--$2.9\times$, and below Recall@$10{=}0.95$ in 10 of them by
+$1.6$--$2.9\times$; CAGRA-fp32 leads in 8 of 21 by $1.1$--$1.5\times$. We report
+this rather than scope it away.
+
+What it costs is build time, and the trade is quantifiable rather than
+rhetorical. Figure~\ref{fig:build} gives both variants beside JHQ, and where
+CAGRA int8 is the faster searcher its throughput repays the build gap only
+after $1.6$M to $8.9$M queries; below that volume JHQ costs less end to end.
+Neither CAGRA variant builds on stella-trec24 within the card, and fp32 does
+not build on bge-m3 either.
+
 \subsection{Construction and memory}
 \label{sec:rq6}
 Figure~\ref{fig:build} gives cold build times on every dataset. JHQ is the
-cheapest to build on all six, and the gap widens with $N$: at stella-trec24 it
-is $13.4$\,s against $74.3$\,s for CAGRA int8. Where CAGRA int8 is the faster
-searcher its throughput repays that gap after $1.6$M to $8.9$M queries, and
-below that volume JHQ costs less end to end. Accounting must respect caching:
+cheapest to build on all six and the gap widens with $N$: at stella-trec24 it is
+$13.4$\,s against $74.3$\,s for CAGRA int8. Accounting must respect caching:
 training can be cached while add is not, so taking maxima independently
 fabricates a time that never occurred.
 

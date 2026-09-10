@@ -130,11 +130,12 @@ the top-$k$ sets the system returns at a candidate budget against a generous
 reference, on sampled workload queries --- worth $1.095$--$1.469\times$ in
 steady state. Its risk is the sample: at a quarter of the size we originally
 proposed, the quality loss varies enough by workload that we withdraw our own
-default. On six datasets to 3{,}072 dimensions and 17.8M vectors, JHQ owns the
-high-recall end at high dimension and indexes two where the tested IVF-RaBitQ
-build path runs out of memory, while graph-based CAGRA-int8 is
-$1.6$--$2.9\times$ faster below Recall@$10{=}0.95$ at several times the build
-cost --- a bounded operating region, not a universal-fastest claim.
+default. On six datasets to 3{,}072 dimensions and 17.8M vectors, JHQ is
+fastest in 18 of the 24 cells it shares with the other IVF-routed methods and
+indexes two where the tested IVF-RaBitQ build path runs out of memory, while
+the graph baseline CAGRA is $1.6$--$2.9\times$ faster below Recall@$10{=}0.95$
+at several times the build cost --- a bounded operating region, not a
+universal-fastest claim.
 
 \keywords{Approximate nearest neighbour search \and GPU \and Quantisation \and
 High-dimensional data \and Adaptive query processing}

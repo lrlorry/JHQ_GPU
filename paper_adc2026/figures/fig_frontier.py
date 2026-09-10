@@ -25,8 +25,14 @@ fig, axes = plt.subplots(3, 2, figsize=(WIDE, 3.65), sharex=True, sharey=True)
 for ax, ds in zip(axes.flat, DATASETS):
     b = base[ds]
 
-    for key, pts in (("ivfpq", b["ivfpq"]), ("cagra8", b["cagra8"]),
-                     ("cagra", b["cagra"]), ("rabitq", rq.get(ds, []))):
+    # Both CAGRA variants are out of this figure by choice, not by omission.
+    # The frontier's line is IVF-routed methods -- JHQ, IVF-RaBitQ, IVF-PQ --
+    # which share a routing structure, a build-cost profile and an interface;
+    # CAGRA is a graph index and gets its own subsection, its own build figure
+    # and its crossover, rather than being dropped.  Removing only int8 while
+    # keeping fp32 would be the indefensible version: same system, two
+    # precisions, and the one kept is the one that wins less.
+    for key, pts in (("ivfpq", b["ivfpq"]), ("rabitq", rq.get(ds, []))):
         pts = [p for p in pts if p[0] >= 0.85]
         if pts:
             ax.plot(*zip(*pts), **{k: v for k, v in S[key].items() if k != "label"},
@@ -53,7 +59,7 @@ for ax in axes[:, 0]:
 handles = [plt.Line2D([], [], color=S[k]["color"], marker=S[k].get("marker", ""),
                       ls=S[k].get("ls", "-"),
                       lw=1.5 if k == "jhq" else 1.0, label=S[k]["label"])
-           for k in ("jhq", "jhq_fix", "rabitq", "cagra", "cagra8", "ivfpq")]
+           for k in ("jhq", "jhq_fix", "rabitq", "ivfpq")]
 fig.legend(handles=handles, loc="upper center", ncol=3,
            bbox_to_anchor=(0.5, 1.06), columnspacing=1.2)
 fig.tight_layout(pad=0.3)

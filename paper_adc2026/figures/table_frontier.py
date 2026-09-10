@@ -25,7 +25,9 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import style
 
-NAME = {"cagra": "CAGRA-fp32", "cagra8": "CAGRA-int8", "ivfpq": "IVF-PQ"}
+# The frontier table draws the same line as Figure 2: IVF-routed methods.
+# CAGRA is reported in its own subsection with its build cost and crossover.
+NAME = {"ivfpq": "IVF-PQ"}
 RECALLS = (0.90, 0.93, 0.95, 0.97, 0.98, 0.99)
 
 
@@ -145,6 +147,32 @@ def main():
     for nm, v in sorted(MARGINS_LOW.items()):
         print("     %-11s leads in %2d cells, margin over JHQ %.1fx to %.1fx"
               % (nm, len(v), min(v), max(v)))
+    # CAGRA is off the frontier table by scope, so its numbers need their own
+    # source or they go back to being typed by hand.  Same interpolation, same
+    # recall grid, JHQ against each CAGRA variant one at a time.
+    f, rq, bl = style.load_fronts(), style.load_rabitq(), style.load_baselines()
+    print("  the graph baseline, reported in its own subsection:")
+    for key, nm in (("cagra8", "CAGRA-int8"), ("cagra", "CAGRA-fp32")):
+        lead, low, mg, mglow = 0, 0, [], []
+        cells = 0
+        for ds in style.DATASETS:
+            for R in RECALLS:
+                j = style.interp(f[ds]["rule"], R)
+                c = style.interp(style.pareto(bl.get(ds, {}).get(key, [])), R)
+                if not (j and c):
+                    continue
+                cells += 1
+                if c > j:
+                    lead += 1; mg.append(c / j)
+                    if R < 0.95:
+                        low += 1; mglow.append(c / j)
+        if mg:
+            print("     %-11s leads JHQ in %d of %d comparable cells, "
+                  "by %.1fx to %.1fx" % (nm, lead, cells, min(mg), max(mg)))
+            if mglow:
+                print("       below R=0.95: %d cells, %.1fx to %.1fx"
+                      % (low, min(mglow), max(mglow)))
+
     q = style._quarantined()
     if q:
         print("  excluded as not status=ok before any envelope was taken:")

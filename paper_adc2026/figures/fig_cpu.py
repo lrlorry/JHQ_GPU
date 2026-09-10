@@ -85,7 +85,7 @@ def main():
 
     # ---- (a) both envelopes ------------------------------------------------
     ev = envelopes()
-    for ds in DS:
+    for si, ds in enumerate(DS):
         cf, gf, arm = ev[ds]
         c, mk = DS_COLOR[ds], DS_MARK[ds]
         a.plot([p[0] for p in gf], [p[1] for p in gf], color=c, marker=mk,
@@ -104,16 +104,24 @@ def main():
                    xytext=(3, -9), fontsize=7, color=c)
         a.annotate("CPU", (cf[0][0], cf[0][1]), textcoords="offset points",
                    xytext=(2, -9), fontsize=7, color=c)
-        # The ratio, quoted only where both envelopes cover the recall.
+        # The ratio, quoted only where both envelopes cover the recall.  On
+        # vogue the last three GPU points sit within a few thousandths of
+        # recall of one another, so their labels stack: alternate the offset
+        # above and below the curve rather than letting them overprint.
+        # Start the two series on opposite parities: with the same one, the
+        # first ratio of the lower curve lands beside the upper curve's name.
+        placed = si
         for r, q, _ in gf:
             cq = env.interp(cf, r)
             if cq is None:
                 continue
-            # The rightmost ratio runs off the axis if it is offset right.
             right = r > XLO + 0.85 * (1.0 - XLO)
-            a.annotate(r"$%.0f\times$" % (q / cq), (r, q), textcoords="offset points",
-                       xytext=(-3 if right else 2, 5), fontsize=7, color=c,
+            dy = 5 if placed % 2 == 0 else -11
+            a.annotate(r"$%.0f\times$" % (q / cq), (r, q),
+                       textcoords="offset points",
+                       xytext=(-3 if right else 2, dy), fontsize=7, color=c,
                        ha="right" if right else "left")
+            placed += 1
         # Say out loud where the CPU stops, so the gap is not read as a ratio.
         a.plot([cf[-1][0]], [cf[-1][1]], color=c, marker="|", ms=7, mew=1.0)
     a.set_yscale("log")

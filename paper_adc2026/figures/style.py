@@ -40,26 +40,58 @@ plt.rcParams.update({
     "mathtext.fontset": "stix",
     "font.size": 8, "axes.labelsize": 8, "axes.titlesize": 8,
     "xtick.labelsize": 7, "ytick.labelsize": 7, "legend.fontsize": 7,
-    "axes.linewidth": 0.6, "grid.linewidth": 0.4,
-    "lines.linewidth": 1.1, "lines.markersize": 3.2,
+    "axes.linewidth": 0.6, "axes.edgecolor": "#4a4844",
+    "axes.labelcolor": "#26241f", "text.color": "#26241f",
+    "lines.linewidth": 1.15, "lines.markersize": 3.4,
+    "lines.solid_capstyle": "round", "lines.solid_joinstyle": "round",
+    # A marker sitting directly on its own line, and on whatever line crosses
+    # it, is the thing that makes a multi-series plot look muddy.  A thin
+    # background-coloured rim around every marker separates them, which is why
+    # every published frontier plot has one.
+    # Set per series below, not here: "x" and "+" are drawn as edges with no
+    # face, so a global white edge colour erases them outright.
+    "lines.markeredgewidth": 0.5,
+    # Ticks inward and short: outward ticks push the axes apart and read as a
+    # default plot.  Minor ticks on both sides so a log axis looks like one.
+    "xtick.direction": "in", "ytick.direction": "in",
     "xtick.major.width": 0.6, "ytick.major.width": 0.6,
-    "xtick.major.size": 2.5, "ytick.major.size": 2.5,
+    "xtick.minor.width": 0.4, "ytick.minor.width": 0.4,
+    "xtick.major.size": 2.6, "ytick.major.size": 2.6,
+    "xtick.minor.size": 1.4, "ytick.minor.size": 1.4,
+    "xtick.color": "#4a4844", "ytick.color": "#4a4844",
+    "xtick.labelcolor": "#26241f", "ytick.labelcolor": "#26241f",
+    "xtick.top": True, "ytick.right": True,
     "legend.frameon": False, "legend.handlelength": 1.8,
     "legend.borderpad": 0.2, "legend.labelspacing": 0.25,
-    "axes.grid": True, "grid.alpha": 0.25, "grid.linestyle": "-",
+    "legend.handletextpad": 0.5,
+    # The grid is a reading aid, not a element of the data: dotted, faint, and
+    # underneath everything drawn.
+    "axes.grid": True, "grid.alpha": 0.5, "grid.linestyle": ":",
+    "grid.linewidth": 0.4, "grid.color": "#b8b5ae",
+    "axes.axisbelow": True,
     "savefig.bbox": "tight", "savefig.pad_inches": 0.01,
 })
 
 # Hue order chosen so adjacent pairs stay separable under deuteranopia and
 # protanopia; markers carry the same information again.
 S = {
-    "jhq":    dict(color="#2a78d6", marker="o", label="JHQ (this work)"),
-    "jhq_fix":dict(color="#a9a7a0", marker="",  label=r"JHQ, fixed $\alpha{=}100$", ls="--"),
-    "rabitq": dict(color="#e34948", marker="x", label="IVF-RaBitQ"),
-    "cagra":  dict(color="#eb6834", marker="^", label="CAGRA fp32"),
-    "cagra8": dict(color="#1baf7a", marker="s", label="CAGRA int8"),
-    "ivfpq":  dict(color="#4a3aa7", marker="D", label="IVF-PQ"),
-    "jq":     dict(color="#8f8d86", marker="v", label="JQ (primary only)"),
+    # "JHQ (this work)" claimed the method, which Section 2 explicitly does not:
+    # JHQ is Han et al.'s, and this paper is the GPU port the title names.
+    # The dashed line is the same system with the budget rule switched off, so
+    # it is labelled by what is missing rather than by a parameter value the
+    # reader has to look up.
+    "jhq":    dict(color="#1f6fc4", marker="o", label="JHQ-GPU (ours)",
+                   mec="white"),
+    "jhq_fix":dict(color="#9c9a93", marker="",
+                   label=r"JHQ-GPU, no calibration ($\alpha{=}100$)", ls=(0, (4, 2))),
+    # Filled markers throughout, each with the page's white as a rim, so a
+    # crossing does not merge two series into one shape.
+    "rabitq": dict(color="#d1443f", marker="s", label="IVF-RaBitQ", mec="white"),
+    "cagra":  dict(color="#e07b27", marker="^", label="CAGRA fp32", mec="white"),
+    "cagra8": dict(color="#17a074", marker="D", label="CAGRA int8", mec="white"),
+    "ivfpq":  dict(color="#5b4bb8", marker="v", label="IVF-PQ", mec="white"),
+    "jq":     dict(color="#8f8d86", marker="P", label="JQ (primary only)",
+                   mec="white"),
 }
 DATASETS = ["vogue-768", "arxiv-768", "bge-m3", "stella",
             "openai3-1536", "openai3-3072"]

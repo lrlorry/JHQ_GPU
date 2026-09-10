@@ -1,19 +1,17 @@
 \section{Introduction}
 \label{sec:intro}
 
-High-dimensional approximate nearest-neighbour (ANN) search is a core primitive
-in retrieval, recommendation and vector databases, and on a GPU compressed
-search is not governed by footprint alone: a representation can reduce bytes yet
-raise lookup pressure or instruction issue, and an implementation can move the
-same logical bytes and still accelerate. JHQ~\cite{jhq} makes that concrete
-because its hierarchy exposes two costs of different shape. After IVF routing a
-compact primary code scores every routed candidate at $O(n_c M)$; a
-per-dimension residual code is then read only for the $c_k$ survivors of primary
-filtering, at $O(c_k d)$ with $c_k \ll n_c$. JHQ also leaves the refinement
-factor $\alpha$ in $c_k=\alpha k$ externally specified. The port therefore
-raises two coupled questions with different causes: \emph{how should the primary
-representation execute}, and \emph{how much of the expensive hierarchy should
-execute}?
+Compressed nearest-neighbour search on a GPU is not governed by footprint: a
+representation can reduce bytes and still raise lookup pressure or instruction
+issue, and an implementation can move the same logical bytes and accelerate.
+JHQ~\cite{jhq} makes that concrete, because its hierarchy exposes two costs of
+different shape. After IVF routing a compact primary code scores every routed
+candidate at $O(n_c M)$; a per-dimension residual code is then read only for the
+$c_k$ survivors of primary filtering, at $O(c_k d)$ with $c_k \ll n_c$. JHQ also
+leaves the refinement factor $\alpha$ in $c_k=\alpha k$ externally specified.
+The port therefore raises two coupled questions with different causes:
+\emph{how should the primary representation execute}, and \emph{how much of the
+expensive hierarchy should execute}?
 
 Our answer to the first begins from prior art rather than against it. Grouping
 code bits into small tables and choosing the group size by trading on-chip
@@ -44,13 +42,14 @@ is worth $1.095$--$1.469\times$ at $S{=}128$, while at a quarter of that sample
 the quality risk varies enough by workload that the default we started from does
 not survive its own test.
 
-The competitive picture is bounded and we state it as such. Among quantised IVF
-methods JHQ leads through Recall@$10{=}0.95$ at large batch, owns the
-high-recall end at high dimension, and indexes two datasets where the tested
-cuVS IVF-RaBitQ build path runs out of memory. It is not the fastest system
-measured: graph-based CAGRA-int8 is $1.6$--$2.9\times$ faster below
-Recall@$10{=}0.95$ on every dataset where both run, at $3.9$--$7.4\times$ the
-build time and a comparable code budget.
+The competitive picture is bounded and we state it as such. Among IVF-routed
+methods --- the family JHQ belongs to, sharing its routing structure and
+interface --- JHQ is fastest in 18 of the 24 comparable cells and indexes two
+datasets where the tested cuVS IVF-RaBitQ build path runs out of memory. It is
+not the fastest system measured: the graph baseline, CAGRA, is faster wherever
+the recall target is not high, by $1.6$--$2.9\times$ below Recall@$10{=}0.95$ in
+its int8 form, at $3.9$--$7.4\times$ the build time. We report that comparison
+in its own section rather than leave it out of the frontier without saying so.
 
 \smallskip\noindent\textbf{Contributions.} \textbf{(i)} Evidence that the
 primary scan's cost divides into an issue term and a residency term.
