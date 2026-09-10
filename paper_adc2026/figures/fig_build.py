@@ -159,7 +159,7 @@ for meth in ("IVF-RaBitQ", "cuVS-CAGRA", "cuVS-CAGRA-int8", "cuVS-IVFPQ"):
         print("     %-16s %.1f to %.1f s   (%s .. %s, %d datasets)"
               % (meth, per[lo], per[hi], lo, hi, len(per)))
 
-fig, ax = plt.subplots(figsize=(WIDE, 2.6))
+fig, ax = plt.subplots(figsize=(WIDE, 2.35))
 W = 0.16
 x = np.arange(len(DATASETS))
 for j, (m, skey) in enumerate(METHODS):
@@ -182,7 +182,9 @@ for j, (m, skey) in enumerate(METHODS):
 ax.set_yscale("log")
 ax.set_ylim(0.9, 130)
 ax.set_xticks(x)
-ax.set_xticklabels([PRETTY[d] for d in DATASETS])
+# Six dataset names do not fit side by side in a 4.8-inch block.
+ax.set_xticklabels([PRETTY[d] for d in DATASETS], rotation=18, ha="right",
+                   fontsize=7)
 ax.set_ylabel("index build (s)")
 ax.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
 ax.get_yaxis().set_minor_formatter(matplotlib.ticker.NullFormatter())
@@ -197,15 +199,13 @@ hh.append(plt.Line2D([], [], color="#898781", marker=r"$\times$", ls="", ms=5))
 ll.append("build fails on this card")
 hh.append(plt.Line2D([], [], color="#898781", marker="$?$", ls="", ms=5))
 ll.append("not timed")
-ax.legend(hh, ll, loc="lower center", bbox_to_anchor=(0.5, 1.005), ncol=7,
-          fontsize=7, columnspacing=1.0, handlelength=1.3)
-ax.text(0.5, -0.30, "whisker: the range across swept configurations and repeat "
-        "builds, not a confidence interval.  JHQ's bar is its one cold "
-        "training plus its median encode: training is cached after a "
-        "dataset's\nfirst row, encoding is not and re-runs every row. All "
-        "indexes train the coarse quantiser at 39 points a centroid.",
-        transform=ax.transAxes, ha="center", va="top",
-        fontsize=7, color="#898781", linespacing=1.35)
+# Seven legend entries across one row is a two-column figure's legend; here it
+# is what pushed the axes down to nothing while save() held the file at the
+# LNCS text width.  The long note that ran under the axes for the same reason
+# is now in the LaTeX caption, where it costs no drawing area.
+ax.legend(hh, ll, loc="lower center", bbox_to_anchor=(0.5, 1.005), ncol=4,
+          fontsize=6.5, columnspacing=1.0, handlelength=1.2,
+          borderpad=0.3, labelspacing=0.3)
 
-fig.tight_layout(pad=0.3, rect=(0, 0.16, 1, 1))
+fig.tight_layout(pad=0.3)
 save(fig, "fig_build")

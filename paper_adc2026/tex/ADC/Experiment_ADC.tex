@@ -233,16 +233,16 @@ with it --- gain is $1.044$--$2.653\times$ for at most $0.0048$ recall.
   \input{tables/budget}
 \end{table}
 
-\subsection{RQ5: batch size and the CPU reference}
+\subsection{RQ5: does batch size change the ordering?}
 \label{sec:rq5}
 Table~\ref{tab:batch} gives matched-recall ratios against IVF-RaBitQ at four
-batch sizes. Two readings matter: on openai3-3072 JHQ leads at every measured
-point, and on vogue-768 it crosses parity between batch 128 and 512. Batch size
-can therefore change the ordering, and the frontier ratios of
-Section~\ref{sec:rq1} should be read as the batch-1{,}024 column of this sweep
-rather than as batch-independent summaries. The openai3-3072 batch-1{,}024,
-$R{=}0.97$ cell is excluded: its RaBitQ anchor is the one matched point that
-failed the project's monotonicity check.
+batch sizes. It does: on openai3-3072 JHQ leads at every measured point, while
+on vogue-768 it crosses parity between batch 128 and 512. The frontier ratios of
+Section~\ref{sec:rq1} are therefore the batch-1{,}024 column of this sweep and
+not batch-independent summaries. Two datasets carry this sweep, the extremes of
+the dimension range; the openai3-3072 batch-1{,}024, $R{=}0.97$ cell is
+excluded, its RaBitQ anchor being the one matched point that failed the
+project's monotonicity check.
 
 \begin{table}[tbp]
   \centering
@@ -253,43 +253,69 @@ failed the project's monotonicity check.
   \input{tables/batch}
 \end{table}
 
-The CPU reference answers a different question: what the port buys over CPU JHQ
-at the same index parameters. Sweeping $\alpha$ and $\mathit{nprobe}$ on both
-sides, the GPU reaches $52$ to $85\times$ the CPU envelope on vogue-768 and $75$
-to $77\times$ on openai3-3072; pinning $\alpha{=}100$ on \emph{both} sides, so
-neither may tune the budget, gives $41$ to $71\times$ and $48$ to $60\times$.
-The two denominators move in opposite directions --- freedom over $\alpha$ and
-threads is worth more to the CPU on openai3-3072 than on vogue-768 --- which is
-why we give both rather than pick one. On vogue-768 the ratio climbs with probe
-depth, because the CPU degrades faster than the GPU as $\mathit{nprobe}$ grows.
-Its top point rests on the noisiest cell we measured, so we re-ran that cell
-five times and quote medians; one $\alpha$ there swings a quarter of its own
-value across the five passes while its neighbour swings $2\%$, and the
-single-pass log had given $90\times$ where the median gives $85$. Where the
-retained envelope has no points the GPU operating point is reported as outside
-its range rather than divided by the CPU's last measurement. Three limits
-apply.
-The GPU side of the vogue comparison is the rule's chosen $\alpha$ at each
-$\mathit{nprobe}$, not an exhaustive $\alpha$ sweep. CPU rows below
-$\mathit{nprobe}{=}128$ are dropped, because 1{,}000 queries complete fast enough
-there that thread start-up dominates the timer and measured throughput rises
-with $\mathit{nprobe}$; the recall column is unaffected. And each cell is
-measured once except the one just described, so the ratios are
-order-of-magnitude figures --- the envelope keeps the fastest point per recall
-bucket, which biases the CPU side upward and so does not inflate the ratio, but
-with one measurement per cell we do not claim a statistical bound.
+\subsection{RQ6: what does the port buy over CPU JHQ?}
+\label{sec:rq6cpu}
+Figure~\ref{fig:cpu}(a) puts both sides' $(\alpha,\mathit{nprobe})$ envelopes on
+one recall axis. The GPU reaches $52$ to $85\times$ the CPU envelope on
+vogue-768 and $75$ to $77\times$ on openai3-3072; pinning $\alpha{=}100$ on
+\emph{both} sides, so neither may tune the budget, gives $41$ to $71\times$ and
+$48$ to $60\times$. We give both denominators because they move in opposite
+directions: freedom over $\alpha$ and threads is worth more to the CPU on
+openai3-3072 than on vogue-768.
+
+Panel~(b) is why this comparison is worth a figure. The same $\alpha$ knob is
+worth $2.5$ to $3.0\times$ more on the GPU than on the CPU, at every probe
+depth. Selective refinement is therefore not a CPU idea carried across: on the
+CPU the scan dominates and the budget barely matters, while on the GPU the scan
+is fast enough that refinement becomes the term worth choosing --- which is what
+Section~\ref{sec:rq2}'s rule exists to choose.
+
+Four limits apply. The GPU side of the vogue comparison is the rule's chosen
+$\alpha$ at each $\mathit{nprobe}$, not an exhaustive sweep. CPU rows below
+$\mathit{nprobe}{=}128$ are dropped, because 1{,}000 queries finish fast enough
+there that thread start-up dominates the timer and throughput rises with
+$\mathit{nprobe}$; the recall column is unaffected. The top vogue point rests on
+the noisiest cell we measured --- one $\alpha$ there swings a quarter of its own
+value across five repeats while its neighbour swings $2\%$ --- so we quote
+medians, and the single-pass log had given $90\times$ where the median gives
+$85$. And every other cell is measured once, so these are order-of-magnitude
+figures; the envelope keeps the fastest point per recall bucket, which biases
+the CPU side upward and so does not inflate the ratio, but we claim no
+statistical bound.
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=\linewidth]{figs/fig_cpu.pdf}
+  \caption{GPU against CPU JHQ at the same index parameters. (a) Both sides'
+  $(\alpha,\mathit{nprobe})$ envelopes, annotated with the ratio at matched
+  recall; open markers are the CPU points the envelope is taken over.
+  (b) What the $\alpha$ budget is worth on each processor, at matched recall on
+  openai3-3072 --- the reason the budget is worth choosing on a GPU and not on
+  a CPU.}
+  \label{fig:cpu}
+\end{figure}
 
 \subsection{Construction and memory}
 \label{sec:rq6}
-Cold build times are $1.1$--$13.4$\,s for JHQ against $4.9$--$74.3$\,s for
-CAGRA int8, $1.9$--$39.0$\,s for IVF-PQ and $4.3$--$13.0$\,s for IVF-RaBitQ
-where that path builds --- each baseline's fastest build per dataset, which is
-the choice least favourable to us. Where CAGRA int8 is the faster searcher its
-throughput repays that gap after $1.6$M to $8.9$M queries; below that volume JHQ
-costs less end to end. JHQ's figure is the cold-cache run at
-$\mathit{nprobe}{=}8$, so a warm build is cheaper and is not what we report, and
-accounting must respect caching: training can be cached while add is not, so
-taking maxima independently fabricates a time that never occurred. On memory we claim no
+Figure~\ref{fig:build} gives cold build times on every dataset. JHQ is the
+cheapest to build on all six, and the gap widens with $N$: at stella-trec24 it
+is $13.4$\,s against $74.3$\,s for CAGRA int8. Where CAGRA int8 is the faster
+searcher its throughput repays that gap after $1.6$M to $8.9$M queries, and
+below that volume JHQ costs less end to end. Accounting must respect caching:
+training can be cached while add is not, so taking maxima independently
+fabricates a time that never occurred.
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=\linewidth]{figs/fig_build.pdf}
+  \caption{Index build time, log scale. Bars are the median over swept
+  configurations and repeat builds and whiskers their range, not a confidence
+  interval. JHQ's bar is one cold training plus its median encode: training is
+  cached after a dataset's first row and encoding is not. All indexes train the
+  coarse quantiser at 39 points a centroid; each baseline's fastest build per
+  dataset is used, which is the choice least favourable to us.}
+  \label{fig:build}
+\end{figure} On memory we claim no
 advantage: in the four datasets with measured VRAM JHQ uses $22$--$40\%$ more
 than IVF-RaBitQ, and its budget is not smaller than int8's. JHQ occupies a
 different memory--accuracy--throughput point and still indexes the two largest
