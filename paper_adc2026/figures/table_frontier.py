@@ -31,6 +31,10 @@ RECALLS = (0.90, 0.93, 0.95, 0.97, 0.98, 0.99)
 
 MARGINS = collections.defaultdict(list)
 MARGINS_LOW = collections.defaultdict(list)
+# Wins and margins are different counts: a cell can have a winner and no
+# JHQ point to measure the margin against.  Reporting the margin count as
+# the win count loses those cells and the totals stop summing to the table.
+WINS = collections.Counter()
 
 
 def frontier_table():
@@ -66,6 +70,7 @@ def frontier_table():
                 win += 1
                 cells.append(r"\textbf{JHQ}")
             else:
+                WINS[best] += 1
                 # "CAGRA-int8 $2.7\times$" made the six-column table 30pt too
                 # wide for the LNCS block; the caption expands the names.
                 short = best.replace("CAGRA-", "").replace("RaBitQ", "RaBitQ")
@@ -131,12 +136,20 @@ def main():
           % (win, tot))
     print("  ranges for the body, so they are not typed by hand:")
     for nm, v in sorted(MARGINS.items()):
-        print("     %-11s leads in %2d cells, margin over JHQ %.1fx to %.1fx"
-              % (nm, len(v), min(v), max(v)))
+        print("     %-11s leads in %2d cells (%d with a JHQ point to compare), "
+              "margin over JHQ %.1fx to %.1fx"
+              % (nm, WINS[nm], len(v), min(v), max(v)))
+    print("     JHQ leads in %d; wins sum to %d of %d cells"
+          % (win, win + sum(WINS.values()), tot))
     print("  and over the cells below Recall@10=0.95 only:")
     for nm, v in sorted(MARGINS_LOW.items()):
         print("     %-11s leads in %2d cells, margin over JHQ %.1fx to %.1fx"
               % (nm, len(v), min(v), max(v)))
+    q = style._quarantined()
+    if q:
+        print("  excluded as not status=ok before any envelope was taken:")
+        for r, v in sorted(q):
+            print("     recall=%.4f qps=%.0f" % (r, v))
     print("  wrote tex/tables/batch.tex")
 
 

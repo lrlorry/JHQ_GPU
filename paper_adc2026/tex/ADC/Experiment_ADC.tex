@@ -19,9 +19,10 @@ resource-budget calculations: Nsight Compute counters were unavailable in the
 container (\texttt{ERR\_NVGPUCTRPERM}), so we report none measured. Two recall
 noise floors are kept distinct: about $10^{-3}$ across builds in the documented
 cold-start experiment, and $\approx 10^{-4}$ for paired comparisons on one index
-from top-$c_k$ tie breaking. Fronts bucket recall at $10^{-3}$ so a
-tie-break-sized difference cannot buy a point a place, and every quoted ratio is
-the median of its one to three repeats. We do not enlarge batches by duplicating
+from top-$c_k$ tie breaking. The CPU comparison buckets recall at $10^{-3}$ so
+a tie-break-sized difference cannot buy a point a place; the GPU and baseline
+fronts are plain Pareto envelopes over the measured points, and the cuVS
+columns are the harness's three-run mean throughput, not a median. We do not enlarge batches by duplicating
 the roughly 1k available queries: duplication alone raises throughput
 $4$--$26\%$, so such a batch would measure an artefact.
 
@@ -41,10 +42,15 @@ codebook, with one measurement per cell.
 \label{sec:rq1}
 Figure~\ref{fig:frontier} gives the measured frontiers and Table~\ref{tab:front}
 reduces them to a single question: at each matched recall, which system is
-fastest? JHQ owns 4 of the 26 comparable cells, and all four are at
-Recall@$10\ge 0.97$. CAGRA-int8 leads in 14 of them, by $1.3$--$2.9\times$ and
-concentrated below Recall@$10{=}0.95$; CAGRA-fp32 leads in 3 by
-$1.1$--$1.4\times$ and IVF-RaBitQ in 4 by $1.0$--$1.4\times$. We state this rather than scope it away, because it
+fastest? JHQ owns 4 of the 25 cells, and all four are at
+Recall@$10\ge 0.97$. CAGRA-int8 leads in 13 of them, by $1.3$--$2.9\times$ and
+concentrated below Recall@$10{=}0.95$ --- $1.6$--$2.9\times$ over the cells
+strictly below it; CAGRA-fp32 leads in 3 by $1.1$--$1.4\times$ and IVF-RaBitQ in
+5 by $1.0$--$1.4\times$, measured on the 4 of those 5 JHQ also reaches. One row
+is excluded throughout: stella-trec24's CAGRA-int8 point at Recall@10 of
+$0.9692$ is \texttt{status=CONTAMINATED} in the harness's own record --- a
+$6.6\%$ throughput spread against $0.02$--$0.64\%$ elsewhere --- and the
+frontier generator had dropped only \texttt{FAILED} rows. We state this rather than scope it away, because it
 bounds the claim precisely: JHQ's region is the high-recall end, most clearly at
 high dimension, where openai3-1536 leads at $0.97$ and $0.98$ and openai3-3072
 at $0.97$.
@@ -54,7 +60,7 @@ at $0.97$.
   \caption{Fastest system at each matched recall, batch 1{,}024, with its margin
   over JHQ. \textsf{int8} and \textsf{fp32} are cuVS CAGRA, \textsf{RaBitQ} is
   cuVS IVF-RaBitQ; ``--'' is a recall no two systems both reach. JHQ is fastest
-  in 4 of 26 cells, all at Recall@$10\ge0.97$.}
+  in 4 of 25 cells, all at Recall@$10\ge0.97$.}
   \label{tab:front}
   \input{tables/frontier}
 \end{table}
@@ -67,7 +73,7 @@ Figure~\ref{fig:frontier} shows it one curve short of bge-m3. JHQ indexes all
 six --- a statement about the measured library and configuration paths on this
 device, not about those algorithms in general. And the
 throughput ordering has a build-time counterpart. Comparing cold builds per
-dataset, JHQ takes $1.1$--$13.4$\,s against $4.9$--$73.3$\,s for CAGRA int8,
+dataset, JHQ takes $1.1$--$13.4$\,s against $4.9$--$74.3$\,s for CAGRA int8,
 between $3.9\times$ and $7.4\times$ faster. Stated as a crossover rather than a
 ratio: where CAGRA int8 is the faster searcher, its throughput repays the build
 gap after $1.6$M to $8.9$M queries across the datasets and the two recall
@@ -116,8 +122,9 @@ We report the trend rather than a flat interval because the trend is the
 mechanism --- a table that misses is paid once per candidate per subspace, so
 its cost grows with $M$ and with the candidates scanned together. At $M{=}96$
 it does not rise monotonically --- $+3.6$, $+4.2$, $+0.7$, $+10.5\%$ --- which
-restates the $-4.2\%$ above: the full table still fits the carveout there, so
-little residency is left to win back.
+restates the $-4.2\%$ above: at $M{=}96$ the full table misses the carveout by
+$2$\,KiB against $290$\,KiB at $M{=}384$, so little residency is left to win
+back.
 
 \begin{figure}[tbp]
   \centering
@@ -175,8 +182,11 @@ and 168 generic loads at $G{=}1,2,4$ --- $G$ lookups across 42 statically
 unrolled subspace iterations --- and 144 at $G{=}8$, eight lookups over 18
 iterations after the compiler unrolled less. Floating-point adds are $G{+}1$ per
 iteration throughout, which checks the normalisation. Counting the lookup and
-what feeds it gives $4.4$, $13.0$, $25.0$ and $50.4$ issued instructions per
-candidate--sub\-space.
+what feeds it gives $4.4$, $13.0$, $25.0$ and $50.4$ static instructions per
+candidate--sub\-space --- static counts from the disassembly, not a dynamic
+issue count. The record retained is a top-10 opcode histogram, and $G{=}1$'s
+$\mathtt{LOP3}$ is not in its ten; its tenth entry, $25$, bounds $G{=}1$ at
+$5.0$ rather than $4.4$, still the smallest of the four twice over.
 
 One statement then needs no model: \emph{$G{=}1$ issues $4.4$ instructions per
 candidate--sub\-space against $G{=}2$'s $13.0$, and is slower at most operating
@@ -186,8 +196,8 @@ predicts it should be fastest and it is not, and the state it holds is the one
 thing that separates it.
 Figure~\ref{fig:issue} puts numbers on that, and they are an extrapolation: a
 least-squares line through the three resident points, extended back to $G{=}1$'s
-count, leaves its measured time $7$, $6$, $27$ and $65\%$ high on vogue-768 and
-$11$, $16$, $41$ and $112\%$ high on openai3-3072 at
+count, leaves its measured time $7$, $15$, $25$ and $62\%$ high on vogue-768 and
+$11$, $17$, $42$ and $113\%$ high on openai3-3072 at
 $\mathit{nprobe}=8,32,128,512$ --- from $4.4$, outside a fitted range of $13.0$
 to $50.4$. We read the sign and the trend: the shortfall grows with probe depth
 and with $M$, as ``a table that misses is paid once per candidate per subspace''
@@ -203,9 +213,9 @@ a build holding residency fixed while sweeping instruction count alone.
   query time is close to linear in issued instructions per
   candidate--sub\-space; $G{=}1$ issues the fewest of all, holds the most table
   state, and sits above a line fitted to the other three and extrapolated beyond
-  its range --- consistent with a residency cost. (b) That shortfall grows with
-  $M$, and with probe depth beyond $\mathit{nprobe}{=}32$; below it the two
-  datasets differ by less than the run noise.}
+  its range --- consistent with a residency cost. The dashed line, the
+  annotation and the text are the same least-squares fit. (b) That shortfall
+  grows with probe depth and with $M$.}
   \label{fig:issue}
 \end{figure}
 
@@ -251,10 +261,9 @@ resamples that risk $2{,}000$ times per cell and shows it is workload
 dependent, not a constant of $S$.
 
 \emph{Neither the sample nor the bisection is the approximation.} Walking the
-whole grid on the sample the rule bisects reproduces the bisection's choice in
-all $768$ draws, at $1.5$--$1.7\times$ its calibration cost. Evaluating the same
-criterion on the entire calibration pool is $2.1$--$2.9\times$ more expensive
-and selects a
+whole grid on the sample the rule bisects reproduces its choice in all $768$
+draws at $1.5$--$1.7\times$ the cost. The same criterion on the entire
+calibration pool is $2.1$--$2.9\times$ more expensive and selects a
 \emph{more} conservative budget, $\alpha{=}100$ where the reference is $64$ on
 vogue-768. The cause is in the criterion's definition: $\epsilon$ is an absolute
 count of disagreeing slots, and a sample of $S$ queries has $S\!\cdot\!k$ of
@@ -306,8 +315,10 @@ The CPU reference answers a different question: what the port buys over CPU JHQ
 at the same index parameters. Sweeping $\alpha$ and $\mathit{nprobe}$ on both
 sides, the GPU reaches $52\times$, $53\times$ and $85\times$ the CPU envelope on
 vogue-768 at Recall@10 of $0.9645$, $0.9828$ and $0.9905$, and $75$--$77\times$
-on openai3-3072 from $0.9414$ to $0.9813$; pinning $\alpha{=}100$ on both sides
-gives $43\times$, $48\times$ and $75\times$ on vogue-768 and $35$--$54\times$ on
+on openai3-3072 from $0.9414$ to $0.9813$. Pinning $\alpha{=}100$ on
+\emph{both} sides gives $41\times$, $45\times$ and $71\times$ on vogue-768 and
+$48$--$60\times$ on openai3-3072 --- the two move in opposite directions because
+the envelope's freedom over $\alpha$ and threads is worth more to the CPU on
 openai3-3072. The vogue figure rises steeply at the top because the CPU degrades
 faster than the GPU as $\mathit{nprobe}$ grows, and its highest point rests on
 the noisiest CPU cell we measured --- at $\mathit{nprobe}{=}1024$ and 32 threads
@@ -315,9 +326,10 @@ the six $\alpha$ settings span $792$ to $1{,}072$ QPS --- so we quote it as a
 point rather than fold it into a range. Five repeats of that cell put its two
 relevant $\alpha$ at medians of $1{,}027$ and $1{,}003$ QPS, the latter swinging
 $765$ to $1{,}015$ against $2\%$ on its neighbour; the ratios above use those
-medians, and the single-pass log gave $90\times$ and $80\times$. Above Recall@10 of $0.9911$ and $0.9900$ respectively the
-CPU sweep has no points, and those GPU operating points are reported as outside
-its range rather than divided by the CPU's last measurement. Three limits apply.
+medians, and the single-pass log gave $90\times$ and $80\times$. Above Recall@10 of $0.9911$ and $0.9900$ the retained envelope has no points
+(openai3-3072's raw $\alpha{=}100$ rows reach $0.9904$, but are dominated), and
+GPU points above that are reported as outside its range rather than divided by
+the CPU's last measurement. Three limits apply.
 The GPU side of the vogue comparison is the rule's chosen $\alpha$ at each
 $\mathit{nprobe}$, not an exhaustive $\alpha$ sweep. CPU rows below
 $\mathit{nprobe}{=}128$ are dropped, because 1{,}000 queries complete fast enough
@@ -330,7 +342,7 @@ with one measurement per cell we do not claim a statistical bound.
 
 \subsection{Construction and memory}
 \label{sec:rq6}
-Cold build times are $1.1$--$13.4$\,s for JHQ, $4.9$--$73.3$\,s for CAGRA int8,
+Cold build times are $1.1$--$13.4$\,s for JHQ, $4.9$--$74.3$\,s for CAGRA int8,
 $1.9$--$39.0$\,s for IVF-PQ and $4.3$--$13.0$\,s for IVF-RaBitQ where that path
 builds --- each baseline's fastest build per dataset, ranged across datasets,
 which is the choice least favourable to us; tested configurations, not

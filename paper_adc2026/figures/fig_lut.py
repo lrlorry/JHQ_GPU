@@ -114,5 +114,13 @@ bx.text(0.285, 0.102, "full, $256$/subspace", fontsize=7, va="center")
 bx.add_patch(Rectangle((0.24, 0.020), 0.03, 0.035, fc="#2a78d6", ec="none"))
 bx.text(0.285, 0.037, "factorised, $16{+}16$", fontsize=7, va="center")
 
+# What each full table misses the budget by, which Section 6.2 quotes.  The
+# band's generous end is the number to miss against: a table that does not fit
+# the most generous block size does not fit any of them.
+for _lab, _M in rows:
+    _full = _M * 256 * 4 / 1024
+    print("  M=%-4d full table %5.0f KiB, budget tops out at %.0f KiB, "
+          "overruns by %.0f KiB" % (_M, _full, budget[-1], _full - budget[-1]))
+
 fig.tight_layout(pad=0.2)
 save(fig, "fig_lut")

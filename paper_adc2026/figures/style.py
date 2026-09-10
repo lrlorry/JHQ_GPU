@@ -124,16 +124,54 @@ def load_rabitq():
     return {d: pareto(v) for d, v in rq.items() if v}
 
 
+def _quarantined():
+    """(recall, qps) pairs whose source row is not status=ok.
+
+    fronts.json was built by scripts/make_figures.py, which drops a row only
+    when status == "FAILED".  One row in the sweep is marked CONTAMINATED
+    instead -- stella-trec24, CAGRA-int8, itopk=64, whose own failures field
+    reads "QPS spread 6.6% against 0.02-0.64% on an idle card", i.e. the card
+    was not idle while it was timed -- and it went into the frontier at
+    618,859 QPS, which is 1.6x the next point down.  A timing taken on a busy
+    card is not a slower measurement of the same thing; it is not a
+    measurement of this system at all, and it carried a 2.6x lead at
+    stella's R=0.97 cell.
+
+    The exclusion is derived from the CSVs rather than hard-coded, so a row
+    that is re-run and cleared stops being excluded without an edit here.
+    """
+    import csv, glob
+    bad = set()
+    root = os.path.join(HERE, "..", "..", "results", "pre_freeze_v22_s2b1")
+    for f in glob.glob(os.path.join(root, "*.csv")):
+        try:
+            rows = csv.DictReader(l for l in open(f) if not l.startswith("#"))
+            for r in rows:
+                st = (r.get("status") or "").strip()
+                if st in ("ok", "FAILED", ""):
+                    continue
+                if r.get("recall") and r.get("qps_mean"):
+                    bad.add((round(float(r["recall"]), 6),
+                             round(float(r["qps_mean"]), 6)))
+        except Exception:
+            pass
+    return bad
+
+
 def load_baselines():
     """cuVS fronts from the v47 sweep; unchanged since, and not re-run."""
     import json
     p = os.path.join(HERE, "..", "..", "report_adc2026", "v47", "fronts.json")
     j = json.load(open(p))
+    bad = _quarantined()
+    def keep(series):
+        return [tuple(x) for x in series
+                if (round(float(x[0]), 6), round(float(x[1]), 6)) not in bad]
     out = {}
     for ds, v in j.items():
-        out[ds] = {"cagra": pareto([tuple(x) for x in v["series"].get("CAGRA fp32", [])]),
-                   "cagra8": pareto([tuple(x) for x in v["series"].get("CAGRA int8", [])]),
-                   "ivfpq": pareto([tuple(x) for x in v["series"].get("IVF-PQ", [])]),
+        out[ds] = {"cagra": pareto(keep(v["series"].get("CAGRA fp32", []))),
+                   "cagra8": pareto(keep(v["series"].get("CAGRA int8", []))),
+                   "ivfpq": pareto(keep(v["series"].get("IVF-PQ", []))),
                    "N": v["N"], "d": v["d"]}
     return out
 

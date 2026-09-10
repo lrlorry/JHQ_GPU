@@ -90,6 +90,12 @@ b.text(0.03, 0.90, "(b) cross-query reuse, controlled proxy",
        transform=b.transAxes, fontsize=7)
 
 fig.tight_layout(pad=0.3)
+# The duplication range Table 2 and the setup quote, at the D the table names.
+_d8 = [100 * (d[8] / d[1] - 1) for d in qd.values() if 1 in d and 8 in d]
+if _d8:
+    print("  query duplication D=8 raises throughput %+.0f%% to %+.0f%% over "
+          "%d cells" % (min(_d8), max(_d8), len(_d8)))
+
 # The range Table 2 and Section 6.3 quote for the table-free control.
 _tf = [100 * (v["v54_sign"] / v["v54_lut"] - 1)
        for v in v54.values() if "v54_lut" in v and "v54_sign" in v]

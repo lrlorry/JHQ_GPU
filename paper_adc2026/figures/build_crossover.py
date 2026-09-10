@@ -49,6 +49,16 @@ def cagra_int8_builds():
         for r in rows:
             if (r.get("method") or "").lower() != "cuvs-cagra-int8":
                 continue
+            # A row the harness quarantined is quarantined whole.  stella's
+            # fastest int8 build, 73.297 s, is the CONTAMINATED row's
+            # train_ms -- the same row whose 618,859 QPS is excluded from the
+            # frontier.  Its contamination reason is a throughput spread, so
+            # it does not directly impeach the build timer; but the reason it
+            # was flagged is that the card was busy, and a build timed on a
+            # busy card is no more trustworthy than a search timed on one.
+            st = (r.get("status") or "ok").strip()
+            if st and st != "ok":
+                continue
             t = r.get("train_ms") or r.get("build_ms")
             if t:
                 b[r.get("dataset")].append(float(t) / 1000.0)

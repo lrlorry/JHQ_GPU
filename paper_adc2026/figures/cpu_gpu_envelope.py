@@ -172,16 +172,31 @@ def main():
               % (ds, CPU_NPROBE_FLOOR))
         for r, q, s in cf:
             print("    R=%.4f %8.0f qps   %s" % (r, q, s))
+        # A second denominator, because the body describes one comparison as
+        # "pinning alpha=100 on both sides" and the envelope above is not that:
+        # it is swept over alpha *and* threads.  Quoting the envelope's ratio
+        # under that sentence describes a comparison nobody ran.  Both are
+        # printed and the body says which it means.
+        pf = front([(r, q, "a=100 np=%d t%d" % (np_, th))
+                    for (d2, th, np_), d in cpu.items()
+                    if d2 == ds and np_ >= CPU_NPROBE_FLOOR and 100.0 in d
+                    for r, q in [d[100.0]]])
+        print("    (CPU pinned at alpha=100, threads swept: %d points, "
+              "max R=%.4f)" % (len(pf), pf[-1][0] if pf else float("nan")))
         for arm in sorted(gpu.get(ds, {})):
             gf = front([(r, q, arm) for r, q in gpu[ds][arm]])
             print("  GPU %s vs that envelope, at matched recall:" % arm)
             for r, q, _ in gf:
                 c = interp(cf, r)
+                p100 = interp(pf, r)
+                tail = ("" if p100 is None
+                        else "   | CPU a=100 %7.0f = %5.1fx" % (p100, q / p100))
                 if c is None:
-                    print("    R=%.4f  GPU %8d   -- above the CPU envelope (max R=%.4f)"
-                          % (r, q, cf[-1][0]))
+                    print("    R=%.4f  GPU %8d   -- above the CPU envelope "
+                          "(max R=%.4f)%s" % (r, q, cf[-1][0], tail))
                 else:
-                    print("    R=%.4f  GPU %8d   CPU %7.0f   = %5.1fx" % (r, q, c, q / c))
+                    print("    R=%.4f  GPU %8d   CPU %7.0f   = %5.1fx%s"
+                          % (r, q, c, q / c, tail))
 
     # The asymmetry, on one dataset and one nprobe grid so it is a comparison
     # and not two separate observations.

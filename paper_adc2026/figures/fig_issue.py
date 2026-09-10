@@ -61,7 +61,20 @@ def sass():
 def timing():
     """(dataset, nprobe) -> {G: microseconds per query}, packed layout."""
     D = collections.defaultdict(dict)
+    # Phase 2 only.  The log's phase 3 re-measures G=1 and G=2 at the same
+    # probe depths and this used to be a plain assignment, so at nprobe 32,
+    # 128 and 512 the last write won: G=1 and G=2 came from phase 3 while
+    # G=4 and G=8, which phase 3 never runs, stayed on phase 2.  The line was
+    # then fitted across two phases of one run.  Same last-wins mistake that
+    # fig_lutgroups.py carried; it lived here too.
+    sec = None
     for ln in open(style.datafile("lut_groups.log"), errors="ignore"):
+        if "phase 2" in ln:
+            sec = "sweep"
+        elif "phase" in ln:
+            sec = None
+        if sec != "sweep":
+            continue
         m = re.search(r"(\S+)\s+M=\d+\s+layout=(\w+)\s+G=(\d)\s+np=(\d+)\s+"
                       r"recall=[\d.]+\s+qps=(\d+)", ln)
         if m and m.group(2) == "word":
@@ -87,7 +100,10 @@ def penalty(work, t):
     slope = (sum((x - mx) * (y - my) for x, y in zip(xs, ys))
              / sum((x - mx) ** 2 for x in xs))
     pred = my + slope * (work[1][1] - mx)
-    return pred, 100.0 * (t[1] / pred - 1.0)
+    # slope and intercept go back to the caller so the dashed line is the line
+    # the percentage was measured against.  It used to be drawn from the
+    # G=2/G=8 endpoints instead, so the curve and its own annotation disagreed.
+    return pred, 100.0 * (t[1] / pred - 1.0), slope, my - slope * mx
 
 
 def main():
@@ -104,15 +120,15 @@ def main():
         a.annotate("%s, $M{=}%d$" % (PRETTY[ds], M), (xs[1], t[4]),
                    textcoords="offset points", xytext=(4, -11), fontsize=6.5,
                    color=c)
-        pred, pct = penalty(work, t)
+        pred, pct, slope, icept = penalty(work, t)
         a.plot([work[1][1]], [t[1]], color=c, marker=mk, mfc="none", ms=5)
         a.plot([work[1][1], work[1][1]], [pred, t[1]], color=c, lw=0.8, ls=":")
         a.annotate(r"$%+.0f\%%$" % pct, (work[1][1], t[1]),
                    textcoords="offset points", xytext=(5, 3), fontsize=7, color=c)
-        # the line the resident points define, extended back to G=1's work
-        sl = (t[8] - t[2]) / (work[8][1] - work[2][1])
+        # the same least-squares line the annotation is measured against,
+        # extended back to G=1's work
         a.plot([work[1][1], work[8][1]],
-               [t[2] - sl * (work[2][1] - work[1][1]), t[8]],
+               [icept + slope * work[1][1], icept + slope * work[8][1]],
                color=c, lw=0.6, ls="--", alpha=0.55)
     for g in (1, 2, 4, 8):
         # G=1 sits at 4.4 instructions, close enough to the left spine that a
