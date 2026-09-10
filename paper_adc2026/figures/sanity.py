@@ -11,6 +11,13 @@ an hour looking plausible. Neither needed a clever check to catch.
   column of batch2.log breaks both -- 140,297 to 27,802 from batch 512 to 1024
   -- because a 20-core CPU job shared the host, and the timed region is
   host-queries-in to host-results-out.
+* RaBitQ's recall must match the frozen run. A silently degraded index passes
+  every shape check -- the curves stay well-ordered, they just sit lower --
+  and the failure that has actually happened here is the serialize/deserialize
+  round-trip going missing, which read 0/20.
+* An interpolated ratio must not jump more than 2x between adjacent batch
+  sizes. That is the 1.05 to 4.38 signature, and it survives monotonicity
+  because it comes from an outermost segment where one curve is steep.
 * Recall on the same dataset must agree between CPU and GPU where the
   parameters match. The CPU bench read 1.0000 at nprobe=16 on vogue-768
   against 0.9939 at nprobe=1024 on the GPU, because its Recall@10 scanned the
@@ -87,10 +94,72 @@ def cpu_recall(path):
         print("  (no CPU rows at an nprobe the GPU reference covers)")
 
 
+# ── two more gaps, found by asking what monotonicity would still miss ──────
+#
+# A silently degraded RaBitQ index passes the monotonicity checks: every curve
+# stays well-ordered, they just sit lower. The round-trip through
+# serialize/deserialize is the failure that has actually happened here -- 0/20
+# recall before it was added -- so recall gets compared against the frozen run
+# rather than only checked for shape.
+RQ_REF = {("vogue-768", 128): 0.9564, ("openai3-3072", 128): 0.9407}
+
+
+def rq_recall(path):
+    for ln in open(path):
+        m = re.search(r"^\s*RaBitQ\s+(\S+)\s+np=(\d+)\s+.*recall=([\d.]+)", ln)
+        if m:
+            ds, np_, r = m.group(1), int(m.group(2)), float(m.group(3))
+            ref = RQ_REF.get((ds, np_))
+            if ref is not None and abs(r - ref) > 0.02:
+                note("%s RaBitQ np=%d: recall %.4f vs frozen %.4f -- index may "
+                     "not have round-tripped" % (ds, np_, r, ref))
+
+
+# An interpolated ratio can be an artefact even when both curves are monotone,
+# if the point falls in an outermost segment where one of them is steep. That
+# is the 1.05 to 4.38 signature between batch 512 and 1024. A ratio that jumps
+# more than 2x between adjacent batch sizes is not a batch effect.
+def ratio_jump(path, recalls=(0.90, 0.95)):
+    import math
+    d = collections.defaultdict(lambda: collections.defaultdict(list))
+    for ln in open(path):
+        m = re.search(r"^\s*(JHQ|RaBitQ)\s+(\S+)\s+np=(\d+)\s+(?:a=\S+\s+)?"
+                      r"batch=(\d+)\s+recall=([\d.]+)\s+qps=(\d+)", ln)
+        if m:
+            d[(m.group(2), int(m.group(4)))][m.group(1)].append(
+                (float(m.group(5)), int(m.group(6))))
+
+    def interp(pts, r):
+        p = sorted(pts)
+        if not p or r < p[0][0] or r > p[-1][0]:
+            return None
+        for i in range(1, len(p)):
+            if p[i][0] >= r:
+                (r0, q0), (r1, q1) = p[i - 1], p[i]
+                if r1 == r0:
+                    return q1
+                f = (r - r0) / (r1 - r0)
+                return 10 ** (math.log10(q0) + f * (math.log10(q1) - math.log10(q0)))
+    for ds in sorted({k[0] for k in d}):
+        for R in recalls:
+            prev = None
+            for b in sorted(k[1] for k in d if k[0] == ds):
+                a, c = interp(d[(ds, b)].get("JHQ", []), R), \
+                       interp(d[(ds, b)].get("RaBitQ", []), R)
+                if not (a and c):
+                    prev = None; continue
+                cur = a / c
+                if prev and (cur > prev[1] * 2 or cur * 2 < prev[1]):
+                    note("%s R=%.2f: ratio jumps %.2fx -> %.2fx from batch %d "
+                         "to %d -- not a batch effect" % (ds, R, prev[1], cur,
+                                                          prev[0], b))
+                prev = (b, cur)
+
+
 for p in sys.argv[1:]:
     print(p)
     try:
-        monotone(p); cpu_recall(p)
+        monotone(p); cpu_recall(p); rq_recall(p); ratio_jump(p)
     except FileNotFoundError:
         print("  (not written yet)")
 print("\n%d failure(s)" % len(FAIL))
