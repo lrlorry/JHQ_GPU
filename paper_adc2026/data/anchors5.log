@@ -1,0 +1,107 @@
+
+=== 2026-09-10T15:11:29Z head=282139a One unattended pass over both outstanding runs ===
+cpu_build_rc=0
+gpu_build_rc=0
+--- CPU pass=warmup 15:11:30
+ 32.0     1024       0.6908       2274.8    
+ 100.0    1024       0.6908       2067.3    
+JHQ 32.0     1024       0.9899       1017.3    
+JHQ 100.0    1024       0.9911       1015.2    
+cpu_rc=0 pass=warmup
+--- GPU pass=warmup 15:16:41
+JHQ  np=128   pass=warmup recall=0.9645 qps=166399
+JHQ  np=256   pass=warmup recall=0.9828 qps=121866
+JHQ  np=512   pass=warmup recall=0.9905 qps=86151
+PJHQ np=64    pass=warmup recall=0.9255 qps=183212
+PRQ  np=64    pass=warmup recall=0.9105 qps=178987
+PJHQ np=128   pass=warmup recall=0.9645 qps=138318
+PRQ  np=128   pass=warmup recall=0.9592 qps=145540
+PJHQ np=256   pass=warmup recall=0.9828 qps=98234
+PRQ  np=256   pass=warmup recall=0.9790 qps=113679
+gpu_rc=0 pass=warmup
+--- CPU pass=1 15:17:16
+ 32.0     1024       0.6908       1906.4    
+ 100.0    1024       0.6908       2294.5    
+JHQ 32.0     1024       0.9899       1013.4    
+JHQ 100.0    1024       0.9911       1014.8    
+cpu_rc=0 pass=1
+--- GPU pass=1 15:22:09
+JHQ  np=128   pass=1    recall=0.9645 qps=169905
+JHQ  np=256   pass=1    recall=0.9828 qps=114947
+JHQ  np=512   pass=1    recall=0.9905 qps=84543
+PJHQ np=64    pass=1    recall=0.9255 qps=178986
+PRQ  np=64    pass=1    recall=0.9099 qps=184314
+PJHQ np=128   pass=1    recall=0.9645 qps=138700
+PRQ  np=128   pass=1    recall=0.9564 qps=141234
+PJHQ np=256   pass=1    recall=0.9828 qps=98404
+PRQ  np=256   pass=1    recall=0.9801 qps=112678
+gpu_rc=0 pass=1
+--- CPU pass=2 15:22:45
+ 32.0     1024       0.6908       2197.1    
+ 100.0    1024       0.6908       2308.6    
+JHQ 32.0     1024       0.9899       1028.5    
+JHQ 100.0    1024       0.9911       979.1     
+cpu_rc=0 pass=2
+--- GPU pass=2 15:28:06
+JHQ  np=128   pass=2    recall=0.9645 qps=171452
+JHQ  np=256   pass=2    recall=0.9828 qps=123991
+JHQ  np=512   pass=2    recall=0.9905 qps=85818
+PJHQ np=64    pass=2    recall=0.9255 qps=183855
+PRQ  np=64    pass=2    recall=0.9131 qps=180837
+PJHQ np=128   pass=2    recall=0.9645 qps=139094
+PRQ  np=128   pass=2    recall=0.9571 qps=145060
+PJHQ np=256   pass=2    recall=0.9828 qps=98793
+PRQ  np=256   pass=2    recall=0.9791 qps=113799
+gpu_rc=0 pass=2
+--- CPU pass=3 15:28:41
+ 32.0     1024       0.6908       1950.4    
+ 100.0    1024       0.6908       2284.8    
+JHQ 32.0     1024       0.9899       1030.2    
+JHQ 100.0    1024       0.9911       764.9     
+cpu_rc=0 pass=3
+--- GPU pass=3 15:33:39
+JHQ  np=128   pass=3    recall=0.9645 qps=167652
+JHQ  np=256   pass=3    recall=0.9828 qps=124422
+JHQ  np=512   pass=3    recall=0.9905 qps=85026
+PJHQ np=64    pass=3    recall=0.9254 qps=182727
+PRQ  np=64    pass=3    recall=0.9117 qps=177063
+PJHQ np=128   pass=3    recall=0.9645 qps=138085
+PRQ  np=128   pass=3    recall=0.9563 qps=145731
+PJHQ np=256   pass=3    recall=0.9828 qps=95514
+PRQ  np=256   pass=3    recall=0.9809 qps=110527
+gpu_rc=0 pass=3
+--- CPU pass=4 15:34:13
+ 32.0     1024       0.6908       2228.8    
+ 100.0    1024       0.6908       2279.3    
+JHQ 32.0     1024       0.9899       1005.5    
+JHQ 100.0    1024       0.9911       1003.2    
+cpu_rc=0 pass=4
+--- GPU pass=4 15:39:31
+JHQ  np=128   pass=4    recall=0.9645 qps=169424
+JHQ  np=256   pass=4    recall=0.9828 qps=123979
+JHQ  np=512   pass=4    recall=0.9905 qps=86791
+PJHQ np=64    pass=4    recall=0.9255 qps=183450
+PRQ  np=64    pass=4    recall=0.9134 qps=178783
+PJHQ np=128   pass=4    recall=0.9645 qps=135190
+PRQ  np=128   pass=4    recall=0.9562 qps=137371
+PJHQ np=256   pass=4    recall=0.9828 qps=96929
+PRQ  np=256   pass=4    recall=0.9821 qps=108240
+gpu_rc=0 pass=4
+--- CPU pass=5 15:40:06
+ 32.0     1024       0.6908       2061.3    
+ 100.0    1024       0.6908       2254.9    
+JHQ 32.0     1024       0.9899       1027.4    
+JHQ 100.0    1024       0.9911       1007.1    
+cpu_rc=0 pass=5
+--- GPU pass=5 15:45:35
+JHQ  np=128   pass=5    recall=0.9645 qps=169128
+JHQ  np=256   pass=5    recall=0.9828 qps=124942
+JHQ  np=512   pass=5    recall=0.9905 qps=85729
+PJHQ np=64    pass=5    recall=0.9255 qps=181947
+PRQ  np=64    pass=5    recall=0.9166 qps=177902
+PJHQ np=128   pass=5    recall=0.9645 qps=137121
+PRQ  np=128   pass=5    recall=0.9599 qps=144423
+PJHQ np=256   pass=5    recall=0.9828 qps=98647
+PRQ  np=256   pass=5    recall=0.9805 qps=110288
+gpu_rc=0 pass=5
+=== ANCHORS_DONE 2026-09-10T15:46:10Z ===
