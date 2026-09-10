@@ -100,7 +100,7 @@ a.set_xticklabels(["1\n$256$", "2\n$2{\\times}16$", "4\n$4{\\times}4$",
                    "8\n$8{\\times}2$"])
 a.set_xlabel("groups $G$, and the table it gives")
 a.set_ylabel(r"QPS $\div$ QPS at $G{=}2$")
-a.set_ylim(0.33, 1.13)   # headroom above 1.0 for the panel tag and the note
+a.set_ylim(0.26, 1.13)   # headroom above 1.0 for the tag, below for the note
 for ds, M in SETS:
     a.plot([], [], color=DS_COLOR[ds], marker=DS_MARK[ds], ms=3.2, lw=0.9,
            label="%s, $M{=}%d$" % (PRETTY[ds], M))
@@ -108,12 +108,16 @@ a.legend(loc="lower left", fontsize=7)
 a.text(0.97, 0.975, "one line a probe depth; darker is deeper", fontsize=7,
        color="#898781", transform=a.transAxes, ha="right", va="top")
 a.text(0.03, 0.965, "(a)", transform=a.transAxes, fontsize=8, va="top")
+a.annotate(r"$G{=}4$ and $G{=}8$ hold the same $16$ entries "
+           r"($G\cdot 2^{8/G}$) -- only the lookups differ, $4$ vs $8$",
+           xy=(0.5, 0.012), xycoords="axes fraction", ha="center", va="bottom",
+           fontsize=6.5, color="#52514e")
 a.annotate("smaller table,\nslower", xy=(2.55, 0.60), xytext=(1.35, 0.47),
            fontsize=7, color="#52514e", linespacing=1.3,
            arrowprops=dict(arrowstyle="-|>", lw=0.7, color="#898781"))
 
 # ── (b) the 2x2 ────────────────────────────────────────────────────────────
-NP2 = [32, 128, 512]
+NP2 = [32, 128, 512]   # the phase-3 2x2 grid; nprobe=8 lives in phase 1
 w, xs = 0.34, np.arange(len(NP2))
 for i, (ds, M) in enumerate(SETS):
     off = (i - 0.5) * w
