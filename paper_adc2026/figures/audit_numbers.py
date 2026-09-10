@@ -55,6 +55,8 @@ def body_numbers():
             # measurements either.
             txt = re.sub(r"\\orcidID\{[^}]*\}", " ", txt)
             txt = re.sub(r"\\?\{\s*\$?\d[\d,.$\s]*\\?\}", " ", txt)
+            # ...and a bare comma list, as in nprobe}=8,32,128,512$
+            txt = re.sub(r"=\s*\d+(?:\s*,\s*\d+)+", " ", txt)
             for m in re.finditer(r"(?<![\w.])(\d+(?:[,{}]\d+)*(?:\.\d+)?)", txt):
                 v = m.group(1).replace("{,}", "").replace(",", "")
                 if v in KNOWN or len(v) < 2:
