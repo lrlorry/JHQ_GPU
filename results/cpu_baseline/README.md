@@ -42,6 +42,19 @@ Two Mac-isms have to be patched on any Linux host: the six absolute
 `/Users/apple/...` include paths in `jhq/examples/CMakeLists.txt`, and
 `#include </usr/local/opt/libomp/include/omp.h>` at `jhqlib/IndexJHQ.cpp:30`.
 
+### A second bug: Recall@10 was not Recall@10
+
+`recall_at_k` scanned the whole ground-truth row rather than its first k
+entries, so a returned neighbour counted as correct whenever it fell in the
+true top-`gt_k` -- 100 wide on vogue-768, 20 on openai3-3072. On vogue that
+reads 1.0000 from nprobe=16, against 0.9939 at nprobe=1024 on the GPU side,
+which measures the real thing. The GPU path fixed this in
+`common/recall.cuh`; this file still had the old loop.
+
+It errs against us -- the CPU reaches high recall cheaply, so the speedup is
+understated -- but it makes the two sides incomparable, which is worse.
+Fixed by intersecting against `min(k, gt_k)`.
+
 ### A real bug in bench_vogue768.cpp, found by openai3-3072
 
 `read_fvecs` and `read_ivecs` size their buffer as `*n * dim` with both
