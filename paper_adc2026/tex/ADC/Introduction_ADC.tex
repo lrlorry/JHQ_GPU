@@ -39,7 +39,7 @@ implementation we kept. Six controls contradict the byte-count prediction, most 
 four- and eight-way splits, which hold the same number of entries and differ
 only in how many lookups reach them. Static disassembly then supplies the
 implicated variable without a profiler: issued instructions per
-candidate--sub\-space are $4.4$, $13.0$, $25.0$ and $50.4$ at $G{=}1,2,4,8$, query
+candidate--sub\-space are $5.0$, $13.0$, $25.0$ and $50.4$ at $G{=}1,2,4,8$, query
 time is close to linear in them wherever the table is resident, and the one
 granularity whose table does not fit issues the fewest of any and is slower
 regardless. The budget rule is worth

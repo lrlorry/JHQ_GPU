@@ -5,7 +5,7 @@
 \label{sec:setup}
 All GPU systems run on one NVIDIA RTX 5090: 32{,}607 MiB device memory, 170 SMs,
 a 101{,}376-byte opt-in shared-memory limit per block; the host has 208 logical
-cores and 754 GB RAM. Datasets are vogue-768 ($1.0\text{M}\times 768$),
+cores and 754 GiB RAM. Datasets are vogue-768 ($1.0\text{M}\times 768$),
 arxiv-768 ($2.25\text{M}\times 768$), bge-m3 ($10.1\text{M}\times 1024$),
 stella-trec24 ($17.8\text{M}\times 1024$), openai3-1536
 ($1.0\text{M}\times 1536$) and openai3-3072 ($1.0\text{M}\times 3072$).
@@ -182,13 +182,11 @@ and 168 generic loads at $G{=}1,2,4$ --- $G$ lookups across 42 statically
 unrolled subspace iterations --- and 144 at $G{=}8$, eight lookups over 18
 iterations after the compiler unrolled less. Floating-point adds are $G{+}1$ per
 iteration throughout, which checks the normalisation. Counting the lookup and
-what feeds it gives $4.4$, $13.0$, $25.0$ and $50.4$ static instructions per
-candidate--sub\-space --- static counts from the disassembly, not a dynamic
-issue count. The record retained is a top-10 opcode histogram, and $G{=}1$'s
-$\mathtt{LOP3}$ is not in its ten; its tenth entry, $25$, bounds $G{=}1$ at
-$5.0$ rather than $4.4$, still the smallest of the four twice over.
+what feeds it gives $5.0$, $13.0$, $25.0$ and $50.4$ static instructions per
+candidate--sub\-space. These are static counts over the kernel's disassembled
+span, not a dynamic issue count.
 
-One statement then needs no model: \emph{$G{=}1$ issues $4.4$ instructions per
+One statement then needs no model: \emph{$G{=}1$ issues $5.0$ instructions per
 candidate--sub\-space against $G{=}2$'s $13.0$, and is slower at most operating
 points anyway}. It issues the fewest of any granularity while holding the most
 table state --- 256 entries a subspace against 32 --- so instruction count
@@ -196,9 +194,9 @@ predicts it should be fastest and it is not, and the state it holds is the one
 thing that separates it.
 Figure~\ref{fig:issue} puts numbers on that, and they are an extrapolation: a
 least-squares line through the three resident points, extended back to $G{=}1$'s
-count, leaves its measured time $7$, $15$, $25$ and $62\%$ high on vogue-768 and
-$11$, $17$, $42$ and $113\%$ high on openai3-3072 at
-$\mathit{nprobe}=8,32,128,512$ --- from $4.4$, outside a fitted range of $13.0$
+count, leaves its measured time $6$, $14$, $23$ and $56\%$ high on vogue-768 and
+$10$, $16$, $40$ and $108\%$ high on openai3-3072 at
+$\mathit{nprobe}=8,32,128,512$ --- from $5.0$, outside a fitted range of $13.0$
 to $50.4$. We read the sign and the trend: the shortfall grows with probe depth
 and with $M$, as ``a table that misses is paid once per candidate per subspace''
 predicts, and $G{=}2$ pays least of either cost. Instruction counts and
