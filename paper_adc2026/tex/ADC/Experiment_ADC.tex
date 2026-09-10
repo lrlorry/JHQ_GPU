@@ -129,18 +129,14 @@ there is almost no residency to win back.
 \subsection{RQ3: can the byte-count explanation be rejected?}
 \label{sec:rq4}
 Table~\ref{tab:neg} collects the controls that vary bytes and issued work
-independently, and each row rejects one version of ``fewer bytes is faster''.
-Removing almost all table state loses heavily while \emph{raising} the
-resident-block count the shared-memory budget implies, so neither residency nor
-attainable occupancy alone is the bottleneck. Moving identical bytes in 32-bit
-words gains up to $66\%$ --- same bytes, fewer transactions --- and the gain
-rises with probe depth for the reason the factorisation gain does: a load is
-paid once per candidate per subspace. Fusing residual refinement removes a round
-trip and still loses, the fused kernel carrying both phases' footprints for the
-whole scan. And table construction is under $3\%$ of a batch, which rules out
-faster table building as the explanation for factorisation. The probe cursor is
-an implementation correction rather than a contribution, included because its
-size is diagnostic.
+independently; its third column names the version of ``fewer bytes is faster''
+each row rejects. Two are worth reading twice. Removing almost all table state
+loses heavily while \emph{raising} the resident-block count the shared-memory
+budget implies, so neither residency nor attainable occupancy alone is the
+bottleneck. And moving identical bytes in 32-bit words gains up to $66\%$,
+rising with probe depth for the reason the factorisation gain does: a load is
+paid once per candidate per subspace. Table construction is under $3\%$ of a
+batch, so faster table building does not explain the factorisation either.
 
 \begin{table}[tbp]
   \centering
@@ -161,30 +157,24 @@ size is diagnostic.
   \end{tabular}
 \end{table}
 
-These controls reject competing explanations but do not measure the variable
-they implicate, and static instruction counts need no profiler.
+The controls reject competing explanations but do not measure the variable they
+implicate, and static instruction counts need no profiler for that.
 \texttt{cuobjdump -sass} on \texttt{scan\_ivf\_coalesced\_kernel} finds exactly
-$G$ generic loads per unrolled subspace iteration at every $G$, and $G{+}1$
-floating-point adds, which is the check that the normalisation is right;
-counting the lookup and what feeds it gives $5.0$, $13.0$, $25.0$ and $50.4$
-static instructions per candidate--sub\-space at $G{=}1,2,4,8$. These are
-static counts over the kernel's disassembled span, not a dynamic issue count.
-
-One statement then needs no model: \emph{$G{=}1$ issues $5.0$ instructions per
-candidate--sub\-space against $G{=}2$'s $13.0$, and is slower at most operating
-points anyway}. It issues the fewest of any granularity while holding the most
-table state --- 256 entries a subspace against 32 --- so instruction count
-predicts it should be fastest and it is not, and the state it holds is the one
-thing that separates it.
-Fitting query time to instruction count over the three granularities whose
-table is resident and extending the line back to $G{=}1$ puts a size on the
-shortfall --- it grows with probe depth and with $M$, as ``a table that misses
-is paid once per candidate per subspace'' predicts --- but that size is an
-extrapolation beyond the fitted range, so we read its sign and its trend and
-not its magnitude. Instruction counts and
-controlled comparisons together are consistent with this account on the tested
-card; they are not an independent measurement of the two terms, which would need
-a build holding residency fixed while sweeping instruction count alone.
+$G$ generic loads and $G{+}1$ floating-point adds per unrolled subspace
+iteration --- the second is the check that the normalisation is right --- giving
+$5.0$, $13.0$, $25.0$ and $50.4$ static instructions per candidate--sub\-space
+at $G{=}1,2,4,8$. One statement then needs no model: \emph{$G{=}1$ issues $5.0$
+against $G{=}2$'s $13.0$, and is slower at most operating points anyway}. It
+issues the fewest of any granularity while holding the most table state --- 256
+entries a subspace against 32 --- so instruction count predicts it should be
+fastest, it is not, and the state it holds is the one thing that separates it.
+Extending a fit over the three resident granularities back to $G{=}1$ sizes that
+shortfall and shows it growing with probe depth and with $M$, but the size is an
+extrapolation beyond the fitted range, so we read its sign and trend only.
+Instruction counts and controlled comparisons are together consistent with this
+account on the tested card; they are not an independent measurement of the two
+terms, which would need a build holding residency fixed while sweeping
+instruction count alone.
 
 \subsection{RQ4: would one fixed budget do instead?}
 \label{sec:rq2}
@@ -194,15 +184,13 @@ grid; the sampled rule over 64 random samples at each $S$; the same criterion on
 the whole calibration pool; a whole-grid walk on the sample the rule bisects;
 and, for reference only, the fastest $\alpha$ within $10^{-3}$ of the best any
 $\alpha$ reaches, chosen with ground truth. Table~\ref{tab:budget} is the
-result; four claims follow from it.
+result.
 
 \emph{A constant meets the quality bar only by overpaying.} The reference budget
-is an order of magnitude apart on the two datasets. Its conservative end
-generalises and its cheap end does not, so the only fixed choice that is safe
-everywhere is the expensive one --- and on openai3-3072 that costs $32\%$ of
-throughput at $\mathit{nprobe}{=}128$ for no recall. The question is therefore
-not whether a constant exists but what it costs, which the earlier comparison
-against $\alpha{=}100$ could not address.
+is an order of magnitude apart on the two datasets; its conservative end
+generalises and its cheap end does not, so the only fixed choice safe everywhere
+is the expensive one, and on openai3-3072 that costs $32\%$ of throughput for no
+recall. The question is not whether a constant exists but what it costs.
 
 \emph{The rule finds it, given enough sample.} Its median selection matches the
 reference wherever the reference is resolved, and where it does not --- $S{=}32$
@@ -211,20 +199,20 @@ default the selection is worth $1.095$--$1.469\times$ in steady state.
 
 \emph{The sample is the risk, and $S{=}32$ is too small.} The right-hand block
 of Table~\ref{tab:budget} is a draw-level failure rate, not an average: at
-$S{=}32$ most draws on vogue-768 give up more than $10^{-3}$ of held-out recall.
-At $S{=}128$ that is at worst $8\%$, which is small and is not zero, and a
-$2{,}000$-draw resampling of the same question shows the rate is workload
-dependent rather than a property of $S$. We therefore withdraw Section~\ref{sec:method2}'s $S{=}32$: $S$ buys tolerance, and
+$S{=}32$ most draws on vogue-768 give up more than $10^{-3}$ of held-out recall,
+and at $S{=}128$ that is at worst $8\%$ --- small, and not zero. A $2{,}000$-draw
+resampling shows the rate is workload dependent rather than a property of $S$.
+We withdraw Section~\ref{sec:method2}'s $S{=}32$: $S$ buys tolerance, and
 $S{=}128$ is where the tolerance becomes small.
 
-\emph{Neither the sample nor the bisection is the approximation.} Walking the
-whole grid on the sample the rule bisects reproduces its choice in all $768$
-draws, so the search is exact on what it sees. Evaluating the criterion on the
-entire pool is more expensive and selects a \emph{more} conservative budget, and
-the reason is in the criterion: $\epsilon$ counts disagreeing slots absolutely
-while a sample of $S$ queries has $S\!\cdot\!k$ of them, so the same
-$\epsilon{=}1$ tightens as the sample grows. $\epsilon$ and $S$ cannot be chosen
-independently, which is the substantive limitation of the rule as stated.
+\emph{Neither the sample nor the bisection is the approximation.} The whole-grid
+walk reproduces the bisection's choice in all $768$ draws, so the search is exact
+on what it sees; evaluating the criterion on the entire pool costs more and
+selects a \emph{more} conservative budget. The reason is in the criterion:
+$\epsilon$ counts disagreeing slots absolutely while a sample of $S$ queries has
+$S\!\cdot\!k$ of them, so the same $\epsilon{=}1$ tightens as the sample grows.
+$\epsilon$ and $S$ cannot be chosen independently, which is the rule's
+substantive limitation.
 
 Two earlier observations survive. An earlier prototype of the rule recovers the
 swept $\alpha$ in three of four configurations at $\mathit{nprobe}{=}128$, the
