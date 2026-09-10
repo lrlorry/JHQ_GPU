@@ -35,6 +35,12 @@ timeout 2400 cmake --build build -j 16 --target demo_jhq_v57 bench_rq_batch2 >/d
 rc=$?; echo "gpu_build_rc=$rc"
 [ "$rc" -ne 0 ] && { echo "=== ANCHORS_DONE build failed, nothing run ==="; exit 1; }
 
+# bench_rq_batch2 links cuvs out of the conda tree and needs it at run time;
+# without this it dies with "librapids_logger.so: cannot open shared object
+# file" and the arm silently produces empty fields rather than failing.
+CONDA_SP=/root/miniconda3/lib/python3.12/site-packages
+export LD_LIBRARY_PATH="$(ls -d $CONDA_SP/*/lib64 $CONDA_SP/*/lib 2>/dev/null | tr '\n' ':')${LD_LIBRARY_PATH:-}"
+
 D=/root/autodl-tmp; V=/root/data
 E="JHQ_GPU_CODEBOOK=1 JHQ_ENCODE_GROUPED_OFF=1 JHQ_Y_TRANSPOSED=1 JHQ_RES_TRAIN_N=100000"
 VG="$V/vogue-768_base.fvecs $V/vogue-768_query.fvecs $V/vogue-768_groundtruth.ivecs"
@@ -71,7 +77,7 @@ gpu_pass(){   # $1 = pass label
         '/^Recall@10/{r=$3} /^QPS/{q=$3} END{printf "PJHQ np=%-5s pass=%-4s recall=%s qps=%s\n",n,p,r,q}'
     env JHQ_RQ_BATCH=512 timeout 9000 build/bench_rq_batch2 $VG 4096 8 $np 10 2 3 \
       2>/dev/null | awk -v n=$np -v p="$1" \
-        '/^Recall@10/{r=$3} /^QPS/{q=$3} END{printf "PRQ  np=%-5s pass=%-4s recall=%s qps=%s\n",n,p,r,q}'
+        '/^Recall@10/{r=$3} /^QPS/{q=$3} END{printf "PRQ  np=%-5s pass=%-4s recall=%s qps=%s%s\n",n,p,(r==""?"MISSING":r),(q==""?"MISSING":q),(r==""?"  <-- arm produced nothing":"")}'
   done
   echo "gpu_rc=$? pass=$1"
 }
