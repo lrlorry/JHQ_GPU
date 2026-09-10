@@ -1,22 +1,33 @@
 // Is the adaptive budget worth having, or would one small fixed alpha do?
 //
-// The paper reports the rule's gain against alpha=100, which is the budget JHQ
-// leaves as a default. That is the wrong denominator to stop at: a reviewer
-// will ask why not simply pin alpha=8 and skip the calibration entirely. This
-// demo answers it by putting every arm on one index and one timing harness:
+// The paper reports the rule's gain against alpha=100, the budget JHQ leaves as
+// a default. That is the wrong denominator to stop at: a reviewer will ask why
+// not pin alpha=8 and skip calibration. This puts four arms on one index and
+// one timing harness so the question has an answer.
 //
-//   FIXED   every alpha on the grid, recall against ground truth and QPS
-//   RULE    the sampled output-stability rule, S from JHQ_AS_SAMPLE
-//   FULL    the same criterion evaluated on all nq queries, not a sample
-//   ORACLE  the smallest alpha whose recall is within JHQ_ORACLE_TAU of the
-//           largest alpha's, chosen with ground truth -- an evaluation-only
-//           bound on what any budget selector could achieve here
+//   FIXED   every alpha on the grid: held-out recall and QPS
+//   RULE    the sampled bisection rule, repeated over random samples at each S
+//   FULL    the same criterion on the whole calibration pool, no sampling
+//   ORACLE  the fastest alpha whose held-out recall is within JHQ_ORACLE_TAU of
+//           the best any alpha reaches -- chosen with ground truth, so it is a
+//           bound on what any selector could do here, not a method
 //
-// Everything shares one build and one query load, which matters: openai3-3072
-// is 999000 x 3072 floats, so 28 separate runs would spend most of their time
-// reading the base set back off disk.
+// Queries are split before anything runs: even indices calibrate, odd indices
+// evaluate. The earlier version calibrated on a stride sample of all queries
+// and then scored recall on all of them, which let the rule see its own test
+// set. Every recall below is on the held-out half.
 //
-// ARM lines are machine-readable; the alpha grid comes from JHQ_AS_GRID.
+// Repeating the rule over random samples is what turns "S=32 worked once" into
+// a risk statement. The searches are on S queries, so the repeats are cheap
+// next to one full-batch timing run.
+//
+// The algorithm is untouched: this only measures arms of the policy that
+// already exists, plus two references it can be judged against.
+//
+// JHQ_AS_GRID     descending alpha grid          (default 200,100,64,32,16,8,4,2)
+// JHQ_ARM_S       sample sizes to try            (default 32,64,128)
+// JHQ_ARM_REPS    random samples per S           (default 64)
+// JHQ_ORACLE_TAU  recall slack for the oracle    (default 0.001)
 
 // v16 = v15's harness + the primary quantiser the paper's own implementation
 // uses. v15's primary was a Cartesian product of per-dimension scalar
@@ -59,6 +70,7 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include <tuple>
 #include <chrono>
 #include <algorithm>
 
@@ -234,267 +246,151 @@ int main(int argc, char** argv) {
             p = c + 1;
         }
     }
-    const int Sn = (S < nq) ? S : nq;
-    const int stride = nq / Sn;
-    std::vector<float> sq((size_t)Sn * d);
-    for (int i = 0; i < Sn; ++i)
-        std::copy(query.begin() + (size_t)(i * stride) * d,
-                  query.begin() + (size_t)(i * stride + 1) * d,
-                  sq.begin() + (size_t)i * d);
-
-    std::vector<int>   ref_ids((size_t)Sn * k), s_ids((size_t)Sn * k);
-    std::vector<float> s_dst((size_t)Sn * k);
-    int probes_used = 0;
-
-    idx.set_calibrating(true);
-    auto tc0 = Clock::now();
-    idx.set_alpha(grid[0]);
-    idx.search(sq.data(), Sn, k, s_dst.data(), ref_ids.data());
-
-    // Disagreeing slots against the reference. Set intersection per query:
-    // the same neighbours in a different order are the same answer.
-    auto miss_at = [&](size_t gi) {
-        idx.set_alpha(grid[gi]);
-        idx.search(sq.data(), Sn, k, s_dst.data(), s_ids.data());
-        ++probes_used;
-        long long hit = 0;
-        for (int q = 0; q < Sn; ++q) {
-            const int* a = ref_ids.data() + (size_t)q * k;
-            const int* b = s_ids.data()   + (size_t)q * k;
-            for (int i = 0; i < k; ++i)
-                for (int j = 0; j < k; ++j)
-                    if (a[i] == b[j]) { ++hit; break; }
-        }
-        return (long long)Sn * k - hit;
+    // ---- split before anything else: even calibrates, odd evaluates -----
+    std::vector<int> ci, ti;
+    for (int q = 0; q < nq; ++q) (q % 2 ? ti : ci).push_back(q);
+    const int nc = (int)ci.size(), nt = (int)ti.size();
+    auto gather = [&](const std::vector<int>& ix) {
+        std::vector<float> v((size_t)ix.size() * d);
+        for (size_t i = 0; i < ix.size(); ++i)
+            std::copy(query.begin() + (size_t)ix[i] * d,
+                      query.begin() + (size_t)(ix[i] + 1) * d,
+                      v.begin() + i * d);
+        return v;
     };
+    const std::vector<float> cq = gather(ci), tq = gather(ti);
+    printf("\nsplit: %d calibration queries, %d held-out\n", nc, nt);
 
-    printf("\ncalibration on %d of %d queries, slots allowed = %d, %s\n",
-           Sn, nq, SLOTS, LIN ? "linear" : "bisect");
-    size_t best = 0;
-    if (LIN) {
-        for (size_t gi = 1; gi < grid.size(); ++gi) {
-            long long m = miss_at(gi);
-            printf("  alpha=%-6.0f miss=%-6lld %s\n", grid[gi], m,
-                   m <= SLOTS ? "accept" : "reject -> stop");
-            if (m > SLOTS) break;
-            best = gi;
-        }
-    } else {
-        // Agreement is monotone in alpha -- a larger budget refines a superset
-        // of the same candidates -- so the accepted prefix of this descending
-        // grid can be found by bisection. Ties make it monotone only up to
-        // reordering within equal distances, so every probe is printed and a
-        // non-monotone grid would show as an accept below a reject.
-        size_t lo = 0, hi = grid.size() - 1;
-        while (lo < hi) {
-            size_t mid = (lo + hi + 1) / 2;
-            long long m = miss_at(mid);
-            printf("  alpha=%-6.0f miss=%-6lld %s\n", grid[mid], m,
-                   m <= SLOTS ? "accept" : "reject");
-            if (m <= SLOTS) lo = mid; else hi = mid - 1;
-        }
-        best = lo;
-    }
-    const double cal_ms = Ms(Clock::now() - tc0).count();
-    idx.set_calibrating(false);
-    const float picked = grid[best];
-    printf("picked alpha = %.0f   (%d probes, %.1f ms)\n", picked, probes_used, cal_ms);
-
-    auto full = [&](float a, const char* tag) {
+    // ---- per-query recall on the held-out half, for one alpha -----------
+    std::vector<int>   t_ids((size_t)nt * k);
+    std::vector<float> t_dst((size_t)nt * k);
+    auto test_arm = [&](float a) {
         idx.set_alpha(a);
-        idx.search(query.data(), nq, k, out_dists.data(), out_ids.data());
+        idx.search(tq.data(), nt, k, t_dst.data(), t_ids.data());
         const int R = 3; double t = 0;
         for (int r = 0; r < R; ++r) {
-            auto tr = Clock::now();
-            idx.search(query.data(), nq, k, out_dists.data(), out_ids.data());
-            t += Ms(Clock::now() - tr).count();
+            auto t0 = Clock::now();
+            idx.search(tq.data(), nt, k, t_dst.data(), t_ids.data());
+            t += Ms(Clock::now() - t0).count();
         }
         t /= R;
-        RecallResult rr = evaluate_recall(out_ids.data(), gt.data(), nq, k, d_gt);
-        printf("%-10s alpha=%-6.0f recall=%.4f  qps=%.0f  (%.2f ms)\n",
-               tag, a, rr.recall, nq / (t / 1000.0), t);
-        return std::make_pair(rr.recall, nq / (t / 1000.0));
-    };
-    auto rp = full(picked,  "picked");
-    auto rm = full(grid[0], "alpha_max");
-    printf("AF_RESULT picked=%.0f probes=%d recall_picked=%.4f qps_picked=%.0f "
-           "recall_max=%.4f qps_max=%.0f gain=%.3f cal_ms=%.1f batches_to_repay=%.1f\n",
-           picked, probes_used, rp.first, rp.second, rm.first, rm.second,
-           rp.second / rm.second, cal_ms,
-           (rp.second > rm.second)
-             ? cal_ms / (1000.0 * (double)nq * (1.0 / rm.second - 1.0 / rp.second))
-             : -1.0);
-
-    // ---- every fixed alpha, on the same harness -------------------------
-    printf("\n");
-    std::vector<std::pair<float, std::pair<double, double>>> fixed;
-    for (size_t gi = 0; gi < grid.size(); ++gi) {
-        auto r = full(grid[gi], "fixed");
-        fixed.push_back({grid[gi], r});
-        printf("ARM FIXED alpha=%.0f recall=%.4f qps=%.0f\n",
-               grid[gi], r.first, r.second);
-    }
-
-    // ---- the same criterion, but on every query rather than a sample ----
-    // If the sample is the weak part of the policy, this is what it costs to
-    // remove it, and whether removing it changes the choice.
-    idx.set_calibrating(true);
-    auto tf0 = Clock::now();
-    std::vector<int> f_ref((size_t)nq * k), f_ids((size_t)nq * k);
-    std::vector<float> f_dst((size_t)nq * k);
-    idx.set_alpha(grid[0]);
-    idx.search(query.data(), nq, k, f_dst.data(), f_ref.data());
-    size_t f_best = 0;
-    for (size_t gi = 1; gi < grid.size(); ++gi) {
-        idx.set_alpha(grid[gi]);
-        idx.search(query.data(), nq, k, f_dst.data(), f_ids.data());
+        std::vector<double> per(nt);
         long long hit = 0;
-        for (int q = 0; q < nq; ++q) {
-            const int* a = f_ref.data() + (size_t)q * k;
-            const int* b = f_ids.data() + (size_t)q * k;
+        for (int q = 0; q < nt; ++q) {
+            const int* got = t_ids.data() + (size_t)q * k;
+            const int* tru = gt.data() + (size_t)ti[q] * d_gt;
+            int h = 0;
             for (int i = 0; i < k; ++i)
-                for (int j = 0; j < k; ++j)
-                    if (a[i] == b[j]) { ++hit; break; }
+                for (int j = 0; j < k && j < d_gt; ++j)
+                    if (got[i] == tru[j]) { ++h; break; }
+            per[q] = (double)h / k; hit += h;
         }
-        long long miss = (long long)nq * k - hit;
-        printf("  full-grid alpha=%-6.0f miss=%-8lld %s\n", grid[gi], miss,
-               miss <= SLOTS ? "accept" : "reject");
-        if (miss <= SLOTS) f_best = gi;
-    }
-    const double full_cal_ms = Ms(Clock::now() - tf0).count();
-    idx.set_calibrating(false);
-    printf("ARM FULL alpha=%.0f cal_ms=%.1f\n", grid[f_best], full_cal_ms);
+        return std::make_tuple((double)hit / ((double)nt * k),
+                               nt / (t / 1000.0), per);
+    };
 
-    // ---- what ground truth would have chosen -----------------------------
+    std::vector<float> A(grid.begin(), grid.end());
+    std::vector<double> Arec(A.size()), Aqps(A.size());
+    std::vector<std::vector<double>> Aper(A.size());
+    printf("\n");
+    for (size_t i = 0; i < A.size(); ++i) {
+        auto r = test_arm(A[i]);
+        Arec[i] = std::get<0>(r); Aqps[i] = std::get<1>(r); Aper[i] = std::get<2>(r);
+        printf("ARM FIXED alpha=%-6.0f recall=%.4f qps=%.0f\n", A[i], Arec[i], Aqps[i]);
+    }
+
+    // ---- what ground truth would have picked ----------------------------
     const double TAU = std::getenv("JHQ_ORACLE_TAU")
                      ? atof(std::getenv("JHQ_ORACLE_TAU")) : 1e-3;
-    double best_recall = 0;
-    for (auto& f : fixed) best_recall = std::max(best_recall, f.second.first);
-    float oracle = grid[0];
-    double oracle_qps = 0;
-    for (auto& f : fixed)
-        if (f.second.first >= best_recall - TAU && f.second.second > oracle_qps) {
-            oracle = f.first; oracle_qps = f.second.second;
-        }
-    printf("ARM ORACLE alpha=%.0f tau=%.4f recall_ceiling=%.4f qps=%.0f\n",
-           oracle, TAU, best_recall, oracle_qps);
-    printf("ARM RULE alpha=%.0f cal_ms=%.1f sample=%d\n", picked, cal_ms, Sn);
-    idx.set_alpha(picked);
-    // ── end calibration ────────────────────────────────────────────────────
+    double ceil_rec = 0;
+    for (double r : Arec) ceil_rec = std::max(ceil_rec, r);
+    size_t orc = 0; double orq = -1;
+    for (size_t i = 0; i < A.size(); ++i)
+        if (Arec[i] >= ceil_rec - TAU && Aqps[i] > orq) { orq = Aqps[i]; orc = i; }
+    printf("ARM ORACLE alpha=%.0f tau=%.4f ceiling=%.4f recall=%.4f qps=%.0f\n",
+           A[orc], TAU, ceil_rec, Arec[orc], Aqps[orc]);
 
-    // Resident device memory with the index built and the search workspace
-    // allocated, measured rather than derived from bytes-per-vector.
-    size_t mem_free = 0, mem_total = 0;
-    cudaDeviceSynchronize();
-    cudaMemGetInfo(&mem_free, &mem_total);
-
-    // Per-repetition timings, so the harness can report a spread rather than a
-    // single number. Reported alongside the mean, not instead of it.
-    const int REPS = 5;
-    std::vector<double> rep_ms;
-    rep_ms.reserve(REPS);
-    for (int r = 0; r < REPS; r++) {
-        auto tr = Clock::now();
-        idx.search(query.data(), nq, k, out_dists.data(), out_ids.data());
-        rep_ms.push_back(Ms(Clock::now() - tr).count());
-    }
-    double ms = 0.0;
-    for (double v : rep_ms) ms += v;
-    ms /= REPS;
-
-    RecallResult rec = evaluate_recall(out_ids.data(), gt.data(), nq, k, d_gt);
-    double qps = nq / (ms / 1000.0);
-
-    printf("\nRecall@%d : %.4f     (standard: vs true top-%d)\n", k, rec.recall, k);
-    printf("Pre-v15 score : %.4f  (old metric: vs true top-%d -- for lining up "
-           "against existing results/*.csv only)\n", rec.legacy, rec.gt_width);
-    if (rec.dup_queries)
-        printf("WARNING   : %lld / %d queries returned a duplicate id\n",
-               rec.dup_queries, nq);
-    printf("Latency   : %.2f ms  (%d queries)\n", ms, nq);
-    printf("QPS       : %.0f\n", qps);
-    printf("VRAM used : %.1f MiB  (of %.0f MiB total, measured after build)\n",
-           (double)(mem_total - mem_free) / (1024.0 * 1024.0),
-           (double)mem_total / (1024.0 * 1024.0));
-    printf("rep_ms    :");
-    for (double v : rep_ms) printf(" %.3f", v);
-    printf("\n");
-
-#ifdef JHQ_HAS_DIAG
-    // JHQ_DIAG=1: the two numbers that say whether a low recall is a routing
-    // failure or a ranking one. Off by default -- the readbacks sit inside
-    // the timed region, so a diag run's QPS is not comparable.
-    {
-        const jhq_gpu::SearchDiag& dg = jhq_gpu::search_diag();
-        if (dg.on && !dg.cand.empty()) {
-            double sum = 0; long long mn = dg.cand[0], mx = dg.cand[0];
-            for (int v : dg.cand) { sum += v; mn = std::min<long long>(mn, v); mx = std::max<long long>(mx, v); }
-            const double mean = sum / (double)nq;
-            const double uniform = (double)nb * p.nprobe / (double)p.nlist;
-            printf("cand_mean : %.0f   (min %lld, max %lld; "
-                   "N*nprobe/nlist estimate = %.0f, ratio %.2fx)\n",
-                   mean, mn, mx, uniform, mean / uniform);
-
-            std::vector<int> vlist;
-            idx.vector_lists(vlist);
-            std::vector<char> opened((size_t)p.nlist, 0);
-            long long hit = 0, tot = 0;
-            for (int q = 0; q < nq; ++q) {
-                for (int j = 0; j < dg.nprobe; ++j) {
-                    int l = dg.probes[(size_t)q * dg.nprobe + j];
-                    if (l >= 0 && l < p.nlist) opened[l] = 1;
-                }
-                for (int j = 0; j < k; ++j) {
-                    int id = gt[(size_t)q * d_gt + j];
-                    if (id < 0 || id >= nb) continue;
-                    ++tot;
-                    int l = vlist[id];
-                    if (l >= 0 && opened[l]) ++hit;
-                }
-                for (int j = 0; j < dg.nprobe; ++j) {
-                    int l = dg.probes[(size_t)q * dg.nprobe + j];
-                    if (l >= 0 && l < p.nlist) opened[l] = 0;
-                }
+    // ---- the criterion, on a given set of calibration queries -----------
+    std::vector<int>   r_ref((size_t)nc * k), r_ids((size_t)nc * k);
+    std::vector<float> r_dst((size_t)nc * k);
+    auto run_rule = [&](const std::vector<int>& sample, double* cal_ms, int* probes) {
+        const int S2 = (int)sample.size();
+        std::vector<float> sq((size_t)S2 * d);
+        for (int i = 0; i < S2; ++i)
+            std::copy(cq.begin() + (size_t)sample[i] * d,
+                      cq.begin() + (size_t)(sample[i] + 1) * d,
+                      sq.begin() + (size_t)i * d);
+        idx.set_calibrating(true);
+        auto t0 = Clock::now();
+        idx.set_alpha(A[0]);
+        idx.search(sq.data(), S2, k, r_dst.data(), r_ref.data());
+        int pr = 0;
+        auto miss_at = [&](size_t gi) {
+            idx.set_alpha(A[gi]);
+            idx.search(sq.data(), S2, k, r_dst.data(), r_ids.data());
+            ++pr;
+            long long hit = 0;
+            for (int q = 0; q < S2; ++q) {
+                const int* a = r_ref.data() + (size_t)q * k;
+                const int* b = r_ids.data() + (size_t)q * k;
+                for (int i = 0; i < k; ++i)
+                    for (int j = 0; j < k; ++j)
+                        if (a[i] == b[j]) { ++hit; break; }
             }
-            const double ivf_rec = tot ? (double)hit / (double)tot : 0.0;
-            printf("ivf_recall: %.4f  (of the true top-%d, the share coarse "
-                   "routing brought in at all)\n", ivf_rec, k);
-            printf("lost_route: %.4f  lost_rank: %.4f  (the two ways the "
-                   "%.4f that is missing was lost)\n",
-                   1.0 - ivf_rec, ivf_rec - rec.recall, 1.0 - rec.recall);
+            return (long long)S2 * k - hit;
+        };
+        size_t lo = 0, hi = A.size() - 1;
+        while (lo < hi) {
+            size_t mid = (lo + hi + 1) / 2;
+            if (miss_at(mid) <= SLOTS) lo = mid; else hi = mid - 1;
         }
-    }
-#endif
+        *cal_ms = Ms(Clock::now() - t0).count();
+        *probes = pr;
+        idx.set_calibrating(false);
+        return lo;
+    };
 
-    if (out_prefix) {
-        char path[4096];
-        snprintf(path, sizeof(path), "%s.ivecs", out_prefix);
-        write_ivecs(path, out_ids.data(), nq, k);
-
-        snprintf(path, sizeof(path), "%s.json", out_prefix);
-        FILE* jf = fopen(path, "w");
-        if (!jf) { fprintf(stderr, "Cannot write %s\n", path); return 1; }
-        fprintf(jf,
-            "{\"version\":\"jhq_v19_tiled_scan\","
-            "\"dataset_base\":\"%s\",\"n\":%d,\"d\":%d,\"nq\":%d,"
-            "\"params\":{\"M\":%d,\"B\":%d,\"Br\":%d,\"alpha\":%.4f,"
-            "\"nlist\":%d,\"nprobe\":%d,\"ivf_iters\":%d,\"batch_size\":%d,"
-            "\"n_train\":%d,\"k\":%d},"
-            "\"eval\":{\"metric\":\"recall@k standard set-intersection\","
-            "\"k\":%d,\"gt_width\":%d,\"eval_gt_k\":%d,"
-            "\"recall_at_k\":%.6f,\"pre_v15_score\":%.6f,\"dup_queries\":%lld},"
-            "\"perf\":{\"qps\":%.2f,\"latency_ms\":%.4f,\"reps\":%d,"
-            "\"train_ms\":%.2f,\"add_ms\":%.2f},"
-            "\"neighbors_file\":\"%s.ivecs\"}\n",
-            base_path, nb, d, nq,
-            M, B, Br, alpha, nlist, nprobe, ivf_iters, batch_size, n_train, k,
-            rec.k, rec.gt_width, rec.eval_depth,
-            rec.recall, rec.legacy, rec.dup_queries,
-            qps, ms, REPS, train_ms, add_ms,
-            out_prefix);
-        fclose(jf);
-        printf("wrote     : %s.ivecs  %s.json\n", out_prefix, out_prefix);
+    // ---- the same criterion with no sampling at all ---------------------
+    {
+        std::vector<int> all(nc); for (int i = 0; i < nc; ++i) all[i] = i;
+        double cm; int pr;
+        size_t b = run_rule(all, &cm, &pr);
+        printf("ARM FULL alpha=%.0f recall=%.4f qps=%.0f cal_ms=%.1f probes=%d\n",
+               A[b], Arec[b], Aqps[b], cm, pr);
     }
 
+    // ---- the sampled rule, repeated, at several S -----------------------
+    const char* SS = std::getenv("JHQ_ARM_S");
+    std::vector<int> Slist;
+    { std::string t = SS ? SS : "32,64,128"; size_t p = 0;
+      while (p < t.size()) { size_t c = t.find(',', p); if (c == std::string::npos) c = t.size();
+        Slist.push_back(atoi(t.substr(p, c - p).c_str())); p = c + 1; } }
+    const int REPS = std::getenv("JHQ_ARM_REPS") ? atoi(std::getenv("JHQ_ARM_REPS")) : 64;
+    std::srand(12345);
+    for (int S2 : Slist) {
+        if (S2 > nc) continue;
+        std::vector<double> loss; std::vector<int> picks; double cm_sum = 0;
+        std::vector<double> qps_pick;
+        for (int r = 0; r < REPS; ++r) {
+            std::vector<int> pool(nc); for (int i = 0; i < nc; ++i) pool[i] = i;
+            for (int i = 0; i < S2; ++i) std::swap(pool[i], pool[i + std::rand() % (nc - i)]);
+            std::vector<int> sample(pool.begin(), pool.begin() + S2);
+            double cm; int pr;
+            size_t b = run_rule(sample, &cm, &pr);
+            cm_sum += cm; picks.push_back((int)A[b]);
+            loss.push_back(ceil_rec - Arec[b]); qps_pick.push_back(Aqps[b]);
+        }
+        std::sort(loss.begin(), loss.end());
+        double mean = 0, over = 0, mq = 0;
+        for (size_t i = 0; i < loss.size(); ++i) { mean += loss[i]; if (loss[i] > 1e-3) ++over; }
+        for (double q : qps_pick) mq += q;
+        std::sort(picks.begin(), picks.end());
+        printf("ARM RULE S=%-4d reps=%d cal_ms=%.1f mean_loss=%.4f p95_loss=%.4f "
+               "frac_over_1e-3=%.3f median_alpha=%d mean_qps=%.0f\n",
+               S2, REPS, cm_sum / REPS, mean / loss.size(),
+               loss[(size_t)(0.95 * (loss.size() - 1))], over / loss.size(),
+               picks[picks.size() / 2], mq / qps_pick.size());
+    }
+    printf("\n=== ARMS_OK ===\n");
     return 0;
 }
