@@ -1,0 +1,127 @@
+=== 2026-09-10T14:28:47Z head=e52a1fa Restore the frontier driver's env prefix; without it nothing matches ===
+configure_rc=0
+[ 33%] Built target jhq_cpu
+[ 66%] Built target jhq_v57_exp
+[100%] Built target demo_jhq_budget_arms
+build_rc=0
+### vogue-768 M=96 nlist=4096 np=128 14:28:49
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+base=932328×768  query=1000×768  gt=1000×100
+M=96  B=8  Br=8  alpha=100.0  k=10  nlist=4096  nprobe=128  ivf_iters=8  batch_size=1024  kmeans_iters=3
+primary: Ds=8  K=256  code=96 B/vec (1.000 bit/dim)
+note: ground truth is 100 wide; Recall@10 compares against its first 10 entries.
+Training on 159744 vectors...
+residual codebook trains on 100000 of 932328 vectors
+  train: 15.2 ms
+Adding 932328 vectors...
+  add:   260.8 ms
+
+split: 500 calibration queries, 500 held-out
+
+ARM FIXED alpha=200    recall=0.9676 qps=80624
+ARM FIXED alpha=100    recall=0.9676 qps=119049
+ARM FIXED alpha=64     recall=0.9674 qps=143451
+ARM FIXED alpha=32     recall=0.9650 qps=169882
+ARM FIXED alpha=16     recall=0.9568 qps=187467
+ARM FIXED alpha=8      recall=0.9346 qps=192743
+ARM FIXED alpha=4      recall=0.8870 qps=195223
+ARM FIXED alpha=2      recall=0.7988 qps=196835
+ARM ORACLE alpha=64 tau=0.0010 ceiling=0.9676 recall=0.9674 qps=143451
+ARM FULL alpha=100 recall=0.9676 qps=119049 cal_ms=16.7 probes=3
+ARM RULE S=32   reps=64 cal_ms=6.4 mean_loss=0.0035 p95_loss=0.0108 frac_over_1e-3=0.688 median_alpha=32 mean_qps=165194
+ARM RULE S=64   reps=64 cal_ms=6.6 mean_loss=0.0015 p95_loss=0.0026 frac_over_1e-3=0.453 median_alpha=64 mean_qps=155214
+ARM RULE S=128  reps=64 cal_ms=7.1 mean_loss=0.0004 p95_loss=0.0026 frac_over_1e-3=0.078 median_alpha=64 mean_qps=143609
+
+=== ARMS_OK ===
+run_rc=0 tag=vogue-768 np=128
+### vogue-768 M=96 nlist=4096 np=512 14:28:52
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+base=932328×768  query=1000×768  gt=1000×100
+M=96  B=8  Br=8  alpha=100.0  k=10  nlist=4096  nprobe=512  ivf_iters=8  batch_size=1024  kmeans_iters=3
+primary: Ds=8  K=256  code=96 B/vec (1.000 bit/dim)
+note: ground truth is 100 wide; Recall@10 compares against its first 10 entries.
+Training on 159744 vectors...
+residual codebook trains on 100000 of 932328 vectors
+  train: 14.2 ms
+Adding 932328 vectors...
+  add:   257.9 ms
+
+split: 500 calibration queries, 500 held-out
+
+ARM FIXED alpha=200    recall=0.9912 qps=50473
+ARM FIXED alpha=100    recall=0.9910 qps=65031
+ARM FIXED alpha=64     recall=0.9908 qps=72580
+ARM FIXED alpha=32     recall=0.9878 qps=78808
+ARM FIXED alpha=16     recall=0.9796 qps=82334
+ARM FIXED alpha=8      recall=0.9546 qps=82817
+ARM FIXED alpha=4      recall=0.9028 qps=83454
+ARM FIXED alpha=2      recall=0.8132 qps=83655
+ARM ORACLE alpha=64 tau=0.0010 ceiling=0.9912 recall=0.9908 qps=72580
+ARM FULL alpha=100 recall=0.9910 qps=65031 cal_ms=31.2 probes=3
+ARM RULE S=32   reps=64 cal_ms=12.3 mean_loss=0.0032 p95_loss=0.0116 frac_over_1e-3=0.594 median_alpha=32 mean_qps=76483
+ARM RULE S=64   reps=64 cal_ms=12.3 mean_loss=0.0015 p95_loss=0.0034 frac_over_1e-3=0.359 median_alpha=64 mean_qps=74346
+ARM RULE S=128  reps=64 cal_ms=12.8 mean_loss=0.0005 p95_loss=0.0004 frac_over_1e-3=0.031 median_alpha=64 mean_qps=71241
+
+=== ARMS_OK ===
+run_rc=0 tag=vogue-768 np=512
+### openai3-3072 M=384 nlist=4096 np=128 14:28:56
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+base=999000×3072  query=1000×3072  gt=1000×20
+M=384  B=8  Br=8  alpha=100.0  k=10  nlist=4096  nprobe=128  ivf_iters=8  batch_size=1024  kmeans_iters=3
+primary: Ds=8  K=256  code=384 B/vec (1.000 bit/dim)
+note: ground truth is 20 wide; Recall@10 compares against its first 10 entries.
+Training on 159744 vectors...
+residual codebook trains on 100000 of 999000 vectors
+  train: 75.2 ms
+Adding 999000 vectors...
+  add:   667.2 ms
+
+split: 500 calibration queries, 500 held-out
+
+ARM FIXED alpha=200    recall=0.9386 qps=33163
+ARM FIXED alpha=100    recall=0.9386 qps=45756
+ARM FIXED alpha=64     recall=0.9386 qps=51029
+ARM FIXED alpha=32     recall=0.9386 qps=61250
+ARM FIXED alpha=16     recall=0.9386 qps=64862
+ARM FIXED alpha=8      recall=0.9386 qps=67390
+ARM FIXED alpha=4      recall=0.9386 qps=67486
+ARM FIXED alpha=2      recall=0.9338 qps=67505
+ARM ORACLE alpha=4 tau=0.0010 ceiling=0.9386 recall=0.9386 qps=67486
+ARM FULL alpha=4 recall=0.9386 qps=67486 cal_ms=37.8 probes=3
+ARM RULE S=32   reps=64 cal_ms=12.5 mean_loss=0.0012 p95_loss=0.0048 frac_over_1e-3=0.250 median_alpha=4 mean_qps=67491
+ARM RULE S=64   reps=64 cal_ms=12.7 mean_loss=0.0003 p95_loss=0.0000 frac_over_1e-3=0.062 median_alpha=4 mean_qps=67488
+ARM RULE S=128  reps=64 cal_ms=13.4 mean_loss=0.0000 p95_loss=0.0000 frac_over_1e-3=0.000 median_alpha=4 mean_qps=67486
+
+=== ARMS_OK ===
+run_rc=0 tag=openai3-3072 np=128
+### openai3-3072 M=384 nlist=4096 np=512 14:29:05
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+base=999000×3072  query=1000×3072  gt=1000×20
+M=384  B=8  Br=8  alpha=100.0  k=10  nlist=4096  nprobe=512  ivf_iters=8  batch_size=1024  kmeans_iters=3
+primary: Ds=8  K=256  code=384 B/vec (1.000 bit/dim)
+note: ground truth is 20 wide; Recall@10 compares against its first 10 entries.
+Training on 159744 vectors...
+residual codebook trains on 100000 of 999000 vectors
+  train: 62.2 ms
+Adding 999000 vectors...
+  add:   699.2 ms
+
+split: 500 calibration queries, 500 held-out
+
+ARM FIXED alpha=200    recall=0.9802 qps=16230
+ARM FIXED alpha=100    recall=0.9802 qps=18776
+ARM FIXED alpha=64     recall=0.9802 qps=19619
+ARM FIXED alpha=32     recall=0.9802 qps=20963
+ARM FIXED alpha=16     recall=0.9802 qps=21365
+ARM FIXED alpha=8      recall=0.9802 qps=21548
+ARM FIXED alpha=4      recall=0.9800 qps=21675
+ARM FIXED alpha=2      recall=0.9722 qps=21662
+ARM ORACLE alpha=4 tau=0.0010 ceiling=0.9802 recall=0.9800 qps=21675
+ARM FULL alpha=4 recall=0.9800 qps=21675 cal_ms=101.0 probes=3
+ARM RULE S=32   reps=64 cal_ms=33.1 mean_loss=0.0025 p95_loss=0.0080 frac_over_1e-3=0.297 median_alpha=4 mean_qps=21671
+ARM RULE S=64   reps=64 cal_ms=33.5 mean_loss=0.0003 p95_loss=0.0002 frac_over_1e-3=0.016 median_alpha=4 mean_qps=21675
+ARM RULE S=128  reps=64 cal_ms=34.7 mean_loss=0.0002 p95_loss=0.0002 frac_over_1e-3=0.000 median_alpha=4 mean_qps=21675
+
+=== ARMS_OK ===
+run_rc=0 tag=openai3-3072 np=512
+=== ARMS_DONE 2026-09-10T14:29:17Z ===

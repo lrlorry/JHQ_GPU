@@ -23,7 +23,10 @@ and select the smallest tested-grid $\alpha$ with $D(\alpha)\le\epsilon$. The
 tolerance $\epsilon$ is a non-negative integer over the whole sample, not a
 per-query fraction. Set membership asks whether more residual work changes
 \emph{which} neighbours are returned while ignoring harmless permutations of the
-same IDs. $S{=}32$ and $\epsilon{=}1$ are empirical defaults, not constants. Ground-truth
+same IDs. $S{=}32$ and $\epsilon{=}1$ were our initial defaults;
+Section~\ref{sec:rq2} measures what they risk and withdraws the first of them.
+The two are also not independent: $\epsilon$ counts slots over the whole
+sample, so a fixed $\epsilon$ is a stricter test as $S$ grows. Ground-truth
 recall is what we care about but is unavailable online, and a learned predictor
 costs labels, maintenance and drift behaviour outside this scope. Output
 stability is observable from the running index, but cannot recover routing

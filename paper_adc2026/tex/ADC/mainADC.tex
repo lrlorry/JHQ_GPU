@@ -122,11 +122,9 @@ generous reference on sampled workload queries. On six datasets from 768 to
 byte-count prediction: a table-free form holds least state and loses
 $30$--$52\%$; four- and eight-way splits hold fewer entries than the two-way
 split and lose up to $38\%$; packed loading moves identical bytes and gains
-$30$--$48\%$. Disassembling the emitted kernel turns that from an inference into
-a decomposition: with the table resident, query time is close to linear in
-issued instructions per candidate--sub\-space, and the granularity whose table
-does not fit sits $4$--$120\%$ above that line although it issues the fewest
-instructions of all. The budget rule is worth $1.044$--$2.653\times$ steady-state for
+$30$--$48\%$. Disassembling the emitted kernel sharpens that: the granularity whose table
+does not fit issues the fewest instructions per candidate--sub\-space of any and
+is slower regardless, leaving residency as the term that has to account for it. The budget rule is worth $1.044$--$2.653\times$ steady-state for
 at most $0.0048$ recall, repaid in a median of $1.75$ batches, but its sampling
 risk is workload dependent. Against quantised IVF baselines JHQ owns the
 high-recall end at high dimension and indexes two datasets where the tested

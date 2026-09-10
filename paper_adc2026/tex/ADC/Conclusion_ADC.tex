@@ -5,12 +5,10 @@ We asked how JHQ's primary representation should execute on a GPU and how much
 of its hierarchy is worth executing. For the first, the Cartesian codebook
 admits an exact two-table factorisation whose state grows as $32M$ against
 $256M$, and the measurements show the payoff rising with both $M$ and probe
-depth while still-smaller splits lose to their extra lookups. Disassembling the
-kernel separates the two terms: query time is close to linear in issued
-instructions per candidate--sub\-space wherever the table is resident, and the
-granularity whose table does not fit sits $4$--$120\%$ above that line while
-issuing the fewest instructions --- so the target is a residency budget, not
-minimum bytes. For the second, a label-free
+depth while still-smaller splits lose to their extra lookups. Disassembling the kernel
+adds the term the controls could not reach: the granularity whose table does not
+fit issues the fewest instructions per candidate--sub\-space and is slower
+anyway, so the target is a residency budget rather than minimum bytes. For the second, a label-free
 stability rule buys $1.044$--$2.653\times$ for at most $0.0048$ recall and
 repays itself in a median of $1.75$ batches, with sampling risk that varies
 enough by workload that the sample size must be chosen against a stated target.

@@ -167,19 +167,27 @@ Floating-point adds per iteration are $G{+}1$ at every $G$, an independent check
 that the normalisation is right. Counting the lookup and the work that feeds it,
 issued instructions per candidate--sub\-space are $4.4$, $13.0$, $25.0$ and $50.4$.
 
-That is an axis the controls did not have, and it separates the two costs
-Section~\ref{sec:designspace} trades between (Figure~\ref{fig:issue}). Where the
-table is resident --- $G{=}2$, $4$, $8$ --- query time is close to linear in
-issued work, and the slope is the issue cost. $G{=}1$ issues the least work of
-all four and is nonetheless slower than the line predicts, by $8$, $4$, $33$ and
-$75\%$ on vogue-768 and $11$, $16$, $44$ and $120\%$ on openai3-3072 at
-$\mathit{nprobe}=8$, $32$, $128$ and $512$. That gap is the residency cost, it
-is the one thing the instruction line cannot explain, and it grows with probe
-depth and with $M$ exactly as ``a table that misses is paid once per candidate
-per subspace'' predicts. $G{=}2$ wins because it is the only granularity that
-pays little of either cost. We still measure one architecture, so cross-GPU
-validation stays open, but the mechanism itself is no longer an inference from a
-family of controls.
+That gives the controls an axis they did not have. The model-free statement
+comes first, because it needs no fit: \emph{$G{=}1$ issues $4.4$ instructions
+per candidate--sub\-space against $G{=}2$'s $13.0$, and is slower at most
+operating points anyway}. Fewer instructions and less table state, and still
+slower --- which no account resting on issued work or on bytes can explain, and
+which leaves table residency as the term that must.
+
+Figure~\ref{fig:issue} quantifies that, with the caveat the quantification
+carries. Where the table is resident ($G{=}2$, $4$, $8$) query time is close to
+linear in issued work; extending that line back to $G{=}1$'s instruction count
+puts its measured time $8$, $4$, $33$ and $75\%$ above the prediction on
+vogue-768 and $11$, $16$, $44$ and $120\%$ above it on openai3-3072, at
+$\mathit{nprobe}=8$, $32$, $128$ and $512$. Those percentages are a three-point
+fit extrapolated two thirds of its own range to the left, so we read the trend
+rather than the values: the shortfall grows with probe depth and is larger at
+$M{=}384$ than $M{=}96$, which is what ``a table that misses is paid once per
+candidate per subspace'' predicts. $G{=}2$ wins because it is the only
+granularity that pays little of either cost. This remains an analysis the
+evidence supports on one architecture, not an isolated measurement of two
+independent terms; separating them properly would need a build that holds
+residency fixed while sweeping instruction count on its own.
 
 \begin{figure}[tbp]
   \centering
@@ -192,28 +200,52 @@ family of controls.
   \label{fig:issue}
 \end{figure}
 
-\subsection{RQ4: what does the budget rule cost and return?}
+\subsection{RQ4: would one fixed budget do instead?}
 \label{sec:rq2}
-Three things must hold together for the policy to be usable. \emph{Gain}: across
-32 configurations where the rule changes the budget, steady-state throughput
-improves $1.044$--$2.653\times$. \emph{Quality cost}: the rule gives up at most
-$0.0048$ recall over 36 configurations, so the gain is not free.
-\emph{Amortisation}: payback ranges $0.5$--$21.0$ batches with median $1.75$;
-large payback near unit gain is partly definitional through the denominator, so
-we do not present that correlation as a mechanism.
+The rule is only worth its calibration if no constant beats it. We put four arms
+on one index and one timing harness, calibrating on even-indexed queries and
+reporting every recall on the odd-indexed half: each fixed $\alpha$ on the grid;
+the sampled rule, repeated over 64 random samples at each $S$; the same
+criterion on the whole calibration pool with no sampling; and, for reference
+only, the fastest $\alpha$ whose held-out recall is within $10^{-3}$ of the best
+any $\alpha$ reaches, chosen with ground truth.
 
-The fourth thing is sampling risk, and it is where the policy is weakest. In
-2{,}000 held-out resampled draws, $S{=}32$ keeps held-out loss within $10^{-3}$
-in $76\%$ of draws for openai3-3072 but only $27\%$ for vogue-768, whose mean
-loss at $S{=}32$ is $0.0033$ with a 95th percentile of $0.0110$. Openai3-3072
-reaches $98\%$ at $S{=}64$; vogue still has $11\%$ of draws outside the
-threshold at $S{=}128$. $S{=}32$ is therefore not a universal knee, and a
-deployment must pick $S$ against a stated risk target.
-Tolerance behaves similarly --- zero disagreeing slots leaves about $26\%$ of
-attainable throughput unclaimed, two costs about $0.0035$ recall --- and at
-$\mathit{nprobe}{=}128$ the rule recovers the swept $\alpha$ in three of four
-configurations, the fourth censored by $\alpha_{\max}$ rather than solved. The
-$\mathit{nprobe}{=}512$ full sweep is unavailable and is not inferred.
+\emph{No constant does.} The reference budget is $\alpha{=}64$ on vogue-768 at
+both probe depths and $\alpha{=}4$ on openai3-3072, a factor of sixteen apart.
+Pinning $\alpha{=}4$ costs vogue-768 $0.0884$ recall; pinning $\alpha{=}64$
+costs openai3-3072 $24\%$ of its throughput at $\mathit{nprobe}{=}128$ for
+$0.0004$ recall in return. This is the objection the earlier comparison against
+$\alpha{=}100$ could not answer, and it is the reason the budget is a control
+variable rather than a constant.
+
+\emph{The rule finds it, given enough sample.} The median selection over 64
+random samples matches the reference in all four cells at $S\ge 64$; at $S{=}32$
+it matches on openai3-3072 and picks $32$ where the reference is $64$ on
+vogue-768. Against the $\alpha{=}100$ default the selection is worth
+$1.095$--$1.475\times$ in steady state, repaid in $3.8$ to $19.1$ batches.
+
+\emph{The sample, not the criterion, is the risk --- and $S{=}32$ is too small.}
+Across the four cells, $25$--$69\%$ of random samples at $S{=}32$ give up more
+than $10^{-3}$ of held-out recall, with a 95th percentile as high as $0.0116$ on
+vogue-768. At $S{=}64$ that falls to $2$--$45\%$ and at $S{=}128$ to $0$--$8\%$.
+Section~\ref{sec:method2}'s $S{=}32$ is therefore not a defensible default and
+we do not recommend it; a deployment should pick $S$ against a stated risk
+target, which on these workloads means $S{=}128$.
+
+\emph{Removing the sampling does not fix it.} Evaluating the same criterion on
+the entire calibration pool is $2.4$--$2.9\times$ more expensive and selects a
+\emph{more} conservative budget, $\alpha{=}100$ where the reference is $64$ on
+vogue-768. The cause is in the criterion's definition: $\epsilon$ is an absolute
+count of disagreeing slots, so the same $\epsilon{=}1$ admits one miss in
+$320$ slots at $S{=}32$ and one in $5{,}000$ at the full pool. The tolerance
+tightens as the sample grows, which is a property worth stating plainly ---
+$\epsilon$ and $S$ cannot be chosen independently.
+
+Two earlier observations survive unchanged. At $\mathit{nprobe}{=}128$ the rule
+recovers the swept $\alpha$ in three of four configurations, the fourth
+censored by $\alpha_{\max}$ rather than solved; and over the broader 32-configuration
+sweep against $\alpha{=}100$, steady-state gain is $1.044$--$2.653\times$ for at
+most $0.0048$ recall with a median payback of $1.75$ batches.
 
 \begin{figure}[tbp]
   \centering
