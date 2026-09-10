@@ -1,0 +1,51 @@
+# cuobjdump -sass of demo_jhq_v59_g{1,2,4,8}, scan_ivf_coalesced_kernel span
+# collected 2026-09-10T13:16:41Z; histogram below, raw spans on the box
+# reproduce: /usr/local/cuda/bin/cuobjdump -sass build/demo_jhq_v59_g<G> |
+#   awk '/Function : .*scan_ivf_coalesced/{f=1;n=0} f&&/Function : /&&n++{f=0} f'
+# top-10 opcodes per granularity, suffixes stripped:
+
+
+### G=1
+    433 IMAD
+    221 IADD3
+     85 ISETP
+     84 FADD
+     80 BRA
+     60 SHF
+     56 LDG
+     42 PRMT
+     42 LD
+     25 MOV
+### G=2
+    572 IMAD
+    234 LOP3
+    220 IADD3
+    126 FADD
+    101 SHF
+     86 BRA
+     85 ISETP
+     84 LD
+     56 LDG
+     22 BSYNC
+### G=4
+    730 IMAD
+    486 LOP3
+    221 IADD3
+    210 FADD
+    185 SHF
+    168 LD
+     86 BRA
+     85 ISETP
+     56 LDG
+     22 BSYNC
+### G=8
+    616 IMAD
+    438 LOP3
+    163 SHF
+    162 FADD
+    144 LD
+    143 IADD3
+     79 ISETP
+     74 BRA
+     32 LDG
+     22 BSYNC

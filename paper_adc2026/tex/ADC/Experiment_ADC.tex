@@ -51,8 +51,9 @@ at $0.97$.
 \begin{table}[tbp]
   \centering
   \caption{Fastest system at each matched recall, batch 1{,}024, with its margin
-  over JHQ. C-int8 and C-fp32 are cuVS CAGRA; ``--'' is a recall no two systems
-  both reach. JHQ is fastest in 4 of 26 cells, all at Recall@$10\ge0.97$.}
+  over JHQ. \textsf{int8} and \textsf{fp32} are cuVS CAGRA, \textsf{RaBitQ} is
+  cuVS IVF-RaBitQ; ``--'' is a recall no two systems both reach. JHQ is fastest
+  in 4 of 26 cells, all at Recall@$10\ge0.97$.}
   \label{tab:front}
   \input{tables/frontier}
 \end{table}
@@ -148,10 +149,41 @@ which rules out faster table building as the explanation for factorisation.
   \end{tabular}
 \end{table}
 
-Together these are consistent with an issue-sensitive primary scan on this RTX
-5090. The qualifier is deliberate: the controls isolate competing explanations
-on one architecture, we infer issue sensitivity from comparisons rather than
-counters, and cross-GPU validation is open.
+These controls rule out competing explanations but do not measure the variable
+they implicate. Static instruction counts do not need a profiler, so we
+disassemble the emitted kernel. \texttt{cuobjdump -sass} on
+\texttt{scan\_ivf\_coalesced\_kernel} gives 42, 84 and 168 generic loads at
+$G{=}1$, $2$ and $4$ --- one, two and four lookups across 42 statically
+unrolled subspace iterations --- and 144 at $G{=}8$, which is eight lookups over
+18 iterations, the compiler having unrolled less because the body grew.
+Floating-point adds per iteration are $G{+}1$ at every $G$, an independent check
+that the normalisation is right. Counting the lookup and the work that feeds it,
+issued instructions per candidate--sub\-space are $4.4$, $13.0$, $25.0$ and $50.4$.
+
+That is an axis the controls did not have, and it separates the two costs
+Section~\ref{sec:designspace} trades between (Figure~\ref{fig:issue}). Where the
+table is resident --- $G{=}2$, $4$, $8$ --- query time is close to linear in
+issued work, and the slope is the issue cost. $G{=}1$ issues the least work of
+all four and is nonetheless slower than the line predicts, by $8$, $4$, $33$ and
+$75\%$ on vogue-768 and $11$, $16$, $44$ and $120\%$ on openai3-3072 at
+$\mathit{nprobe}=8$, $32$, $128$ and $512$. That gap is the residency cost, it
+is the one thing the instruction line cannot explain, and it grows with probe
+depth and with $M$ exactly as ``a table that misses is paid once per candidate
+per subspace'' predicts. $G{=}2$ wins because it is the only granularity that
+pays little of either cost. We still measure one architecture, so cross-GPU
+validation stays open, but the mechanism itself is no longer an inference from a
+family of controls.
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=\linewidth]{figs/fig_issue.pdf}
+  \caption{The two costs, measured separately. (a) With the table resident
+  ($G{=}2,4,8$) query time is close to linear in issued instructions per
+  candidate--sub\-space, counted from the disassembled kernel; $G{=}1$ issues the
+  fewest and still sits above that line, and the gap is the residency cost.
+  (b) That gap grows with probe depth and is larger at $M{=}384$ than $M{=}96$.}
+  \label{fig:issue}
+\end{figure}
 
 \subsection{RQ4: what does the budget rule cost and return?}
 \label{sec:rq2}

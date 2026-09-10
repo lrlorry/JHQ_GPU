@@ -8,9 +8,11 @@ stage $O(c_k d)$ over per-dimension codes, so three requirements follow: make
 primary access match candidate-parallel warp execution, keep the primary
 distance representation resident without replacing JHQ's quantiser, and preserve
 selective residual access instead of fusing accurate scoring into the broad
-scan. Figure~\ref{fig:pipeline} shows the pipeline. The orthogonal transform,
-primary codebook, residual definition and hierarchical ordering remain JHQ's;
-physical representation, execution and the external refinement policy change.
+scan. The orthogonal transform, primary codebook, residual definition and
+hierarchical ordering remain JHQ's; physical representation, execution and the
+external refinement policy change, and the scan uses a bounded per-thread
+top-$\alpha k$ selector whose deviation from exact selection
+Section~\ref{sec:mono} measures.
 
 During the broad scan, warp lanes score different candidates while advancing
 through the same subspace $m$, so candidate-major $[N,M]$ storage has the warp
@@ -24,16 +26,6 @@ instructions, addresses and loop iterations rather than logical bytes. We do not
 claim wider words are universally better; they add unpacking, dependencies and
 register pressure.
 
-\begin{figure}[tbp]
-  \centering
-  \includegraphics[width=\linewidth]{figs/fig_pipeline.pdf}
-  \caption{JHQ build and query pipeline. GPU redesign changes execution and
-  physical layout while preserving the original hierarchy. The scan uses bounded
-  per-thread top-$\alpha k$ selection; Proposition~\ref{prop:mono} characterises
-  the ideal exact selector and Section~\ref{sec:mono} quantifies the
-  implementation's measured deviation.}
-  \label{fig:pipeline}
-\end{figure}
 
 \subsection{Cartesian factorisation of the primary table}
 \label{sec:designspace}
