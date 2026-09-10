@@ -2,6 +2,31 @@
 
 This is the new drafting framework, not a replacement for any earlier skeleton or review. Repository branch: `fix/recall-eval-v15`. Evidence audit: 2026-09-10. Paths below are relative to the repository root; `data/` in this document means `paper_adc2026/data/`. Version identifiers appear only in internal evidence mapping, never in manuscript prose. Existing reviews are advice; frozen results and implementation semantics take precedence. `[TBD]` means the claim or required validation is not ready for publication.
 
+
+## Superseded measurements — read before drafting
+
+Three numbers that appear in earlier skeletons and reviews are older than the
+evidence. They were true of the runs they came from and are not true of the
+paper's current data. `README.md` is the evidence map and is current.
+
+| older claim | what is measured now | source |
+|---|---|---|
+| "sample size around `S=32`" / "S=32 is the knee" | **The knee is per workload.** 2000 resampled draws scored on held-out queries: at S=32, 76% inside 1e-3 on openai3-3072 and **27% on vogue-768**, where the mean held-out loss is 0.0033 and the 95th percentile 0.0110. openai3-3072 reaches 98% at S=64; vogue-768 still loses 11% of draws at S=128. Give S against a stated risk, not as a constant. | `data/alpha_resample.json`, `figures/alpha_resample.py` |
+| "factorised LUT: roughly +6% to +14.5%" | **−4% at M=96 to +53% at M=384.** All 28 original cells were M=96 and M=128. The 256-entry table is 98 KiB at M=96, which shared memory holds, and 393 KiB at M=384, which it does not: the factorisation matters exactly where the full table stops fitting. One M=96 cell is negative. | `data/lut_groups.log`, `figures/fig_lutgroups.py` |
+| any statement that the coarse quantiser is undertrained | **It is not, in the reported runs.** `_pa.sh` passes `JHQ_N_TRAIN = 39 × nlist` on every dataset. The undertraining finding is historical. | `SKELETON_REVIEW_v2.md` |
+
+Two results the skeleton could not have known to ask for, both now measured:
+
+- **Why halves and not quarters.** G=2 beats G=1, G=4 and G=8 in all eight
+  configurations, and G=4 and G=8 have *smaller* tables yet lose in proportion
+  to their loads a candidate a subspace. The scan is issue-bound — the same
+  conclusion as the table-free distance and the packed load, from a third
+  direction. (§6.4.2, `fig_lutgroups`.)
+- **The two payoffs multiply.** The factorisation is worth about the same with
+  and without the packed layout, so "pays twice" holds as an independent
+  product rather than an overlap — which the framing had been assuming without
+  evidence. (`fig_lutgroups(b)`.)
+
 ## Paper contract and contribution hierarchy
 
 Keep the teacher-required order: **1 Introduction; 2 Preliminaries; 3 Method Part 1; 4 Method Part 2; 5 Related Work; 6 Experiments; 7 Conclusion.** Detailed literature discussion stays in Section 5.

@@ -1,3 +1,9 @@
+> **Superseded.** This is the v1 skeleton. Draft from
+> `ADC_sections_3_4_6_mother_skeleton_v3.md`, and read its
+> "Superseded measurements" section first. Kept because
+> `SKELETON_REVIEW.md` reviews this version and the two only make
+> sense side by side.
+
 # ADC 2026 Paper Skeleton — Sections 3, 4, and 6
 
 > Purpose: this is a **paper-structure skeleton**, not final prose.  
