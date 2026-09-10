@@ -313,7 +313,8 @@ int main(int argc, char** argv) {
     // ---- the criterion, on a given set of calibration queries -----------
     std::vector<int>   r_ref((size_t)nc * k), r_ids((size_t)nc * k);
     std::vector<float> r_dst((size_t)nc * k);
-    auto run_rule = [&](const std::vector<int>& sample, double* cal_ms, int* probes) {
+    auto run_rule = [&](const std::vector<int>& sample, double* cal_ms, int* probes,
+                        size_t* enum_out = nullptr, double* enum_ms = nullptr) {
         const int S2 = (int)sample.size();
         std::vector<float> sq((size_t)S2 * d);
         for (int i = 0; i < S2; ++i)
@@ -347,6 +348,20 @@ int main(int argc, char** argv) {
         *cal_ms = Ms(Clock::now() - t0).count();
         *probes = pr;
         idx.set_calibrating(false);
+        if (enum_out) {
+            // The comparison the FULL arm did not make: on *this* sample, with
+            // this epsilon and this reference, walk the whole grid and take the
+            // smallest acceptable alpha. Bisection assumes the accepted set is
+            // a prefix; if it is not, this finds a budget bisection walked past.
+            idx.set_calibrating(true);
+            auto e0 = Clock::now();
+            size_t best = 0;
+            for (size_t gi = 1; gi < A.size(); ++gi)
+                if (miss_at(gi) <= SLOTS) best = gi;
+            *enum_ms = Ms(Clock::now() - e0).count();
+            idx.set_calibrating(false);
+            *enum_out = best;
+        }
         return lo;
     };
 
@@ -369,15 +384,17 @@ int main(int argc, char** argv) {
     std::srand(12345);
     for (int S2 : Slist) {
         if (S2 > nc) continue;
-        std::vector<double> loss; std::vector<int> picks; double cm_sum = 0;
+        std::vector<double> loss; std::vector<int> picks;
+        double cm_sum = 0, em_sum = 0; int disagree = 0;
         std::vector<double> qps_pick;
         for (int r = 0; r < REPS; ++r) {
             std::vector<int> pool(nc); for (int i = 0; i < nc; ++i) pool[i] = i;
             for (int i = 0; i < S2; ++i) std::swap(pool[i], pool[i + std::rand() % (nc - i)]);
             std::vector<int> sample(pool.begin(), pool.begin() + S2);
-            double cm; int pr;
-            size_t b = run_rule(sample, &cm, &pr);
-            cm_sum += cm; picks.push_back((int)A[b]);
+            double cm, em = 0; int pr; size_t eb = 0;
+            size_t b = run_rule(sample, &cm, &pr, &eb, &em);
+            cm_sum += cm; em_sum += em; picks.push_back((int)A[b]);
+            if (A[eb] != A[b]) ++disagree;
             loss.push_back(ceil_rec - Arec[b]); qps_pick.push_back(Aqps[b]);
         }
         std::sort(loss.begin(), loss.end());
@@ -390,6 +407,8 @@ int main(int argc, char** argv) {
                S2, REPS, cm_sum / REPS, mean / loss.size(),
                loss[(size_t)(0.95 * (loss.size() - 1))], over / loss.size(),
                picks[picks.size() / 2], mq / qps_pick.size());
+        printf("ARM ENUM S=%-4d reps=%d disagree=%d/%d enum_ms=%.1f bisect_ms=%.1f\n",
+               S2, REPS, disagree, REPS, em_sum / REPS, cm_sum / REPS);
     }
     printf("\n=== ARMS_OK ===\n");
     return 0;
