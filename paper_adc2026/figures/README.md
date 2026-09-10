@@ -27,6 +27,24 @@ the text.
 `style.py` holds the loaders and the camera-ready settings, so a change there
 applies to every figure at once.
 
+## Before believing a fresh log
+
+`python3 sanity.py ../data/<new>.log` — cheap invariants, run before anything
+is read. Both re-runs in this session exist because a bad result sat on screen
+looking plausible, and neither needed a clever check:
+
+- **QPS is non-decreasing in batch and non-increasing in nprobe.** A row that
+  breaks either is a failed measurement, not a finding. `batch2.log`'s RaBitQ
+  column breaks both — 140,297 to 27,802 from batch 512 to 1024 — because a
+  20-core CPU job shared the host and the timed region is host-queries-in to
+  host-results-out. Locking the GPU is not enough; the host has to be quiet too.
+- **CPU and GPU recall must agree where the parameters match.** The CPU bench
+  read 1.0000 at nprobe=16 on vogue-768 against 0.9939 at nprobe=1024 on the
+  GPU, because its `Recall@10` scanned the whole 100-wide ground-truth row.
+
+It exits non-zero, so a runner can stop rather than produce four more hours of
+numbers nobody can use.
+
 ## Conventions, and why
 
 - **PDF with Type-42 fonts.** Matplotlib's PDF default is Type-3, which most
