@@ -1,0 +1,48 @@
+\section{Conclusion}
+\label{sec:conclu}
+
+We studied JHQ as a representation-to-hardware mapping problem rather than a
+sequence of CUDA tricks. The design follows from explicit alternatives.
+Candidate-parallel scan determines the physical layout; $D_s{=}B{=}8$ exposes a
+natural packed word that reduces issued work without pretending to reduce bytes;
+and the Cartesian primary code creates a computation--residency trade-off
+between full LUTs, symbolic evaluation, and exact factorisation. This is an
+$M$-scaling property, not a one-off effect: full-table state grows as $256M$
+entries while the two-way factorised state grows as $32M$, so the factorised
+table carries an $8\times$ smaller coefficient against a fixed on-chip budget.
+On the tested card that budget is $59$--$94$\,KiB once the scan's own candidate
+scratch is deducted, which no full table in this paper meets and every
+factorised table clears; the cost of a table that misses is then paid once per
+candidate per subspace, so it grows with $M$ and with probe depth together.
+Consistent with that prediction, the measured factorisation effect is
+$0$--$11\%$ at $M{=}96$ and $8$--$53\%$ at $M{=}384$, rising monotonically with
+probe depth in both. The measured optimum is not the smallest representation:
+two 16-entry tables outperform both the full table and still-smaller four- and
+eight-way splits, and the clearest evidence is that the four- and eight-way
+tables are byte-identical to each other yet differ by up to $38\%$ in
+throughput. Negative controls therefore explain why the chosen design works
+instead of merely showing that it wins.
+
+We also preserve the hierarchy's other systems advantage: expensive
+per-dimension residual data are read only after primary screening. Because the
+useful survivor count varies sharply by workload, a label-free output-stability
+rule chooses the refinement factor from sampled workload queries. A matched CPU
+baseline shows this is a device-specific opportunity rather than an inherited
+one: the same $\alpha$ knob is worth $2.5$--$3\times$ more on the GPU than on
+the CPU at every probe depth, because a faster scan leaves refinement a larger
+share of the total. The rule's limitations remain explicit: $\alpha_{\max}$
+bounds what it can discover, sampling error is workload dependent, amortisation
+assumes a stable operating regime, and its bisection is justified by 15
+calibration traces in which sampled disagreement was monotone rather than by a
+theorem covering the bounded selector the kernel actually runs.
+
+Together, these contributions define a bounded operating region rather than a
+universal winner. JHQ is competitive through moderate-to-high recall on the
+directly comparable datasets at large batch, but other GPU ANN methods win in
+parts of the high-recall and batch-size space, and IVF-RaBitQ can use less
+device memory. The broader lesson is methodological: representation-specific GPU
+optimisation should be justified by the resource trade-off it changes and by
+alternatives that fail for identifiable reasons. Remaining evidence gaps are $k$
+sensitivity beyond 10, workload-drift and recalibration behaviour, direct
+instruction-count measurement in place of the controlled comparisons that
+currently stand in for it, and cross-GPU validation.

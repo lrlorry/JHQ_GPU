@@ -1,0 +1,144 @@
+\section{Adaptive Hierarchical Refinement}
+\label{sec:method2}
+
+\subsection{Why $\alpha$ needs workload-level control}
+Original JHQ leaves $\alpha$ externally specified. At $\mathit{nprobe}{=}128$,
+openai3-3072 is already flat from $\alpha{=}4$ over the measured grid, whereas
+arxiv-768 is still improving at $\alpha{=}200$. The useful budget therefore
+spans 4 to at least 200 in our measurements; the upper endpoint is censored
+rather than a plateau. A single global constant has an unavoidable failure mode:
+choose it high and easy workloads pay unnecessary $O(\alpha k d)$ residual work;
+choose it low and difficult workloads lose candidates before accurate
+refinement. We deliberately calibrate a workload-level operating point rather
+than predict $\alpha$ per query: this keeps the control path label-free and
+amortisable, at the cost of assuming a reasonably stable query distribution.
+
+\subsection{Output-stability criterion}
+Let $Q_s$ be $S$ sampled queries from the current workload and let
+$R_{\max}(q)$ be the returned top-$k$ ID set under a generous $\alpha_{\max}$.
+For another tested $\alpha$, let $R_\alpha(q)$ denote the corresponding top-$k$
+set. We define the total slot disagreement
+\begin{equation}
+  D(\alpha) \;=\; \sum_{q \in Q_s}
+  \bigl[\, k - \lvert R_\alpha(q) \cap R_{\max}(q) \rvert \,\bigr].
+  \label{eq:disagree}
+\end{equation}
+The tolerance $\epsilon$ is a non-negative integer over the entire sample, not a
+per-query fraction or a positional rank mismatch. We select the smallest
+tested-grid $\alpha$ satisfying $D(\alpha)\le\epsilon$. The design choice is
+intentional: set membership asks whether additional residual work changes which
+neighbours are returned, while ignoring harmless permutations of the same IDs.
+The current $S{=}32$ and $\epsilon{=}1$ are empirical defaults, not universal
+constants or correctness guarantees.
+
+Why use output stability instead of recall, a learned predictor, or a fixed
+heuristic? Ground-truth recall is the quantity we ultimately care about but is
+usually unavailable online; a learned predictor can adapt per query but
+introduces labelled training, model maintenance, and drift behaviour outside
+this paper's scope; a fixed heuristic cannot observe workload difficulty at all.
+Output stability is available from the running index itself and directly
+measures the marginal effect of spending more residual work. Its limitation is
+equally important: agreement with $\alpha_{\max}$ cannot recover IVF routing
+losses, cannot certify exact recall, and cannot reveal improvements beyond
+$\alpha_{\max}$. We therefore validate the proxy against ground truth offline
+rather than treating self-agreement as a guarantee.
+
+\subsection{Monotonicity and bisection}
+\label{sec:mono}
+We first evaluate $\alpha_{\max}$ to construct the reference, then search a
+discrete $\alpha$ grid by bisection rather than evaluate every value. The
+efficiency argument requires a monotone acceptance predicate, so we state the
+condition explicitly.
+
+\begin{proposition}[monotonicity of disagreement]
+\label{prop:mono}
+Let $\alpha_1 \le \alpha_2 \le \alpha_{\max}$. Under exact top-$c_k$ primary
+selection with $c_k$ non-decreasing in $\alpha$, a fixed refined distance, and a
+deterministic total tie rule,
+$D(\alpha_1) \ge D(\alpha_2) \ge D(\alpha_{\max}) = 0$.
+\end{proposition}
+
+\begin{proof}
+Let $S_\alpha$ be the primary-survivor set. Exact top-$c_k$ selection gives
+$S_{\alpha_1} \subseteq S_{\alpha_2} \subseteq S_{\alpha_{\max}}$. Order
+$S_{\alpha_{\max}}$ by the fixed refined distance together with the
+deterministic tie key, and let $R_{\max}$ be its first $k$ elements. Any element
+of $R_{\max}$ that is present in $S_\alpha$ must also appear in
+$\mathrm{top}\text{-}k(S_\alpha)$: fewer than $k$ elements of
+$S_{\alpha_{\max}}$ precede it, hence fewer than $k$ elements of the subset
+$S_\alpha$ precede it. Therefore
+$R_\alpha \cap R_{\max} = S_\alpha \cap R_{\max}$. Because the survivor sets are
+nested, this intersection can only grow with $\alpha$, so $D(\alpha)$ is
+non-increasing. \qed
+\end{proof}
+
+\paragraph{Implementation caveat and measured deviation.}
+Proposition~\ref{prop:mono} is exact for the ideal top-$c_k$ selector, but the
+production GPU scan uses a bounded per-thread selector with
+$\texttt{K\_LOCAL}{=}4$. A thread can therefore discard a globally top-$c_k$
+item if more than \texttt{K\_LOCAL} such items fall in its stride class, so
+theorem-level nestedness is not asserted for the deployed kernel. We quantify
+this approximation directly rather than hiding it behind aggregate recall: with
+the index pinned, vogue-768 at $\mathit{nprobe}{=}128$, and
+$\texttt{BLOCK}{=}512$, increasing \texttt{K\_LOCAL} from 4 to 8 changes 11 of
+10{,}000 returned ID positions, touches 4 of 1{,}000 queries, and gives 1 query
+a genuinely different result set. $\texttt{BLOCK}{=}512$ is deliberately the
+harder collision regime; $\texttt{K\_LOCAL}{=}8$ is register-infeasible at the
+production $\texttt{BLOCK}{=}1024$. Thus the departure from exact selection is
+small but nonzero in this stress test.
+
+Because nestedness is not guaranteed, the soundness of bisection cannot rest on
+Proposition~\ref{prop:mono} for the deployed system, and we do not claim it
+does. We instead check the predicate the search actually relies on. Across all
+15 measured calibration traces that probe two or more grid points, the sampled
+disagreement $D(\alpha)$ is non-increasing in $\alpha$ without exception. Within
+this evidence bisection returns the smallest grid $\alpha$ its sampled criterion
+accepts; outside it, the stopping behaviour is conservative relative to that
+criterion rather than certified. Floating-point ties are a separate
+implementation issue: the proposition assumes a deterministic total order, not
+bitwise-identical floating-point association.
+
+Sampled parameter tuning itself is not new. FAISS~\cite{faiss} exposes
+parameter-space exploration, and Li et al.~\cite{earlyterm} learn adaptive ANN
+termination. Our contribution is narrower: a predictor-free top-$k$ stability
+signal applied to JHQ's external residual budget, together with explicit
+validation of proxy error and calibration economics. The method trades per-query
+adaptivity for a simple workload-level control loop that can be amortised.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figs/fig_rule.pdf}
+  \caption{Label-free output-stability calibration. Ground truth is not used
+  during $\alpha$ selection.}
+  \label{fig:rule}
+\end{figure}
+
+\subsection{Calibration cost and reuse}
+Calibration is only useful if its one-time cost is amortised. Let
+$T_{\mathrm{cal}}$ be calibration time, $T_{\mathrm{fixed}}$ the per-batch time
+with a fixed baseline $\alpha$, and $T_{\mathrm{rule}}$ the per-batch time after
+selection. For $B$ subsequent batches,
+\begin{equation}
+  T_{\mathrm{adaptive}}(B)=T_{\mathrm{cal}}+B\,T_{\mathrm{rule}},
+  \qquad
+  T_{\mathrm{fixed}}^{\mathrm{total}}(B)=B\,T_{\mathrm{fixed}},
+\end{equation}
+and, when $T_{\mathrm{rule}}<T_{\mathrm{fixed}}$, the continuous break-even
+point is
+$B^{*}=T_{\mathrm{cal}}/(T_{\mathrm{fixed}}-T_{\mathrm{rule}})$. This formula
+makes the policy trade-off explicit: a more expensive calibration is rational
+only when the selected budget saves enough steady-state work and the operating
+point persists long enough. Across 32 configurations where the rule changes the
+budget, steady-state gain is $1.044$--$2.653\times$ and payback is
+$0.5$--$21.0$ batches, with median $1.75$. Large payback near gain${=}1$ is
+partly definitional through the denominator, so we do not present the
+correlation as a new systems mechanism.
+
+Reuse assumes the query distribution, routing configuration, $k$, and index
+remain sufficiently stable. This is the price of workload-level rather than
+per-query adaptation. Distribution drift is not yet measured. If recalibration
+occurs every $H$ batches, a simple accounting adds $T_{\mathrm{cal}}/H$ per
+batch, but selecting $H$ itself becomes a drift-detection problem outside the
+current evidence. Our calibration timer begins after sample copying, so the
+reported cost is algorithm-level rather than a complete production
+control-plane cost.

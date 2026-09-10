@@ -1,0 +1,51 @@
+\section{Related Work}
+\label{sec:relatedwork}
+
+We organise related work around the novelty threats that matter for this paper
+rather than as a catalogue.
+
+\paragraph{Quantisation and JHQ.}
+Product Quantization (PQ)~\cite{pq} established Cartesian decomposition across
+subspaces and asymmetric distance computation. JHQ~\cite{jhq} targets
+high-dimensional ANN with an orthogonal transform, a Cartesian-constructed
+primary quantiser, and hierarchical residual refinement. We do not claim JHQ's
+hierarchy or orthogonal transform as contributions; our work begins from that
+representation and asks how its specific structure should execute on a GPU.
+
+\paragraph{Small-table distance evaluation.}
+PQ Fast Scan~\cite{fastscan} showed that cache residency alone is insufficient
+for fast ADC and reorganised PQ scanning around small tables and SIMD-register
+lookups. Quicker ADC~\cite{quickeradc} generalised this direction with irregular
+product quantisers and split tables for wider code widths. These works make it
+essential not to claim novelty merely from ``smaller LUTs.'' The distinction is
+in provenance, not in loss: Quicker ADC obtains small tables by changing the
+quantiser, replacing 8-bit sub-quantisers with narrower irregular ones whose
+tables are small by construction. Our table is small because JHQ's existing
+8-bit Cartesian subspace code already separates exactly
+(Equation~\ref{eq:split}), so we preserve the represented codebook and derive an
+identity for its distance table rather than choosing a different one. We also
+show empirically that making the table even smaller can be slower because extra
+lookup instructions dominate --- most sharply between $G{=}4$ and $G{=}8$, whose
+tables are byte-identical. Thus our claim is about exploiting a particular
+representation, not about inventing small-table ADC in general.
+
+\paragraph{Adaptive ANN control.}
+ANN libraries such as FAISS~\cite{faiss} commonly expose parameter sweeps and
+tuning utilities, while learned approaches can adapt search termination to the
+query~\cite{earlyterm}. We therefore do not claim sampling or parameter
+selection as new. Our output-stability rule differs in its signal and deployment
+assumptions: it needs no labelled nearest neighbours and no learned predictor,
+compares the system's own returned top-$k$ sets to a generous-budget reference,
+and chooses the externally specified JHQ refinement budget. The evaluation
+separately quantifies selection error and amortisation, which are necessary
+because a label-free proxy is not a recall guarantee.
+
+\paragraph{GPU ANN systems.}
+CAGRA~\cite{cagra} represents the graph-based GPU frontier, and cuVS provides
+production implementations of CAGRA, IVF-PQ, and IVF-RaBitQ. GPU
+IVF-RaBitQ~\cite{ivfrabitq} combines inverted-file routing with low-bit RaBitQ
+codes and reports a strong recall--throughput/build/storage trade-off. These
+systems are not uniformly weaker than JHQ: our matched experiments show regime
+crossings in the high-recall tail and with batch size. This is why we report
+nondominated frontiers and configuration-specific build failures rather than a
+single aggregate speedup.

@@ -1,0 +1,176 @@
+% This is samplepaper.tex, a sample chapter demonstrating the
+% LLNCS macro package for Springer Computer Science proceedings;
+% Version 2.21 of 2022/01/12
+%
+\documentclass[runningheads]{llncs}
+%
+\usepackage[T1]{fontenc}
+% T1 fonts will be used to generate the final print and online PDFs,
+% so please use T1 fonts in your manuscript whenever possible.
+% Other font encondings may result in incorrect characters.
+%
+\usepackage{graphicx}
+
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage{caption}
+\renewcommand{\labelitemi}{$\bullet$}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{xcolor}
+% \usepackage[textwidth=130mm,textheight=205mm]{geometry}
+\usepackage{hyperref}
+% \usepackage{float}
+
+% \setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
+% \setlength{\intextsep}{8pt plus 2pt minus 2pt}
+
+
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.75}
+
+\raggedbottom
+\captionsetup{aboveskip=4pt, belowskip=2pt}
+\setlength{\textfloatsep}{6pt plus 1pt minus 1pt}
+\setlength{\intextsep}{6pt plus 1pt minus 1pt}
+\setlength{\floatsep}{6pt plus 1pt minus 1pt}
+
+
+% Used for displaying a sample figure. If possible, figure files should
+% be included in EPS format.
+%
+% If you use the hyperref package, please uncomment the following two lines
+% to display URLs in blue roman font according to Springer's eBook style:
+%\usepackage{color}
+%\renewcommand\UrlFont{\color{blue}\rmfamily}
+%\urlstyle{rm}
+%
+\begin{document}
+%
+\title{JHQ-GPU: Representation-Driven GPU Execution and
+       Workload-Adaptive Hierarchical Refinement}
+\titlerunning{JHQ-GPU}
+%\title{Contribution Title}
+%
+%\titlerunning{Abbreviated paper title}
+% If the paper title is too long for the running head, you can set
+% an abbreviated paper title here
+%
+
+ % \author{Qianqian Xiong}
+ % \affiliation{%
+ %   \institution{Australian National University}
+ %   \city{Canberra}
+ %   \country{Australia}}
+ % \email{secundussg@gmail.com}
+% \author{Mengxuan Zhang}
+% \authornote{Mengxuan Zhang is the corresponding author}
+% \affiliation{%
+%   \institution{Australian National University}
+%   \city{Canberra}
+%   \country{Australia}
+% }
+% \email{mengxuan.zhang@anu.edu.au}
+
+
+
+ 
+% \author{Qianqian Xiong\inst{1}\orcidID{0000-0003-0857-6875} \and
+% Mengxuan Zhang\inst{2}\orcidID{1111-2222-3333-4444} \and
+
+% %
+% \authorrunning{F. Author et al.}
+% % First names are abbreviated in the running head.
+% % If there are more than two authors, 'et al.' is used.
+% %
+% \institute{Australian National University}
+% \email{lncs@springer.com}\\
+% \url{http://www.springer.com/gp/computer-science/lncs} \and
+% ABC Institute, Rupert-Karls-University Heidelberg, Heidelberg, Germany\\
+% \email{\{abc,lncs\}@uni-heidelberg.de}}
+
+\author{Rui Luo \and\\
+Mengxuan Zhang\orcidID{0000-0001-8155-4942}}
+%
+% \authorrunning{Q. Xiong and M. Zhang}
+%
+\institute{Australian National University, Canberra, Australia\\
+....., \email{mengxuan.zhang@anu.edu.au}}
+
+
+%
+\maketitle              % typeset the header of the contribution
+%
+\begin{abstract}
+JHQ separates approximate nearest-neighbour scoring into a cheap primary stage
+and selective residual refinement. A direct GPU port, however, exposes a design
+tension rather than a single bottleneck: the primary stage scores many
+candidates with a compact code, so lookup-table residency and instruction issue
+matter; the residual stage touches far richer per-dimension state, so
+unnecessary refinement is expensive. We therefore derive the GPU design from
+JHQ's representation instead of stacking generic CUDA optimisations. The
+Cartesian structure inside each existing 8-bit primary code lets a 256-entry
+query table be evaluated exactly as two 16-entry tables, occupying the middle
+ground between a full materialised LUT and table-free symbolic evaluation.
+Subspace-major layout follows from the warp's access pattern, while 32-bit
+packing reduces issued load, address and loop instructions without claiming
+fewer logical bytes. The remaining algorithmic question is how many survivors to
+refine; we select this budget with a label-free output-stability rule calibrated
+on workload queries. On six datasets from 768 to 3{,}072 dimensions and up to
+17.8M vectors, mechanism controls indicate an issue-sensitive primary scan on
+the tested RTX 5090: table-free exact evaluation loses 30--52\%, packing gains
+30--48\% despite moving the same logical bytes, and four- and eight-way
+factorisations that store byte-identical tables differ by up to 38\% on lookup
+count alone. Factorisation grows more valuable as the number of subspaces and
+the probe depth rise, because a table that misses the on-chip budget is paid
+once per candidate per subspace. Against a matched, thread-pinned CPU baseline
+swept over its own refinement envelope, the same refinement knob is worth
+2.5--3$\times$ more on the GPU than on the CPU. End-to-end, the competitive
+frontier changes with recall and batch size, yielding a bounded but explainable
+operating region for GPU JHQ rather than a universal-fastest claim.
+
+\keywords{Approximate nearest neighbour search \and GPU \and Quantisation \and
+High-dimensional data \and Adaptive query processing}
+\end{abstract}
+%
+%
+\input{ADC/Introduction_ADC}
+\input{ADC/Preliminary_ADC}
+\input{ADC/MethodPart1_ADC}
+\input{ADC/MethodPart2_ADC}
+\input{ADC/RelatedWork_ADC}
+\input{ADC/Experiment_ADC}
+\input{ADC/Conclusion_ADC}
+
+% %
+% \begin{thebibliography}{8}
+% \bibitem{ref_article1}
+% Author, F.: Article title. Journal \textbf{2}(5), 99--110 (2016)
+
+% \bibitem{ref_lncs1}
+% Author, F., Author, S.: Title of a proceedings paper. In: Editor,
+% F., Editor, S. (eds.) CONFERENCE 2016, LNCS, vol. 9999, pp. 1--13.
+% Springer, Heidelberg (2016). \doi{10.10007/1234567890}
+
+% \bibitem{ref_book1}
+% Author, F., Author, S., Author, T.: Book title. 2nd edn. Publisher,
+% Location (1999)
+
+% \bibitem{ref_proc1}
+% Author, A.-B.: Contribution title. In: 9th International Proceedings
+% on Proceedings, pp. 1--2. Publisher, Location (2010)
+
+% \bibitem{ref_url1}
+% LNCS Homepage, \url{http://www.springer.com/lncs}, last accessed 2023/10/25
+% \end{thebibliography}
+\bibliographystyle{splncs04}
+  \bibliography{reference}
+
+%\bibliography{reference}
+\end{document}
