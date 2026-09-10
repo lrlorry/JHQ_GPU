@@ -44,7 +44,8 @@ cpu_pass(){   # $1 = pass label
   echo "--- CPU pass=$1 $(date -u +%T)"
   OMP_NUM_THREADS=32 OMP_PROC_BIND=close OMP_PLACES=cores \
   JHQ_NLIST=4096 JHQ_M=96 JHQ_BR=8 JHQ_ALPHA=32.0,100.0 JHQ_NPROBE_MAX=1024 \
-  timeout 7200 "$R/build/examples/bench_vogue768" $VG 2>&1 | grep -E "^(32|100)\.0 +1024"
+  timeout 7200 "$R/build/examples/bench_vogue768" $VG 2>&1 \
+    | awk '/^JQ \(/{t="JQ"} /^JHQ \(/{t="JHQ"} /^(32|100)\.0[ \t]+1024/{print t, $0}'
   echo "cpu_rc=$? pass=$1"
 }
 gpu_pass(){   # $1 = pass label
@@ -54,8 +55,11 @@ gpu_pass(){   # $1 = pass label
         timeout 9000 build/demo_jhq_v57 $VG 96 8 8 64.0 10 4096 $np 8 512 "" 3 \
       2>/dev/null | awk -v n=$np -v p="$1" \
         '/^Recall@10/{r=$3} /^QPS/{q=$3} END{printf "JHQ  np=%-5s pass=%-4s recall=%s qps=%s\n",n,p,r,q}'
-    env JHQ_RQ_BATCH=512 timeout 9000 build/bench_rq_batch2 $VG 96 8 4096 10 2 3 \
-      2>/dev/null | awk -v n=$np -v p="$1" '/np='"$np"'/{print "RQ   np="n" pass="p" "$0}'
+    # argv is paths nlist 8 nprobe k mode reps -- the first attempt put M where
+    # nlist goes and then filtered for a line the binary never prints.
+    env JHQ_RQ_BATCH=512 timeout 9000 build/bench_rq_batch2 $VG 4096 8 $np 10 2 3 \
+      2>/dev/null | awk -v n=$np -v p="$1" \
+        '/^Recall@10/{r=$3} /^QPS/{q=$3} END{printf "RQ   np=%-5s pass=%-4s recall=%s qps=%s\n",n,p,r,q}'
   done
   echo "gpu_rc=$? pass=$1"
 }
