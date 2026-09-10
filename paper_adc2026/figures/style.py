@@ -23,8 +23,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "data")
 OUT  = os.path.join(HERE, "out")
 
-# Column widths in inches for a two-column ACM/IEEE layout.
-COL, WIDE = 3.33, 6.9
+# Column width in inches. The target is the ADC LNCS template: single column,
+# \textwidth = 347.12pt = 4.803in. A figure MUST be drawn at this width and
+# included with width=\linewidth, so the scale factor is exactly 1 and the
+# sizes below are the sizes on the page.
+#
+# They were 3.33/6.9 for a two-column ACM slot. Included at \linewidth in LNCS
+# that is a 0.696x reduction, which turned 8pt axis text into 5.6pt and 6.5pt
+# annotations into 4.5pt. Never scale a figure in LaTeX; change the size here.
+COL = WIDE = 4.803
 
 plt.rcParams.update({
     "pdf.fonttype": 42, "ps.fonttype": 42,
@@ -146,9 +153,29 @@ def interp(points, r):
     return None
 
 
-def save(fig, name):
+def save(fig, name, target_in=None):
+    """Write out/<name>.pdf and .png at exactly `target_in` inches wide.
+
+    savefig(bbox_inches="tight") crops to the drawn content, which is wider
+    than figsize whenever a label overhangs the axes -- by up to 12% here. A
+    figure wider than \textwidth is then shrunk by \includegraphics, and the
+    point sizes on the page stop being the point sizes set in rcParams. So
+    measure what tight actually produced and correct the canvas once. Font
+    sizes are in points and do not move when the canvas does, which is the
+    whole reason this is the right correction.
+    """
     os.makedirs(OUT, exist_ok=True)
+    target = target_in or WIDE
+    for _ in range(3):
+        bb = fig.get_tightbbox(fig.canvas.get_renderer())
+        pad = plt.rcParams["savefig.pad_inches"]
+        got = bb.width + 2 * pad
+        if abs(got - target) < 0.01:
+            break
+        w, h = fig.get_size_inches()
+        fig.set_size_inches(w * target / got, h, forward=True)
+        fig.canvas.draw()
     for ext in ("pdf", "png"):
         fig.savefig(os.path.join(OUT, f"{name}.{ext}"), dpi=300)
     plt.close(fig)
-    print(f"  wrote out/{name}.pdf and .png")
+    print(f"  wrote out/{name}.pdf and .png  ({got:.2f} in wide)")

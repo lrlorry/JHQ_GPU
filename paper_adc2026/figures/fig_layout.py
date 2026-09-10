@@ -35,7 +35,7 @@ def cell(ax, x, y, w, h, fc, ec="#898781", lw=0.35, t=None, fs=7, tc="black"):
         ax.text(x + w / 2, y + h / 2, t, ha="center", va="center",
                 fontsize=fs, color=tc, zorder=3)
 
-fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 2.35))
+fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 2.95))
 for ax in (a, b):
     ax.axis("off"); ax.set_xlim(0, 1); ax.set_ylim(0, 1)
 

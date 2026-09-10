@@ -51,7 +51,7 @@ def arr(ax, x1, y1, x2, y2, col="#52514e", lw=0.7, t=None, ts=5.8):
         ax.text((x1 + x2) / 2, (y1 + y2) / 2 + 0.022, t, fontsize=ts,
                 ha="center", color=col)
 
-fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 2.0),
+fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 2.65),
                            gridspec_kw={"width_ratios": [1.05, 1]})
 a.axis("off"); a.set_xlim(0, 1); a.set_ylim(0, 1)
 

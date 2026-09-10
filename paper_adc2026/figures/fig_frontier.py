@@ -21,7 +21,7 @@ from style import *
 
 fronts, rq, base = load_fronts(), load_rabitq(), load_baselines()
 
-fig, axes = plt.subplots(2, 3, figsize=(WIDE, 3.6), sharex=True, sharey=True)
+fig, axes = plt.subplots(3, 2, figsize=(WIDE, 5.1), sharex=True, sharey=True)
 for ax, ds in zip(axes.flat, DATASETS):
     b = base[ds]
 
@@ -45,7 +45,7 @@ for ax, ds in zip(axes.flat, DATASETS):
             transform=ax.transAxes, va="bottom", ha="left", fontsize=7,
             linespacing=1.3)
 
-for ax in axes[1]:
+for ax in axes[-1]:          # bottom row, whatever the grid shape is
     ax.set_xlabel("Recall@10")
 for ax in axes[:, 0]:
     ax.set_ylabel("QPS")
@@ -54,7 +54,7 @@ handles = [plt.Line2D([], [], color=S[k]["color"], marker=S[k].get("marker", "")
                       ls=S[k].get("ls", "-"),
                       lw=1.5 if k == "jhq" else 1.0, label=S[k]["label"])
            for k in ("jhq", "jhq_fix", "rabitq", "cagra", "cagra8", "ivfpq")]
-fig.legend(handles=handles, loc="upper center", ncol=6,
+fig.legend(handles=handles, loc="upper center", ncol=3,
            bbox_to_anchor=(0.5, 1.06), columnspacing=1.2)
 fig.tight_layout(pad=0.3)
 save(fig, "fig_frontier")

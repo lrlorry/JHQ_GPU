@@ -48,7 +48,7 @@ for f in ("qdup.log", "qdup_stella.log"):
         if m:
             qd[(m.group(1), int(m.group(2)))][int(m.group(3))] = int(m.group(4))
 
-fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 2.0))
+fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 2.75))
 
 sets = sorted({k[0] for k in v54})
 nps = sorted({k[1] for k in v54})

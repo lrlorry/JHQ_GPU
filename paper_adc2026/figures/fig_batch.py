@@ -36,7 +36,7 @@ for ln in open(datafile("batch_sweep.log")):
     if m:
         d[(m.group(2), int(m.group(3)))][m.group(1)] = (float(m.group(4)), int(m.group(5)))
 
-fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 2.15))
+fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 2.75))
 sets = ["openai3-3072", "vogue-768"]
 # from style.py, so a dataset is the same colour in every figure -- these
 # two were painted with vogue's blue and arxiv's orange before

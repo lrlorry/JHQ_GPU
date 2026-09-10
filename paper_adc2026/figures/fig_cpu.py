@@ -81,7 +81,7 @@ def alpha_lever():
 
 
 def main():
-    fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 2.35))
+    fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 3.05))
 
     # ---- (a) both envelopes ------------------------------------------------
     ev = envelopes()
@@ -101,23 +101,26 @@ def main():
         # Below the curve: above it the text meets the leftmost ratio label,
         # while the band under each GPU curve is empty.
         a.annotate("%s, GPU" % PRETTY[ds], (XLO, y0), textcoords="offset points",
-                   xytext=(3, -9), fontsize=6.5, color=c)
+                   xytext=(3, -9), fontsize=7, color=c)
         a.annotate("CPU", (cf[0][0], cf[0][1]), textcoords="offset points",
-                   xytext=(2, -9), fontsize=6.5, color=c)
+                   xytext=(2, -9), fontsize=7, color=c)
         # The ratio, quoted only where both envelopes cover the recall.
         for r, q, _ in gf:
             cq = env.interp(cf, r)
             if cq is None:
                 continue
+            # The rightmost ratio runs off the axis if it is offset right.
+            right = r > XLO + 0.85 * (1.0 - XLO)
             a.annotate(r"$%.0f\times$" % (q / cq), (r, q), textcoords="offset points",
-                       xytext=(2, 4), fontsize=6, color=c)
+                       xytext=(-3 if right else 2, 5), fontsize=7, color=c,
+                       ha="right" if right else "left")
         # Say out loud where the CPU stops, so the gap is not read as a ratio.
         a.plot([cf[-1][0]], [cf[-1][1]], color=c, marker="|", ms=7, mew=1.0)
     a.set_yscale("log")
     a.set_xlabel("Recall@10")
     a.set_ylabel("QPS")
     a.set_xlim(XLO, 1.0)
-    a.text(0.02, 0.97, "(a)", transform=a.transAxes, fontsize=6.5,
+    a.text(0.02, 0.97, "(a)", transform=a.transAxes, fontsize=7,
            va="top", color="#52514e")
 
     # ---- (b) the alpha lever, CPU against GPU ------------------------------
@@ -130,15 +133,15 @@ def main():
           color=DS_COLOR["openai3-3072"], label="GPU, RTX 5090")
     for x, n in zip(xs, nps):
         b.text(x, max(cpu[n], gpu[n]) + 3, r"$%.1f\times$" % (gpu[n] / cpu[n]),
-               ha="center", fontsize=6, color="#52514e")
+               ha="center", fontsize=7, color="#52514e")
     b.set_xticks(list(xs))
     b.set_xticklabels([str(n) for n in nps])
     b.set_xlabel("nprobe")
     b.set_ylabel(r"QPS given up by $\alpha{=}100$ (%)")
     b.set_ylim(0, max(gpu.values()) * 1.28)
-    b.legend(loc="upper right", fontsize=6.5, bbox_to_anchor=(1.0, 0.86))
+    b.legend(loc="upper right", fontsize=7, bbox_to_anchor=(1.0, 0.86))
     b.text(0.03, 0.97, "(b) openai3-3072, matched recall",
-           transform=b.transAxes, fontsize=6.5, va="top", color="#52514e")
+           transform=b.transAxes, fontsize=7, va="top", color="#52514e")
 
     style.save(fig, "fig_cpu")
 

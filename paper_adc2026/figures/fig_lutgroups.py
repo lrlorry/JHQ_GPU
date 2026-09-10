@@ -77,7 +77,7 @@ for k, g in rows.items():
     rs = [v[0] for v in g.values()]
     assert max(rs) - min(rs) <= 2e-4, (k, rs)
 
-fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 2.35))
+fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 3.05))
 GS = [1, 2, 4, 8]
 SETS = [("vogue-768", 96), ("openai3-3072", 384)]
 
@@ -108,10 +108,11 @@ a.legend(loc="lower left", fontsize=7)
 a.text(0.97, 0.975, "one line a probe depth; darker is deeper", fontsize=7,
        color="#898781", transform=a.transAxes, ha="right", va="top")
 a.text(0.03, 0.965, "(a)", transform=a.transAxes, fontsize=8, va="top")
-a.annotate(r"$G{=}4$ and $G{=}8$ hold the same $16$ entries "
-           r"($G\cdot 2^{8/G}$) -- only the lookups differ, $4$ vs $8$",
-           xy=(0.5, 0.012), xycoords="axes fraction", ha="center", va="bottom",
-           fontsize=6.5, color="#52514e")
+# Short enough for the strip right of the legend; the tick labels already
+# spell out 4x4 and 8x2, so the note only has to say they are equal.
+a.annotate(r"$4{\times}4$ and $8{\times}2$:" "\n" "same table,\nmore lookups",
+           xy=(0.97, 0.03), xycoords="axes fraction", ha="right", va="bottom",
+           fontsize=7, color="#52514e", linespacing=1.3)
 a.annotate("smaller table,\nslower", xy=(2.55, 0.60), xytext=(1.35, 0.47),
            fontsize=7, color="#52514e", linespacing=1.3,
            arrowprops=dict(arrowstyle="-|>", lw=0.7, color="#898781"))
@@ -137,11 +138,12 @@ b.set_xticks(xs); b.set_xticklabels([str(v) for v in NP2])
 b.set_xlabel("nprobe")
 b.set_ylabel("factorised $\\div$ full table")
 b.set_ylim(0.9, 1.72)
-b.legend(loc="upper left", fontsize=7, ncol=2, columnspacing=0.9,
+b.legend(loc="upper left", fontsize=7, ncol=1, columnspacing=0.9,
          handlelength=1.1, bbox_to_anchor=(0.0, 1.02))
-b.text(0.03, 0.72, "(b)  the ratio barely moves between the two layouts,\n"
-       "      so the table gain and the word gain multiply\n"
-       "      rather than overlap", transform=b.transAxes, fontsize=7,
+b.text(0.03, 0.78, "(b)  the ratio barely moves\n"
+       "      between the two layouts, so\n"
+       "      the table and word gains\n"
+       "      multiply rather than overlap", transform=b.transAxes, fontsize=7,
        ha="left", va="top", color="#52514e", linespacing=1.35)
 
 fig.tight_layout(pad=0.3)

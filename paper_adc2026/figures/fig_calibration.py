@@ -139,7 +139,7 @@ assert sorted(tol) == [0, 1, 2], sorted(tol)
 
 # Two measures on one x is two stacked axes, not one axes with two y-scales:
 # a twin axis lets the reader compare bar heights that share no unit.
-fig = plt.figure(figsize=(WIDE, 2.45))
+fig = plt.figure(figsize=(WIDE, 3.15))
 gs = fig.add_gridspec(2, 3, height_ratios=[1, 1], hspace=0.16,
                       wspace=0.52)
 a = fig.add_subplot(gs[:, 0])

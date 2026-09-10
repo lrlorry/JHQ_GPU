@@ -247,11 +247,11 @@ Figure~\ref{fig:negatives} shows that repetition itself inflates throughput.
 \label{sec:rq7}
 Figure~\ref{fig:cpu}(a) places both devices' $(\alpha,\mathit{nprobe})$
 envelopes on one recall axis. At matched recall the GPU rule arm reaches
-$52\times$ the CPU envelope at Recall@$10{=}0.9645$ on vogue-768 and $54\times$
-at $0.9828$; on openai3-3072 it is $75$--$77\times$ across $0.94$--$0.98$. With
-$\alpha$ pinned to 100 on both sides the same comparison gives $43$--$48\times$
-and $35$--$54\times$. Above Recall@$10{=}0.9911$ on vogue-768 and $0.9900$ on
-openai3-3072 the CPU envelope has no points, and we report those GPU operating
+$52\times$ the CPU envelope on vogue-768 at Recall@10 of $0.9645$,
+and $54\times$ at $0.9828$. On openai3-3072 it is $75$--$77\times$ over the range
+$0.94$ to $0.98$. With $\alpha$ pinned to 100 on both sides the same comparison
+gives $43$--$48\times$ and $35$--$54\times$. Above Recall@10 of $0.9911$ on
+vogue-768 and $0.9900$ on openai3-3072 the CPU envelope has no points, and we report those GPU operating
 points as outside its range rather than dividing by the CPU's last measurement.
 
 Two properties of this measurement bound how it should be read. Each cell is
@@ -309,8 +309,8 @@ compared RaBitQ/CAGRA paths fail or do not fit. Memory accounting also contains
 an ``other/unaccounted'' component; it should not be relabelled as allocator or
 context overhead without a direct measurement.
 
-Overall, the experiments support the paper's bounded thesis. Exact
-representation-aware changes matter most when they alter the hardware regime;
-output-stability calibration can remove unnecessary residual work, but its
-sample size and amortisation are workload dependent; and the resulting system is
-competitive over a substantial but not universal region of the ANN frontier.
+Overall, the experiments support a bounded thesis. Exact representation-aware
+changes matter most when they alter the hardware regime; output-stability
+calibration can remove unnecessary residual work, but its sample size and its
+amortisation are both workload dependent; and the resulting system is
+competitive over a substantial, but not universal, region of the frontier.
