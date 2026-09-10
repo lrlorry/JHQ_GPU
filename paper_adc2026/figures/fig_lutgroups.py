@@ -69,13 +69,22 @@ for ln in open(datafile("lut_groups.log")):
     m = re.search(r"^  (\S+)\s+M=(\d+)\s+layout=(\w+)\s+G=(\d+)\s+np=(\d+)\s+"
                   r"recall=([\d.]+)\s+qps=(\d+)", ln)
     if m and sec:
-        rows[(sec, m.group(1), m.group(3), int(m.group(5)))][int(m.group(4))] = \
-            (float(m.group(6)), int(m.group(7)))
+        cell = rows[(sec, m.group(1), m.group(3), int(m.group(5)))]
+        cell.setdefault(int(m.group(4)), []).append(
+            (float(m.group(6)), int(m.group(7))))
 
 # the identity is exact, so this must hold before any timing is read
 for k, g in rows.items():
-    rs = [v[0] for v in g.values()]
+    rs = [v[0] for reps in g.values() for v in reps]
     assert max(rs) - min(rs) <= 2e-4, (k, rs)
+
+
+def med(cell, g):
+    """Median QPS over a cell's repeats -- the aggregation Section 6.1 states."""
+    return _st.median([v[1] for v in cell[g]])
+
+
+import statistics as _st
 
 fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 3.05))
 GS = [1, 2, 4, 8]
@@ -89,8 +98,8 @@ for ds, M in SETS:
         g = rows.get(("sweep", ds, "word", np_))
         if not g or 2 not in g:
             continue
-        base = g[2][1]
-        a.plot(x, [g[q][1] / base for q in GS], color=DS_COLOR[ds],
+        base = med(g, 2)
+        a.plot(x, [med(g, q) / base for q in GS], color=DS_COLOR[ds],
                marker=DS_MARK[ds], ms=3.2, lw=0.9,
                alpha=0.35 + 0.65 * NP.index(np_) / (len(NP) - 1),
                mew=1.0 if DS_MARK[ds] == "x" else 0.5)
@@ -126,8 +135,8 @@ for i, (ds, M) in enumerate(SETS):
     for np_ in NP2:
         gb = rows.get(("square", ds, "byte", np_), {})
         gw = rows.get(("square", ds, "word", np_), {})
-        lut_b.append(gb[2][1] / gb[1][1] if 1 in gb and 2 in gb else np.nan)
-        lut_w.append(gw[2][1] / gw[1][1] if 1 in gw and 2 in gw else np.nan)
+        lut_b.append(med(gb,2)/med(gb,1) if 1 in gb and 2 in gb else np.nan)
+        lut_w.append(med(gw,2)/med(gw,1) if 1 in gw and 2 in gw else np.nan)
     b.bar(xs + off, lut_b, width=w * 0.44, color=DS_COLOR[ds], alpha=0.45,
           ec=DS_COLOR[ds], lw=0.6,
           label="%s, byte layout" % PRETTY[ds].split("-")[0])
@@ -147,4 +156,30 @@ b.text(0.03, 0.78, "(b)  the ratio barely moves\n"
        ha="left", va="top", color="#52514e", linespacing=1.35)
 
 fig.tight_layout(pad=0.3)
+# The numbers Table 2 and Section 6.2 quote from this panel, printed so they
+# have a generator instead of an ad-hoc calculation. G*2^(8/G) is 16 for both
+# G=4 and G=8, so the pair holds the table footprint fixed.
+pairs = []
+for key in sorted(rows):
+    if key[2] != "word" or key[0] == "square":
+        continue          # the granularity phases carry G=4 and G=8
+    d = rows[key]
+    if 4 in d and 8 in d:
+        pairs.append((key[1], key[3], 100.0 * (med(d, 8) / med(d, 4) - 1.0)))
+if pairs:
+    print("  G=8 against G=4, identical footprint, only lookups differ:")
+    for ds, np_, pct in pairs:
+        print("     %-14s nprobe=%-5d %+.1f%%" % (ds, np_, pct))
+    print("     range %+.1f%% to %+.1f%%"
+          % (min(p[2] for p in pairs), max(p[2] for p in pairs)))
+    g12 = [(k[1], k[3], 100.0 * (med(rows[k], 2) / med(rows[k], 1) - 1.0))
+           for k in sorted(rows)
+           if 1 in rows[k] and 2 in rows[k]]
+    if g12:
+        for M in (96, 384):
+            v = [p[2] for p in g12 if (M == 96) == ("vogue" in p[0])]
+            if v:
+                print("  G=2 against G=1 at M=%d: %+.1f%% to %+.1f%%"
+                      % (M, min(v), max(v)))
+
 save(fig, "fig_lutgroups")

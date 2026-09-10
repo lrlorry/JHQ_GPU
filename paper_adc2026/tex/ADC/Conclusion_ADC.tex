@@ -5,7 +5,8 @@ We asked how JHQ's primary representation should execute on a GPU and how much
 of its hierarchy is worth executing. For the first, the Cartesian codebook
 admits an exact two-table factorisation whose state grows as $32M$ against
 $256M$, and the measurements show the payoff rising with both $M$ and probe
-depth while still-smaller splits lose to their extra lookups. Disassembling the kernel
+depth --- $-4$ to $+12\%$ at $M{=}96$ against $+8$ to $+54\%$ at $M{=}384$ ---
+while still-smaller splits lose to their extra lookups. Disassembling the kernel
 adds the term the controls could not reach: the granularity whose table does not
 fit issues the fewest instructions per candidate--sub\-space and is slower
 anyway, so the target is a residency budget rather than minimum bytes. For the second, a label-free

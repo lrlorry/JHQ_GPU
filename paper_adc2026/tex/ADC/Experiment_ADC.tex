@@ -91,9 +91,12 @@ Section~\ref{sec:designspace} predicted that reducing table state helps only
 until extra lookups outweigh the residency saved. Figure~\ref{fig:lutgroups}
 varies $G$ with the represented distance fixed. If state alone governed
 throughput, $G{=}4$ and $G{=}8$ should win, since they store fewer entries than
-$G{=}2$. They do not: $G{=}2$ is never beaten across the eight configurations,
-with one exact tie against $G{=}1$, and throughput falls as lookups per
-candidate rise. The sharpest form is internal to the losers. $G\cdot 2^{8/G}$ is
+$G{=}2$. They do not: $G{=}2$ wins seven of the eight
+configurations and throughput falls as lookups per candidate rise. It loses one,
+by $4.2\%$ to the full table on vogue-768 at $\mathit{nprobe}{=}32$ in the
+packed layout, where each side has a single measurement --- we report that cell
+rather than a claim of dominance, because it is the boundary of the effect and
+the reason the design is stated as a regime rather than a rule. The sharpest form is internal to the losers. $G\cdot 2^{8/G}$ is
 16 for both $G{=}4$ and $G{=}8$, so they occupy the same nominal table footprint
 and differ in the number of lookups and the address arithmetic those lookups
 need; the eight-way form is $5.8\%$ slower at $\mathit{nprobe}{=}8$ and $38.3\%$
@@ -102,7 +105,7 @@ this pair, rather than the table-free control, separates the two effects most
 cleanly.
 
 The regime change with $M$ appears as predicted. Against the full table,
-factorisation is worth $0$--$11\%$ at $M{=}96$ and $8$--$53\%$ at $M{=}384$, and
+factorisation is worth $-4$--$+12\%$ at $M{=}96$ and $+8$--$+54\%$ at $M{=}384$, and
 the gain rises monotonically with probe depth in both: on openai3-3072
 $+8.3\%$, $+9.8\%$, $+22.6\%$ and $+53.4\%$ at $\mathit{nprobe}=8, 32, 128, 512$.
 We report the trend rather than a flat interval because the trend is the
@@ -114,8 +117,8 @@ factorisation loses $4.2\%$ against the full table in the slowest repeat.
 \begin{figure}[tbp]
   \centering
   \includegraphics[width=\linewidth]{figs/fig_lutgroups.pdf}
-  \caption{(a) $G{=}2$ is never beaten although $G{=}4$ and $G{=}8$ store fewer
-  entries and occupy the same footprint as each other. (b) Factorisation matters
+  \caption{(a) $G{=}2$ wins seven of eight configurations although $G{=}4$ and
+  $G{=}8$ store fewer entries and occupy the same footprint as each other. (b) Factorisation matters
   far more at $M{=}384$ than $M{=}96$ and stays complementary to packed loading;
   panel (b) is the two-by-two layout phase at
   $\mathit{nprobe}\in\{32,128,512\}$, while the $\mathit{nprobe}{=}8$ point
