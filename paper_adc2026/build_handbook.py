@@ -1,8 +1,17 @@
 #!/usr/bin/env python3
 """Build one PDF a co-author can draft from: the skeleton, with the figures.
 
-    python3 build_handbook.py          ->  handbook.pdf     (English)
-    python3 build_handbook.py --zh     ->  handbook_zh.pdf  (Chinese)
+    python3 build_handbook.py --cards  ->  cards.pdf        (start here)
+    python3 build_handbook.py          ->  handbook.pdf     (English reference)
+    python3 build_handbook.py --zh     ->  handbook_zh.pdf  (Chinese reference)
+
+The cards are the entry point and the handbook is the reference behind them.
+That split exists because the first handbook was not readable: its Part I is
+the mother skeleton, which is a list of prohibitions written for an AI, and
+its Part II is a set of docstrings written for me. Neither was written for
+someone who has to produce prose. WRITING_CARDS.md is: one card a paper
+section, with the claim in both languages, the figure, the quotable numbers
+with their sources, and the sentences that must not be written.
 
 Two parts, because a co-author needs two different things and only one of them
 is in the skeleton.
@@ -34,13 +43,17 @@ hand-edit generated TeX.
 """
 import os, re, subprocess, sys, glob
 
-ZH   = "--zh" in sys.argv
+ZH    = "--zh" in sys.argv
+CARDS = "--cards" in sys.argv
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIGS = os.path.join(HERE, "figures")
 OUT  = os.path.join(FIGS, "out")
-SKEL = os.path.join(HERE, "ADC_sections_3_4_6_mother_skeleton_v3%s.md"
+SKEL = os.path.join(HERE, "WRITING_CARDS.md") if CARDS else \
+       os.path.join(HERE, "ADC_sections_3_4_6_mother_skeleton_v3%s.md"
                     % ("_zh" if ZH else ""))
-NAME = "handbook_zh" if ZH else "handbook"
+NAME = "cards" if CARDS else ("handbook_zh" if ZH else "handbook")
+if CARDS:
+    ZH = True          # the cards are bilingual; the preamble needs CJK
 
 T = dict(
   title      = ("JHQ-GPU: drafting handbook", "JHQ-GPU:写作手册"),
@@ -94,22 +107,36 @@ def esc(t):
     return "".join(SPECIAL.get(c, c) for c in t)
 
 
+# The fonts have no dingbats, so the source's emoji markers become words.
+# They are load-bearing in WRITING_CARDS.md -- a red line that renders as a
+# tofu box is worse than no marker at all.
+MARK = {"\u274c": r"\textbf{不可}\,", "\u2705": r"\textbf{应当}\,",
+        "\u26a0\ufe0f": r"\textbf{注意}\,", "\u26a0": r"\textbf{注意}\,",
+        "\u2192": r"$\to$", "\u2264": r"$\leq$", "\u2265": r"$\geq$",
+        "\u00d7": r"$\times$", "\u2248": r"$\approx$", "\u2212": "-",
+        "\u226b": r"$\gg$", "\u2605": r"\textbf{[核心]}\,",
+        "\u2261": r"$\equiv$"}
+
+
 def inline(t):
-    """Emphasis and code, after escaping. Order matters: code last, so its
-    contents are not re-processed."""
+    """Emphasis and code. Code spans are lifted out first so that emphasis can
+    still span them -- "**A `b` C**" was rendering its asterisks literally,
+    because splitting on backticks put the two markers in different pieces."""
     t = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1", t)          # links -> text
-    parts, out = re.split(r"(`[^`]+`)", t), []
-    for p in parts:
-        if p.startswith("`") and p.endswith("`") and len(p) > 1:
-            out.append(r"\texttt{%s}" % esc(p[1:-1]))
-        else:
-            p = esc(p)
-            # non-greedy, because bold spans can contain a literal * --
-            # "**ck = alpha * k**" was coming through as raw markdown
-            p = re.sub(r"\*\*(.+?)\*\*", r"\\textbf{\1}", p, flags=re.S)
-            p = re.sub(r"(?<![\*\\])\*([^*]+?)\*(?!\*)", r"\\emph{\1}", p)
-            out.append(p)
-    return "".join(out)
+    codes = []
+
+    def stash(m):
+        codes.append(m.group(1)); return "\x00%d\x00" % (len(codes) - 1)
+
+    t = re.sub(r"`([^`]+)`", stash, t)
+    t = esc(t)
+    t = re.sub(r"\*\*(.+?)\*\*", r"\\textbf{\1}", t, flags=re.S)
+    t = re.sub(r"(?<![\*\\])\*([^*]+?)\*(?!\*)", r"\\emph{\1}", t)
+    for k, v in MARK.items():
+        t = t.replace(k, v)
+    for i, c in enumerate(codes):
+        t = t.replace("\x00%d\x00" % i, r"\texttt{%s}" % esc(c))
+    return t
 
 
 def table(rows):
@@ -284,16 +311,28 @@ __HOW__
 \end{quote}
 \tableofcontents
 \clearpage
-\part*{__P1__}
-\addcontentsline{toc}{section}{__P1__}
 __SKEL__
 \clearpage
-\part*{__P2__}
-\addcontentsline{toc}{section}{__P2__}
-__P2LEAD__
-__REF__
+__PART2__
 \end{document}
 """
+
+if CARDS:
+    ref, skel_hdr = [], ""
+    T["title"] = ("", "JHQ-GPU:写作卡")
+    T["sub"]   = ("", "每节一张 —— 主张、图、可引用的数字、不能说的话")
+    T["p1"]    = ("", "写作卡")
+    T["p2"]    = ("", "")
+    T["p2lead"]= ("", "")
+    T["how"]   = ("", r"""\textbf{这份文件是写作入口。} 每节一张卡,四栏:\textbf{主张}(中英对照,英文是待改写的草稿而非定稿措辞)、
+\textbf{图}(用哪张、图注要点明什么)、\textbf{数字}(可直接写进正文的值,每个带出处)、
+\textbf{红线}(不能说的话及原因 —— 多数是本项目已经说错过一次的)。
+
+\texttt{handbook.pdf} 和 \texttt{handbook\_zh.pdf} 是背后的参考册:
+前者 Part II 逐字复制每张图脚本的 docstring,后者给中文提炼说明。
+需要查某张图的完整来龙去脉时翻它们,写正文用这份卡。
+
+数字以 \texttt{paper\_adc2026/README.md}(证据表)为准。\texttt{[TBD]} 表示还没测出来,\textbf{不要编}。""")
 
 for k, v in [("__CJK__", CJK),
              ("__RUNHEAD__", "JHQ-GPU / ADC 2026 --- " +
@@ -304,7 +343,10 @@ for k, v in [("__CJK__", CJK),
              ("__HOW__", t("how")),
              ("__P1__", t("p1")), ("__P2__", t("p2")),
              ("__P2LEAD__", t("p2lead")),
-             ("__SKEL__", skel), ("__REF__", "\n".join(ref))]:
+             ("__SKEL__", skel),
+             ("__PART2__", "" if CARDS else
+              ("\\part*{%s}\n\\addcontentsline{toc}{section}{%s}\n%s\n%s"
+               % (t("p2"), t("p2"), t("p2lead"), "\n".join(ref))))]:
     TEX = TEX.replace(k, v)
 
 tex = os.path.join(HERE, NAME + ".tex")

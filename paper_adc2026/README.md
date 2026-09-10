@@ -1,6 +1,13 @@
 # ADC 2026 — what is measured, and what it rests on
 
-> **For a co-author:** `handbook.pdf` (English) and `handbook_zh.pdf`
+> **Start here: `cards.pdf`.** One card a paper section (1, 3, 4, 6, 7), each
+> with the claim in Chinese and English, the figure, the quotable numbers with
+> their sources, and the sentences that must not be written. The first
+> handbook was not readable for drafting: its Part I is the mother skeleton,
+> which is a list of prohibitions written for an AI, and its Part II is
+> docstrings written for the implementer. Source: `WRITING_CARDS.md`.
+>
+> **Reference behind the cards:** `handbook.pdf` (English) and `handbook_zh.pdf`
 > (Chinese) each carry the skeleton and all sixteen figures in one file. Part I
 > is the drafting skeleton with each figure at its section; Part II is every
 > figure at full width followed by its evidence — the English edition
@@ -9,8 +16,8 @@
 > is written in English; the Chinese edition is a reading aid and keeps every
 > number, path and identifier in its original form.
 >
-> Regenerate with `figures/make_all.sh`, then `python3 build_handbook.py` and
-> `python3 build_handbook.py --zh`.
+> Regenerate with `figures/make_all.sh`, then `python3 build_handbook.py
+> --cards`, `python3 build_handbook.py` and `python3 build_handbook.py --zh`.
 
 Every number the paper can use, the file it comes from, and whether it is
 finished. `data/` holds frozen copies of the logs so the paper does not cite a
