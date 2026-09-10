@@ -129,16 +129,15 @@ factorisation loses $4.2\%$ against the full table in the slowest repeat.
 \subsection{RQ3: can the byte-count explanation be rejected?}
 \label{sec:rq4}
 Table~\ref{tab:neg} collects the controls that vary bytes and issued work
-independently. Removing almost all table state loses $30$--$52\%$ even though it
-raises the resident-block count the shared-memory budget implies --- so neither
-table residency nor attainable occupancy alone is the bottleneck. Moving
-identical bytes in 32-bit words gains $30$--$48\%$. Giving each thread a private
-probe cursor removes redundant inner-loop work for up to $+148\%$; it is an
-implementation correction, not a contribution, and its value here is diagnostic.
-Fusing residual refinement removes an intermediate round trip and still loses,
-because the fused kernel carries both phases' shared-memory and register
-footprints for the whole scan. LUT construction is $0.2$--$2.3\%$ of a batch,
-which rules out faster table building as the explanation for factorisation.
+independently. Removing almost all table state loses $30$--$52\%$ while
+\emph{raising} the resident-block count the shared-memory budget implies, so
+neither residency nor attainable occupancy alone is the bottleneck; moving
+identical bytes in 32-bit words gains $30$--$48\%$; fusing residual refinement
+removes a round trip and still loses, the fused kernel carrying both phases'
+footprints for the whole scan. The probe cursor is an implementation correction
+rather than a contribution, included because its size is diagnostic. LUT
+construction is $0.2$--$2.3\%$ of a batch, which rules out faster table building
+as the explanation for factorisation.
 
 \begin{table}[tbp]
   \centering
@@ -159,67 +158,65 @@ which rules out faster table building as the explanation for factorisation.
   \end{tabular}
 \end{table}
 
-These controls rule out competing explanations but do not measure the variable
-they implicate. Static instruction counts do not need a profiler, so we
-disassemble the emitted kernel. \texttt{cuobjdump -sass} on
-\texttt{scan\_ivf\_coalesced\_kernel} gives 42, 84 and 168 generic loads at
-$G{=}1$, $2$ and $4$ --- one, two and four lookups across 42 statically
-unrolled subspace iterations --- and 144 at $G{=}8$, which is eight lookups over
-18 iterations, the compiler having unrolled less because the body grew.
-Floating-point adds per iteration are $G{+}1$ at every $G$, an independent check
-that the normalisation is right. Counting the lookup and the work that feeds it,
-issued instructions per candidate--sub\-space are $4.4$, $13.0$, $25.0$ and $50.4$.
+These controls reject competing explanations but do not measure the variable
+they implicate, and static instruction counts need no profiler.
+\texttt{cuobjdump -sass} on \texttt{scan\_ivf\_coalesced\_kernel} reports 42, 84
+and 168 generic loads at $G{=}1,2,4$ --- $G$ lookups across 42 statically
+unrolled subspace iterations --- and 144 at $G{=}8$, eight lookups over 18
+iterations after the compiler unrolled less. Floating-point adds are $G{+}1$ per
+iteration throughout, which checks the normalisation. Counting the lookup and
+what feeds it gives $4.4$, $13.0$, $25.0$ and $50.4$ issued instructions per
+candidate--sub\-space.
 
-That gives the controls an axis they did not have. The model-free statement
-comes first, because it needs no fit: \emph{$G{=}1$ issues $4.4$ instructions
-per candidate--sub\-space against $G{=}2$'s $13.0$, and is slower at most
-operating points anyway}. Fewer instructions and less table state, and still
-slower --- which no account resting on issued work or on bytes can explain, and
-which leaves table residency as the term that must.
-
-Figure~\ref{fig:issue} quantifies that, with the caveat the quantification
-carries. Where the table is resident ($G{=}2$, $4$, $8$) query time is close to
-linear in issued work; extending that line back to $G{=}1$'s instruction count
-puts its measured time $8$, $4$, $33$ and $75\%$ above the prediction on
-vogue-768 and $11$, $16$, $44$ and $120\%$ above it on openai3-3072, at
-$\mathit{nprobe}=8$, $32$, $128$ and $512$. Those percentages are a three-point
-fit extrapolated two thirds of its own range to the left, so we read the trend
-rather than the values: the shortfall grows with probe depth and is larger at
-$M{=}384$ than $M{=}96$, which is what ``a table that misses is paid once per
-candidate per subspace'' predicts. $G{=}2$ wins because it is the only
-granularity that pays little of either cost. This remains an analysis the
-evidence supports on one architecture, not an isolated measurement of two
-independent terms; separating them properly would need a build that holds
-residency fixed while sweeping instruction count on its own.
+One statement then needs no model: \emph{$G{=}1$ issues $4.4$ instructions per
+candidate--sub\-space against $G{=}2$'s $13.0$, and is slower at most operating
+points anyway}. It issues the fewest of any granularity while holding the most
+table state --- 256 entries a subspace against 32 --- so instruction count
+predicts it should be fastest and it is not, and the state it holds is the one
+thing that separates it.
+Figure~\ref{fig:issue} puts numbers on that, and they are an extrapolation: a
+least-squares line through the three resident points, extended back to $G{=}1$'s
+count, leaves its measured time $7$, $6$, $27$ and $65\%$ high on vogue-768 and
+$11$, $16$, $41$ and $112\%$ high on openai3-3072 at
+$\mathit{nprobe}=8,32,128,512$ --- from $4.4$, outside a fitted range of $13.0$
+to $50.4$. We read the sign and the trend: the shortfall grows with probe depth
+and with $M$, as ``a table that misses is paid once per candidate per subspace''
+predicts, and $G{=}2$ pays least of either cost. Instruction counts and
+controlled comparisons together are consistent with this account on the tested
+card; they are not an independent measurement of the two terms, which would need
+a build holding residency fixed while sweeping instruction count alone.
 
 \begin{figure}[tbp]
   \centering
   \includegraphics[width=\linewidth]{figs/fig_issue.pdf}
-  \caption{The two costs, measured separately. (a) With the table resident
-  ($G{=}2,4,8$) query time is close to linear in issued instructions per
-  candidate--sub\-space, counted from the disassembled kernel; $G{=}1$ issues the
-  fewest and still sits above that line, and the gap is the residency cost.
-  (b) That gap grows with probe depth and is larger at $M{=}384$ than $M{=}96$.}
+  \caption{Instruction count against measured time. (a) With the table resident
+  query time is close to linear in issued instructions per
+  candidate--sub\-space; $G{=}1$ issues the fewest of all, holds the most table
+  state, and sits above a line fitted to the other three and extrapolated beyond
+  its range --- consistent with a residency cost. (b) That shortfall grows with
+  probe depth and with $M$.}
   \label{fig:issue}
 \end{figure}
 
 \subsection{RQ4: would one fixed budget do instead?}
 \label{sec:rq2}
-The rule is only worth its calibration if no constant beats it. We put four arms
-on one index and one timing harness, calibrating on even-indexed queries and
-reporting every recall on the odd-indexed half: each fixed $\alpha$ on the grid;
-the sampled rule, repeated over 64 random samples at each $S$; the same
-criterion on the whole calibration pool with no sampling; and, for reference
-only, the fastest $\alpha$ whose held-out recall is within $10^{-3}$ of the best
-any $\alpha$ reaches, chosen with ground truth.
+Four arms share one index and one timing harness, calibrating on even-indexed
+queries and reporting every recall on the odd-indexed half: each fixed $\alpha$
+on the grid; the sampled rule over 64 random samples at each $S$; the same
+criterion on the whole calibration pool; and, for reference only, the fastest
+$\alpha$ whose held-out recall is within $10^{-3}$ of the best any $\alpha$
+reaches, chosen with ground truth.
 
-\emph{No constant does.} The reference budget is $\alpha{=}64$ on vogue-768 at
-both probe depths and $\alpha{=}4$ on openai3-3072, a factor of sixteen apart.
-Pinning $\alpha{=}4$ costs vogue-768 $0.0884$ recall; pinning $\alpha{=}64$
-costs openai3-3072 $24\%$ of its throughput at $\mathit{nprobe}{=}128$ for
-$0.0004$ recall in return. This is the objection the earlier comparison against
-$\alpha{=}100$ could not answer, and it is the reason the budget is a control
-variable rather than a constant.
+\emph{A constant meets the quality bar only by overpaying.} The reference budget
+is $\alpha{=}64$ on vogue-768 at both probe depths and $\alpha{=}4$ on
+openai3-3072, sixteen times apart. Its conservative end generalises ---
+$\alpha{=}64$ stays within $10^{-3}$ of attainable recall in all four cells ---
+but on openai3-3072 the rule's budget runs $32\%$ faster at
+$\mathit{nprobe}{=}128$ and $10\%$ faster at $512$, for equal recall at the
+first and $0.0002$ less at the second. The cheap end does not generalise at all:
+$\alpha{=}4$ gives up $0.0884$ recall on vogue-768. The question is therefore
+what a fixed conservative budget costs, which the earlier comparison against
+$\alpha{=}100$ could not address.
 
 \emph{The rule finds it, given enough sample.} The median selection over 64
 random samples matches the reference in all four cells at $S\ge 64$; at $S{=}32$
@@ -227,13 +224,13 @@ it matches on openai3-3072 and picks $32$ where the reference is $64$ on
 vogue-768. Against the $\alpha{=}100$ default the selection is worth
 $1.095$--$1.475\times$ in steady state, repaid in $3.8$ to $19.1$ batches.
 
-\emph{The sample, not the criterion, is the risk --- and $S{=}32$ is too small.}
-Across the four cells, $25$--$69\%$ of random samples at $S{=}32$ give up more
-than $10^{-3}$ of held-out recall, with a 95th percentile as high as $0.0116$ on
-vogue-768. At $S{=}64$ that falls to $2$--$45\%$ and at $S{=}128$ to $0$--$8\%$.
-Section~\ref{sec:method2}'s $S{=}32$ is therefore not a defensible default and
-we do not recommend it; a deployment should pick $S$ against a stated risk
-target, which on these workloads means $S{=}128$.
+\emph{The sample is the risk, and $S{=}32$ is too small.} Across the four cells,
+$25$--$69\%$ of random samples at $S{=}32$ give up more than $10^{-3}$ of
+held-out recall, with a 95th percentile of $0.0116$ on vogue-768. At $S{=}64$
+that is $2$--$45\%$ and at $S{=}128$ $0$--$8\%$ --- still $5$ of $64$ samples on
+vogue-768 at $\mathit{nprobe}{=}128$. We withdraw Section~\ref{sec:method2}'s
+$S{=}32$: $S$ is a tolerance decision, and $S{=}128$ is where the tolerance
+becomes small, not where it vanishes.
 
 \emph{Removing the sampling does not fix it.} Evaluating the same criterion on
 the entire calibration pool is $2.4$--$2.9\times$ more expensive and selects a
@@ -244,11 +241,12 @@ $320$ slots at $S{=}32$ and one in $5{,}000$ at the full pool. The tolerance
 tightens as the sample grows, which is a property worth stating plainly ---
 $\epsilon$ and $S$ cannot be chosen independently.
 
-Two earlier observations survive unchanged. At $\mathit{nprobe}{=}128$ the rule
-recovers the swept $\alpha$ in three of four configurations, the fourth
-censored by $\alpha_{\max}$ rather than solved; and over the broader 32-configuration
-sweep against $\alpha{=}100$, steady-state gain is $1.044$--$2.653\times$ for at
-most $0.0048$ recall with a median payback of $1.75$ batches.
+Two earlier observations survive. The rule recovers the swept $\alpha$ in three
+of four configurations at $\mathit{nprobe}{=}128$, the fourth censored by
+$\alpha_{\max}$; and over a broader 32-configuration sweep against
+$\alpha{=}100$ --- six datasets at $S{=}32$, a different configuration from this
+section's, which we do not combine with it --- gain is $1.044$--$2.653\times$
+for at most $0.0048$ recall, median payback $1.75$ batches.
 
 \begin{figure}[tbp]
   \centering

@@ -10,9 +10,10 @@ while still-smaller splits lose to their extra lookups. Disassembling the kernel
 adds the term the controls could not reach: the granularity whose table does not
 fit issues the fewest instructions per candidate--sub\-space and is slower
 anyway, so the target is a residency budget rather than minimum bytes. For the second, a label-free
-stability rule buys $1.044$--$2.653\times$ for at most $0.0048$ recall and
-repays itself in a median of $1.75$ batches, with sampling risk that varies
-enough by workload that the sample size must be chosen against a stated target.
+stability rule buys $1.095$--$1.475\times$ at $S{=}128$, repaid within $3.8$ to
+$19.1$ batches of 500 queries, and its median choice over 64 samples matches the offline reference budget in
+all four measured cells --- but $5$ of $64$ samples still exceed a $10^{-3}$ loss
+on one of them, so the sample size is a risk decision, not a default.
 The region this defines is bounded: among quantised IVF methods JHQ leads to
 Recall@$10{=}0.95$ at large batch and owns the high-recall end at high
 dimension, while CAGRA-int8 is faster below that at several times the build

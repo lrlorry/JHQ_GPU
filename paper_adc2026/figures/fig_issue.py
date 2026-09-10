@@ -70,10 +70,23 @@ def timing():
 
 
 def penalty(work, t):
-    """How far G=1 sits above the line through the resident-table points."""
-    r = sorted((work[g][1], t[g]) for g in (2, 4, 8))
-    slope = (r[-1][1] - r[0][1]) / (r[-1][0] - r[0][0])
-    pred = r[0][1] - slope * (r[0][0] - work[1][1])
+    """How far G=1 sits above a line fitted to the resident-table points.
+
+    Least squares over all three, not the G=2/G=8 endpoints: the first version
+    joined the ends and ignored G=4 while the text called it a three-point fit.
+
+    The result is an extrapolation and should be read as one. G=1 issues 4.4
+    instructions per candidate-subspace and the fitted points span 13.0 to 50.4,
+    so the prediction sits two thirds of the fitted range outside it. The sign
+    and the trend are what the figure carries; the percentages are indicative.
+    """
+    xs = [work[g][1] for g in (2, 4, 8)]
+    ys = [t[g] for g in (2, 4, 8)]
+    n = len(xs)
+    mx, my = sum(xs) / n, sum(ys) / n
+    slope = (sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+             / sum((x - mx) ** 2 for x in xs))
+    pred = my + slope * (work[1][1] - mx)
     return pred, 100.0 * (t[1] / pred - 1.0)
 
 

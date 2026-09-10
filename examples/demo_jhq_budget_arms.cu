@@ -353,8 +353,16 @@ int main(int argc, char** argv) {
             // this epsilon and this reference, walk the whole grid and take the
             // smallest acceptable alpha. Bisection assumes the accepted set is
             // a prefix; if it is not, this finds a budget bisection walked past.
+            //
+            // Both timings must cover the same work. cal_ms above includes the
+            // reference search at alpha_max, so this repeats it rather than
+            // reusing the one already in ref_ids -- otherwise enum_ms would be
+            // the cheaper of two differently defined quantities and the
+            // comparison of calibration cost would be meaningless.
             idx.set_calibrating(true);
             auto e0 = Clock::now();
+            idx.set_alpha(A[0]);
+            idx.search(sq.data(), S2, k, r_dst.data(), r_ref.data());
             size_t best = 0;
             for (size_t gi = 1; gi < A.size(); ++gi)
                 if (miss_at(gi) <= SLOTS) best = gi;

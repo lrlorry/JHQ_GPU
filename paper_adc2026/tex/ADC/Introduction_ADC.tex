@@ -26,10 +26,10 @@ established. That JHQ admits the grouping at all: its 8-bit code indexes 256
 codewords with no grouped structure on its face, and only because each codeword
 is a Cartesian product of one-dimensional levels does the table separate exactly
 into two 16-entry halves, an identity an ordinary $k$-means product quantiser
-does not have. And how to choose the grouping without tuning: full-table state
-grows as $256M$ entries against $32M$ for the split, but each further split
-costs another lookup per candidate--sub\-space, and which term dominates is
-what we measure rather than search. Our answer to the second is a label-free
+does not have. And which cost each grouping pays: full-table state grows as $256M$ entries
+against $32M$ for the split, but each further split costs another lookup per
+candidate--sub\-space, and which term dominates is what we measure rather than
+assert. Our answer to the second is a label-free
 workload policy: sample queries from the running workload, compare the top-$k$
 sets they return at a candidate budget against a generous reference, and take
 the smallest budget that leaves them unchanged. It needs neither ground-truth
@@ -40,30 +40,31 @@ We evaluate on six datasets from 768 to 3{,}072 dimensions, up to 17.8M vectors,
 on one RTX 5090, and we test the alternatives we rejected rather than only the
 implementation we kept. Six controls contradict the byte-count prediction, most sharply between the
 four- and eight-way splits, which hold the same number of entries and differ
-only in how many lookups reach them. Static disassembly then measures the
-implicated variable directly, without a profiler: issued instructions per
+only in how many lookups reach them. Static disassembly then supplies the
+implicated variable without a profiler: issued instructions per
 candidate--sub\-space are $4.4$, $13.0$, $25.0$ and $50.4$ at $G{=}1,2,4,8$, query
 time is close to linear in them wherever the table is resident, and the one
-granularity whose table does not fit sits above that line by $4$--$120\%$ while
-issuing the fewest instructions of any. The budget rule is worth
-$1.044$--$2.653\times$ in steady state for at most $0.0048$ recall and repays
-its calibration in a median of $1.75$ batches, while its sampling risk varies
-enough by workload that no single sample size is safe.
+granularity whose table does not fit issues the fewest of any and is slower
+regardless. The budget rule is worth
+$1.095$--$1.475\times$ in steady state at $S{=}128$, repaid within $3.8$ to
+$19.1$ batches of 500 queries, while at a quarter of that sample the quality
+risk varies enough by workload that the default we started from does not survive
+its own test.
 
 The competitive picture is bounded and we state it as such. Among quantised IVF
 methods JHQ leads through Recall@$10{=}0.95$ at large batch, owns the
 high-recall end at high dimension, and indexes two datasets where the tested
 cuVS IVF-RaBitQ build path runs out of memory. It is not the fastest system
 measured: graph-based CAGRA-int8 is $1.6$--$2.9\times$ faster below
-Recall@$10{=}0.95$ on every dataset where both run, at $5$--$8\times$ the build
-time and a comparable code budget.
+Recall@$10{=}0.95$ on every dataset where both run, at $3.9$--$7.4\times$ the
+build time and a comparable code budget.
 
 \smallskip\noindent\textbf{Contributions.}
-\textbf{(i)} A decomposition of the primary scan's cost into an issue term and a
-residency term, each measured: six controlled comparisons in which fewer bytes
-or less state fails to predict throughput, and a static instruction count from
-the disassembled kernel against which the residency penalty appears as the
-residual.
+\textbf{(i)} Evidence that the primary scan's cost divides into an issue term
+and a residency term, from six controlled comparisons in which fewer bytes or
+less state fails to predict throughput together with a static instruction count
+read off the disassembled kernel, against which the granularity whose table does
+not fit is slower than its instruction count alone can explain.
 \textbf{(ii)} An exact Cartesian factorisation of JHQ's primary distance table,
 derived from separability the codebook already has rather than from a different
 quantiser, together with the regime in which it pays.

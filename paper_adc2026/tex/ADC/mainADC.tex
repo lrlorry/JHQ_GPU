@@ -111,10 +111,10 @@ over many candidates, then a per-dimension residual code over a small survivor
 set. Porting it to a GPU raises two questions that byte counting does not
 answer. First, how should the primary representation execute? Grouped lookup tables and
 the shared-memory-against-arithmetic trade-off they imply are established; what
-is not is how to choose the grouping without tuning, or that JHQ's 256-entry
-table admits one at all --- its Cartesian codebook makes the table separate
-exactly into two 16-entry halves, an identity an ordinary product quantiser does
-not have. Second,
+is not which of the two competing costs each grouping pays, or that JHQ's
+256-entry table admits a grouping at all --- its Cartesian codebook makes the
+table separate exactly into two 16-entry halves, an identity an ordinary product
+quantiser does not have. Second,
 how many survivors are worth refining? We select that budget with a label-free
 rule that compares the returned top-$k$ sets at a candidate budget against a
 generous reference on sampled workload queries. On six datasets from 768 to
@@ -124,13 +124,15 @@ $30$--$52\%$; four- and eight-way splits hold fewer entries than the two-way
 split and lose up to $38\%$; packed loading moves identical bytes and gains
 $30$--$48\%$. Disassembling the emitted kernel sharpens that: the granularity whose table
 does not fit issues the fewest instructions per candidate--sub\-space of any and
-is slower regardless, leaving residency as the term that has to account for it. The budget rule is worth $1.044$--$2.653\times$ steady-state for
-at most $0.0048$ recall, repaid in a median of $1.75$ batches, but its sampling
-risk is workload dependent. Against quantised IVF baselines JHQ owns the
+is slower regardless, leaving residency as the term that has to account for it. At $S{=}128$ across four held-out configurations the rule is worth
+$1.095$--$1.475\times$ steady-state, repaid within $3.8$ to $19.1$ batches of
+500 queries, and its median choice matches the offline reference budget in all
+four; a quarter of that sample trades this for a quality risk that varies by
+workload. Against quantised IVF baselines JHQ owns the
 high-recall end at high dimension and indexes two datasets where the tested
 IVF-RaBitQ build path runs out of memory; graph-based CAGRA-int8 is
-$1.6$--$2.9\times$ faster below Recall@$10{=}0.95$, at $5$--$8\times$ the build
-time. The result is a bounded operating region, not a universal-fastest claim.
+$1.3$--$2.9\times$ faster below Recall@$10{=}0.95$, at $3.9$--$7.4\times$ the
+build time. The result is a bounded operating region, not a universal-fastest claim.
 
 \keywords{Approximate nearest neighbour search \and GPU \and Quantisation \and
 High-dimensional data \and Adaptive query processing}

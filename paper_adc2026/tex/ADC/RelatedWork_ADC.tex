@@ -28,14 +28,17 @@ to be grouped --- its code \emph{is} the bit pattern its table is indexed by ---
 whereas JHQ's primary code is an 8-bit index into 256 codewords with no grouped
 structure on its face. Equation~\ref{eq:split} is an identity that has to be
 derived from the codebook's Cartesian construction, and it does not exist for an
-ordinary $k$-means product quantiser at the same code width. Second, and more
-useful, the method: RaBitQ selects its group size by measuring which performs
-best, while Section~\ref{sec:rq3} decomposes the choice into an issue term read
-off the disassembled kernel and a residency term measured as the residual
-against it. That decomposition also produces a result the tuned-choice approach
-would not surface --- at JHQ's code width the 16-entry tables that RaBitQ
-settles on ($G{=}4$ here) are $4$--$36\%$ slower than 32-entry ones, so the
-optimal group size is a property of the code width and not a constant.
+ordinary $k$-means product quantiser at the same code width. Second, the method: RaBitQ selects its
+group size by measuring which performs best, while Section~\ref{sec:rq3} reads
+an instruction count off the disassembled kernel and uses it to say which of the
+two competing costs each granularity is paying.
+
+The two choices agree, and it is worth saying so rather than manufacturing a
+difference. RaBitQ's $U$ counts bits per group and our $G$ counts groups of an
+eight-bit code, so $U{=}8/G$ and its $U{=}4$ is our $G{=}2$: both land on four
+bits and sixteen entries per table. Two derivations over different
+representations reaching the same group width is corroboration that the
+trade-off is real, not evidence that either is novel for choosing it.
 
 \paragraph{Adaptive ANN control.}
 ANN libraries such as FAISS~\cite{faiss} commonly expose parameter sweeps and
