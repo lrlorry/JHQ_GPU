@@ -90,7 +90,8 @@ def corpus():
     for g in ("table_frontier.py", "build_crossover.py", "budget_arms.py",
               "cpu_gpu_envelope.py", "fig_issue.py", "fig_lutgroups.py",
               "fig_build.py", "fig_negatives.py", "fig_memory.py",
-              "layout_square.py", "alpha_sweep6.py"):
+              "layout_square.py", "alpha_sweep6.py", "table2_controls.py",
+              "fig_economics.py"):
         p = os.path.join(HERE, g)
         if not os.path.exists(p):
             continue

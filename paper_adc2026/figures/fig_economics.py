@@ -186,4 +186,19 @@ b.legend(loc="lower left", fontsize=7, ncol=2, columnspacing=1.0,
 b.text(0.03, 0.955, "(b)", transform=b.transAxes, fontsize=8, va="top")
 
 fig.tight_layout(pad=0.3)
+# Section 6.4's numbers, printed so they have a generator and not only a
+# figure.  Without this the range reads as hand-typed to any check that asks
+# which generator produces it -- which is exactly what happened once.
+import statistics as _st
+_g = [r["gain"] for r in rows]
+_p = [r["repay"] for r in rows]
+_d = [-r["drecall"] for r in rows]
+print("  %d of %d configurations changed the budget (the other %d return "
+      "alpha_max and compare a configuration with itself):"
+      % (len(rows), len(ALL), len(ALL) - len(rows)))
+print("     gain %.3fx to %.3fx, giving up at most %.4f recall"
+      % (min(_g), max(_g), max(_d)))
+print("     payback %.1f to %.1f batches, median %.2f"
+      % (min(_p), max(_p), _st.median(_p)))
+
 save(fig, "fig_economics")
