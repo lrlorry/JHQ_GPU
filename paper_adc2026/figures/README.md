@@ -19,8 +19,9 @@ the text.
 | `fig_economics.py` | what the calibration costs, and when it is repaid | 6.3.3 | `paper_fronts.log` |
 | `fig_negatives.py` | the table-free distance, and reuse as a controlled proxy | 6.5 | `v54.log`, `qdup.log`, `qdup_stella.log` |
 | `fig_hierarchy.py` | what the second level buys | 6.4 | `hierarchy_ablation.log`, `paper_fronts.log` |
-| `fig_cost.py` | resident memory, and JHQ's own train/encode split | 6.7 | `vram.log`, `paper_fronts.log` |
-| `fig_build.py` | **index build time, all five methods** | 6.7 | `results/**/*.csv` (`train_ms`), `paper_fronts.log`, `paper_rabitq.log` |
+| `fig_cost.py` | JHQ's build, split into training and encoding | 6.7 | `paper_fronts.log` |
+| `fig_build.py` | **index build time, all five methods** | 6.7 | `results/**/*.csv` (`train_ms`), `paper_fronts.log`, `paper_rabitq.log`, `rabitq_o3072_build.log` |
+| `fig_lutgroups.py` | **why halves; and the table x layout 2x2** | 6.4.2 | `lut_groups.log` |
 | `fig_memory.py` | where JHQ\'s memory goes, and why it is above RaBitQ\'s | 6.7 | index parameters + both measured totals |
 
 `style.py` holds the loaders and the camera-ready settings, so a change there
@@ -54,6 +55,17 @@ applies to every figure at once.
   which is legal only because every series also carries a marker, so never
   drop the markers; and bge-m3 is at 2.74:1 against the surface, so a figure
   leaning on it needs a visible label rather than a legend swatch alone.
+- **One comparison, one figure.** `fig_cost` used to carry a memory panel
+  that compared JHQ against IVF-RaBitQ on a single number; `fig_memory` makes
+  the same comparison with the component breakdown, a share panel and both
+  measured totals. The weaker copy is gone, and `fig_cost` is now the
+  train-against-encode split alone, at one column.
+- **Two build phases, two caching behaviours.** `train` is cached and only a
+  dataset's first sweep row is cold; `add` is not cached and re-runs on every
+  row, varying 13.0 s to 25.7 s on stella. Anything that reads build time out
+  of `paper_fronts.log` has to take training from the cold row and treat the
+  encode's spread as spread -- `max(train+add)` mixes a cached training with a
+  slow encode and overstates the build.
 - **An absent bar is a claim, so say which claim.** `fig_build` separates
   "the build fails on this card" (CAGRA fp32 and IVF-RaBitQ on bge-m3 and
   stella, each with the log that records it) from "we never timed it"

@@ -39,25 +39,8 @@ for ln in open(datafile("paper_fronts.log")):
 
 order = [d for d in DATASETS if d in jhq_vram]
 y = np.arange(len(order))
-fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 2.1))
-
-jv = [jhq_vram[d] / 1024 for d in order]
-rv = [rq_vram.get(d, np.nan) / 1024 if d in rq_vram else np.nan for d in order]
-a.barh(y - 0.19, rv, height=0.36, color=S["rabitq"]["color"], label="IVF-RaBitQ")
-a.barh(y + 0.19, jv, height=0.36, color=S["jhq"]["color"], label="JHQ")
-for i, d in enumerate(order):
-    if d not in rq_vram:
-        a.text(0.4, i - 0.19, "does not build", va="center", fontsize=7,
-               color=S["rabitq"]["color"], style="italic")
-    else:
-        a.text(jv[i] + 0.3, i + 0.19, f"+{100*(jv[i]/rv[i]-1):.0f}%",
-               va="center", fontsize=7)
-a.set_yticks(y); a.set_yticklabels([PRETTY[d] for d in order])
-a.set_xlabel("resident GPU memory (GiB)"); a.invert_yaxis()
-a.grid(axis="y", visible=False); a.legend(loc="lower right", fontsize=7,
-                                        framealpha=0.92)
-a.set_xlim(0, max(jv) * 1.25)
-a.text(0.97, 0.05, "(a)", transform=a.transAxes, fontsize=8, ha="right")
+fig, b = plt.subplots(figsize=(COL, 2.1))
+y = np.arange(len(order))
 
 tv = [train[d] / 1000 for d in order]
 av = [add[d] / 1000 for d in order]
@@ -65,11 +48,12 @@ b.barh(y, tv, height=0.5, color="#4a3aa7", label="train")
 b.barh(y, av, height=0.5, left=tv, color="#1baf7a", label="encode")
 for i in range(len(order)):
     b.text(tv[i] + av[i] + 0.4, i, f"{tv[i]+av[i]:.0f}s", va="center", fontsize=7)
-b.set_yticks(y); b.set_yticklabels([])
+b.set_yticks(y); b.set_yticklabels([PRETTY[d] for d in order])
+# the only method on this panel; fig_build has the cross-method comparison
 b.set_xlabel("JHQ index build (s)"); b.invert_yaxis()
 b.grid(axis="y", visible=False); b.legend(loc="lower right", fontsize=7)
 b.set_xlim(0, max(t + a2 for t, a2 in zip(tv, av)) * 1.2)
-b.text(0.97, 0.05, "(b)", transform=b.transAxes, fontsize=8, ha="right")
+
 
 fig.tight_layout(pad=0.3)
 save(fig, "fig_cost")

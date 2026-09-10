@@ -86,15 +86,31 @@ for f in glob.glob(os.path.join(REPO, "results", "**", "*.csv"), recursive=True)
             continue
         b[(m, ALIAS.get(x.get("dataset"), x.get("dataset")))].append(float(t) / 1000)
 
-# JHQ: train+add, and the cold build is the largest, not the median -- every
-# later row of a dataset is a hit on the trained-state cache
-jhq = collections.defaultdict(list)
+# JHQ: train + add, and the two phases cache differently, which an earlier
+# version of this figure got wrong.
+#
+#   train  is cached. Only the first row of a dataset (nprobe=8) is cold; the
+#          rest report 213-273 ms, which is a cache hit, not a training run.
+#   add    is not cached. It re-runs on every row, and varies a lot: on stella
+#          9.1 s to 21.8 s across six runs of the same encode.
+#
+# Taking max(train+add) picked stella's nprobe=1024 row -- a *cached* train of
+# 255 ms beside an unusually slow 21.8 s encode -- and reported 22 s for a
+# build that actually costs 13.4 s. The bar is now the cold row, and the
+# whisker carries the encode's own spread against that cold training.
+jhq_train, jhq_add = {}, collections.defaultdict(list)
 for ln in open(datafile("paper_fronts.log")):
-    m = re.search(r"FIX\s+(\S+)\s+.*train=([\d.]+)\s+add=([\d.]+)", ln)
+    m = re.search(r"FIX\s+(\S+)\s+M=\d+\s+nlist=\d+\s+np=(\d+)\s+.*"
+                  r"train=([\d.]+)\s+add=([\d.]+)", ln)
     if m:
-        jhq[m.group(1)].append((float(m.group(2)) + float(m.group(3))) / 1000)
-for ds, v in jhq.items():
-    b[("JHQ-GPU", ds)] = [max(v)]
+        ds, np_ = m.group(1), int(m.group(2))
+        jhq_add[ds].append(float(m.group(4)) / 1000)
+        if np_ == 8:                       # the only cold training run
+            jhq_train[ds] = float(m.group(3)) / 1000
+for ds, t in jhq_train.items():
+    adds = jhq_add[ds]
+    b[("JHQ-GPU", ds)] = [t + min(adds), t + sorted(adds)[len(adds) // 2],
+                          t + max(adds)]
 
 # IVF-RaBitQ: build_ms, serialize/deserialize round-trip included
 cur = None
@@ -167,10 +183,10 @@ ll.append("not timed")
 ax.legend(hh, ll, loc="lower center", bbox_to_anchor=(0.5, 1.005), ncol=7,
           fontsize=7, columnspacing=1.0, handlelength=1.3)
 ax.text(0.5, -0.30, "whisker: the range across swept configurations and repeat "
-        "builds, not a confidence interval.  JHQ is a cold build -- later rows "
-        "of a dataset hit the trained-state cache and\nreport 26 ms, so the "
-        "bar is the maximum, not the median. All indexes train the coarse "
-        "quantiser at 39 points a centroid.",
+        "builds, not a confidence interval.  JHQ's bar is its one cold "
+        "training plus its median encode: training is cached after a "
+        "dataset's\nfirst row, encoding is not and re-runs every row. All "
+        "indexes train the coarse quantiser at 39 points a centroid.",
         transform=ax.transAxes, ha="center", va="top",
         fontsize=7, color="#898781", linespacing=1.35)
 
