@@ -12,7 +12,7 @@ paper's current data. `README.md` is the evidence map and is current.
 | older claim | what is measured now | source |
 |---|---|---|
 | "sample size around `S=32`" / "S=32 is the knee" | **The knee is per workload.** 2000 resampled draws scored on held-out queries: at S=32, 76% inside 1e-3 on openai3-3072 and **27% on vogue-768**, where the mean held-out loss is 0.0033 and the 95th percentile 0.0110. openai3-3072 reaches 98% at S=64; vogue-768 still loses 11% of draws at S=128. Give S against a stated risk, not as a constant. | `data/alpha_resample.json`, `figures/alpha_resample.py` |
-| "factorised LUT: roughly +6% to +14.5%" | **−4% at M=96 to +53% at M=384.** All 28 original cells were M=96 and M=128. The 256-entry table is 98 KiB at M=96, which shared memory holds, and 393 KiB at M=384, which it does not: the factorisation matters exactly where the full table stops fitting. One M=96 cell is negative. | `data/lut_groups.log`, `figures/fig_lutgroups.py` |
+| "factorised LUT: roughly +6% to +14.5%" | **−4% at M=96 to +53% at M=384.** All 28 original cells were M=96 and M=128. The 256-entry table is 96 KiB at M=96, which shared memory holds, and 384 KiB at M=384, which it does not: the factorisation matters exactly where the full table stops fitting. One M=96 cell is negative. | `data/lut_groups.log`, `figures/fig_lutgroups.py` |
 | any statement that the coarse quantiser is undertrained | **It is not, in the reported runs.** `_pa.sh` passes `JHQ_N_TRAIN = 39 × nlist` on every dataset. The undertraining finding is historical. | `SKELETON_REVIEW_v2.md` |
 
 Two results the skeleton could not have known to ask for, both now measured:

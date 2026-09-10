@@ -44,8 +44,8 @@ conflict-free shared rather than an 8-way-conflicting shared or a global read.
 > M=384 -- while one cell at M=96 does come out negative.
 >
 > The mechanism is the table's size against shared memory. 256 entries a
-> subspace is M*256*4 bytes: 98 KiB at M=96, which the carveout still holds,
-> and 393 KiB at M=384, which it does not, so the unfactorised table there is
+> subspace is M*256*4 bytes: 96 KiB at M=96, which the carveout still holds,
+> and 384 KiB at M=384, which it does not, so the unfactorised table there is
 > read from global memory. **The factorisation matters exactly where the full
 > table stops fitting**, which is a scaling property and a better claim than
 > the average. See `paper_adc2026/figures/fig_lutgroups.py`.

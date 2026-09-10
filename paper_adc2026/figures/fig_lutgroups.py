@@ -43,7 +43,7 @@ is worth 1.02x to 1.12x, and one cell (nprobe=32, packed layout) comes out at
 0.96 -- slightly negative.
 
 The mechanism is visible in the arithmetic. A 256-entry table is M*256*4
-bytes: 98 KiB at M=96, which the carveout can still hold, and 393 KiB at
+bytes: 96 KiB at M=96, which the carveout can still hold, and 384 KiB at
 M=384, which it cannot, so G=1 there falls back to reading the table from
 global memory. The factorisation matters exactly where the full table stops
 fitting. Reported as an average over datasets it is a modest constant; read
