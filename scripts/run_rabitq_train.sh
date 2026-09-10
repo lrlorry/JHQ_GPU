@@ -69,11 +69,17 @@ AX="$D/arxiv-abstracts-768/base.fvecs $D/arxiv-abstracts-768/query.fvecs $D/arxi
 O15="$D/openai3-1536/base.fvecs $D/openai3-1536/query.fvecs $D/openai3-1536/groundtruth.ivecs"
 O30="$D/openai3-3072/base.fvecs $D/openai3-3072/query.fvecs $D/openai3-3072/groundtruth.ivecs"
 
-one(){  # tag paths nlist train_per_list nprobe
-    local tag=$1 paths=$2 nl=$3 tpl=$4 np=$5
+# mode selects cuVS's search kernel: 0=LUT16 1=LUT32 2=QUANT4 3=QUANT8.  The
+# archived runs used 2, but paper_rabitq.log never recorded it -- the wrapper
+# kept only its own parsed summary and swallowed the line the bench prints --
+# so which kernel the published RaBitQ curves used cannot be read back from the
+# archive.  It is recorded here, and swept once per dataset below, because a
+# baseline compared at a kernel that is not its best is not a baseline.
+one(){  # tag paths nlist train_per_list nprobe mode
+    local tag=$1 paths=$2 nl=$3 tpl=$4 np=$5 md=${6:-2}
     local out
     out=$(env JHQ_RQ_TRAIN_PER_LIST="$tpl" timeout 9000 \
-          build/bench_rq_train $paths "$nl" 8 "$np" 10 0 3 2>&1)
+          build/bench_rq_train $paths "$nl" 8 "$np" 10 "$md" 3 2>&1)
     local r q b actual
     r=$(printf '%s\n' "$out" | awk '/^Recall@10/{print $3;exit}')
     q=$(printf '%s\n' "$out" | awk '/^QPS/{print $3;exit}')
@@ -85,14 +91,26 @@ one(){  # tag paths nlist train_per_list nprobe
         echo "  RQ $tag nlist=$nl tpl=$tpl np=$np MISSING <-- produced nothing" >> "$L"
         printf '%s\n' "$out" | tail -4 | sed 's/^/      | /' >> "$L"
     else
-        printf "  RQ %-14s nlist=%-6s tpl=%-4s used=%-5s np=%-5s recall=%-8s qps=%-9s build_ms=%s\n" \
-            "$tag" "$nl" "$tpl" "${actual:-?}" "$np" "$r" "$q" "${b:-?}" >> "$L"
+        printf "  RQ %-14s nlist=%-6s tpl=%-4s used=%-6s mode=%-2s np=%-5s recall=%-8s qps=%-9s build_ms=%s\n" \
+            "$tag" "$nl" "$tpl" "${actual:-?}" "$md" "$np" "$r" "$q" "${b:-?}" >> "$L"
     fi
 }
 
 # nlist follows run_front6.sh's second block, the settings the JHQ frontier
 # reports, so both sides partition the same way.
 NP="8 32 128 256 512 1024"
+
+# Which kernel is RaBitQ's best here?  One probe depth per dataset, all four
+# modes, at the library's own training budget.  Whatever wins is what the
+# sweep below should have been run at all along.
+say "########## search mode sweep, nprobe=128, tpl=256 ##########"
+for md in 0 1 2 3; do
+    one vogue-768    "$VG"  4096 256 128 "$md"
+    one arxiv-768    "$AX"  8192 256 128 "$md"
+    one openai3-1536 "$O15" 4096 256 128 "$md"
+    one openai3-3072 "$O30" 4096 256 128 "$md"
+done
+
 for tpl in 39 256; do
     say "########## train_per_list=$tpl ##########"
     for np in $NP; do one vogue-768    "$VG"  4096 "$tpl" "$np"; done
