@@ -1,11 +1,16 @@
 # ADC 2026 — what is measured, and what it rests on
 
-> **For a co-author:** `handbook.pdf` is the skeleton and all sixteen figures
-> in one file. Part I is the drafting skeleton with each figure at its
-> section; Part II is every figure at full width followed by its script's
-> docstring, which is where the measured numbers and the caveats are written
-> down. **Write captions from Part II.** Regenerate with
-> `figures/make_all.sh && python3 build_handbook.py`.
+> **For a co-author:** `handbook.pdf` (English) and `handbook_zh.pdf`
+> (Chinese) each carry the skeleton and all sixteen figures in one file. Part I
+> is the drafting skeleton with each figure at its section; Part II is every
+> figure at full width followed by its evidence — the English edition
+> reproduces each script's docstring verbatim, the Chinese edition carries a
+> distilled note per figure. **Write captions from Part II.** The paper itself
+> is written in English; the Chinese edition is a reading aid and keeps every
+> number, path and identifier in its original form.
+>
+> Regenerate with `figures/make_all.sh`, then `python3 build_handbook.py` and
+> `python3 build_handbook.py --zh`.
 
 Every number the paper can use, the file it comes from, and whether it is
 finished. `data/` holds frozen copies of the logs so the paper does not cite a
