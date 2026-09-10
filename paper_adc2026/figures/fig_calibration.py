@@ -31,10 +31,28 @@ Section 6.3, the contribution's own evidence. Three panels.
     returns is the smallest grid alpha its sampled criterion accepts, bounded
     above by alpha_max. The sample estimates the true saturation point; it
     does not bound it, and arxiv-768 is what the difference looks like.
-(b) Sample size. At S=8 openai3-3072 picks alpha=2 and gives up 0.0058 of
-    recall; from S=32 on it is exact. The knee, not a chosen constant. The
-    reference line is 1e-4 here for the same reason as in (c): one index, one
-    set of codebooks, alpha the only thing that changes.
+(b) Sample size, resampled. This panel used to plot one calibration draw per
+    S and read a knee off it, which is how the paper came to recommend S=32.
+    That recommendation does not survive being measured properly.
+
+    With the full alpha grid dumped a query at a time on a frozen index
+    (data/alpha_perquery/), every draw can be replayed offline: sample S
+    queries, run the rule on exactly what it would have seen, and score the
+    alpha it picks **on the queries it did not see**. 2000 draws a cell,
+    alpha_resample.py, no GPU.
+
+    The single draw was lucky. On vogue-768 at nprobe=128 it picked alpha=64
+    and gave up 0.0002. Across 2000 draws at the same S=32 the modal pick is
+    32, not 64; the mean held-out loss is 0.0033, sixteen times larger; the
+    95th percentile is 0.0110, a full point of recall; and only 27% of draws
+    land inside 1e-3.
+
+    S=32 is enough on openai3-3072, where the saturation point is alpha=4 and
+    76% of draws are inside 1e-3, rising to 98% at S=64. It is not enough on
+    vogue-768, where the loss curve is still falling at S=128 and only 89% of
+    draws are inside 1e-3 there. The knee is a property of the dataset, and
+    the paper has to say S per workload with its measured risk rather than
+    print one constant.
 (c) Tolerance, on vogue-768 at nprobe=512, all three points from the
     bisecting rule. The reference is 1e-4, not 1e-3: both arms of each
     comparison run on one index with one set of codebooks, so the only thing
@@ -84,19 +102,9 @@ for ln in open(datafile("alpha_sample.log")):
                        float(m.group(2)) - float(m.group(3))))
         GAIN[(cur[0], cur[1])] = float(m.group(4))
 
-# (b) sample size, openai3-3072 and arxiv-768 at nprobe=128
-bys = {}
-cur = None
-for ln in open(datafile("alpha_sample.log")):
-    m = re.search(r"--- (\S+)\s+nprobe=(\d+)\s+BLOCK=\d+\s+S=(\d+)", ln)
-    if m:
-        cur = (m.group(1), int(m.group(2)), int(m.group(3)))
-        continue
-    m = re.search(r"AS_RESULT picked=(\S+) recall_picked=(\S+) qps_picked=\d+ "
-                  r"recall_max=(\S+)", ln)
-    if m and cur and cur[1] == 128:
-        bys.setdefault(cur[0], {})[cur[2]] = (float(m.group(1)),
-                                              float(m.group(2)) - float(m.group(3)))
+# (b) sample size, resampled offline -- see alpha_resample.py
+import json as _json
+RS = _json.load(open(datafile("alpha_resample.json")))
 
 # (c) tolerance.
 #
@@ -184,30 +192,51 @@ ag.grid(False)
 
 a.text(0.03, 0.93, "(a)", transform=a.transAxes, fontsize=8, va="top")
 
-# (b)
-for i, ds in enumerate([d for d in ("openai3-3072", "arxiv-768") if d in bys]):
-    xs = sorted(bys[ds])
-    col = ["#2a78d6", "#eb6834"][i]
-    b.plot(xs, [-bys[ds][x][1] for x in xs], color=col,
-           marker=["o", "^"][i], label=PRETTY[ds])
-b.axhline(1e-4, color="0.35", lw=0.7, ls=":")
-b.text(0.97, 0.30, "$10^{-4}$: tie-break only", transform=b.transAxes, ha="right", fontsize=7,
-       color="0.35")
-# Linear, not log: from S=32 on the loss is exactly zero, and a log axis
-# cannot draw that -- the lines would fall off the bottom and read as broken.
-b.set_xscale("log", base=2)
-b.set_xlabel("calibration sample $S$"); b.set_ylabel("recall given up")
-b.set_ylim(-3e-4, 6.6e-3)
-b.set_xticks([8, 16, 32, 64, 128])
+# (b) held-out loss against S: the band is the spread over 2000 draws, the
+# line their mean. A single draw is one sample from this band, which is what
+# the earlier version of this panel was plotting without saying so.
+SS = [8, 16, 32, 64, 128]
+for ds, np_ in [("vogue-768", 128), ("openai3-3072", 128)]:
+    cells = [RS.get("%s|%d|%d" % (ds, np_, S)) for S in SS]
+    if any(c is None for c in cells):
+        continue
+    # a mean of exactly zero has no place on a log axis; clamp it to the floor
+    # and mark it, rather than let the line fall off the bottom of the panel
+    FLOOR = 1e-4
+    mean = [max(c["heldout_loss_mean"], FLOOR) for c in cells]
+    p95  = [max(c["heldout_loss_p95"], FLOOR) for c in cells]
+    zero = [S for S, c in zip(SS, cells) if c["heldout_loss_mean"] < FLOOR]
+    col  = DS_COLOR[ds]
+    b.fill_between(SS, mean, p95, color=col, alpha=0.16, lw=0)
+    b.plot(SS, mean, color=col, marker=DS_MARK[ds], ms=3.2,
+           mew=1.0 if DS_MARK[ds] == "x" else 0.5,
+           label="%s, nprobe$=$%d" % (PRETTY[ds].split("-")[0], np_))
+    b.plot(SS, p95, color=col, lw=0.7, ls=":")
+    if zero:
+        b.plot(zero, [FLOOR] * len(zero), color=col, marker="_", ls="",
+               ms=6, mew=1.2)
+b.axhline(1e-3, color="0.35", lw=0.7, ls=":")
+b.text(8.4, 1.15e-3, "$10^{-3}$", fontsize=7, color="0.35", va="bottom")
+b.set_xscale("log", base=2); b.set_yscale("log")
+b.set_xlabel("calibration sample $S$")
+b.set_ylabel("held-out recall given up")
+b.set_xticks(SS)
 b.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-b.legend(loc="upper right", fontsize=7)
-b.text(0.03, 0.90, "(b)", transform=b.transAxes, fontsize=8)
+b.get_yaxis().set_minor_formatter(matplotlib.ticker.NullFormatter())
+b.set_ylim(8e-5, 6e-2)
+b.legend(loc="lower left", fontsize=7)
+b.text(0.97, 0.95, "line: mean of 2000 draws\ndotted: 95th percentile",
+       transform=b.transAxes, ha="right", va="top", fontsize=7,
+       color="#898781", linespacing=1.3)
+b.text(0.97, 0.05, "(b)", transform=b.transAxes, fontsize=8, ha="right")
+b.text(8.4, 1.05e-4, "  exactly 0", fontsize=7, color="#898781",
+       va="bottom")
 
 # (c) upper: what the tolerance costs.  lower: what it buys.
 xs = sorted(tol)
 c.bar(xs, [-tol[x][1] for x in xs], width=0.5, color="#e34948")
 c.axhline(1e-4, color="0.35", lw=0.7, ls=":")
-c.text(-0.5, 1.3e-4, "$10^{-4}$", fontsize=7, color="0.35", ha="left",
+c.text(2.45, 1.3e-4, "$10^{-4}$", fontsize=7, color="0.35", ha="right",
        va="bottom")
 c.set_ylabel("recall\ngiven up", linespacing=1.2)
 c.tick_params(labelbottom=False)

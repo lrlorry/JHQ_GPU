@@ -1,0 +1,45 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at ea9799f v59 build fix, and the 2x2 the paper was inferring across versions
+23:48:15 HEAD ea9799f v59 build fix, and the 2x2 the paper was inferring across versions
+-- Configuring done (0.3s)
+-- Generating done (0.7s)
+-- Build files have been written to: /root/JHQ_GPU/build
+[100%] Built target jhq_cpu
+[100%] Built target jhq_v57_exp
+[100%] Built target demo_jhq_v57
+23:48:16 build_rc=0
+23:51:37 got the GPU
+  vogue-768      np=128   a=2     recall=0.7955   qps=249450    ids=44000      rc=0
+  vogue-768      np=128   a=4     recall=0.8826   qps=236084    ids=44000      rc=0
+  vogue-768      np=128   a=8     recall=0.9317   qps=245974    ids=44000      rc=0
+  vogue-768      np=128   a=16    recall=0.9541   qps=227379    ids=44000      rc=0
+  vogue-768      np=128   a=32    recall=0.9623   qps=205140    ids=44000      rc=0
+  vogue-768      np=128   a=64    recall=0.9645   qps=172018    ids=44000      rc=0
+  vogue-768      np=128   a=100   recall=0.9647   qps=135388    ids=44000      rc=0
+  vogue-768      np=128   a=200   recall=0.9648   qps=89435     ids=44000      rc=0
+  openai3-3072   np=128   a=2     recall=0.9357   qps=87234     ids=44000      rc=0
+  openai3-3072   np=128   a=4     recall=0.9415   qps=86358     ids=44000      rc=0
+  openai3-3072   np=128   a=8     recall=0.9415   qps=85955     ids=44000      rc=0
+  openai3-3072   np=128   a=16    recall=0.9415   qps=81760     ids=44000      rc=0
+  openai3-3072   np=128   a=32    recall=0.9415   qps=77102     ids=44000      rc=0
+  openai3-3072   np=128   a=64    recall=0.9415   qps=32426     ids=44000      rc=0
+  openai3-3072   np=128   a=100   recall=0.9415   qps=41108     ids=44000      rc=0
+  openai3-3072   np=128   a=200   recall=0.9415   qps=24510     ids=44000      rc=0
+  vogue-768      np=512   a=2     recall=0.8103   qps=100635    ids=44000      rc=0
+  vogue-768      np=512   a=4     recall=0.9005   qps=101094    ids=44000      rc=0
+  vogue-768      np=512   a=8     recall=0.9533   qps=100316    ids=44000      rc=0
+  vogue-768      np=512   a=16    recall=0.9785   qps=99287     ids=44000      rc=0
+  vogue-768      np=512   a=32    recall=0.9871   qps=93814     ids=44000      rc=0
+  vogue-768      np=512   a=64    recall=0.9903   qps=85408     ids=44000      rc=0
+  vogue-768      np=512   a=100   recall=0.9907   qps=72407     ids=44000      rc=0
+  vogue-768      np=512   a=200   recall=0.9909   qps=57538     ids=44000      rc=0
+  openai3-3072   np=512   a=2     recall=0.9732   qps=29543     ids=44000      rc=0
+  openai3-3072   np=512   a=4     recall=0.9814   qps=29469     ids=44000      rc=0
+  openai3-3072   np=512   a=8     recall=0.9815   qps=29490     ids=44000      rc=0
+  openai3-3072   np=512   a=16    recall=0.9815   qps=28970     ids=44000      rc=0
+  openai3-3072   np=512   a=32    recall=0.9815   qps=28171     ids=44000      rc=0
+  openai3-3072   np=512   a=64    recall=0.9815   qps=26363     ids=44000      rc=0
+  openai3-3072   np=512   a=100   recall=0.9815   qps=20811     ids=44000      rc=0
+  openai3-3072   np=512   a=200   recall=0.9815   qps=15436     ids=44000      rc=0
+23:53:54 === AD_DONE 32 dumps ===
