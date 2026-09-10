@@ -2014,6 +2014,29 @@ foreach(G 1 2)
       JHQ_LUT_GROUPS=${G} JHQ_WORD_LAYOUT=0)
 endforeach()
 
+# The step timers on the build everything else is measured on.
+#
+# JHQ_STEP_TIMING attributes each batch to gemm_rotate, gemm_centroid,
+# select_probes, build_byte_lut, scan_ivf, build_lut_r, residual_refine and
+# topk_final. It cannot share a run with the headline QPS: events cannot be
+# read back from inside a captured graph, so the timers bypass the graph and
+# the run loses its launch-overhead saving. The shares are still right --
+# every stage pays the same tax -- but the totals are not comparable with
+# paper_fronts.log, exactly as alpha6.log's rank_lost is usable while its QPS
+# is not. Any table mixing the two has to say which build each number is from.
+#
+# What it is for: as alpha falls, refinement work falls while the primary scan
+# does not, so the scan's *share* rises. That is the experimental link between
+# Section 3 and Section 4, and it is currently asserted rather than measured.
+# Note it is a share that moves, not a scan that gets cheaper -- at fixed
+# nprobe a smaller alpha keeps fewer survivors, it does not scan fewer
+# candidates.
+add_jhq_variant(v58_timed ${V58} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1
+    JHQ_STEP_TIMING=1)
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
 # Pure C++ (common/recall.cuh has no CUDA in it), so no CUDA toolchain needed
 # to run these.  ctest, or: ./build/test_recall
