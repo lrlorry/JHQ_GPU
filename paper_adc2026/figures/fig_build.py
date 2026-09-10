@@ -142,6 +142,23 @@ LAB = {"JHQ-GPU": "JHQ-GPU (this work)", "IVF-RaBitQ": "IVF-RaBitQ",
        "cuVS-CAGRA": "CAGRA fp32", "cuVS-CAGRA-int8": "CAGRA int8",
        "cuVS-IVFPQ": "IVF-PQ"}
 
+# The four ranges Section 6.7 quotes, printed so they have a generator
+# instead of being read off the bars by hand.  audit_numbers.py reads this.
+# Section 6.7's baseline build ranges, under build_crossover.py's convention:
+# the fastest build observed for each baseline on each dataset, then the min
+# and max across datasets.  Taking the fastest is the choice least favourable
+# to JHQ, and quoting each baseline under a rule of its own -- which is how
+# the IVF-PQ and IVF-RaBitQ ranges were first written -- is what let a number
+# into the text that no aggregation reproduces.
+print("  baseline cold builds, fastest per dataset, range across datasets:")
+for meth in ("IVF-RaBitQ", "cuVS-CAGRA", "cuVS-CAGRA-int8", "cuVS-IVFPQ"):
+    per = {ds: min(ts) for (m, ds), ts in b.items()
+           if m == meth and ts and (m, ds) not in FAILS}
+    if per:
+        lo = min(per, key=per.get); hi = max(per, key=per.get)
+        print("     %-16s %.1f to %.1f s   (%s .. %s, %d datasets)"
+              % (meth, per[lo], per[hi], lo, hi, len(per)))
+
 fig, ax = plt.subplots(figsize=(WIDE, 2.6))
 W = 0.16
 x = np.arange(len(DATASETS))

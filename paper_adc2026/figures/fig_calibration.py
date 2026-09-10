@@ -156,15 +156,24 @@ for i, (key, p) in enumerate(rows):
     if sw != p:
         a.plot([sw, p], [i, i], color="0.75", lw=1.0, zorder=1,
                solid_capstyle="round")
-    a.scatter([sw], [i], s=26, marker=">" if CAPPED[key] else "|",
-              color="0.35", zorder=3, lw=1.2)
+    # The rule agrees with the sweep in three of four rows, and a same-size
+    # marker at the same coordinate is simply hidden under the circle -- the
+    # panel then shows a bare dot, which reads as "no sweep here" rather than
+    # as agreement.  The sweep marker is drawn larger and on top, hollow, so
+    # a coincident pair reads as a ring around the dot.
     a.scatter([p], [i], s=26, marker="o", color=S["jhq"]["color"], zorder=3)
+    if CAPPED[key]:
+        a.scatter([sw], [i], s=30, marker=">", color="0.35", zorder=4, lw=1.2)
+    else:
+        a.scatter([sw], [i], s=88, marker="o", facecolors="none",
+                  edgecolors="0.35", zorder=4, lw=1.0)
 a.set_yticks(range(len(rows)))
 a.set_yticklabels([PRETTY[k[0]].split("-")[0] for k, _ in rows], fontsize=7)
 a.set_ylim(-0.7, len(rows) - 0.3)
 a.set_xlim(3, 330)
 a.grid(axis="y", visible=False)
-a.scatter([], [], marker="|", s=26, color="0.35", lw=1.2, label="sweep")
+a.scatter([], [], marker="o", s=88, facecolors="none", edgecolors="0.35",
+          lw=1.0, label="sweep")
 a.scatter([], [], marker=">", s=26, color="0.35", lw=1.2,
           label="sweep, still falling")
 a.scatter([], [], marker="o", s=26, color=S["jhq"]["color"], label="rule")
@@ -227,8 +236,10 @@ b.text(0.97, 0.95, "line: mean of 2000 draws\ndotted: 95th percentile",
        transform=b.transAxes, ha="right", va="top", fontsize=7,
        color="#898781", linespacing=1.3)
 b.text(0.97, 0.05, "(b)", transform=b.transAxes, fontsize=8, ha="right")
-b.text(90, 1.06e-4, "exactly 0", fontsize=7, color="#898781",
-       ha="right", va="bottom")
+# Anchored above the floor line rather than beside it: at ha="right" from
+# x=90 this ran straight through the legend's openai3 entry.
+b.text(96, 1.30e-4, "exactly 0", fontsize=7, color="#898781",
+       ha="center", va="bottom")
 
 # Panels (c) and (d) removed for the 12-page limit: their two numbers --
 # 26% of attainable throughput unclaimed at zero slots, 0.0035 recall at

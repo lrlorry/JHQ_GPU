@@ -149,9 +149,12 @@ b.set_ylabel("factorised $\\div$ full table")
 b.set_ylim(0.9, 1.72)
 b.legend(loc="upper left", fontsize=7, ncol=1, columnspacing=0.9,
          handlelength=1.1, bbox_to_anchor=(0.0, 1.02))
-b.text(0.03, 0.78, "(b)  the ratio barely moves\n"
-       "      between the two layouts, so\n"
-       "      the table and word gains\n"
+# "barely moves" was drawn from five of six cells; the sixth moves 12.6%,
+# and it is the cell carrying the largest gain, so the claim now names the
+# range instead of averaging it away.
+b.text(0.03, 0.78, "(b)  the two layouts agree\n"
+       "      within $6\\%$ in five of six\n"
+       "      cells, so the gains mostly\n"
        "      multiply rather than overlap", transform=b.transAxes, fontsize=7,
        ha="left", va="top", color="#52514e", linespacing=1.35)
 
@@ -172,14 +175,48 @@ if pairs:
         print("     %-14s nprobe=%-5d %+.1f%%" % (ds, np_, pct))
     print("     range %+.1f%% to %+.1f%%"
           % (min(p[2] for p in pairs), max(p[2] for p in pairs)))
-    g12 = [(k[1], k[3], 100.0 * (med(rows[k], 2) / med(rows[k], 1) - 1.0))
-           for k in sorted(rows)
-           if 1 in rows[k] and 2 in rows[k]]
-    if g12:
+    # Panel (a) draws the sweep phase only, so the counts the caption and
+    # Section 6.2 quote have to come from the sweep phase only.  Folding the
+    # square phase into the same range is what put a -4.2% cell in the text
+    # that no line in panel (a) can show.
+    def g12(phase):
+        return [(k[1], k[3], 100.0 * (med(rows[k], 2) / med(rows[k], 1) - 1.0))
+                for k in sorted(rows)
+                if k[0] == phase and 1 in rows[k] and 2 in rows[k]
+                and (phase != "sweep" or k[2] == "word")]
+    sw = g12("sweep")
+    if sw:
+        print("  panel (a), sweep phase -- G=2 against G=1, %d cells:" % len(sw))
+        print("     G=2 wins %d of %d" % (sum(1 for p in sw if p[2] > 0), len(sw)))
         for M in (96, 384):
-            v = [p[2] for p in g12 if (M == 96) == ("vogue" in p[0])]
+            v = [p for p in sw if (M == 96) == ("vogue" in p[0])]
             if v:
-                print("  G=2 against G=1 at M=%d: %+.1f%% to %+.1f%%"
-                      % (M, min(v), max(v)))
+                pct = [p[2] for p in v]
+                print("     M=%d: %+.1f%% to %+.1f%%   by nprobe %s"
+                      % (M, min(pct), max(pct),
+                         ", ".join("np%d %+.1f%%" % (p[1], p[2])
+                                   for p in sorted(v, key=lambda q: q[1]))))
+    sq = g12("square")
+    if sq:
+        neg = [p for p in sq if p[2] <= 0]
+        print("  square phase (panel (b)'s cells), %d of %d negative:" % (len(neg), len(sq)))
+        for ds, np_, pct in neg:
+            same = [p for p in sw if p[0] == ds and p[1] == np_]
+            print("     %-14s nprobe=%-4d %+.1f%%%s"
+                  % (ds, np_, pct,
+                     "   same point in the sweep phase: %+.1f%%" % same[0][2]
+                     if same else ""))
+        print("  panel (b), factorised/full by layout:")
+        for ds in ("vogue-768", "openai3-3072"):
+            for np_ in (32, 128, 512):
+                v = {}
+                for lay in ("byte", "word"):
+                    d = rows.get(("square", ds, lay, np_))
+                    if d and 1 in d and 2 in d:
+                        v[lay] = med(d, 2) / med(d, 1)
+                if len(v) == 2:
+                    print("     %-14s nprobe=%-4d byte %.3f  packed %.3f  "
+                          "gap %+.1f%%" % (ds, np_, v["byte"], v["word"],
+                                           100 * (v["word"] / v["byte"] - 1)))
 
 save(fig, "fig_lutgroups")

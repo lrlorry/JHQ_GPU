@@ -38,6 +38,12 @@ KNOWN = {
     "1", "2", "3", "4", "5", "6", "7", "9", "11", "12", "14", "15", "20", "24",
     "26", "48", "768", "1536", "3072", "5090", "0.90", "0.93", "0.95", "0.97",
     "0.98", "0.99", "1.0", "0.001",
+    # The machine and the corpora: nothing here is a result, and none of it
+    # can come from a run log.
+    "32607", "170", "754", "2.25", "10.1", "17.8",
+    # S*k slots at S=32 and at the 500-query pool, with k=10; the text now
+    # gives the arithmetic, so these are checkable without a log.
+    "320", "5000",
 }
 
 
@@ -54,9 +60,13 @@ def body_numbers():
             # {32,128,512} into the number 32128512. ORCIDs are not
             # measurements either.
             txt = re.sub(r"\\orcidID\{[^}]*\}", " ", txt)
+            # LaTeX writes a thousands separator as 1{,}024; the number
+            # pattern below cannot span the braces, so it used to yield the
+            # tail "024" as a number of its own.
+            txt = txt.replace("{,}", ",")
             txt = re.sub(r"\\?\{\s*\$?\d[\d,.$\s]*\\?\}", " ", txt)
             # ...and a bare comma list, as in nprobe}=8,32,128,512$
-            txt = re.sub(r"=\s*\d+(?:\s*,\s*\d+)+", " ", txt)
+            txt = re.sub(r"(?:\{=\}|=)\s*\d+(?:\s*,\s*\d+)+", " ", txt)
             for m in re.finditer(r"(?<![\w.])(\d+(?:[,{}]\d+)*(?:\.\d+)?)", txt):
                 v = m.group(1).replace("{,}", "").replace(",", "")
                 if v in KNOWN or len(v) < 2:
@@ -78,7 +88,8 @@ def corpus():
         text.append(open(f, errors="ignore").read())
     # and whatever the generators print, since ranges are computed not stored
     for g in ("table_frontier.py", "build_crossover.py", "budget_arms.py",
-              "cpu_gpu_envelope.py", "fig_issue.py", "fig_lutgroups.py"):
+              "cpu_gpu_envelope.py", "fig_issue.py", "fig_lutgroups.py",
+              "fig_build.py"):
         p = os.path.join(HERE, g)
         if not os.path.exists(p):
             continue
@@ -97,11 +108,19 @@ def main():
     for v, where in sorted(nums.items(), key=lambda kv: -len(kv[0])):
         # match the digits with or without a thousands separator, and allow the
         # log to carry more precision than the text quotes
-        pats = [re.escape(v)]
+        # A bare substring search made this check far weaker than it read:
+        # "9.8" matched the "19.8" inside an unrelated timing, which is how
+        # three numbers in Section 6.2 passed while no generator produced
+        # them.  Both ends are anchored -- no digit or dot may precede the
+        # match, and only more precision may follow it.
+        L, R = r"(?<![\d.])", r"(?![\d.])"
+        pats = [L + re.escape(v) + R]
         if "." in v:
-            pats.append(re.escape(v) + r"\d")
+            pats.append(L + re.escape(v) + r"\d+" + R)
+        if "." not in v:
+            pats.append(L + re.escape(v) + r"\.\d+" + R)
         if len(v) > 3 and "." not in v:
-            pats.append(re.escape(v[:-3]) + "," + re.escape(v[-3:]))
+            pats.append(L + re.escape(v[:-3]) + "," + re.escape(v[-3:]) + R)
         if not any(re.search(p, hay) for p in pats):
             missing.append((v, where))
     print("body carries %d distinct measured numbers; %d have no source"

@@ -101,8 +101,14 @@ for i, (lab, M) in enumerate(rows):
                            fc="#2a78d6", ec="none"))
     bx.text(0.24 + 0.72 * full / maxkb + 0.012, y + 0.082,
             f"{full:.0f} KiB", fontsize=7, va="center", color="#52514e")
-    bx.text(0.24 + 0.72 * fact / maxkb + 0.012, y + 0.012,
-            f"{fact:.0f}", fontsize=7, va="center", color="#2a78d6")
+    # Right of the bar is where this label belongs, except at M=384, where
+    # 48 KiB ends 11 KiB short of the band and the label lands on top of the
+    # band's left edge.  There it goes inside the bar instead.
+    inside = 0.72 * (budget[0] - fact) / maxkb < 0.05
+    bx.text(0.24 + 0.72 * fact / maxkb + (-0.012 if inside else 0.012),
+            y + 0.012, f"{fact:.0f}", fontsize=7, va="center",
+            ha="right" if inside else "left",
+            color="white" if inside else "#2a78d6")
 bx.add_patch(Rectangle((0.24, 0.085), 0.03, 0.035, fc="#e1e0d9", ec="#898781", lw=0.5))
 bx.text(0.285, 0.102, "full, $256$/subspace", fontsize=7, va="center")
 bx.add_patch(Rectangle((0.24, 0.020), 0.03, 0.035, fc="#2a78d6", ec="none"))

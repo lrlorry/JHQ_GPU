@@ -78,7 +78,8 @@ with probe depth together.
   \caption{Exact Cartesian factorisation of an 8-bit JHQ primary lookup table:
   256 resident entries become two 16-entry tables. The band on the right is what
   Equation~\ref{eq:resid} leaves for the table across the admissible block
-  sizes; every full table falls outside it and every factorised table inside.}
+  sizes; every factorised table clears its lower edge and every full table
+  overruns its upper one --- $M{=}96$'s by $2$\,KiB, the rest by more.}
   \label{fig:lut}
 \end{figure}
 

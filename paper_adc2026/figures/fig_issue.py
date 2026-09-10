@@ -115,8 +115,11 @@ def main():
                [t[2] - sl * (work[2][1] - work[1][1]), t[8]],
                color=c, lw=0.6, ls="--", alpha=0.55)
     for g in (1, 2, 4, 8):
+        # G=1 sits at 4.4 instructions, close enough to the left spine that a
+        # centred label overhangs it; that one is left-aligned instead.
         a.annotate("$G{=}%d$" % g, (work[g][1], 0.015),
-                   xycoords=("data", "axes fraction"), ha="center", va="bottom",
+                   xycoords=("data", "axes fraction"),
+                   ha="left" if g == 1 else "center", va="bottom",
                    fontsize=6.5, color="#898781")
     a.set_xlabel(u"issued instructions per candidate–subspace (SASS)")
     a.set_ylabel(r"$\mu$s per query")
