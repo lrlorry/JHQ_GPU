@@ -229,9 +229,9 @@
 ### 6.4 表示与执行消融 —— RQ3
 
 **主张**
-> 三个独立实验指向同一机制:主扫描受指令发射限制,不受表大小限制。免表距离搬更少内存却慢 30–52%;字打包搬同样字节却快 30–48%;而更小的表(G=4、G=8)输给更大的表(G=2)。
+> 四个独立实验指向同一机制:主扫描受指令发射限制,不受表大小限制。免表距离搬更少内存却慢 30–52%;字打包搬同样字节却快 30–48%;更小的表输给更大的表(G=4 慢 4–36%,G=8 慢 10–61%);而删掉内层循环约 30% 的冗余边界测试换来最高 +148%。
 
-> Three independent experiments point at one mechanism: the primary scan is issue-bound, not table-size-bound. The table-free distance moves less memory and is 30–52% slower; the packed load moves the same bytes and is 30–48% faster; and smaller tables (G=4, G=8) lose to a larger one (G=2).
+> Four independent experiments point at one mechanism: the primary scan is issue-bound, not table-size-bound. The table-free distance moves less memory and is 30–52% slower; the packed load moves the same bytes and is 30–48% faster; smaller tables lose to a larger one (G=4 by 4–36%, G=8 by 10–61%); and removing about 30% of the inner loop's redundant boundary tests is worth up to +148%.
 
 **图** `fig_hierarchy`(6.4.1)、`fig_lutgroups`(6.4.2)、`fig_ablation`(6.4.3)。
 
@@ -246,17 +246,33 @@
 - ❌ **不要把不同批次实验的百分比加起来**推断合成加速比 —— 用 6.4.2 那个 2×2。
 - ❌ `fig_ablation` 里自适应 α 不该出现(它是策略结果、对固定 α=100 而非等召回、且带召回代价)。
 - ✅ 新颖性和效应量是两个轴:**打包的实测加速比分解大,如实报告,不要改新颖性标签去迁就性能。**
+- ⚠️ **游标(+2.5% 到 +148%)是整个消融里最大的单个数字**,比分解(最高 +53%)和打包(+48%)都大。它是实现修正,所以**不进贡献层级**;但把它的数字藏掉是另一个方向的错误 —— 骨架自己写了「如实报告两者」,现在的处理只做了「不改标签」这半句。
+- ✅ **正确位置是第三条路**:6.4.3 保留它的斜纹柱和真实区间(不称新颖),**同时在 §6.5 把它当机制证据讲**。它单独改的就是指令数,别的都没动,所以是四条证据里最直接的那条。
 
 ### 6.5 机制分析与负面结果 —— RQ4
 
 **主张**
-> 更少的表字节不等于更快的执行。指令数、占用率、缓存、共享内存驻留和访存流量共同决定结果,而按字节数做的直觉推理会给出错误答案。
+> 更少的表字节不等于更快的执行。四个实验分别改变访存量和指令数,而结果一致指向后者:这个扫描受指令发射限制。按字节数做的直觉推理在这里给出错误答案。
 
-> Fewer table bytes does not mean faster execution. Instruction count, occupancy, cache, shared-memory residency and memory traffic decide it together, and reasoning from byte counts gives the wrong answer.
+> Fewer table bytes does not mean faster execution. Four experiments vary memory traffic and instruction count separately, and all four point at the second: this scan is issue-bound. Reasoning from byte counts gives the wrong answer here.
 
-**图** `fig_negatives`。
+**图** `fig_negatives`(免表与复用代理)+ `fig_lutgroups(a)`(更小的表更慢)。
 
-**数字** 免表主距离 **−30% 到 −52%**;跨查询复用增益在 **D=2 就饱和**。
+**数字 —— 四条证据,一个机制**
+
+| 实验 | 搬的内存 | 指令 | 结果 | 出处 |
+|---|---|---|---:|---|
+| 免表主距离(符号内积) | **更少** | 更多 | −30% ~ −52% | `data/v54.log` |
+| 字打包 | 相同 | **更少** | +30% ~ +48% | `results/front6/NEGATIVES.md` |
+| 更细的表 G=4 | 更少 | 更多 | −4% ~ −36% | `data/lut_groups.log` |
+| 更细的表 G=8 | 更少 | 更多 | −10% ~ −61% | `data/lut_groups.log` |
+| **每线程 probe 游标** | 相同 | **少约 30%** | **+2.5% ~ +148%** | `results/front6/NEGATIVES.md` |
+
+- 跨查询复用增益在 **D=2 就饱和**(`data/qdup.log`)
+- **阶段计时佐证**:`build_byte_lut` 只占一个批次的 **0.2%–2.3%**,所以分解的收益不可能来自「表构建省 16×」;它来自扫描对一张更小、无 bank 冲突的表的访问(`data/k_and_stages.log`)
+
+**游标那一条值得单独写清楚,因为它是四条里唯一只改指令数的。**
+`scan_ivf_exact_kernel` 里每个线程需要知道自己的候选属于哪个 probe。`p` 是个 per-thread 寄存器,本该跨 chunk 携带,但**只有持有该 chunk 最后一个候选的线程写过它** —— 其余 1023 个线程的 `p` 一直是 0,每个 chunk 从零重走一遍 probe 边界。代价是每候选约 `nprobe/2` 次边界测试,而不是整个扫描共 `nprobe` 次:**stella 在 nprobe=128 上是每线程 14,308 次对 128 次,约占内层循环指令的 30%。** 修法精确的理由:每个线程拥有 `lt = chunk + tid`,每 chunk 增长 BLOCK,所以它的 probe 索引**单调**,私有游标给出同样的候选、同样的距离、同样的顺序。
 
 **红线**
 - ⚠️ 重复查询实验是**受控复用代理,不是上界**。它固定调度只变查询共性;真正的重写还会改调度。

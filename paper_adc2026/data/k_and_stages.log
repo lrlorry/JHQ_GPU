@@ -1,0 +1,1140 @@
+From https://github.com/lrlorry/JHQ_GPU
+ * branch            fix/recall-eval-v15 -> FETCH_HEAD
+HEAD is now at 0e202cf A step-timing target on the head, for the Section 3 to Section 4 link
+00:44:14 HEAD 0e202cf A step-timing target on the head, for the Section 3 to Section 4 link
+-- Configuring done (0.4s)
+-- Generating done (1.8s)
+-- Build files have been written to: /root/JHQ_GPU/build
+Built target jhq_cpu
+Built target jhq_v58_exp
+Building CUDA object CMakeFiles/demo_jhq_v58_exp.dir/examples/demo_jhq_v36.cu.o
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_fvecs(const char*, std::vector<float>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:13:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   13 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:26:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   26 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:27:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   27 |         fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_ivecs(const char*, std::vector<int>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:39:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   39 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:52:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   52 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:53:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   53 |         fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Linking CXX executable demo_jhq_v58_exp
+Built target demo_jhq_v58_exp
+[  0%] Built target jhq_cpu
+[  0%] Building CUDA object CMakeFiles/jhq_v58_timed.dir/jhq_v58_export/search.cu.o
+[  0%] Building CUDA object CMakeFiles/jhq_v58_timed.dir/jhq_v58_export/jhq_gpu_index.cu.o
+[  0%] Building CUDA object CMakeFiles/jhq_v58_timed.dir/jhq_v58_export/encode.cu.o
+[  0%] Building CUDA object CMakeFiles/jhq_v58_timed.dir/jhq_v58_export/train_res_gpu.cu.o
+[  0%] Building CUDA object CMakeFiles/jhq_v58_timed.dir/jhq_v58_export/train_pq_gpu.cu.o
+In file included from /root/JHQ_GPU/jhq_v58_export/encode.cu:13:
+/root/JHQ_GPU/common/cuda_utils.cuh:17: warning: "CUBLAS_CHECK" redefined
+   17 | #define CUBLAS_CHECK(call)                                                     \
+      | 
+/root/JHQ_GPU/jhq_v58_export/encode.cu:9: note: this is the location of the previous definition
+    9 | #define CUBLAS_CHECK(x) do { cublasStatus_t _s = (x); if (_s != CUBLAS_STATUS_SUCCESS) { \
+      | 
+In file included from /root/JHQ_GPU/jhq_v58_export/encode.cu:13:
+/root/JHQ_GPU/common/cuda_utils.cuh:17: warning: "CUBLAS_CHECK" redefined
+   17 | #define CUBLAS_CHECK(call)                                                     \
+      | 
+/root/JHQ_GPU/jhq_v58_export/encode.cu:9: note: this is the location of the previous definition
+    9 | #define CUBLAS_CHECK(x) do { cublasStatus_t _s = (x); if (_s != CUBLAS_STATUS_SUCCESS) { \
+      | 
+/root/JHQ_GPU/jhq_v58_export/search.cu(516): warning #177-D: variable "s_q" was declared but never referenced
+      float* s_q = s_suf + (0 ? (M + 1) : 0);
+             ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/jhq_v58_export/search.cu(559): warning #177-D: variable "TILE_M" was declared but never referenced
+      const int TILE_M = tile_m;
+                ^
+
+/root/JHQ_GPU/jhq_v58_export/train_res_gpu.cu(160): warning #177-D: function "jhq_gpu::<unnamed>::assign_accum_kernel" was declared but never referenced
+            void assign_accum_kernel(
+                 ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+[  0%] Linking CXX static library libjhq_v58_timed.a
+[  0%] Built target jhq_v58_timed
+[  0%] Building CUDA object CMakeFiles/demo_jhq_v58_timed.dir/examples/demo_jhq_v36.cu.o
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/JHQ_GPU/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_fvecs(const char*, std::vector<float>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:13:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   13 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:26:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   26 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:27:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   27 |         fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh: In function ‘int read_ivecs(const char*, std::vector<int>&, int&)’:
+/root/JHQ_GPU/common/fvecs_io.cuh:39:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   39 |     fread(&d, sizeof(int), 1, f);
+      |     ~^~~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:52:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   52 |         fread(&dd, sizeof(int), 1, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~
+/root/JHQ_GPU/common/fvecs_io.cuh:53:6: warning: ignoring return value of ‘size_t fread(void*, size_t, size_t, FILE*)’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   53 |         fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+      |      ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable demo_jhq_v58_timed
+[100%] Built target demo_jhq_v58_timed
+00:45:40 build_rc=0
+00:45:40 got the GPU
+00:45:40 ########## item 6: k sensitivity, alpha fixed at 100 and at the rule-like 4/64 ##########
+  vogue-768      M=96   np=32    a=100.0  k=1    recall=0.9070   qps=460453    rc=0
+  vogue-768      M=96   np=32    a=100.0  k=10   recall=0.8623   qps=216360    rc=0
+  vogue-768      M=96   np=32    a=100.0  k=100  recall=         qps=          rc=134
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  scan_ivf_exact_kernel needs 131080 B of shared memory for ck=10000 at BLOCK=512; the device allows 101376. Lower alpha or BLOCK.
+timeout: the monitored command dumped core
+  openai3-3072   M=384  np=32    a=100.0  k=1    recall=0.8960   qps=57904     rc=0
+  openai3-3072   M=384  np=32    a=100.0  k=10   recall=0.8652   qps=37957     rc=0
+  openai3-3072   M=384  np=32    a=100.0  k=20   recall=0.8514   qps=19426     rc=0
+  vogue-768      M=96   np=128   a=100.0  k=1    recall=0.9790   qps=244149    rc=0
+  vogue-768      M=96   np=128   a=100.0  k=10   recall=0.9649   qps=53388     rc=0
+  vogue-768      M=96   np=128   a=100.0  k=100  recall=         qps=          rc=134
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  scan_ivf_exact_kernel needs 131080 B of shared memory for ck=10000 at BLOCK=512; the device allows 101376. Lower alpha or BLOCK.
+timeout: the monitored command dumped core
+  openai3-3072   M=384  np=128   a=100.0  k=1    recall=0.9620   qps=29593     rc=0
+  openai3-3072   M=384  np=128   a=100.0  k=10   recall=0.9417   qps=19082     rc=0
+  openai3-3072   M=384  np=128   a=100.0  k=20   recall=0.9323   qps=20704     rc=0
+  vogue-768      M=96   np=512   a=100.0  k=1    recall=0.9950   qps=48166     rc=0
+  vogue-768      M=96   np=512   a=100.0  k=10   recall=0.9909   qps=29635     rc=0
+  vogue-768      M=96   np=512   a=100.0  k=100  recall=         qps=          rc=134
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  scan_ivf_exact_kernel needs 131080 B of shared memory for ck=10000 at BLOCK=512; the device allows 101376. Lower alpha or BLOCK.
+timeout: the monitored command dumped core
+  openai3-3072   M=384  np=512   a=100.0  k=1    recall=0.9900   qps=21455     rc=0
+  openai3-3072   M=384  np=512   a=100.0  k=10   recall=0.9819   qps=10000     rc=0
+  openai3-3072   M=384  np=512   a=100.0  k=20   recall=0.9792   qps=10001     rc=0
+00:49:33 ########## item 6b: does the alpha that suffices at k=10 still suffice at large k? ##########
+  vogue-768      M=96   np=128   a=4.0    k=10   recall=0.8830   qps=60988     rc=0
+  vogue-768      M=96   np=128   a=4.0    k=100  recall=0.8723   qps=60481     rc=0
+  openai3-3072   M=384  np=128   a=4.0    k=10   recall=0.9417   qps=47755     rc=0
+  openai3-3072   M=384  np=128   a=4.0    k=20   recall=0.9322   qps=29672     rc=0
+  vogue-768      M=96   np=128   a=8.0    k=10   recall=0.9320   qps=235017    rc=0
+  vogue-768      M=96   np=128   a=8.0    k=100  recall=0.9216   qps=54875     rc=0
+  openai3-3072   M=384  np=128   a=8.0    k=10   recall=0.9417   qps=27968     rc=0
+  openai3-3072   M=384  np=128   a=8.0    k=20   recall=0.9323   qps=80766     rc=0
+  vogue-768      M=96   np=128   a=16.0   k=10   recall=0.9547   qps=66609     rc=0
+  vogue-768      M=96   np=128   a=16.0   k=100  recall=0.9364   qps=99351     rc=0
+  openai3-3072   M=384  np=128   a=16.0   k=10   recall=0.9417   qps=45715     rc=0
+  openai3-3072   M=384  np=128   a=16.0   k=20   recall=0.9323   qps=76014     rc=0
+  vogue-768      M=96   np=128   a=32.0   k=10   recall=0.9625   qps=61774     rc=0
+  vogue-768      M=96   np=128   a=32.0   k=100  recall=0.9391   qps=26942     rc=0
+  openai3-3072   M=384  np=128   a=32.0   k=10   recall=0.9417   qps=76945     rc=0
+  openai3-3072   M=384  np=128   a=32.0   k=20   recall=0.9323   qps=38142     rc=0
+  vogue-768      M=96   np=128   a=64.0   k=10   recall=0.9647   qps=160463    rc=0
+  vogue-768      M=96   np=128   a=64.0   k=100  recall=         qps=          rc=1
+CUDA error /root/JHQ_GPU/jhq_v58_export/search.cu:1703  operation failed due to a previous error during capture
+  openai3-3072   M=384  np=128   a=64.0   k=10   recall=0.9417   qps=26957     rc=0
+  openai3-3072   M=384  np=128   a=64.0   k=20   recall=0.9323   qps=16836     rc=0
+  vogue-768      M=96   np=128   a=100.0  k=10   recall=0.9649   qps=55118     rc=0
+  vogue-768      M=96   np=128   a=100.0  k=100  recall=         qps=          rc=134
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  scan_ivf_exact_kernel needs 131080 B of shared memory for ck=10000 at BLOCK=512; the device allows 101376. Lower alpha or BLOCK.
+timeout: the monitored command dumped core
+  openai3-3072   M=384  np=128   a=100.0  k=10   recall=0.9417   qps=18127     rc=0
+  openai3-3072   M=384  np=128   a=100.0  k=20   recall=0.9323   qps=16667     rc=0
+00:53:46 ########## item 8: stage shares against alpha, fixed nprobe ##########
+  vogue-768      M=96   np=32    a=4.0    k=10   recall=0.8051   qps=262777    rc=0
+    STAGE vogue-768 np=32 a=4.0 k=10 gemm_rotate         0.098   6.4%
+    STAGE vogue-768 np=32 a=4.0 k=10 gemm_centroid       0.186  12.1%
+    STAGE vogue-768 np=32 a=4.0 k=10 select_probes       0.175  11.4%
+    STAGE vogue-768 np=32 a=4.0 k=10 build_byte_lut      0.023   1.5%
+    STAGE vogue-768 np=32 a=4.0 k=10 scan_ivf            0.746  48.6%
+    STAGE vogue-768 np=32 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=4.0 k=10 residual_refine     0.273  17.8%
+    STAGE vogue-768 np=32 a=4.0 k=10 topk_final          0.035   2.3%
+    STAGE vogue-768 np=32 a=4.0 k=10 gemm_rotate         0.037   2.2%
+    STAGE vogue-768 np=32 a=4.0 k=10 gemm_centroid       0.149   8.7%
+    STAGE vogue-768 np=32 a=4.0 k=10 select_probes       0.195  11.4%
+    STAGE vogue-768 np=32 a=4.0 k=10 build_byte_lut      0.020   1.2%
+    STAGE vogue-768 np=32 a=4.0 k=10 scan_ivf            0.990  57.8%
+    STAGE vogue-768 np=32 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=4.0 k=10 residual_refine     0.287  16.8%
+    STAGE vogue-768 np=32 a=4.0 k=10 topk_final          0.033   1.9%
+    STAGE vogue-768 np=32 a=4.0 k=10 gemm_rotate         0.036   2.0%
+    STAGE vogue-768 np=32 a=4.0 k=10 gemm_centroid       0.148   8.3%
+    STAGE vogue-768 np=32 a=4.0 k=10 select_probes       0.196  10.9%
+    STAGE vogue-768 np=32 a=4.0 k=10 build_byte_lut      0.020   1.1%
+    STAGE vogue-768 np=32 a=4.0 k=10 scan_ivf            1.067  59.7%
+    STAGE vogue-768 np=32 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=4.0 k=10 residual_refine     0.287  16.1%
+    STAGE vogue-768 np=32 a=4.0 k=10 topk_final          0.033   1.8%
+    STAGE vogue-768 np=32 a=4.0 k=10 gemm_rotate         0.036   2.1%
+    STAGE vogue-768 np=32 a=4.0 k=10 gemm_centroid       0.149   8.6%
+    STAGE vogue-768 np=32 a=4.0 k=10 select_probes       0.191  11.1%
+    STAGE vogue-768 np=32 a=4.0 k=10 build_byte_lut      0.020   1.2%
+    STAGE vogue-768 np=32 a=4.0 k=10 scan_ivf            1.012  58.5%
+    STAGE vogue-768 np=32 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=4.0 k=10 residual_refine     0.287  16.6%
+    STAGE vogue-768 np=32 a=4.0 k=10 topk_final          0.033   1.9%
+    STAGE vogue-768 np=32 a=4.0 k=10 gemm_rotate         0.040   2.2%
+    STAGE vogue-768 np=32 a=4.0 k=10 gemm_centroid       0.148   8.3%
+    STAGE vogue-768 np=32 a=4.0 k=10 select_probes       0.196  11.0%
+    STAGE vogue-768 np=32 a=4.0 k=10 build_byte_lut      0.020   1.1%
+    STAGE vogue-768 np=32 a=4.0 k=10 scan_ivf            1.055  59.2%
+    STAGE vogue-768 np=32 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=4.0 k=10 residual_refine     0.288  16.2%
+    STAGE vogue-768 np=32 a=4.0 k=10 topk_final          0.033   1.8%
+    STAGE vogue-768 np=32 a=4.0 k=10 gemm_rotate         0.036   2.1%
+    STAGE vogue-768 np=32 a=4.0 k=10 gemm_centroid       0.148   8.6%
+    STAGE vogue-768 np=32 a=4.0 k=10 select_probes       0.190  11.1%
+    STAGE vogue-768 np=32 a=4.0 k=10 build_byte_lut      0.020   1.2%
+    STAGE vogue-768 np=32 a=4.0 k=10 scan_ivf            0.999  58.2%
+    STAGE vogue-768 np=32 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=4.0 k=10 residual_refine     0.288  16.8%
+    STAGE vogue-768 np=32 a=4.0 k=10 topk_final          0.033   1.9%
+  openai3-3072   M=384  np=32    a=4.0    k=10   recall=0.8652   qps=91220     rc=0
+    STAGE openai3-3072 np=32 a=4.0 k=10 gemm_rotate         0.349   7.1%
+    STAGE openai3-3072 np=32 a=4.0 k=10 gemm_centroid       0.297   6.1%
+    STAGE openai3-3072 np=32 a=4.0 k=10 select_probes       0.383   7.8%
+    STAGE openai3-3072 np=32 a=4.0 k=10 build_byte_lut      0.116   2.4%
+    STAGE openai3-3072 np=32 a=4.0 k=10 scan_ivf            2.326  47.7%
+    STAGE openai3-3072 np=32 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 residual_refine     1.311  26.9%
+    STAGE openai3-3072 np=32 a=4.0 k=10 topk_final          0.099   2.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 gemm_rotate         0.301   6.1%
+    STAGE openai3-3072 np=32 a=4.0 k=10 gemm_centroid       0.294   6.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 select_probes       0.382   7.8%
+    STAGE openai3-3072 np=32 a=4.0 k=10 build_byte_lut      0.113   2.3%
+    STAGE openai3-3072 np=32 a=4.0 k=10 scan_ivf            2.382  48.4%
+    STAGE openai3-3072 np=32 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 residual_refine     1.352  27.5%
+    STAGE openai3-3072 np=32 a=4.0 k=10 topk_final          0.097   2.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 gemm_rotate         0.297   6.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 gemm_centroid       0.294   6.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 select_probes       0.383   7.8%
+    STAGE openai3-3072 np=32 a=4.0 k=10 build_byte_lut      0.113   2.3%
+    STAGE openai3-3072 np=32 a=4.0 k=10 scan_ivf            2.387  48.5%
+    STAGE openai3-3072 np=32 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 residual_refine     1.351  27.5%
+    STAGE openai3-3072 np=32 a=4.0 k=10 topk_final          0.096   2.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 gemm_rotate         0.300   6.1%
+    STAGE openai3-3072 np=32 a=4.0 k=10 gemm_centroid       0.294   6.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 select_probes       0.382   7.8%
+    STAGE openai3-3072 np=32 a=4.0 k=10 build_byte_lut      0.113   2.3%
+    STAGE openai3-3072 np=32 a=4.0 k=10 scan_ivf            2.384  48.5%
+    STAGE openai3-3072 np=32 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 residual_refine     1.350  27.4%
+    STAGE openai3-3072 np=32 a=4.0 k=10 topk_final          0.096   2.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 gemm_rotate         0.300   6.1%
+    STAGE openai3-3072 np=32 a=4.0 k=10 gemm_centroid       0.295   6.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 select_probes       0.383   7.8%
+    STAGE openai3-3072 np=32 a=4.0 k=10 build_byte_lut      0.113   2.3%
+    STAGE openai3-3072 np=32 a=4.0 k=10 scan_ivf            2.384  48.4%
+    STAGE openai3-3072 np=32 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 residual_refine     1.353  27.5%
+    STAGE openai3-3072 np=32 a=4.0 k=10 topk_final          0.096   2.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 gemm_rotate         0.297   6.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 gemm_centroid       0.295   6.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 select_probes       0.382   7.8%
+    STAGE openai3-3072 np=32 a=4.0 k=10 build_byte_lut      0.113   2.3%
+    STAGE openai3-3072 np=32 a=4.0 k=10 scan_ivf            2.390  48.5%
+    STAGE openai3-3072 np=32 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=4.0 k=10 residual_refine     1.351  27.4%
+    STAGE openai3-3072 np=32 a=4.0 k=10 topk_final          0.097   2.0%
+  vogue-768      M=96   np=128   a=4.0    k=10   recall=0.8830   qps=47516     rc=0
+    STAGE vogue-768 np=128 a=4.0 k=10 gemm_rotate         0.129   3.9%
+    STAGE vogue-768 np=128 a=4.0 k=10 gemm_centroid       0.199   6.0%
+    STAGE vogue-768 np=128 a=4.0 k=10 select_probes       0.226   6.8%
+    STAGE vogue-768 np=128 a=4.0 k=10 build_byte_lut      0.022   0.7%
+    STAGE vogue-768 np=128 a=4.0 k=10 scan_ivf            2.433  73.3%
+    STAGE vogue-768 np=128 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=4.0 k=10 residual_refine     0.275   8.3%
+    STAGE vogue-768 np=128 a=4.0 k=10 topk_final          0.036   1.1%
+    STAGE vogue-768 np=128 a=4.0 k=10 gemm_rotate         0.041   1.0%
+    STAGE vogue-768 np=128 a=4.0 k=10 gemm_centroid       0.150   3.7%
+    STAGE vogue-768 np=128 a=4.0 k=10 select_probes       0.225   5.6%
+    STAGE vogue-768 np=128 a=4.0 k=10 build_byte_lut      0.020   0.5%
+    STAGE vogue-768 np=128 a=4.0 k=10 scan_ivf            3.261  81.2%
+    STAGE vogue-768 np=128 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=4.0 k=10 residual_refine     0.287   7.2%
+    STAGE vogue-768 np=128 a=4.0 k=10 topk_final          0.033   0.8%
+    STAGE vogue-768 np=128 a=4.0 k=10 gemm_rotate         0.063   1.6%
+    STAGE vogue-768 np=128 a=4.0 k=10 gemm_centroid       0.151   3.9%
+    STAGE vogue-768 np=128 a=4.0 k=10 select_probes       0.217   5.5%
+    STAGE vogue-768 np=128 a=4.0 k=10 build_byte_lut      0.021   0.5%
+    STAGE vogue-768 np=128 a=4.0 k=10 scan_ivf            3.136  80.3%
+    STAGE vogue-768 np=128 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=4.0 k=10 residual_refine     0.286   7.3%
+    STAGE vogue-768 np=128 a=4.0 k=10 topk_final          0.033   0.8%
+    STAGE vogue-768 np=128 a=4.0 k=10 gemm_rotate         0.069   1.8%
+    STAGE vogue-768 np=128 a=4.0 k=10 gemm_centroid       0.151   4.0%
+    STAGE vogue-768 np=128 a=4.0 k=10 select_probes       0.212   5.6%
+    STAGE vogue-768 np=128 a=4.0 k=10 build_byte_lut      0.020   0.5%
+    STAGE vogue-768 np=128 a=4.0 k=10 scan_ivf            3.008  79.6%
+    STAGE vogue-768 np=128 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=4.0 k=10 residual_refine     0.287   7.6%
+    STAGE vogue-768 np=128 a=4.0 k=10 topk_final          0.033   0.9%
+    STAGE vogue-768 np=128 a=4.0 k=10 gemm_rotate         0.064   1.6%
+    STAGE vogue-768 np=128 a=4.0 k=10 gemm_centroid       0.150   3.8%
+    STAGE vogue-768 np=128 a=4.0 k=10 select_probes       0.222   5.6%
+    STAGE vogue-768 np=128 a=4.0 k=10 build_byte_lut      0.021   0.5%
+    STAGE vogue-768 np=128 a=4.0 k=10 scan_ivf            3.172  80.4%
+    STAGE vogue-768 np=128 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=4.0 k=10 residual_refine     0.285   7.2%
+    STAGE vogue-768 np=128 a=4.0 k=10 topk_final          0.033   0.8%
+    STAGE vogue-768 np=128 a=4.0 k=10 gemm_rotate         0.062   1.6%
+    STAGE vogue-768 np=128 a=4.0 k=10 gemm_centroid       0.150   3.8%
+    STAGE vogue-768 np=128 a=4.0 k=10 select_probes       0.221   5.6%
+    STAGE vogue-768 np=128 a=4.0 k=10 build_byte_lut      0.021   0.5%
+    STAGE vogue-768 np=128 a=4.0 k=10 scan_ivf            3.136  80.2%
+    STAGE vogue-768 np=128 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=4.0 k=10 residual_refine     0.287   7.4%
+    STAGE vogue-768 np=128 a=4.0 k=10 topk_final          0.033   0.8%
+  openai3-3072   M=384  np=128   a=4.0    k=10   recall=0.9417   qps=45165     rc=0
+    STAGE openai3-3072 np=128 a=4.0 k=10 gemm_rotate         0.357   3.4%
+    STAGE openai3-3072 np=128 a=4.0 k=10 gemm_centroid       0.296   2.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 select_probes       0.404   3.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 build_byte_lut      0.116   1.1%
+    STAGE openai3-3072 np=128 a=4.0 k=10 scan_ivf            7.785  75.1%
+    STAGE openai3-3072 np=128 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=4.0 k=10 residual_refine     1.305  12.6%
+    STAGE openai3-3072 np=128 a=4.0 k=10 topk_final          0.099   1.0%
+    STAGE openai3-3072 np=128 a=4.0 k=10 gemm_rotate         0.299   2.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 gemm_centroid       0.295   2.8%
+    STAGE openai3-3072 np=128 a=4.0 k=10 select_probes       0.406   3.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 build_byte_lut      0.113   1.1%
+    STAGE openai3-3072 np=128 a=4.0 k=10 scan_ivf            7.918  75.6%
+    STAGE openai3-3072 np=128 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=4.0 k=10 residual_refine     1.352  12.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 topk_final          0.096   0.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 gemm_rotate         0.297   2.8%
+    STAGE openai3-3072 np=128 a=4.0 k=10 gemm_centroid       0.293   2.8%
+    STAGE openai3-3072 np=128 a=4.0 k=10 select_probes       0.407   3.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 build_byte_lut      0.113   1.1%
+    STAGE openai3-3072 np=128 a=4.0 k=10 scan_ivf            7.940  75.6%
+    STAGE openai3-3072 np=128 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=4.0 k=10 residual_refine     1.353  12.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 topk_final          0.097   0.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 gemm_rotate         0.300   2.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 gemm_centroid       0.295   2.8%
+    STAGE openai3-3072 np=128 a=4.0 k=10 select_probes       0.408   3.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 build_byte_lut      0.113   1.1%
+    STAGE openai3-3072 np=128 a=4.0 k=10 scan_ivf            7.933  75.6%
+    STAGE openai3-3072 np=128 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=4.0 k=10 residual_refine     1.353  12.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 topk_final          0.097   0.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 gemm_rotate         0.306   2.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 gemm_centroid       0.295   2.8%
+    STAGE openai3-3072 np=128 a=4.0 k=10 select_probes       0.408   3.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 build_byte_lut      0.113   1.1%
+    STAGE openai3-3072 np=128 a=4.0 k=10 scan_ivf            7.947  75.5%
+    STAGE openai3-3072 np=128 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=4.0 k=10 residual_refine     1.353  12.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 topk_final          0.097   0.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 gemm_rotate         0.299   2.8%
+    STAGE openai3-3072 np=128 a=4.0 k=10 gemm_centroid       0.296   2.8%
+    STAGE openai3-3072 np=128 a=4.0 k=10 select_probes       0.411   3.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 build_byte_lut      0.114   1.1%
+    STAGE openai3-3072 np=128 a=4.0 k=10 scan_ivf            7.982  75.5%
+    STAGE openai3-3072 np=128 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=4.0 k=10 residual_refine     1.365  12.9%
+    STAGE openai3-3072 np=128 a=4.0 k=10 topk_final          0.099   0.9%
+  vogue-768      M=96   np=512   a=4.0    k=10   recall=0.9009   qps=23990     rc=0
+    STAGE vogue-768 np=512 a=4.0 k=10 gemm_rotate         0.117   1.5%
+    STAGE vogue-768 np=512 a=4.0 k=10 gemm_centroid       0.190   2.4%
+    STAGE vogue-768 np=512 a=4.0 k=10 select_probes       0.570   7.2%
+    STAGE vogue-768 np=512 a=4.0 k=10 build_byte_lut      0.024   0.3%
+    STAGE vogue-768 np=512 a=4.0 k=10 scan_ivf            6.710  84.7%
+    STAGE vogue-768 np=512 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=4.0 k=10 residual_refine     0.273   3.4%
+    STAGE vogue-768 np=512 a=4.0 k=10 topk_final          0.036   0.5%
+    STAGE vogue-768 np=512 a=4.0 k=10 gemm_rotate         0.042   0.4%
+    STAGE vogue-768 np=512 a=4.0 k=10 gemm_centroid       0.150   1.5%
+    STAGE vogue-768 np=512 a=4.0 k=10 select_probes       0.558   5.7%
+    STAGE vogue-768 np=512 a=4.0 k=10 build_byte_lut      0.020   0.2%
+    STAGE vogue-768 np=512 a=4.0 k=10 scan_ivf            8.664  88.8%
+    STAGE vogue-768 np=512 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=4.0 k=10 residual_refine     0.285   2.9%
+    STAGE vogue-768 np=512 a=4.0 k=10 topk_final          0.033   0.3%
+    STAGE vogue-768 np=512 a=4.0 k=10 gemm_rotate         0.040   0.4%
+    STAGE vogue-768 np=512 a=4.0 k=10 gemm_centroid       0.151   1.5%
+    STAGE vogue-768 np=512 a=4.0 k=10 select_probes       0.557   5.7%
+    STAGE vogue-768 np=512 a=4.0 k=10 build_byte_lut      0.021   0.2%
+    STAGE vogue-768 np=512 a=4.0 k=10 scan_ivf            8.690  88.9%
+    STAGE vogue-768 np=512 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=4.0 k=10 residual_refine     0.286   2.9%
+    STAGE vogue-768 np=512 a=4.0 k=10 topk_final          0.033   0.3%
+    STAGE vogue-768 np=512 a=4.0 k=10 gemm_rotate         0.038   0.4%
+    STAGE vogue-768 np=512 a=4.0 k=10 gemm_centroid       0.151   1.5%
+    STAGE vogue-768 np=512 a=4.0 k=10 select_probes       0.553   5.6%
+    STAGE vogue-768 np=512 a=4.0 k=10 build_byte_lut      0.020   0.2%
+    STAGE vogue-768 np=512 a=4.0 k=10 scan_ivf            8.863  89.1%
+    STAGE vogue-768 np=512 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=4.0 k=10 residual_refine     0.285   2.9%
+    STAGE vogue-768 np=512 a=4.0 k=10 topk_final          0.033   0.3%
+    STAGE vogue-768 np=512 a=4.0 k=10 gemm_rotate         0.057   0.6%
+    STAGE vogue-768 np=512 a=4.0 k=10 gemm_centroid       0.150   1.5%
+    STAGE vogue-768 np=512 a=4.0 k=10 select_probes       0.559   5.6%
+    STAGE vogue-768 np=512 a=4.0 k=10 build_byte_lut      0.021   0.2%
+    STAGE vogue-768 np=512 a=4.0 k=10 scan_ivf            8.902  88.9%
+    STAGE vogue-768 np=512 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=4.0 k=10 residual_refine     0.287   2.9%
+    STAGE vogue-768 np=512 a=4.0 k=10 topk_final          0.033   0.3%
+    STAGE vogue-768 np=512 a=4.0 k=10 gemm_rotate         0.040   0.4%
+    STAGE vogue-768 np=512 a=4.0 k=10 gemm_centroid       0.150   1.5%
+    STAGE vogue-768 np=512 a=4.0 k=10 select_probes       0.561   5.5%
+    STAGE vogue-768 np=512 a=4.0 k=10 build_byte_lut      0.020   0.2%
+    STAGE vogue-768 np=512 a=4.0 k=10 scan_ivf            9.037  89.2%
+    STAGE vogue-768 np=512 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=4.0 k=10 residual_refine     0.286   2.8%
+    STAGE vogue-768 np=512 a=4.0 k=10 topk_final          0.033   0.3%
+  openai3-3072   M=384  np=512   a=4.0    k=10   recall=0.9818   qps=11886     rc=0
+    STAGE openai3-3072 np=512 a=4.0 k=10 gemm_rotate         0.396   1.3%
+    STAGE openai3-3072 np=512 a=4.0 k=10 gemm_centroid       0.294   1.0%
+    STAGE openai3-3072 np=512 a=4.0 k=10 select_probes       0.627   2.0%
+    STAGE openai3-3072 np=512 a=4.0 k=10 build_byte_lut      0.117   0.4%
+    STAGE openai3-3072 np=512 a=4.0 k=10 scan_ivf           27.892  90.7%
+    STAGE openai3-3072 np=512 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=4.0 k=10 residual_refine     1.315   4.3%
+    STAGE openai3-3072 np=512 a=4.0 k=10 topk_final          0.100   0.3%
+    STAGE openai3-3072 np=512 a=4.0 k=10 gemm_rotate         0.305   1.0%
+    STAGE openai3-3072 np=512 a=4.0 k=10 gemm_centroid       0.299   0.9%
+    STAGE openai3-3072 np=512 a=4.0 k=10 select_probes       0.612   1.9%
+    STAGE openai3-3072 np=512 a=4.0 k=10 build_byte_lut      0.117   0.4%
+    STAGE openai3-3072 np=512 a=4.0 k=10 scan_ivf           29.204  91.3%
+    STAGE openai3-3072 np=512 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=4.0 k=10 residual_refine     1.349   4.2%
+    STAGE openai3-3072 np=512 a=4.0 k=10 topk_final          0.096   0.3%
+    STAGE openai3-3072 np=512 a=4.0 k=10 gemm_rotate         0.299   0.9%
+    STAGE openai3-3072 np=512 a=4.0 k=10 gemm_centroid       0.295   0.9%
+    STAGE openai3-3072 np=512 a=4.0 k=10 select_probes       0.607   1.9%
+    STAGE openai3-3072 np=512 a=4.0 k=10 build_byte_lut      0.115   0.4%
+    STAGE openai3-3072 np=512 a=4.0 k=10 scan_ivf           29.321  91.4%
+    STAGE openai3-3072 np=512 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=4.0 k=10 residual_refine     1.360   4.2%
+    STAGE openai3-3072 np=512 a=4.0 k=10 topk_final          0.097   0.3%
+    STAGE openai3-3072 np=512 a=4.0 k=10 gemm_rotate         0.299   0.9%
+    STAGE openai3-3072 np=512 a=4.0 k=10 gemm_centroid       0.295   0.9%
+    STAGE openai3-3072 np=512 a=4.0 k=10 select_probes       0.604   1.9%
+    STAGE openai3-3072 np=512 a=4.0 k=10 build_byte_lut      0.115   0.4%
+    STAGE openai3-3072 np=512 a=4.0 k=10 scan_ivf           29.328  91.3%
+    STAGE openai3-3072 np=512 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=4.0 k=10 residual_refine     1.382   4.3%
+    STAGE openai3-3072 np=512 a=4.0 k=10 topk_final          0.099   0.3%
+    STAGE openai3-3072 np=512 a=4.0 k=10 gemm_rotate         0.302   0.9%
+    STAGE openai3-3072 np=512 a=4.0 k=10 gemm_centroid       0.296   0.9%
+    STAGE openai3-3072 np=512 a=4.0 k=10 select_probes       0.606   1.9%
+    STAGE openai3-3072 np=512 a=4.0 k=10 build_byte_lut      0.115   0.4%
+    STAGE openai3-3072 np=512 a=4.0 k=10 scan_ivf           29.421  91.4%
+    STAGE openai3-3072 np=512 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=4.0 k=10 residual_refine     1.363   4.2%
+    STAGE openai3-3072 np=512 a=4.0 k=10 topk_final          0.098   0.3%
+    STAGE openai3-3072 np=512 a=4.0 k=10 gemm_rotate         0.304   0.9%
+    STAGE openai3-3072 np=512 a=4.0 k=10 gemm_centroid       0.299   0.9%
+    STAGE openai3-3072 np=512 a=4.0 k=10 select_probes       0.609   1.8%
+    STAGE openai3-3072 np=512 a=4.0 k=10 build_byte_lut      0.117   0.4%
+    STAGE openai3-3072 np=512 a=4.0 k=10 scan_ivf           30.441  91.6%
+    STAGE openai3-3072 np=512 a=4.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=4.0 k=10 residual_refine     1.363   4.1%
+    STAGE openai3-3072 np=512 a=4.0 k=10 topk_final          0.098   0.3%
+  vogue-768      M=96   np=32    a=16.0   k=10   recall=0.8571   qps=233563    rc=0
+    STAGE vogue-768 np=32 a=16.0 k=10 gemm_rotate         0.154   8.2%
+    STAGE vogue-768 np=32 a=16.0 k=10 gemm_centroid       0.221  11.8%
+    STAGE vogue-768 np=32 a=16.0 k=10 select_probes       0.175   9.4%
+    STAGE vogue-768 np=32 a=16.0 k=10 build_byte_lut      0.022   1.2%
+    STAGE vogue-768 np=32 a=16.0 k=10 scan_ivf            0.837  44.7%
+    STAGE vogue-768 np=32 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=16.0 k=10 residual_refine     0.425  22.7%
+    STAGE vogue-768 np=32 a=16.0 k=10 topk_final          0.036   1.9%
+    STAGE vogue-768 np=32 a=16.0 k=10 gemm_rotate         0.039   2.0%
+    STAGE vogue-768 np=32 a=16.0 k=10 gemm_centroid       0.151   7.7%
+    STAGE vogue-768 np=32 a=16.0 k=10 select_probes       0.195  10.0%
+    STAGE vogue-768 np=32 a=16.0 k=10 build_byte_lut      0.020   1.0%
+    STAGE vogue-768 np=32 a=16.0 k=10 scan_ivf            1.077  55.0%
+    STAGE vogue-768 np=32 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=16.0 k=10 residual_refine     0.441  22.5%
+    STAGE vogue-768 np=32 a=16.0 k=10 topk_final          0.035   1.8%
+    STAGE vogue-768 np=32 a=16.0 k=10 gemm_rotate         0.038   1.9%
+    STAGE vogue-768 np=32 a=16.0 k=10 gemm_centroid       0.151   7.7%
+    STAGE vogue-768 np=32 a=16.0 k=10 select_probes       0.201  10.2%
+    STAGE vogue-768 np=32 a=16.0 k=10 build_byte_lut      0.020   1.0%
+    STAGE vogue-768 np=32 a=16.0 k=10 scan_ivf            1.077  54.9%
+    STAGE vogue-768 np=32 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=16.0 k=10 residual_refine     0.440  22.4%
+    STAGE vogue-768 np=32 a=16.0 k=10 topk_final          0.035   1.8%
+    STAGE vogue-768 np=32 a=16.0 k=10 gemm_rotate         0.038   2.0%
+    STAGE vogue-768 np=32 a=16.0 k=10 gemm_centroid       0.151   7.8%
+    STAGE vogue-768 np=32 a=16.0 k=10 select_probes       0.197  10.2%
+    STAGE vogue-768 np=32 a=16.0 k=10 build_byte_lut      0.020   1.0%
+    STAGE vogue-768 np=32 a=16.0 k=10 scan_ivf            1.053  54.4%
+    STAGE vogue-768 np=32 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=16.0 k=10 residual_refine     0.442  22.8%
+    STAGE vogue-768 np=32 a=16.0 k=10 topk_final          0.035   1.8%
+    STAGE vogue-768 np=32 a=16.0 k=10 gemm_rotate         0.038   1.9%
+    STAGE vogue-768 np=32 a=16.0 k=10 gemm_centroid       0.150   7.3%
+    STAGE vogue-768 np=32 a=16.0 k=10 select_probes       0.191   9.4%
+    STAGE vogue-768 np=32 a=16.0 k=10 build_byte_lut      0.020   1.0%
+    STAGE vogue-768 np=32 a=16.0 k=10 scan_ivf            1.164  57.1%
+    STAGE vogue-768 np=32 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=16.0 k=10 residual_refine     0.441  21.6%
+    STAGE vogue-768 np=32 a=16.0 k=10 topk_final          0.035   1.7%
+    STAGE vogue-768 np=32 a=16.0 k=10 gemm_rotate         0.039   2.0%
+    STAGE vogue-768 np=32 a=16.0 k=10 gemm_centroid       0.150   7.7%
+    STAGE vogue-768 np=32 a=16.0 k=10 select_probes       0.195  10.1%
+    STAGE vogue-768 np=32 a=16.0 k=10 build_byte_lut      0.020   1.1%
+    STAGE vogue-768 np=32 a=16.0 k=10 scan_ivf            1.060  54.6%
+    STAGE vogue-768 np=32 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=16.0 k=10 residual_refine     0.441  22.7%
+    STAGE vogue-768 np=32 a=16.0 k=10 topk_final          0.035   1.8%
+  openai3-3072   M=384  np=32    a=16.0   k=10   recall=0.8652   qps=81905     rc=0
+    STAGE openai3-3072 np=32 a=16.0 k=10 gemm_rotate         0.560  10.1%
+    STAGE openai3-3072 np=32 a=16.0 k=10 gemm_centroid       0.348   6.3%
+    STAGE openai3-3072 np=32 a=16.0 k=10 select_probes       0.382   6.9%
+    STAGE openai3-3072 np=32 a=16.0 k=10 build_byte_lut      0.116   2.1%
+    STAGE openai3-3072 np=32 a=16.0 k=10 scan_ivf            2.320  41.7%
+    STAGE openai3-3072 np=32 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=16.0 k=10 residual_refine     1.740  31.3%
+    STAGE openai3-3072 np=32 a=16.0 k=10 topk_final          0.098   1.8%
+    STAGE openai3-3072 np=32 a=16.0 k=10 gemm_rotate         0.300   5.4%
+    STAGE openai3-3072 np=32 a=16.0 k=10 gemm_centroid       0.293   5.3%
+    STAGE openai3-3072 np=32 a=16.0 k=10 select_probes       0.380   6.9%
+    STAGE openai3-3072 np=32 a=16.0 k=10 build_byte_lut      0.113   2.0%
+    STAGE openai3-3072 np=32 a=16.0 k=10 scan_ivf            2.374  43.0%
+    STAGE openai3-3072 np=32 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=16.0 k=10 residual_refine     1.967  35.6%
+    STAGE openai3-3072 np=32 a=16.0 k=10 topk_final          0.096   1.7%
+    STAGE openai3-3072 np=32 a=16.0 k=10 gemm_rotate         0.296   5.4%
+    STAGE openai3-3072 np=32 a=16.0 k=10 gemm_centroid       0.293   5.3%
+    STAGE openai3-3072 np=32 a=16.0 k=10 select_probes       0.380   6.9%
+    STAGE openai3-3072 np=32 a=16.0 k=10 build_byte_lut      0.113   2.0%
+    STAGE openai3-3072 np=32 a=16.0 k=10 scan_ivf            2.382  43.2%
+    STAGE openai3-3072 np=32 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=16.0 k=10 residual_refine     1.958  35.5%
+    STAGE openai3-3072 np=32 a=16.0 k=10 topk_final          0.096   1.7%
+    STAGE openai3-3072 np=32 a=16.0 k=10 gemm_rotate         0.297   5.4%
+    STAGE openai3-3072 np=32 a=16.0 k=10 gemm_centroid       0.294   5.3%
+    STAGE openai3-3072 np=32 a=16.0 k=10 select_probes       0.382   6.9%
+    STAGE openai3-3072 np=32 a=16.0 k=10 build_byte_lut      0.113   2.0%
+    STAGE openai3-3072 np=32 a=16.0 k=10 scan_ivf            2.384  43.1%
+    STAGE openai3-3072 np=32 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=16.0 k=10 residual_refine     1.970  35.6%
+    STAGE openai3-3072 np=32 a=16.0 k=10 topk_final          0.096   1.7%
+    STAGE openai3-3072 np=32 a=16.0 k=10 gemm_rotate         0.298   5.4%
+    STAGE openai3-3072 np=32 a=16.0 k=10 gemm_centroid       0.294   5.3%
+    STAGE openai3-3072 np=32 a=16.0 k=10 select_probes       0.381   6.9%
+    STAGE openai3-3072 np=32 a=16.0 k=10 build_byte_lut      0.113   2.0%
+    STAGE openai3-3072 np=32 a=16.0 k=10 scan_ivf            2.381  43.0%
+    STAGE openai3-3072 np=32 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=16.0 k=10 residual_refine     1.976  35.7%
+    STAGE openai3-3072 np=32 a=16.0 k=10 topk_final          0.096   1.7%
+    STAGE openai3-3072 np=32 a=16.0 k=10 gemm_rotate         0.298   5.4%
+    STAGE openai3-3072 np=32 a=16.0 k=10 gemm_centroid       0.293   5.3%
+    STAGE openai3-3072 np=32 a=16.0 k=10 select_probes       0.381   6.9%
+    STAGE openai3-3072 np=32 a=16.0 k=10 build_byte_lut      0.113   2.0%
+    STAGE openai3-3072 np=32 a=16.0 k=10 scan_ivf            2.391  43.1%
+    STAGE openai3-3072 np=32 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=16.0 k=10 residual_refine     1.977  35.6%
+    STAGE openai3-3072 np=32 a=16.0 k=10 topk_final          0.097   1.8%
+  vogue-768      M=96   np=128   a=16.0   k=10   recall=0.9547   qps=98385     rc=0
+    STAGE vogue-768 np=128 a=16.0 k=10 gemm_rotate         0.112   3.4%
+    STAGE vogue-768 np=128 a=16.0 k=10 gemm_centroid       0.186   5.7%
+    STAGE vogue-768 np=128 a=16.0 k=10 select_probes       0.217   6.7%
+    STAGE vogue-768 np=128 a=16.0 k=10 build_byte_lut      0.023   0.7%
+    STAGE vogue-768 np=128 a=16.0 k=10 scan_ivf            2.260  69.4%
+    STAGE vogue-768 np=128 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=16.0 k=10 residual_refine     0.425  13.0%
+    STAGE vogue-768 np=128 a=16.0 k=10 topk_final          0.036   1.1%
+    STAGE vogue-768 np=128 a=16.0 k=10 gemm_rotate         0.040   1.0%
+    STAGE vogue-768 np=128 a=16.0 k=10 gemm_centroid       0.148   3.7%
+    STAGE vogue-768 np=128 a=16.0 k=10 select_probes       0.218   5.4%
+    STAGE vogue-768 np=128 a=16.0 k=10 build_byte_lut      0.020   0.5%
+    STAGE vogue-768 np=128 a=16.0 k=10 scan_ivf            3.113  77.5%
+    STAGE vogue-768 np=128 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=16.0 k=10 residual_refine     0.440  11.0%
+    STAGE vogue-768 np=128 a=16.0 k=10 topk_final          0.035   0.9%
+    STAGE vogue-768 np=128 a=16.0 k=10 gemm_rotate         0.043   1.1%
+    STAGE vogue-768 np=128 a=16.0 k=10 gemm_centroid       0.148   3.6%
+    STAGE vogue-768 np=128 a=16.0 k=10 select_probes       0.230   5.6%
+    STAGE vogue-768 np=128 a=16.0 k=10 build_byte_lut      0.021   0.5%
+    STAGE vogue-768 np=128 a=16.0 k=10 scan_ivf            3.199  77.7%
+    STAGE vogue-768 np=128 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=16.0 k=10 residual_refine     0.439  10.7%
+    STAGE vogue-768 np=128 a=16.0 k=10 topk_final          0.035   0.8%
+    STAGE vogue-768 np=128 a=16.0 k=10 gemm_rotate         0.040   1.0%
+    STAGE vogue-768 np=128 a=16.0 k=10 gemm_centroid       0.148   3.8%
+    STAGE vogue-768 np=128 a=16.0 k=10 select_probes       0.221   5.7%
+    STAGE vogue-768 np=128 a=16.0 k=10 build_byte_lut      0.020   0.5%
+    STAGE vogue-768 np=128 a=16.0 k=10 scan_ivf            2.994  76.8%
+    STAGE vogue-768 np=128 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=16.0 k=10 residual_refine     0.440  11.3%
+    STAGE vogue-768 np=128 a=16.0 k=10 topk_final          0.035   0.9%
+    STAGE vogue-768 np=128 a=16.0 k=10 gemm_rotate         0.058   1.4%
+    STAGE vogue-768 np=128 a=16.0 k=10 gemm_centroid       0.148   3.4%
+    STAGE vogue-768 np=128 a=16.0 k=10 select_probes       0.225   5.2%
+    STAGE vogue-768 np=128 a=16.0 k=10 build_byte_lut      0.020   0.5%
+    STAGE vogue-768 np=128 a=16.0 k=10 scan_ivf            3.374  78.4%
+    STAGE vogue-768 np=128 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=16.0 k=10 residual_refine     0.442  10.3%
+    STAGE vogue-768 np=128 a=16.0 k=10 topk_final          0.035   0.8%
+    STAGE vogue-768 np=128 a=16.0 k=10 gemm_rotate         0.039   0.9%
+    STAGE vogue-768 np=128 a=16.0 k=10 gemm_centroid       0.151   3.5%
+    STAGE vogue-768 np=128 a=16.0 k=10 select_probes       0.220   5.2%
+    STAGE vogue-768 np=128 a=16.0 k=10 build_byte_lut      0.020   0.5%
+    STAGE vogue-768 np=128 a=16.0 k=10 scan_ivf            3.357  78.8%
+    STAGE vogue-768 np=128 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=16.0 k=10 residual_refine     0.440  10.3%
+    STAGE vogue-768 np=128 a=16.0 k=10 topk_final          0.035   0.8%
+  openai3-3072   M=384  np=128   a=16.0   k=10   recall=0.9417   qps=36304     rc=0
+    STAGE openai3-3072 np=128 a=16.0 k=10 gemm_rotate         0.375   3.5%
+    STAGE openai3-3072 np=128 a=16.0 k=10 gemm_centroid       0.296   2.7%
+    STAGE openai3-3072 np=128 a=16.0 k=10 select_probes       0.406   3.7%
+    STAGE openai3-3072 np=128 a=16.0 k=10 build_byte_lut      0.116   1.1%
+    STAGE openai3-3072 np=128 a=16.0 k=10 scan_ivf            7.798  71.9%
+    STAGE openai3-3072 np=128 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=16.0 k=10 residual_refine     1.755  16.2%
+    STAGE openai3-3072 np=128 a=16.0 k=10 topk_final          0.099   0.9%
+    STAGE openai3-3072 np=128 a=16.0 k=10 gemm_rotate         0.300   2.7%
+    STAGE openai3-3072 np=128 a=16.0 k=10 gemm_centroid       0.294   2.6%
+    STAGE openai3-3072 np=128 a=16.0 k=10 select_probes       0.406   3.6%
+    STAGE openai3-3072 np=128 a=16.0 k=10 build_byte_lut      0.113   1.0%
+    STAGE openai3-3072 np=128 a=16.0 k=10 scan_ivf            7.926  71.2%
+    STAGE openai3-3072 np=128 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=16.0 k=10 residual_refine     1.998  17.9%
+    STAGE openai3-3072 np=128 a=16.0 k=10 topk_final          0.098   0.9%
+    STAGE openai3-3072 np=128 a=16.0 k=10 gemm_rotate         0.300   2.7%
+    STAGE openai3-3072 np=128 a=16.0 k=10 gemm_centroid       0.294   2.6%
+    STAGE openai3-3072 np=128 a=16.0 k=10 select_probes       0.407   3.7%
+    STAGE openai3-3072 np=128 a=16.0 k=10 build_byte_lut      0.113   1.0%
+    STAGE openai3-3072 np=128 a=16.0 k=10 scan_ivf            7.938  71.4%
+    STAGE openai3-3072 np=128 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=16.0 k=10 residual_refine     1.969  17.7%
+    STAGE openai3-3072 np=128 a=16.0 k=10 topk_final          0.097   0.9%
+    STAGE openai3-3072 np=128 a=16.0 k=10 gemm_rotate         0.302   2.7%
+    STAGE openai3-3072 np=128 a=16.0 k=10 gemm_centroid       0.296   2.7%
+    STAGE openai3-3072 np=128 a=16.0 k=10 select_probes       0.408   3.7%
+    STAGE openai3-3072 np=128 a=16.0 k=10 build_byte_lut      0.113   1.0%
+    STAGE openai3-3072 np=128 a=16.0 k=10 scan_ivf            7.956  71.3%
+    STAGE openai3-3072 np=128 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=16.0 k=10 residual_refine     1.985  17.8%
+    STAGE openai3-3072 np=128 a=16.0 k=10 topk_final          0.098   0.9%
+    STAGE openai3-3072 np=128 a=16.0 k=10 gemm_rotate         0.300   2.7%
+    STAGE openai3-3072 np=128 a=16.0 k=10 gemm_centroid       0.295   2.6%
+    STAGE openai3-3072 np=128 a=16.0 k=10 select_probes       0.407   3.7%
+    STAGE openai3-3072 np=128 a=16.0 k=10 build_byte_lut      0.113   1.0%
+    STAGE openai3-3072 np=128 a=16.0 k=10 scan_ivf            7.934  71.3%
+    STAGE openai3-3072 np=128 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=16.0 k=10 residual_refine     1.985  17.8%
+    STAGE openai3-3072 np=128 a=16.0 k=10 topk_final          0.098   0.9%
+    STAGE openai3-3072 np=128 a=16.0 k=10 gemm_rotate         0.306   2.7%
+    STAGE openai3-3072 np=128 a=16.0 k=10 gemm_centroid       0.296   2.6%
+    STAGE openai3-3072 np=128 a=16.0 k=10 select_probes       0.411   3.7%
+    STAGE openai3-3072 np=128 a=16.0 k=10 build_byte_lut      0.114   1.0%
+    STAGE openai3-3072 np=128 a=16.0 k=10 scan_ivf            7.964  71.2%
+    STAGE openai3-3072 np=128 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=16.0 k=10 residual_refine     2.003  17.9%
+    STAGE openai3-3072 np=128 a=16.0 k=10 topk_final          0.098   0.9%
+  vogue-768      M=96   np=512   a=16.0   k=10   recall=0.9793   qps=25014     rc=0
+    STAGE vogue-768 np=512 a=16.0 k=10 gemm_rotate         0.127   1.6%
+    STAGE vogue-768 np=512 a=16.0 k=10 gemm_centroid       0.192   2.4%
+    STAGE vogue-768 np=512 a=16.0 k=10 select_probes       0.576   7.2%
+    STAGE vogue-768 np=512 a=16.0 k=10 build_byte_lut      0.023   0.3%
+    STAGE vogue-768 np=512 a=16.0 k=10 scan_ivf            6.598  82.7%
+    STAGE vogue-768 np=512 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=16.0 k=10 residual_refine     0.424   5.3%
+    STAGE vogue-768 np=512 a=16.0 k=10 topk_final          0.036   0.4%
+    STAGE vogue-768 np=512 a=16.0 k=10 gemm_rotate         0.056   0.6%
+    STAGE vogue-768 np=512 a=16.0 k=10 gemm_centroid       0.150   1.5%
+    STAGE vogue-768 np=512 a=16.0 k=10 select_probes       0.556   5.7%
+    STAGE vogue-768 np=512 a=16.0 k=10 build_byte_lut      0.020   0.2%
+    STAGE vogue-768 np=512 a=16.0 k=10 scan_ivf            8.474  87.1%
+    STAGE vogue-768 np=512 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=16.0 k=10 residual_refine     0.439   4.5%
+    STAGE vogue-768 np=512 a=16.0 k=10 topk_final          0.035   0.4%
+    STAGE vogue-768 np=512 a=16.0 k=10 gemm_rotate         0.038   0.4%
+    STAGE vogue-768 np=512 a=16.0 k=10 gemm_centroid       0.150   1.5%
+    STAGE vogue-768 np=512 a=16.0 k=10 select_probes       0.556   5.5%
+    STAGE vogue-768 np=512 a=16.0 k=10 build_byte_lut      0.020   0.2%
+    STAGE vogue-768 np=512 a=16.0 k=10 scan_ivf            8.794  87.6%
+    STAGE vogue-768 np=512 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=16.0 k=10 residual_refine     0.441   4.4%
+    STAGE vogue-768 np=512 a=16.0 k=10 topk_final          0.035   0.3%
+    STAGE vogue-768 np=512 a=16.0 k=10 gemm_rotate         0.040   0.4%
+    STAGE vogue-768 np=512 a=16.0 k=10 gemm_centroid       0.151   1.5%
+    STAGE vogue-768 np=512 a=16.0 k=10 select_probes       0.562   5.7%
+    STAGE vogue-768 np=512 a=16.0 k=10 build_byte_lut      0.020   0.2%
+    STAGE vogue-768 np=512 a=16.0 k=10 scan_ivf            8.521  87.2%
+    STAGE vogue-768 np=512 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=16.0 k=10 residual_refine     0.441   4.5%
+    STAGE vogue-768 np=512 a=16.0 k=10 topk_final          0.035   0.4%
+    STAGE vogue-768 np=512 a=16.0 k=10 gemm_rotate         0.039   0.4%
+    STAGE vogue-768 np=512 a=16.0 k=10 gemm_centroid       0.151   1.6%
+    STAGE vogue-768 np=512 a=16.0 k=10 select_probes       0.562   5.9%
+    STAGE vogue-768 np=512 a=16.0 k=10 build_byte_lut      0.020   0.2%
+    STAGE vogue-768 np=512 a=16.0 k=10 scan_ivf            8.256  86.9%
+    STAGE vogue-768 np=512 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=16.0 k=10 residual_refine     0.440   4.6%
+    STAGE vogue-768 np=512 a=16.0 k=10 topk_final          0.035   0.4%
+    STAGE vogue-768 np=512 a=16.0 k=10 gemm_rotate         0.038   0.4%
+    STAGE vogue-768 np=512 a=16.0 k=10 gemm_centroid       0.149   1.5%
+    STAGE vogue-768 np=512 a=16.0 k=10 select_probes       0.563   5.8%
+    STAGE vogue-768 np=512 a=16.0 k=10 build_byte_lut      0.020   0.2%
+    STAGE vogue-768 np=512 a=16.0 k=10 scan_ivf            8.531  87.3%
+    STAGE vogue-768 np=512 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=16.0 k=10 residual_refine     0.440   4.5%
+    STAGE vogue-768 np=512 a=16.0 k=10 topk_final          0.035   0.4%
+  openai3-3072   M=384  np=512   a=16.0   k=10   recall=0.9819   qps=14524     rc=0
+    STAGE openai3-3072 np=512 a=16.0 k=10 gemm_rotate         0.359   1.1%
+    STAGE openai3-3072 np=512 a=16.0 k=10 gemm_centroid       0.295   0.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 select_probes       0.629   2.0%
+    STAGE openai3-3072 np=512 a=16.0 k=10 build_byte_lut      0.117   0.4%
+    STAGE openai3-3072 np=512 a=16.0 k=10 scan_ivf           27.984  89.6%
+    STAGE openai3-3072 np=512 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=16.0 k=10 residual_refine     1.754   5.6%
+    STAGE openai3-3072 np=512 a=16.0 k=10 topk_final          0.099   0.3%
+    STAGE openai3-3072 np=512 a=16.0 k=10 gemm_rotate         0.310   0.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 gemm_centroid       0.298   0.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 select_probes       0.605   1.8%
+    STAGE openai3-3072 np=512 a=16.0 k=10 build_byte_lut      0.116   0.4%
+    STAGE openai3-3072 np=512 a=16.0 k=10 scan_ivf           29.584  89.7%
+    STAGE openai3-3072 np=512 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=16.0 k=10 residual_refine     1.980   6.0%
+    STAGE openai3-3072 np=512 a=16.0 k=10 topk_final          0.098   0.3%
+    STAGE openai3-3072 np=512 a=16.0 k=10 gemm_rotate         0.308   0.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 gemm_centroid       0.301   0.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 select_probes       0.612   1.8%
+    STAGE openai3-3072 np=512 a=16.0 k=10 build_byte_lut      0.118   0.3%
+    STAGE openai3-3072 np=512 a=16.0 k=10 scan_ivf           30.292  89.8%
+    STAGE openai3-3072 np=512 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=16.0 k=10 residual_refine     1.983   5.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 topk_final          0.099   0.3%
+    STAGE openai3-3072 np=512 a=16.0 k=10 gemm_rotate         0.305   0.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 gemm_centroid       0.299   0.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 select_probes       0.612   1.8%
+    STAGE openai3-3072 np=512 a=16.0 k=10 build_byte_lut      0.117   0.3%
+    STAGE openai3-3072 np=512 a=16.0 k=10 scan_ivf           30.456  89.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=16.0 k=10 residual_refine     1.995   5.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 topk_final          0.099   0.3%
+    STAGE openai3-3072 np=512 a=16.0 k=10 gemm_rotate         0.314   0.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 gemm_centroid       0.304   0.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 select_probes       0.620   1.8%
+    STAGE openai3-3072 np=512 a=16.0 k=10 build_byte_lut      0.119   0.3%
+    STAGE openai3-3072 np=512 a=16.0 k=10 scan_ivf           30.538  89.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=16.0 k=10 residual_refine     1.991   5.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 topk_final          0.098   0.3%
+    STAGE openai3-3072 np=512 a=16.0 k=10 gemm_rotate         0.308   0.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 gemm_centroid       0.299   0.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 select_probes       0.610   1.8%
+    STAGE openai3-3072 np=512 a=16.0 k=10 build_byte_lut      0.117   0.3%
+    STAGE openai3-3072 np=512 a=16.0 k=10 scan_ivf           30.608  89.9%
+    STAGE openai3-3072 np=512 a=16.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=16.0 k=10 residual_refine     1.990   5.8%
+    STAGE openai3-3072 np=512 a=16.0 k=10 topk_final          0.099   0.3%
+  vogue-768      M=96   np=32    a=100.0  k=10   recall=0.8624   qps=45931     rc=0
+    STAGE vogue-768 np=32 a=100.0 k=10 gemm_rotate         0.130   3.2%
+    STAGE vogue-768 np=32 a=100.0 k=10 gemm_centroid       0.198   4.8%
+    STAGE vogue-768 np=32 a=100.0 k=10 select_probes       0.175   4.3%
+    STAGE vogue-768 np=32 a=100.0 k=10 build_byte_lut      0.023   0.6%
+    STAGE vogue-768 np=32 a=100.0 k=10 scan_ivf            1.022  24.9%
+    STAGE vogue-768 np=32 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=100.0 k=10 residual_refine     2.506  61.0%
+    STAGE vogue-768 np=32 a=100.0 k=10 topk_final          0.051   1.2%
+    STAGE vogue-768 np=32 a=100.0 k=10 gemm_rotate         0.120   2.8%
+    STAGE vogue-768 np=32 a=100.0 k=10 gemm_centroid       0.152   3.5%
+    STAGE vogue-768 np=32 a=100.0 k=10 select_probes       0.196   4.5%
+    STAGE vogue-768 np=32 a=100.0 k=10 build_byte_lut      0.020   0.5%
+    STAGE vogue-768 np=32 a=100.0 k=10 scan_ivf            1.396  32.0%
+    STAGE vogue-768 np=32 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=100.0 k=10 residual_refine     2.422  55.5%
+    STAGE vogue-768 np=32 a=100.0 k=10 topk_final          0.058   1.3%
+    STAGE vogue-768 np=32 a=100.0 k=10 gemm_rotate         0.062   1.4%
+    STAGE vogue-768 np=32 a=100.0 k=10 gemm_centroid       0.151   3.5%
+    STAGE vogue-768 np=32 a=100.0 k=10 select_probes       0.197   4.6%
+    STAGE vogue-768 np=32 a=100.0 k=10 build_byte_lut      0.020   0.5%
+    STAGE vogue-768 np=32 a=100.0 k=10 scan_ivf            1.379  32.1%
+    STAGE vogue-768 np=32 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=100.0 k=10 residual_refine     2.430  56.5%
+    STAGE vogue-768 np=32 a=100.0 k=10 topk_final          0.058   1.3%
+    STAGE vogue-768 np=32 a=100.0 k=10 gemm_rotate         0.037   0.9%
+    STAGE vogue-768 np=32 a=100.0 k=10 gemm_centroid       0.148   3.4%
+    STAGE vogue-768 np=32 a=100.0 k=10 select_probes       0.192   4.4%
+    STAGE vogue-768 np=32 a=100.0 k=10 build_byte_lut      0.020   0.5%
+    STAGE vogue-768 np=32 a=100.0 k=10 scan_ivf            1.399  32.4%
+    STAGE vogue-768 np=32 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=100.0 k=10 residual_refine     2.463  57.1%
+    STAGE vogue-768 np=32 a=100.0 k=10 topk_final          0.058   1.3%
+    STAGE vogue-768 np=32 a=100.0 k=10 gemm_rotate         0.037   0.9%
+    STAGE vogue-768 np=32 a=100.0 k=10 gemm_centroid       0.147   3.4%
+    STAGE vogue-768 np=32 a=100.0 k=10 select_probes       0.196   4.6%
+    STAGE vogue-768 np=32 a=100.0 k=10 build_byte_lut      0.020   0.5%
+    STAGE vogue-768 np=32 a=100.0 k=10 scan_ivf            1.404  32.8%
+    STAGE vogue-768 np=32 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=100.0 k=10 residual_refine     2.418  56.5%
+    STAGE vogue-768 np=32 a=100.0 k=10 topk_final          0.057   1.3%
+    STAGE vogue-768 np=32 a=100.0 k=10 gemm_rotate         0.036   0.8%
+    STAGE vogue-768 np=32 a=100.0 k=10 gemm_centroid       0.147   3.4%
+    STAGE vogue-768 np=32 a=100.0 k=10 select_probes       0.196   4.5%
+    STAGE vogue-768 np=32 a=100.0 k=10 build_byte_lut      0.020   0.5%
+    STAGE vogue-768 np=32 a=100.0 k=10 scan_ivf            1.427  33.0%
+    STAGE vogue-768 np=32 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=32 a=100.0 k=10 residual_refine     2.440  56.4%
+    STAGE vogue-768 np=32 a=100.0 k=10 topk_final          0.057   1.3%
+  openai3-3072   M=384  np=32    a=100.0  k=10   recall=0.8652   qps=16363     rc=0
+    STAGE openai3-3072 np=32 a=100.0 k=10 gemm_rotate         0.399   3.0%
+    STAGE openai3-3072 np=32 a=100.0 k=10 gemm_centroid       0.296   2.2%
+    STAGE openai3-3072 np=32 a=100.0 k=10 select_probes       0.385   2.9%
+    STAGE openai3-3072 np=32 a=100.0 k=10 build_byte_lut      0.116   0.9%
+    STAGE openai3-3072 np=32 a=100.0 k=10 scan_ivf            2.736  20.5%
+    STAGE openai3-3072 np=32 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=100.0 k=10 residual_refine     9.322  69.8%
+    STAGE openai3-3072 np=32 a=100.0 k=10 topk_final          0.111   0.8%
+    STAGE openai3-3072 np=32 a=100.0 k=10 gemm_rotate         0.319   2.2%
+    STAGE openai3-3072 np=32 a=100.0 k=10 gemm_centroid       0.295   2.0%
+    STAGE openai3-3072 np=32 a=100.0 k=10 select_probes       0.381   2.6%
+    STAGE openai3-3072 np=32 a=100.0 k=10 build_byte_lut      0.113   0.8%
+    STAGE openai3-3072 np=32 a=100.0 k=10 scan_ivf            3.193  21.8%
+    STAGE openai3-3072 np=32 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=100.0 k=10 residual_refine    10.228  69.9%
+    STAGE openai3-3072 np=32 a=100.0 k=10 topk_final          0.107   0.7%
+    STAGE openai3-3072 np=32 a=100.0 k=10 gemm_rotate         0.313   2.1%
+    STAGE openai3-3072 np=32 a=100.0 k=10 gemm_centroid       0.294   2.0%
+    STAGE openai3-3072 np=32 a=100.0 k=10 select_probes       0.382   2.6%
+    STAGE openai3-3072 np=32 a=100.0 k=10 build_byte_lut      0.113   0.8%
+    STAGE openai3-3072 np=32 a=100.0 k=10 scan_ivf            3.197  21.8%
+    STAGE openai3-3072 np=32 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=100.0 k=10 residual_refine    10.232  69.9%
+    STAGE openai3-3072 np=32 a=100.0 k=10 topk_final          0.108   0.7%
+    STAGE openai3-3072 np=32 a=100.0 k=10 gemm_rotate         0.308   2.1%
+    STAGE openai3-3072 np=32 a=100.0 k=10 gemm_centroid       0.296   2.0%
+    STAGE openai3-3072 np=32 a=100.0 k=10 select_probes       0.383   2.6%
+    STAGE openai3-3072 np=32 a=100.0 k=10 build_byte_lut      0.113   0.8%
+    STAGE openai3-3072 np=32 a=100.0 k=10 scan_ivf            3.209  22.0%
+    STAGE openai3-3072 np=32 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=100.0 k=10 residual_refine    10.167  69.7%
+    STAGE openai3-3072 np=32 a=100.0 k=10 topk_final          0.106   0.7%
+    STAGE openai3-3072 np=32 a=100.0 k=10 gemm_rotate         0.302   2.1%
+    STAGE openai3-3072 np=32 a=100.0 k=10 gemm_centroid       0.294   2.0%
+    STAGE openai3-3072 np=32 a=100.0 k=10 select_probes       0.381   2.6%
+    STAGE openai3-3072 np=32 a=100.0 k=10 build_byte_lut      0.113   0.8%
+    STAGE openai3-3072 np=32 a=100.0 k=10 scan_ivf            3.196  21.8%
+    STAGE openai3-3072 np=32 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=100.0 k=10 residual_refine    10.265  70.0%
+    STAGE openai3-3072 np=32 a=100.0 k=10 topk_final          0.107   0.7%
+    STAGE openai3-3072 np=32 a=100.0 k=10 gemm_rotate         0.300   2.0%
+    STAGE openai3-3072 np=32 a=100.0 k=10 gemm_centroid       0.294   2.0%
+    STAGE openai3-3072 np=32 a=100.0 k=10 select_probes       0.382   2.6%
+    STAGE openai3-3072 np=32 a=100.0 k=10 build_byte_lut      0.113   0.8%
+    STAGE openai3-3072 np=32 a=100.0 k=10 scan_ivf            3.197  21.8%
+    STAGE openai3-3072 np=32 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=32 a=100.0 k=10 residual_refine    10.266  70.0%
+    STAGE openai3-3072 np=32 a=100.0 k=10 topk_final          0.106   0.7%
+  vogue-768      M=96   np=128   a=100.0  k=10   recall=0.9649   qps=70259     rc=0
+    STAGE vogue-768 np=128 a=100.0 k=10 gemm_rotate         0.112   1.9%
+    STAGE vogue-768 np=128 a=100.0 k=10 gemm_centroid       0.189   3.2%
+    STAGE vogue-768 np=128 a=100.0 k=10 select_probes       0.226   3.8%
+    STAGE vogue-768 np=128 a=100.0 k=10 build_byte_lut      0.023   0.4%
+    STAGE vogue-768 np=128 a=100.0 k=10 scan_ivf            2.551  43.0%
+    STAGE vogue-768 np=128 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=100.0 k=10 residual_refine     2.774  46.8%
+    STAGE vogue-768 np=128 a=100.0 k=10 topk_final          0.053   0.9%
+    STAGE vogue-768 np=128 a=100.0 k=10 gemm_rotate         0.037   0.5%
+    STAGE vogue-768 np=128 a=100.0 k=10 gemm_centroid       0.150   2.2%
+    STAGE vogue-768 np=128 a=100.0 k=10 select_probes       0.224   3.3%
+    STAGE vogue-768 np=128 a=100.0 k=10 build_byte_lut      0.020   0.3%
+    STAGE vogue-768 np=128 a=100.0 k=10 scan_ivf            3.379  49.4%
+    STAGE vogue-768 np=128 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=100.0 k=10 residual_refine     2.972  43.4%
+    STAGE vogue-768 np=128 a=100.0 k=10 topk_final          0.065   0.9%
+    STAGE vogue-768 np=128 a=100.0 k=10 gemm_rotate         0.037   0.5%
+    STAGE vogue-768 np=128 a=100.0 k=10 gemm_centroid       0.149   2.1%
+    STAGE vogue-768 np=128 a=100.0 k=10 select_probes       0.219   3.1%
+    STAGE vogue-768 np=128 a=100.0 k=10 build_byte_lut      0.020   0.3%
+    STAGE vogue-768 np=128 a=100.0 k=10 scan_ivf            3.614  51.1%
+    STAGE vogue-768 np=128 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=100.0 k=10 residual_refine     2.971  42.0%
+    STAGE vogue-768 np=128 a=100.0 k=10 topk_final          0.063   0.9%
+    STAGE vogue-768 np=128 a=100.0 k=10 gemm_rotate         0.041   0.6%
+    STAGE vogue-768 np=128 a=100.0 k=10 gemm_centroid       0.148   2.1%
+    STAGE vogue-768 np=128 a=100.0 k=10 select_probes       0.216   3.1%
+    STAGE vogue-768 np=128 a=100.0 k=10 build_byte_lut      0.020   0.3%
+    STAGE vogue-768 np=128 a=100.0 k=10 scan_ivf            3.463  49.9%
+    STAGE vogue-768 np=128 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=100.0 k=10 residual_refine     2.982  43.0%
+    STAGE vogue-768 np=128 a=100.0 k=10 topk_final          0.063   0.9%
+    STAGE vogue-768 np=128 a=100.0 k=10 gemm_rotate         0.037   0.5%
+    STAGE vogue-768 np=128 a=100.0 k=10 gemm_centroid       0.147   2.2%
+    STAGE vogue-768 np=128 a=100.0 k=10 select_probes       0.213   3.1%
+    STAGE vogue-768 np=128 a=100.0 k=10 build_byte_lut      0.020   0.3%
+    STAGE vogue-768 np=128 a=100.0 k=10 scan_ivf            3.344  48.8%
+    STAGE vogue-768 np=128 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=100.0 k=10 residual_refine     3.030  44.2%
+    STAGE vogue-768 np=128 a=100.0 k=10 topk_final          0.063   0.9%
+    STAGE vogue-768 np=128 a=100.0 k=10 gemm_rotate         0.038   0.5%
+    STAGE vogue-768 np=128 a=100.0 k=10 gemm_centroid       0.150   2.1%
+    STAGE vogue-768 np=128 a=100.0 k=10 select_probes       0.220   3.1%
+    STAGE vogue-768 np=128 a=100.0 k=10 build_byte_lut      0.020   0.3%
+    STAGE vogue-768 np=128 a=100.0 k=10 scan_ivf            3.592  50.8%
+    STAGE vogue-768 np=128 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=128 a=100.0 k=10 residual_refine     2.985  42.2%
+    STAGE vogue-768 np=128 a=100.0 k=10 topk_final          0.066   0.9%
+  openai3-3072   M=384  np=128   a=100.0  k=10   recall=0.9417   qps=20735     rc=0
+    STAGE openai3-3072 np=128 a=100.0 k=10 gemm_rotate         0.366   1.8%
+    STAGE openai3-3072 np=128 a=100.0 k=10 gemm_centroid       0.295   1.4%
+    STAGE openai3-3072 np=128 a=100.0 k=10 select_probes       0.404   2.0%
+    STAGE openai3-3072 np=128 a=100.0 k=10 build_byte_lut      0.115   0.6%
+    STAGE openai3-3072 np=128 a=100.0 k=10 scan_ivf            8.630  42.2%
+    STAGE openai3-3072 np=128 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=100.0 k=10 residual_refine    10.536  51.5%
+    STAGE openai3-3072 np=128 a=100.0 k=10 topk_final          0.109   0.5%
+    STAGE openai3-3072 np=128 a=100.0 k=10 gemm_rotate         0.303   1.3%
+    STAGE openai3-3072 np=128 a=100.0 k=10 gemm_centroid       0.295   1.3%
+    STAGE openai3-3072 np=128 a=100.0 k=10 select_probes       0.407   1.7%
+    STAGE openai3-3072 np=128 a=100.0 k=10 build_byte_lut      0.113   0.5%
+    STAGE openai3-3072 np=128 a=100.0 k=10 scan_ivf            9.633  41.4%
+    STAGE openai3-3072 np=128 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=100.0 k=10 residual_refine    12.425  53.4%
+    STAGE openai3-3072 np=128 a=100.0 k=10 topk_final          0.111   0.5%
+    STAGE openai3-3072 np=128 a=100.0 k=10 gemm_rotate         0.302   1.3%
+    STAGE openai3-3072 np=128 a=100.0 k=10 gemm_centroid       0.295   1.3%
+    STAGE openai3-3072 np=128 a=100.0 k=10 select_probes       0.407   1.8%
+    STAGE openai3-3072 np=128 a=100.0 k=10 build_byte_lut      0.113   0.5%
+    STAGE openai3-3072 np=128 a=100.0 k=10 scan_ivf            9.646  41.6%
+    STAGE openai3-3072 np=128 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=100.0 k=10 residual_refine    12.325  53.1%
+    STAGE openai3-3072 np=128 a=100.0 k=10 topk_final          0.112   0.5%
+    STAGE openai3-3072 np=128 a=100.0 k=10 gemm_rotate         0.311   1.3%
+    STAGE openai3-3072 np=128 a=100.0 k=10 gemm_centroid       0.298   1.3%
+    STAGE openai3-3072 np=128 a=100.0 k=10 select_probes       0.413   1.8%
+    STAGE openai3-3072 np=128 a=100.0 k=10 build_byte_lut      0.115   0.5%
+    STAGE openai3-3072 np=128 a=100.0 k=10 scan_ivf            9.723  41.3%
+    STAGE openai3-3072 np=128 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=100.0 k=10 residual_refine    12.560  53.4%
+    STAGE openai3-3072 np=128 a=100.0 k=10 topk_final          0.113   0.5%
+    STAGE openai3-3072 np=128 a=100.0 k=10 gemm_rotate         0.302   1.3%
+    STAGE openai3-3072 np=128 a=100.0 k=10 gemm_centroid       0.298   1.3%
+    STAGE openai3-3072 np=128 a=100.0 k=10 select_probes       0.411   1.7%
+    STAGE openai3-3072 np=128 a=100.0 k=10 build_byte_lut      0.115   0.5%
+    STAGE openai3-3072 np=128 a=100.0 k=10 scan_ivf            9.723  41.3%
+    STAGE openai3-3072 np=128 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=100.0 k=10 residual_refine    12.561  53.4%
+    STAGE openai3-3072 np=128 a=100.0 k=10 topk_final          0.113   0.5%
+    STAGE openai3-3072 np=128 a=100.0 k=10 gemm_rotate         0.302   1.3%
+    STAGE openai3-3072 np=128 a=100.0 k=10 gemm_centroid       0.298   1.3%
+    STAGE openai3-3072 np=128 a=100.0 k=10 select_probes       0.411   1.7%
+    STAGE openai3-3072 np=128 a=100.0 k=10 build_byte_lut      0.115   0.5%
+    STAGE openai3-3072 np=128 a=100.0 k=10 scan_ivf            9.725  41.3%
+    STAGE openai3-3072 np=128 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=128 a=100.0 k=10 residual_refine    12.585  53.4%
+    STAGE openai3-3072 np=128 a=100.0 k=10 topk_final          0.113   0.5%
+  vogue-768      M=96   np=512   a=100.0  k=10   recall=0.9909   qps=36754     rc=0
+    STAGE vogue-768 np=512 a=100.0 k=10 gemm_rotate         0.100   0.9%
+    STAGE vogue-768 np=512 a=100.0 k=10 gemm_centroid       0.185   1.7%
+    STAGE vogue-768 np=512 a=100.0 k=10 select_probes       0.572   5.3%
+    STAGE vogue-768 np=512 a=100.0 k=10 build_byte_lut      0.023   0.2%
+    STAGE vogue-768 np=512 a=100.0 k=10 scan_ivf            6.988  64.8%
+    STAGE vogue-768 np=512 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=100.0 k=10 residual_refine     2.868  26.6%
+    STAGE vogue-768 np=512 a=100.0 k=10 topk_final          0.054   0.5%
+    STAGE vogue-768 np=512 a=100.0 k=10 gemm_rotate         0.050   0.4%
+    STAGE vogue-768 np=512 a=100.0 k=10 gemm_centroid       0.149   1.1%
+    STAGE vogue-768 np=512 a=100.0 k=10 select_probes       0.562   4.3%
+    STAGE vogue-768 np=512 a=100.0 k=10 build_byte_lut      0.020   0.2%
+    STAGE vogue-768 np=512 a=100.0 k=10 scan_ivf            9.026  69.5%
+    STAGE vogue-768 np=512 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=100.0 k=10 residual_refine     3.112  24.0%
+    STAGE vogue-768 np=512 a=100.0 k=10 topk_final          0.066   0.5%
+    STAGE vogue-768 np=512 a=100.0 k=10 gemm_rotate         0.037   0.3%
+    STAGE vogue-768 np=512 a=100.0 k=10 gemm_centroid       0.148   1.1%
+    STAGE vogue-768 np=512 a=100.0 k=10 select_probes       0.556   4.1%
+    STAGE vogue-768 np=512 a=100.0 k=10 build_byte_lut      0.020   0.2%
+    STAGE vogue-768 np=512 a=100.0 k=10 scan_ivf            9.462  70.6%
+    STAGE vogue-768 np=512 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=100.0 k=10 residual_refine     3.118  23.3%
+    STAGE vogue-768 np=512 a=100.0 k=10 topk_final          0.066   0.5%
+    STAGE vogue-768 np=512 a=100.0 k=10 gemm_rotate         0.036   0.3%
+    STAGE vogue-768 np=512 a=100.0 k=10 gemm_centroid       0.148   1.1%
+    STAGE vogue-768 np=512 a=100.0 k=10 select_probes       0.560   4.2%
+    STAGE vogue-768 np=512 a=100.0 k=10 build_byte_lut      0.020   0.2%
+    STAGE vogue-768 np=512 a=100.0 k=10 scan_ivf            9.340  70.3%
+    STAGE vogue-768 np=512 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=100.0 k=10 residual_refine     3.116  23.4%
+    STAGE vogue-768 np=512 a=100.0 k=10 topk_final          0.066   0.5%
+    STAGE vogue-768 np=512 a=100.0 k=10 gemm_rotate         0.037   0.3%
+    STAGE vogue-768 np=512 a=100.0 k=10 gemm_centroid       0.150   1.1%
+    STAGE vogue-768 np=512 a=100.0 k=10 select_probes       0.558   4.3%
+    STAGE vogue-768 np=512 a=100.0 k=10 build_byte_lut      0.020   0.2%
+    STAGE vogue-768 np=512 a=100.0 k=10 scan_ivf            9.100  69.6%
+    STAGE vogue-768 np=512 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=100.0 k=10 residual_refine     3.149  24.1%
+    STAGE vogue-768 np=512 a=100.0 k=10 topk_final          0.066   0.5%
+    STAGE vogue-768 np=512 a=100.0 k=10 gemm_rotate         0.037   0.3%
+    STAGE vogue-768 np=512 a=100.0 k=10 gemm_centroid       0.150   1.1%
+    STAGE vogue-768 np=512 a=100.0 k=10 select_probes       0.564   4.3%
+    STAGE vogue-768 np=512 a=100.0 k=10 build_byte_lut      0.020   0.2%
+    STAGE vogue-768 np=512 a=100.0 k=10 scan_ivf            9.082  69.6%
+    STAGE vogue-768 np=512 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE vogue-768 np=512 a=100.0 k=10 residual_refine     3.133  24.0%
+    STAGE vogue-768 np=512 a=100.0 k=10 topk_final          0.066   0.5%
+  openai3-3072   M=384  np=512   a=100.0  k=10   recall=0.9819   qps=10489     rc=0
+    STAGE openai3-3072 np=512 a=100.0 k=10 gemm_rotate         0.387   0.9%
+    STAGE openai3-3072 np=512 a=100.0 k=10 gemm_centroid       0.298   0.7%
+    STAGE openai3-3072 np=512 a=100.0 k=10 select_probes       0.633   1.5%
+    STAGE openai3-3072 np=512 a=100.0 k=10 build_byte_lut      0.118   0.3%
+    STAGE openai3-3072 np=512 a=100.0 k=10 scan_ivf           29.167  70.1%
+    STAGE openai3-3072 np=512 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=100.0 k=10 residual_refine    10.871  26.1%
+    STAGE openai3-3072 np=512 a=100.0 k=10 topk_final          0.109   0.3%
+    STAGE openai3-3072 np=512 a=100.0 k=10 gemm_rotate         0.303   0.7%
+    STAGE openai3-3072 np=512 a=100.0 k=10 gemm_centroid       0.297   0.6%
+    STAGE openai3-3072 np=512 a=100.0 k=10 select_probes       0.606   1.3%
+    STAGE openai3-3072 np=512 a=100.0 k=10 build_byte_lut      0.116   0.2%
+    STAGE openai3-3072 np=512 a=100.0 k=10 scan_ivf           31.769  68.4%
+    STAGE openai3-3072 np=512 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=100.0 k=10 residual_refine    13.267  28.5%
+    STAGE openai3-3072 np=512 a=100.0 k=10 topk_final          0.113   0.2%
+    STAGE openai3-3072 np=512 a=100.0 k=10 gemm_rotate         0.303   0.6%
+    STAGE openai3-3072 np=512 a=100.0 k=10 gemm_centroid       0.299   0.6%
+    STAGE openai3-3072 np=512 a=100.0 k=10 select_probes       0.612   1.3%
+    STAGE openai3-3072 np=512 a=100.0 k=10 build_byte_lut      0.117   0.2%
+    STAGE openai3-3072 np=512 a=100.0 k=10 scan_ivf           32.187  68.5%
+    STAGE openai3-3072 np=512 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=100.0 k=10 residual_refine    13.390  28.5%
+    STAGE openai3-3072 np=512 a=100.0 k=10 topk_final          0.113   0.2%
+    STAGE openai3-3072 np=512 a=100.0 k=10 gemm_rotate         0.302   0.6%
+    STAGE openai3-3072 np=512 a=100.0 k=10 gemm_centroid       0.299   0.6%
+    STAGE openai3-3072 np=512 a=100.0 k=10 select_probes       0.611   1.3%
+    STAGE openai3-3072 np=512 a=100.0 k=10 build_byte_lut      0.117   0.2%
+    STAGE openai3-3072 np=512 a=100.0 k=10 scan_ivf           32.261  68.5%
+    STAGE openai3-3072 np=512 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=100.0 k=10 residual_refine    13.390  28.4%
+    STAGE openai3-3072 np=512 a=100.0 k=10 topk_final          0.113   0.2%
+    STAGE openai3-3072 np=512 a=100.0 k=10 gemm_rotate         0.304   0.6%
+    STAGE openai3-3072 np=512 a=100.0 k=10 gemm_centroid       0.299   0.6%
+    STAGE openai3-3072 np=512 a=100.0 k=10 select_probes       0.615   1.3%
+    STAGE openai3-3072 np=512 a=100.0 k=10 build_byte_lut      0.117   0.2%
+    STAGE openai3-3072 np=512 a=100.0 k=10 scan_ivf           32.332  68.4%
+    STAGE openai3-3072 np=512 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=100.0 k=10 residual_refine    13.481  28.5%
+    STAGE openai3-3072 np=512 a=100.0 k=10 topk_final          0.113   0.2%
+    STAGE openai3-3072 np=512 a=100.0 k=10 gemm_rotate         0.302   0.6%
+    STAGE openai3-3072 np=512 a=100.0 k=10 gemm_centroid       0.299   0.6%
+    STAGE openai3-3072 np=512 a=100.0 k=10 select_probes       0.613   1.3%
+    STAGE openai3-3072 np=512 a=100.0 k=10 build_byte_lut      0.117   0.2%
+    STAGE openai3-3072 np=512 a=100.0 k=10 scan_ivf           32.289  68.5%
+    STAGE openai3-3072 np=512 a=100.0 k=10 build_lut_r         0.000   0.0%
+    STAGE openai3-3072 np=512 a=100.0 k=10 residual_refine    13.410  28.4%
+    STAGE openai3-3072 np=512 a=100.0 k=10 topk_final          0.113   0.2%
+00:56:01 === K68_DONE ===

@@ -1,0 +1,75 @@
+### phase 1: thread sweep, openai3-3072, nprobe<=32 to keep it short
+--- OMP_NUM_THREADS=208 ---
+OpenBLAS warning: precompiled NUM_THREADS exceeded, adding auxiliary array for thread metadata.
+timeout: the monitored command dumped core
+/root/cpurun.sh: line 17: 23818 Segmentation fault      OMP_NUM_THREADS=$T OMP_PROC_BIND=close OMP_PLACES=cores JHQ_NLIST=4096 JHQ_M=384 JHQ_BR=8 JHQ_ALPHA=100 JHQ_NPROBE_MAX=32 timeout 5400 $B $D/base.fvecs $D/query.fvecs $D/groundtruth.ivecs
+sweep_rc=139 threads=208
+--- OMP_NUM_THREADS=64 ---
+base=999000×3072  query=1000  gt_k=20
+config: nlist=4096 M=384 Br=8 alpha=100.0 nprobe<=32 threads=64
+
+========================================
+JQ  (M=384, [8])  nlist=4096  d=3072
+========================================
+Build: 683.96 s
+Code size: 3072 bits = 384 bytes/vec
+
+nprobe     Recall@10    QPS       
+------     ---------    ---       
+1          0.6683       4817.3    
+2          0.8028       4780.2    
+4          0.8830       4915.5    
+8          0.9267       3528.4    
+16         0.9515       4692.4    
+32         0.9686       2512.5    
+
+========================================
+JHQ (M=384, [8,Br])  nlist=4096  d=3072
+========================================
+Build: 850.74 s
+Code size: 27648 bits = 3456 bytes/vec
+
+nprobe     Recall@10    QPS       
+------     ---------    ---       
+1          0.6906       1206.4    
+2          0.8299       721.8     
+4          0.9163       450.5     
+8          0.9594       501.1     
+16         0.9777       1115.4    
+32         0.9905       1100.5    
+sweep_rc=0 threads=64
+--- OMP_NUM_THREADS=32 ---
+base=999000×3072  query=1000  gt_k=20
+config: nlist=4096 M=384 Br=8 alpha=100.0 nprobe<=32 threads=32
+
+========================================
+JQ  (M=384, [8])  nlist=4096  d=3072
+========================================
+Build: 412.84 s
+Code size: 3072 bits = 384 bytes/vec
+
+nprobe     Recall@10    QPS       
+------     ---------    ---       
+1          0.6683       13724.3   
+2          0.8028       6177.1    
+4          0.8830       9239.9    
+8          0.9267       7913.4    
+16         0.9515       5494.4    
+32         0.9686       3564.0    
+
+========================================
+JHQ (M=384, [8,Br])  nlist=4096  d=3072
+========================================
+Build: 410.48 s
+Code size: 27648 bits = 3456 bytes/vec
+
+nprobe     Recall@10    QPS       
+------     ---------    ---       
+1          0.6906       1130.4    
+2          0.8299       817.5     
+4          0.9163       1122.6    
+8          0.9594       1403.3    
+16         0.9777       1378.2    
+32         0.9905       1222.5    
+sweep_rc=0 threads=32
+--- OMP_NUM_THREADS=16 ---
