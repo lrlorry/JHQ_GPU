@@ -7,4 +7,8 @@ for f in fig_pipeline.py fig_lut.py fig_layout.py fig_rule.py fig_frontier.py fi
   echo "== $f"
   python3 "$f"
 done
+# Nothing ships until every number in the body traces to a source. Six errors
+# of that kind reached a draft; this is the check that would have caught them.
+echo "== audit_numbers.py"
+python3 audit_numbers.py || { echo "AUDIT FAILED -- unsourced numbers above"; exit 1; }
 echo "PDF and PNG in out/"
