@@ -138,7 +138,10 @@ for ln in open(datafile("rabitq_o3072_build.log")):
 METHODS = [("JHQ-GPU", "jhq"), ("IVF-RaBitQ", "rabitq"),
            ("cuVS-CAGRA", "cagra"), ("cuVS-CAGRA-int8", "cagra8"),
            ("cuVS-IVFPQ", "ivfpq")]
-LAB = {"JHQ-GPU": "JHQ-GPU (this work)", "IVF-RaBitQ": "IVF-RaBitQ",
+# "(this work)" claimed JHQ itself, which the paper explicitly does not; the
+# port is what is ours, and the title calls it JHQ-GPU.  style.py's S dict was
+# corrected and this one was missed.
+LAB = {"JHQ-GPU": "JHQ-GPU (ours)", "IVF-RaBitQ": "IVF-RaBitQ",
        "cuVS-CAGRA": "CAGRA fp32", "cuVS-CAGRA-int8": "CAGRA int8",
        "cuVS-IVFPQ": "IVF-PQ"}
 
@@ -169,9 +172,13 @@ for j, (m, skey) in enumerate(METHODS):
         v = b.get((m, ds))
         if not v:
             # "fails" and "never measured" are different claims
-            mark = "$\\times$" if (m, ds) in FAILS else "?"
-            ax.text(i + off, 1.06, mark, ha="center", va="bottom",
-                    fontsize=7.5, color="#898781")
+            # A bare cross says a build failed and not why, which is the
+            # part a reader needs: every one of these is an allocation the
+            # 32 GiB card could not serve, and the sizes are in the caption.
+            mark = "OOM" if (m, ds) in FAILS else "--"
+            ax.text(i + off, 1.05, mark, ha="center", va="bottom",
+                    fontsize=5.5, color=col if mark == "OOM" else "#898781",
+                    rotation=90)
             continue
         med = st.median(v)
         ax.bar(i + off, med, width=W * 0.86, color=col, ec="none",
@@ -195,9 +202,10 @@ seen, hh, ll = set(), [], []
 for a_, b_ in zip(h, l):
     if b_ and b_ not in seen:
         seen.add(b_); hh.append(a_); ll.append(b_)
-hh.append(plt.Line2D([], [], color="#898781", marker=r"$\times$", ls="", ms=5))
-ll.append("build fails on this card")
-hh.append(plt.Line2D([], [], color="#898781", marker="$?$", ls="", ms=5))
+hh.append(plt.Line2D([], [], color="#898781", marker=r"$\mathrm{OOM}$", ls="",
+                     ms=9))
+ll.append("out of memory")
+hh.append(plt.Line2D([], [], color="#898781", marker="$-$", ls="", ms=5))
 ll.append("not timed")
 # Seven legend entries across one row is a two-column figure's legend; here it
 # is what pushed the axes down to nothing while save() held the file at the
