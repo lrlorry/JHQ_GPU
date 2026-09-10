@@ -200,29 +200,34 @@ a build holding residency fixed while sweeping instruction count alone.
 
 \subsection{RQ4: would one fixed budget do instead?}
 \label{sec:rq2}
-Four arms share one index and one timing harness, calibrating on even-indexed
+Five arms share one index and one timing harness, calibrating on even-indexed
 queries and reporting every recall on the odd-indexed half: each fixed $\alpha$
 on the grid; the sampled rule over 64 random samples at each $S$; the same
-criterion on the whole calibration pool; and, for reference only, the fastest
-$\alpha$ whose held-out recall is within $10^{-3}$ of the best any $\alpha$
-reaches, chosen with ground truth.
+criterion on the whole calibration pool; a whole-grid walk on the sample the
+rule bisects; and, for reference only, the fastest $\alpha$ whose held-out
+recall is within $10^{-3}$ of the best any $\alpha$ reaches, chosen with ground
+truth.
 
 \emph{A constant meets the quality bar only by overpaying.} The reference budget
-is $\alpha{=}64$ on vogue-768 at both probe depths and $\alpha{=}4$ on
-openai3-3072, sixteen times apart. Its conservative end generalises ---
+is $\alpha{=}64$ on vogue-768 at both probe depths and $\alpha{=}8$ on
+openai3-3072, an order of magnitude apart. On openai3-3072 $\alpha{=}4$ ties it
+to within $0.1\%$ and $2.6\%$ of throughput at equal recall and a repeat run
+selects it instead, so the measurement resolves the magnitude there, not the
+grid point. The conservative end generalises ---
 $\alpha{=}64$ stays within $10^{-3}$ of attainable recall in all four cells ---
 but on openai3-3072 the rule's budget runs $32\%$ faster at
-$\mathit{nprobe}{=}128$ and $10\%$ faster at $512$, for equal recall at the
+$\mathit{nprobe}{=}128$ and $7\%$ faster at $512$, for equal recall at the
 first and $0.0002$ less at the second. The cheap end does not generalise at all:
-$\alpha{=}4$ gives up $0.0884$ recall on vogue-768. The question is therefore
+$\alpha{=}8$ gives up $0.0366$ of recall on vogue-768, and $\alpha{=}4$
+$0.0884$. The question is therefore
 what a fixed conservative budget costs, which the earlier comparison against
 $\alpha{=}100$ could not address.
 
 \emph{The rule finds it, given enough sample.} The median selection over 64
-random samples matches the reference in all four cells at $S\ge 64$; at $S{=}32$
-it matches on openai3-3072 and picks $32$ where the reference is $64$ on
-vogue-768. Against the $\alpha{=}100$ default the selection is worth
-$1.095$--$1.475\times$ in steady state, repaid in $3.8$ to $19.1$ batches.
+random samples matches the reference on vogue-768 at $S\ge 64$ and lands on the
+tied $\alpha{=}4$ on openai3-3072; at $S{=}32$ it picks $32$ where the reference
+is $64$ on vogue-768. Against the $\alpha{=}100$ default the selection is worth
+$1.095$--$1.469\times$ in steady state, repaid in $4.0$ to $19.2$ batches.
 
 \emph{The sample is the risk, and $S{=}32$ is too small.} Across the four cells,
 $25$--$69\%$ of random samples at $S{=}32$ give up more than $10^{-3}$ of
@@ -232,8 +237,11 @@ vogue-768 at $\mathit{nprobe}{=}128$. We withdraw Section~\ref{sec:method2}'s
 $S{=}32$: $S$ is a tolerance decision, and $S{=}128$ is where the tolerance
 becomes small, not where it vanishes.
 
-\emph{Removing the sampling does not fix it.} Evaluating the same criterion on
-the entire calibration pool is $2.4$--$2.9\times$ more expensive and selects a
+\emph{Neither the sample nor the bisection is the approximation.} Walking the
+whole grid on the sample the rule bisects reproduces the bisection's choice in
+all $768$ draws, at $1.5$--$1.7\times$ its calibration cost. Evaluating the same
+criterion on the entire calibration pool is $2.1$--$2.9\times$ more expensive
+and selects a
 \emph{more} conservative budget, $\alpha{=}100$ where the reference is $64$ on
 vogue-768. The cause is in the criterion's definition: $\epsilon$ is an absolute
 count of disagreeing slots, so the same $\epsilon{=}1$ admits one miss in
@@ -281,15 +289,19 @@ failed the project's monotonicity check.
 
 The CPU reference answers a different question: what the port buys over CPU JHQ
 at the same index parameters. Sweeping $\alpha$ and $\mathit{nprobe}$ on both
-sides, the GPU reaches $52\times$, $53\times$ and $90\times$ the CPU envelope on
+sides, the GPU reaches $52\times$, $53\times$ and $85\times$ the CPU envelope on
 vogue-768 at Recall@10 of $0.9645$, $0.9828$ and $0.9905$, and $75$--$77\times$
 on openai3-3072 from $0.9414$ to $0.9813$; pinning $\alpha{=}100$ on both sides
-gives $43\times$, $48\times$ and $80\times$ on vogue-768 and $35$--$54\times$ on
+gives $43\times$, $48\times$ and $75\times$ on vogue-768 and $35$--$54\times$ on
 openai3-3072. The vogue figure rises steeply at the top because the CPU degrades
 faster than the GPU as $\mathit{nprobe}$ grows, and its highest point rests on
 the noisiest CPU cell we measured --- at $\mathit{nprobe}{=}1024$ and 32 threads
 the six $\alpha$ settings span $792$ to $1{,}072$ QPS --- so we quote it as a
-point rather than fold it into a range. Above Recall@10 of $0.9911$ and $0.9900$ respectively the
+point rather than fold it into a range. That cell was re-measured five times:
+the two $\alpha$ the top ratio depends on hold a median of $1{,}027$ and
+$1{,}003$ QPS, but $\alpha{=}100$ spans $765$ to $1{,}015$ across the five
+passes, a $25\%$ swing against $2\%$ on its neighbour. The ratios above use
+those medians; the single-pass log gave $90\times$ and $80\times$. Above Recall@10 of $0.9911$ and $0.9900$ respectively the
 CPU sweep has no points, and those GPU operating points are reported as outside
 its range rather than divided by the CPU's last measurement. Three limits apply.
 The GPU side of the vogue comparison is the rule's chosen $\alpha$ at each
@@ -297,10 +309,10 @@ $\mathit{nprobe}$, not an exhaustive $\alpha$ sweep. CPU rows below
 $\mathit{nprobe}{=}128$ are dropped, because 1{,}000 queries complete fast enough
 there that thread start-up dominates the timer and measured throughput rises
 with $\mathit{nprobe}$; the recall column is unaffected. And each cell is
-measured once, so the ratios are order-of-magnitude figures --- the envelope
-keeps the fastest point per recall bucket, which biases the CPU side upward and
-so does not inflate the ratio, but with one measurement per cell we do not claim
-a statistical bound.
+measured once except the one just described, so the ratios are
+order-of-magnitude figures --- the envelope keeps the fastest point per recall
+bucket, which biases the CPU side upward and so does not inflate the ratio, but
+with one measurement per cell we do not claim a statistical bound.
 
 \subsection{Construction and memory}
 \label{sec:rq6}

@@ -57,6 +57,12 @@ def load():
         if m:
             cells[cur]["full"] = (float(m.group(1)), float(m.group(2)),
                                   int(m.group(3)), float(m.group(4)))
+        m = re.match(r"ARM ENUM S=(\d+)\s+reps=(\d+) disagree=(\d+)/(\d+) "
+                     r"enum_ms=([\d.]+) bisect_ms=([\d.]+)", ln)
+        if m:
+            cells[cur].setdefault("enum", {})[int(m.group(1))] = {
+                "disagree": int(m.group(3)), "reps": int(m.group(4)),
+                "enum_ms": float(m.group(5)), "bisect_ms": float(m.group(6))}
         m = re.match(r"ARM RULE S=(\d+)\s+reps=\d+ cal_ms=([\d.]+) "
                      r"mean_loss=([\d.]+) p95_loss=([\d.]+) "
                      r"frac_over_1e-3=([\d.]+) median_alpha=(\d+) "
@@ -78,8 +84,17 @@ def main():
         oracles[(ds, np_)] = a
         print("   %-14s np=%-4d  oracle alpha=%-4.0f recall=%.4f qps=%6d "
               "(ceiling %.4f)" % (style.PRETTY[ds], np_, a, rec, q, ceil))
+    # Candidates are every alpha some arm here lands on -- the oracle's, the
+    # rule's, and the full pool's.  Restricting them to the oracle's picks
+    # hides what the *other* datasets' choice would cost if pinned globally,
+    # which is the whole question this part asks.
+    cands = set(oracles.values())
+    for c in C.values():
+        cands.update(float(r["alpha"]) for r in c["rule"].values())
+        if "full" in c:
+            cands.add(c["full"][0])
     print("\n   The cost of pinning one alpha everywhere:")
-    for cand in sorted({a for a in oracles.values()}):
+    for cand in sorted(cands):
         worst_r, worst_q, where_r, where_q = 0.0, 0.0, "", ""
         for (ds, np_), c in C.items():
             fx = {a: (r, q) for a, r, q in c["fixed"]}
@@ -143,6 +158,25 @@ def main():
         print("   %-14s np=%-4d gain %.3fx, calibration %.1f ms, payback %.1f batches"
               % (style.PRETTY[ds], np_, rule_q / base_q, r["cal_ms"],
                  r["cal_ms"] / per))
+
+    print("\n6. Is the bisection the approximation?  Whole-grid walk on the "
+          "same sample:\n")
+    tot_d = tot_r = 0
+    ratios = []
+    for (ds, np_), c in C.items():
+        for S in sorted(c.get("enum", {})):
+            e = c["enum"][S]
+            tot_d += e["disagree"]; tot_r += e["reps"]
+            ratios.append(e["enum_ms"] / e["bisect_ms"])
+            print("   %-14s np=%-4d S=%-4d disagree %d/%d   enum %.1f ms vs "
+                  "bisect %.1f ms  (%.2fx)"
+                  % (style.PRETTY[ds], np_, S, e["disagree"], e["reps"],
+                     e["enum_ms"], e["bisect_ms"], ratios[-1]))
+    if ratios:
+        print("\n   %d of %d draws select a different alpha than the full grid; "
+              "bisection costs %.1f-%.1fx less"
+              % (tot_d, tot_r, min(ratios), max(ratios)))
+
 
 
 if __name__ == "__main__":

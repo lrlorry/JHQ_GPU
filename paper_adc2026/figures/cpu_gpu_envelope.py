@@ -36,9 +36,13 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, os.pardir, "data")
 
-# The CPU log lives next to the GPU logs once the run is complete; during a run
-# it is read from wherever it was fetched to.
-CPU_LOG = sys.argv[1] if len(sys.argv) > 1 else os.path.join(DATA, "cpu5.log")
+# cpu5_remeasured.log is cpu5.log with one cell replaced: vogue-768, 32 threads,
+# nprobe=1024, alpha in {32, 100}.  That cell carries the top vogue ratio, and
+# cpu5.log measured it once -- at alpha=100 it drew 929 QPS, which five repeats
+# (data/anchors5.log) place at the bottom of a 765-1015 spread whose median is
+# 1003.  Every other cell is cpu5.log's single measurement, unchanged.
+CPU_LOG = (sys.argv[1] if len(sys.argv) > 1
+           else os.path.join(DATA, "cpu5_remeasured.log"))
 
 CPU_NPROBE_FLOOR = 128
 GPU_V57 = ["paper_fronts.log", "openai3072_v57_front.log"]
