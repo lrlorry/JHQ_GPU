@@ -3,15 +3,14 @@
 
 \subsection{Setup and protocol}
 \label{sec:setup}
-All GPU systems run on one NVIDIA RTX 5090: 32{,}607 MiB device memory, 170 SMs,
-a 101{,}376-byte opt-in shared-memory limit per block; the host has 208 logical
-cores and 754 GiB RAM. Datasets are vogue-768 ($1.0\text{M}\times 768$),
-arxiv-768 ($2.25\text{M}\times 768$), bge-m3 ($10.1\text{M}\times 1024$),
-stella-trec24 ($17.8\text{M}\times 1024$), openai3-1536
-($1.0\text{M}\times 1536$) and openai3-3072 ($1.0\text{M}\times 3072$).
+All GPU systems run on one NVIDIA RTX 5090. Two of its numbers are load
+bearing and appear again below: 170 SMs, and a $101{,}376$-byte opt-in
+shared-memory limit per block, which is the budget the resident table competes
+for. The six datasets span 768 to 3{,}072 dimensions and 1.0M to 17.8M vectors;
+Figure~\ref{fig:frontier} labels each with its shape.
 
-We report Recall@10 against true top-10 ground truth at $k{=}10$; because $c_k$
-scales with $\alpha k$, other $k$ are not established. Timing runs host query
+We report Recall@10 against true top-10 ground truth; because $c_k$ scales with
+$\alpha k$, other $k$ are not established. Timing runs host query
 input to host result output, and frontiers use steady-state throughput at batch
 1{,}024 --- the whole query set in one call --- which Section~\ref{sec:rq5}
 shows is a consequential choice. Occupancy statements are analytical
@@ -22,9 +21,9 @@ cold-start experiment, and $\approx 10^{-4}$ for paired comparisons on one index
 from top-$c_k$ tie breaking. The CPU comparison buckets recall at $10^{-3}$ so
 a tie-break-sized difference cannot buy a point a place; the GPU and baseline
 fronts are plain Pareto envelopes over the measured points, and the cuVS
-columns are the harness's three-run mean throughput, not a median. We do not enlarge batches by duplicating
-the roughly 1k available queries: duplication alone raises throughput
-$4$--$26\%$, so such a batch would measure an artefact.
+columns are the harness's three-run mean throughput, not a median. We do not enlarge batches by duplicating the roughly 1k available queries:
+duplication alone raises throughput (Table~\ref{tab:neg}), so such a batch
+would measure an artefact.
 
 Baselines are the cuVS implementations of IVF-RaBitQ~\cite{ivfrabitq}, IVF-PQ,
 and CAGRA~\cite{cagra} in fp32 and int8. Our primary comparison line is the
@@ -42,18 +41,14 @@ codebook, with one measurement per cell.
 \label{sec:rq1}
 Figure~\ref{fig:frontier} gives the measured frontiers and Table~\ref{tab:front}
 reduces them to a single question: at each matched recall, which system is
-fastest? JHQ owns 4 of the 25 cells, and all four are at
-Recall@$10\ge 0.97$. CAGRA-int8 leads in 13 of them, by $1.3$--$2.9\times$ and
-concentrated below Recall@$10{=}0.95$ --- $1.6$--$2.9\times$ over the cells
-strictly below it; CAGRA-fp32 leads in 3 by $1.1$--$1.4\times$ and IVF-RaBitQ in
-5 by $1.0$--$1.4\times$, measured on the 4 of those 5 JHQ also reaches. One row
-is excluded throughout: stella-trec24's CAGRA-int8 point at Recall@10 of
-$0.9692$ is \texttt{status=CONTAMINATED} in the harness's own record --- a
-$6.6\%$ throughput spread against $0.02$--$0.64\%$ elsewhere --- and the
-frontier generator had dropped only \texttt{FAILED} rows. We state this rather than scope it away, because it
-bounds the claim precisely: JHQ's region is the high-recall end, most clearly at
-high dimension, where openai3-1536 leads at $0.97$ and $0.98$ and openai3-3072
-at $0.97$.
+fastest? The answer is that JHQ owns 4 of the 25 cells and every one of them is
+at Recall@$10\ge 0.97$, while CAGRA-int8 owns the low-recall end outright. We
+state that rather than scope it away, because it bounds the claim precisely:
+JHQ's region is the high-recall end, most clearly at high dimension, and the
+margins by which it loses elsewhere are in the table. One row is excluded
+throughout --- stella-trec24's CAGRA-int8 point at Recall@10 $0.9692$ is
+\texttt{status=CONTAMINATED} in the harness's own record, and the frontier
+generator had dropped only \texttt{FAILED} rows.
 
 \begin{table}[tbp]
   \centering
@@ -99,32 +94,30 @@ Section~\ref{sec:designspace} predicted that reducing table state helps only
 until extra lookups outweigh the residency saved. Figure~\ref{fig:lutgroups}
 varies $G$ with the represented distance fixed. If state alone governed
 throughput, $G{=}4$ and $G{=}8$ should win, since they store fewer entries than
-$G{=}2$. They do not: $G{=}2$ wins all eight
-configurations in Figure~\ref{fig:lutgroups}(a) and throughput falls as lookups
+$G{=}2$. They do not: $G{=}2$ wins all eight configurations in
+Figure~\ref{fig:lutgroups}(a), and throughput falls monotonically as lookups
 per candidate rise. Its narrowest win is where the effect stops being
-resolvable: a second phase put vogue-768 at $\mathit{nprobe}{=}32$ in the packed
-layout at $-4.2\%$ where this one puts it at $+4.2\%$, and one measurement a
-side cannot separate a $4\%$ effect from run noise --- which is why the design is
-stated as a regime rather than a rule. The sharpest form is internal to the losers. $G\cdot 2^{8/G}$ is
-16 for both $G{=}4$ and $G{=}8$, so they occupy the same nominal table footprint
-and differ in the number of lookups and the address arithmetic those lookups
-need; the eight-way form is $5.8\%$ slower at $\mathit{nprobe}{=}8$ and $38.3\%$
-slower at $512$. Residency is held fixed and issued work rises --- which is why
-this pair, rather than the table-free control, separates the two effects most
-cleanly.
+resolvable --- a second phase of the same run puts one of those cells on the
+other side of zero, and a single measurement a side cannot separate a $4\%$
+effect from run noise, which is why the design is stated as a regime rather than
+a rule.
 
-The regime change with $M$ appears as predicted. Against the full table,
-factorisation is worth $+0.7$--$+10.5\%$ at $M{=}96$ and $+8.3$--$+53.8\%$ at
-$M{=}384$, and at $M{=}384$ the gain rises monotonically with probe depth: on
-openai3-3072 $+8.3\%$, $+10.1\%$, $+22.7\%$ and $+53.8\%$ at
-$\mathit{nprobe}=8, 32, 128, 512$.
-We report the trend rather than a flat interval because the trend is the
-mechanism --- a table that misses is paid once per candidate per subspace, so
-its cost grows with $M$ and with the candidates scanned together. At $M{=}96$
-it does not rise monotonically --- $+3.6$, $+4.2$, $+0.7$, $+10.5\%$ --- which
-restates the $-4.2\%$ above: at $M{=}96$ the full table misses the carveout by
-$2$\,KiB against $290$\,KiB at $M{=}384$, so little residency is left to win
-back.
+The sharpest form of the argument is internal to the losers. $G\cdot 2^{8/G}$ is
+$16$ for both $G{=}4$ and $G{=}8$, so the pair holds the table footprint fixed
+and differs only in the number of lookups and the address arithmetic they need.
+Residency is constant, issued work rises, and throughput falls with it --- by
+$5.8$ to $38.3\%$, widening with probe depth. That pair, rather than the
+table-free control, separates the two effects most cleanly.
+
+The regime change with $M$ appears as predicted, and it is a scaling property
+rather than a constant: factorisation is worth a few percent at $M{=}96$ and up
+to $+53.8\%$ at $M{=}384$, rising with probe depth at the larger $M$. The
+mechanism is the same one throughout --- a table that misses is paid once per
+candidate per subspace, so its cost grows with $M$ and with the candidates
+scanned together. At $M{=}96$ the gain neither rises reliably nor exceeds the
+noise, which is the same statement as the ambiguous cell above: the full table
+misses the carveout by $2$\,KiB there against $290$\,KiB at $M{=}384$, so
+there is almost no residency to win back.
 
 \begin{figure}[tbp]
   \centering
@@ -143,18 +136,18 @@ back.
 \subsection{RQ3: can the byte-count explanation be rejected?}
 \label{sec:rq4}
 Table~\ref{tab:neg} collects the controls that vary bytes and issued work
-independently. Removing almost all table state loses $30$--$52\%$ while
-\emph{raising} the resident-block count the shared-memory budget implies, so
-neither residency nor attainable occupancy alone is the bottleneck; moving
-identical bytes in 32-bit words gains $1$--$66\%$ across six datasets, rising
-from $1$--$6\%$ at $\mathit{nprobe}{=}8$ to $9$--$66\%$ at $512$ --- a load is
-paid once per candidate per subspace, so its share grows with the candidates
-scanned together, and a flat interval would hide that; fusing residual refinement
-removes a round trip and still loses, the fused kernel carrying both phases'
-footprints for the whole scan. The probe cursor is an implementation correction
-rather than a contribution, included because its size is diagnostic. LUT
-construction is $0.2$--$2.3\%$ of a batch, which rules out faster table building
-as the explanation for factorisation.
+independently, and each row rejects one version of ``fewer bytes is faster''.
+Removing almost all table state loses heavily while \emph{raising} the
+resident-block count the shared-memory budget implies, so neither residency nor
+attainable occupancy alone is the bottleneck. Moving identical bytes in 32-bit
+words gains up to $66\%$ --- same bytes, fewer transactions --- and the gain
+rises with probe depth for the reason the factorisation gain does: a load is
+paid once per candidate per subspace. Fusing residual refinement removes a round
+trip and still loses, the fused kernel carrying both phases' footprints for the
+whole scan. And table construction is under $3\%$ of a batch, which rules out
+faster table building as the explanation for factorisation. The probe cursor is
+an implementation correction rather than a contribution, included because its
+size is diagnostic.
 
 \begin{table}[tbp]
   \centering
@@ -177,14 +170,12 @@ as the explanation for factorisation.
 
 These controls reject competing explanations but do not measure the variable
 they implicate, and static instruction counts need no profiler.
-\texttt{cuobjdump -sass} on \texttt{scan\_ivf\_coalesced\_kernel} reports 42, 84
-and 168 generic loads at $G{=}1,2,4$ --- $G$ lookups across 42 statically
-unrolled subspace iterations --- and 144 at $G{=}8$, eight lookups over 18
-iterations after the compiler unrolled less. Floating-point adds are $G{+}1$ per
-iteration throughout, which checks the normalisation. Counting the lookup and
-what feeds it gives $5.0$, $13.0$, $25.0$ and $50.4$ static instructions per
-candidate--sub\-space. These are static counts over the kernel's disassembled
-span, not a dynamic issue count.
+\texttt{cuobjdump -sass} on \texttt{scan\_ivf\_coalesced\_kernel} finds exactly
+$G$ generic loads per unrolled subspace iteration at every $G$, and $G{+}1$
+floating-point adds, which is the check that the normalisation is right; the
+lookup and what feeds it then gives the per-candidate--sub\-space counts on
+Figure~\ref{fig:issue}'s horizontal axis. They are static counts over the
+kernel's disassembled span, not a dynamic issue count.
 
 One statement then needs no model: \emph{$G{=}1$ issues $5.0$ instructions per
 candidate--sub\-space against $G{=}2$'s $13.0$, and is slower at most operating
@@ -192,13 +183,12 @@ points anyway}. It issues the fewest of any granularity while holding the most
 table state --- 256 entries a subspace against 32 --- so instruction count
 predicts it should be fastest and it is not, and the state it holds is the one
 thing that separates it.
-Figure~\ref{fig:issue} puts numbers on that, and they are an extrapolation: a
-least-squares line through the three resident points, extended back to $G{=}1$'s
-count, leaves its measured time $6$, $14$, $23$ and $56\%$ high on vogue-768 and
-$10$, $16$, $40$ and $108\%$ high on openai3-3072 at
-$\mathit{nprobe}=8,32,128,512$ --- from $5.0$, outside a fitted range of $13.0$
-to $50.4$. We read the sign and the trend: the shortfall grows with probe depth
-and with $M$, as ``a table that misses is paid once per candidate per subspace''
+Figure~\ref{fig:issue} puts a size on that, and it is an extrapolation: a
+least-squares line through the three resident points, extended back to
+$G{=}1$'s count, leaves $G{=}1$'s measured time above the line everywhere, by
+$6\%$ at the shallowest probe depth and $108\%$ at the deepest. We read the
+sign and the trend, not the magnitude: the shortfall grows with probe depth and
+with $M$, as ``a table that misses is paid once per candidate per subspace''
 predicts, and $G{=}2$ pays least of either cost. Instruction counts and
 controlled comparisons together are consistent with this account on the tested
 card; they are not an independent measurement of the two terms, which would need
@@ -220,62 +210,62 @@ a build holding residency fixed while sweeping instruction count alone.
 \subsection{RQ4: would one fixed budget do instead?}
 \label{sec:rq2}
 Five arms share one index and one timing harness, calibrating on even-indexed
-queries and reporting every recall on the odd-indexed half: each fixed $\alpha$
-on the grid; the sampled rule over 64 random samples at each $S$; the same
-criterion on the whole calibration pool; a whole-grid walk on the sample the
-rule bisects; and, for reference only, the fastest $\alpha$ whose held-out
-recall is within $10^{-3}$ of the best any $\alpha$ reaches, chosen with ground
-truth.
+queries and reporting recall on the odd-indexed half: each fixed $\alpha$ on the
+grid; the sampled rule over 64 random samples at each $S$; the same criterion on
+the whole calibration pool; a whole-grid walk on the sample the rule bisects;
+and, for reference only, the fastest $\alpha$ within $10^{-3}$ of the best any
+$\alpha$ reaches, chosen with ground truth. Table~\ref{tab:budget} is the
+result; four claims follow from it.
 
 \emph{A constant meets the quality bar only by overpaying.} The reference budget
-is $\alpha{=}64$ on vogue-768 at both probe depths and $\alpha{=}8$ on
-openai3-3072, an order of magnitude apart. On openai3-3072 $\alpha{=}4$ ties it
-to within $0.1\%$ and $2.6\%$ of throughput at equal recall and a repeat run
-selects it instead, so the measurement resolves the magnitude there, not the
-grid point. The conservative end generalises ---
-$\alpha{=}64$ stays within $10^{-3}$ of attainable recall in all four cells ---
-but on openai3-3072 the rule's budget runs $32\%$ faster at
-$\mathit{nprobe}{=}128$ and $7\%$ faster at $512$, for equal recall at the
-first and $0.0002$ less at the second. The cheap end does not generalise at all:
-$\alpha{=}8$ gives up $0.0366$ of recall on vogue-768, and $\alpha{=}4$
-$0.0884$. The question is therefore
-what a fixed conservative budget costs, which the earlier comparison against
-$\alpha{=}100$ could not address.
+is an order of magnitude apart on the two datasets. Its conservative end
+generalises and its cheap end does not, so the only fixed choice that is safe
+everywhere is the expensive one --- and on openai3-3072 that costs $32\%$ of
+throughput at $\mathit{nprobe}{=}128$ for no recall. The question is therefore
+not whether a constant exists but what it costs, which the earlier comparison
+against $\alpha{=}100$ could not address.
 
-\emph{The rule finds it, given enough sample.} The median selection over 64
-random samples matches the reference on vogue-768 at $S\ge 64$ and lands on the
-tied $\alpha{=}4$ on openai3-3072; at $S{=}32$ it picks $32$ where the reference
-is $64$ on vogue-768. Against the $\alpha{=}100$ default the selection is worth
-$1.095$--$1.469\times$ in steady state, repaid in $4.0$ to $19.2$ batches.
+\emph{The rule finds it, given enough sample.} Its median selection matches the
+reference wherever the reference is resolved, and where it does not --- $S{=}32$
+on vogue-768 --- it errs cheap, not expensive. Against the $\alpha{=}100$
+default the selection is worth $1.095$--$1.469\times$ in steady state.
 
-\emph{The sample is the risk, and $S{=}32$ is too small.} Across the four cells,
-$25$--$69\%$ of random samples at $S{=}32$ give up more than $10^{-3}$ of
-held-out recall, with a 95th percentile of $0.0116$ on vogue-768. At $S{=}64$
-that is $2$--$45\%$ and at $S{=}128$ $0$--$8\%$ --- still $5$ of $64$ samples on
-vogue-768 at $\mathit{nprobe}{=}128$. We withdraw Section~\ref{sec:method2}'s
-$S{=}32$: $S$ is a tolerance decision, and $S{=}128$ is where the tolerance
-becomes small, not where it vanishes. Figure~\ref{fig:calibration}(b)
-resamples that risk $2{,}000$ times per cell and shows it is workload
-dependent, not a constant of $S$.
+\emph{The sample is the risk, and $S{=}32$ is too small.} The right-hand block
+of Table~\ref{tab:budget} is a draw-level failure rate, not an average: at
+$S{=}32$ most draws on vogue-768 give up more than $10^{-3}$ of held-out recall.
+At $S{=}128$ that is at worst $8\%$, which is small and is not zero.
+Figure~\ref{fig:calibration}(b) resamples it $2{,}000$ times a cell and shows
+the rate is workload dependent rather than a property of $S$. We therefore
+withdraw Section~\ref{sec:method2}'s $S{=}32$: $S$ buys tolerance, and
+$S{=}128$ is where the tolerance becomes small.
 
 \emph{Neither the sample nor the bisection is the approximation.} Walking the
 whole grid on the sample the rule bisects reproduces its choice in all $768$
-draws at $1.5$--$1.7\times$ the cost. The same criterion on the entire
-calibration pool is $2.1$--$2.9\times$ more expensive and selects a
-\emph{more} conservative budget, $\alpha{=}100$ where the reference is $64$ on
-vogue-768. The cause is in the criterion's definition: $\epsilon$ is an absolute
-count of disagreeing slots, and a sample of $S$ queries has $S\!\cdot\!k$ of
-them, so the same $\epsilon{=}1$ admits one miss in $320$ slots at $S{=}32$ and
-one in $5{,}000$ at the full pool. The tolerance
-tightens as the sample grows, which is a property worth stating plainly ---
-$\epsilon$ and $S$ cannot be chosen independently.
+draws, so the search is exact on what it sees. Evaluating the criterion on the
+entire pool is more expensive and selects a \emph{more} conservative budget, and
+the reason is in the criterion: $\epsilon$ counts disagreeing slots absolutely
+while a sample of $S$ queries has $S\!\cdot\!k$ of them, so the same
+$\epsilon{=}1$ tightens as the sample grows. $\epsilon$ and $S$ cannot be chosen
+independently, which is the substantive limitation of the rule as stated.
 
 Two earlier observations survive. The rule recovers the swept $\alpha$ in three
 of four configurations at $\mathit{nprobe}{=}128$
-(Figure~\ref{fig:calibration}(a)), the fourth censored by $\alpha_{\max}$; and over a broader 32-configuration sweep against
-$\alpha{=}100$ --- six datasets at $S{=}32$, a different configuration from this
-section's, which we do not combine with it --- gain is $1.044$--$2.653\times$
-for at most $0.0048$ recall, median payback $1.75$ batches.
+(Figure~\ref{fig:calibration}(a)), the fourth censored by $\alpha_{\max}$; and
+over a broader 32-configuration sweep against $\alpha{=}100$ --- six datasets at
+$S{=}32$, a different configuration from this section's, which we do not combine
+with it --- gain is $1.044$--$2.653\times$ for at most $0.0048$ recall.
+
+\begin{table}[tbp]
+  \centering
+  \caption{The five arms on one index. \emph{ref.} is the ground-truth
+  reference budget; the rule's median selection over 64 samples is shown at each
+  $S$, then the share of those samples that give up more than $10^{-3}$ of
+  held-out recall, then what the criterion selects on the whole calibration
+  pool. On openai3-3072 every $\alpha$ from 4 to 16 is within $10^{-3}$ of
+  attainable recall, so the reference there is resolved only to its magnitude.}
+  \label{tab:budget}
+  \input{tables/budget}
+\end{table}
 
 \begin{figure}[tbp]
   \centering
@@ -311,23 +301,20 @@ failed the project's monotonicity check.
 
 The CPU reference answers a different question: what the port buys over CPU JHQ
 at the same index parameters. Sweeping $\alpha$ and $\mathit{nprobe}$ on both
-sides, the GPU reaches $52\times$, $53\times$ and $85\times$ the CPU envelope on
-vogue-768 at Recall@10 of $0.9645$, $0.9828$ and $0.9905$, and $75$--$77\times$
-on openai3-3072 from $0.9414$ to $0.9813$. Pinning $\alpha{=}100$ on
-\emph{both} sides gives $41\times$, $45\times$ and $71\times$ on vogue-768 and
-$48$--$60\times$ on openai3-3072 --- the two move in opposite directions because
-the envelope's freedom over $\alpha$ and threads is worth more to the CPU on
-openai3-3072. The vogue figure rises steeply at the top because the CPU degrades
-faster than the GPU as $\mathit{nprobe}$ grows, and its highest point rests on
-the noisiest CPU cell we measured --- at $\mathit{nprobe}{=}1024$ and 32 threads
-the six $\alpha$ settings span $792$ to $1{,}072$ QPS --- so we quote it as a
-point rather than fold it into a range. Five repeats of that cell put its two
-relevant $\alpha$ at medians of $1{,}027$ and $1{,}003$ QPS, the latter swinging
-$765$ to $1{,}015$ against $2\%$ on its neighbour; the ratios above use those
-medians, and the single-pass log gave $90\times$ and $80\times$. Above Recall@10 of $0.9911$ and $0.9900$ the retained envelope has no points
-(openai3-3072's raw $\alpha{=}100$ rows reach $0.9904$, but are dominated), and
-GPU points above that are reported as outside its range rather than divided by
-the CPU's last measurement. Three limits apply.
+sides, the GPU reaches $52$ to $85\times$ the CPU envelope on vogue-768 and $75$
+to $77\times$ on openai3-3072; pinning $\alpha{=}100$ on \emph{both} sides, so
+neither may tune the budget, gives $41$ to $71\times$ and $48$ to $60\times$.
+The two denominators move in opposite directions --- freedom over $\alpha$ and
+threads is worth more to the CPU on openai3-3072 than on vogue-768 --- which is
+why we give both rather than pick one. On vogue-768 the ratio climbs with probe
+depth, because the CPU degrades faster than the GPU as $\mathit{nprobe}$ grows.
+Its top point rests on the noisiest cell we measured, so we re-ran that cell
+five times and quote medians; one $\alpha$ there swings a quarter of its own
+value across the five passes while its neighbour swings $2\%$, and the
+single-pass log had given $90\times$ where the median gives $85$. Where the
+retained envelope has no points the GPU operating point is reported as outside
+its range rather than divided by the CPU's last measurement. Three limits
+apply.
 The GPU side of the vogue comparison is the rule's chosen $\alpha$ at each
 $\mathit{nprobe}$, not an exhaustive $\alpha$ sweep. CPU rows below
 $\mathit{nprobe}{=}128$ are dropped, because 1{,}000 queries complete fast enough
