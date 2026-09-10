@@ -24,7 +24,13 @@ rc=$?; echo "build_rc=$rc"
 [ "$rc" -ne 0 ] && { echo "=== ARMS_DONE build failed, nothing run ==="; exit 1; }
 
 D=/root/autodl-tmp; V=/root/data
-CACHE=$D/arms_cache
+# The frontier driver's shared prefix. Dropping it is what made the first
+# attempt train the residual codebook on all 932,328 vectors instead of a
+# 100k sample -- host-side, GPU idle, and the reported runs show train=990 ms
+# precisely because they sampled. Reuse its cache too: same index parameters,
+# so there is nothing to retrain.
+E="JHQ_GPU_CODEBOOK=1 JHQ_ENCODE_GROUPED_OFF=1 JHQ_Y_TRANSPOSED=1 JHQ_RES_TRAIN_N=100000"
+CACHE=$D/paper_cache
 VG="$V/vogue-768_base.fvecs $V/vogue-768_query.fvecs $V/vogue-768_groundtruth.ivecs"
 O30="$D/openai3-3072/base.fvecs $D/openai3-3072/query.fvecs $D/openai3-3072/groundtruth.ivecs"
 
@@ -32,7 +38,7 @@ one(){  # tag paths M nlist n_train BLOCK nprobe
   local tag=$1 paths=$2 M=$3 nl=$4 nt=$5 blk=$6 np=$7
   local C=$CACHE/$tag; mkdir -p "$C"
   echo "### $tag M=$M nlist=$nl np=$np $(date -u +%T)"
-  env JHQ_INDEX_CACHE="$C" JHQ_BLOCK="$blk" JHQ_TILE_M_RT="$M" JHQ_N_TRAIN="$nt" \
+  env $E JHQ_INDEX_CACHE="$C" JHQ_BLOCK="$blk" JHQ_TILE_M_RT="$M" JHQ_N_TRAIN="$nt" \
       JHQ_AS_GRID=200,100,64,32,16,8,4,2 JHQ_AS_SLOTS=1 \
       JHQ_ARM_S=32,64,128 JHQ_ARM_REPS=64 JHQ_ORACLE_TAU=0.001 \
       timeout 9000 build/demo_jhq_budget_arms $paths "$M" 8 8 100.0 10 "$nl" "$np" 8 1024 "" 3
