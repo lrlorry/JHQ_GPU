@@ -1,5 +1,12 @@
 # ADC 2026 — what is measured, and what it rests on
 
+> **For a co-author:** `handbook.pdf` is the skeleton and all sixteen figures
+> in one file. Part I is the drafting skeleton with each figure at its
+> section; Part II is every figure at full width followed by its script's
+> docstring, which is where the measured numbers and the caveats are written
+> down. **Write captions from Part II.** Regenerate with
+> `figures/make_all.sh && python3 build_handbook.py`.
+
 Every number the paper can use, the file it comes from, and whether it is
 finished. `data/` holds frozen copies of the logs so the paper does not cite a
 path that a later run overwrites; the live versions stay under `results/`.

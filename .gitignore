@@ -69,3 +69,8 @@ logs/
 *.swp
 *.swo
 *~
+paper_adc2026/handbook.aux
+paper_adc2026/handbook.log
+paper_adc2026/handbook.out
+paper_adc2026/handbook.toc
+paper_adc2026/handbook.tex
