@@ -1,0 +1,49 @@
+=== G=1  scan_ivf_coalesced_kernel ===
+total_instructions=1392
+LDS    14
+LDG    56
+IMAD   433
+SHF    60
+FADD   84
+FFMA   0
+ISETP  85
+BRA    80
+LOP3   24
+MOV    238
+=== G=2  scan_ivf_coalesced_kernel ===
+total_instructions=1808
+LDS    14
+LDG    56
+IMAD   572
+SHF    101
+FADD   126
+FFMA   0
+ISETP  85
+BRA    86
+LOP3   234
+MOV    224
+=== G=4  scan_ivf_coalesced_kernel ===
+total_instructions=2472
+LDS    14
+LDG    56
+IMAD   730
+SHF    185
+FADD   210
+FFMA   0
+ISETP  85
+BRA    86
+LOP3   486
+MOV    230
+=== G=8  scan_ivf_coalesced_kernel ===
+total_instructions=2096
+LDS    14
+LDG    32
+IMAD   616
+SHF    163
+FADD   162
+FFMA   0
+ISETP  79
+BRA    74
+LOP3   438
+MOV    235
+=== DONE ===

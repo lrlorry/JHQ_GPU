@@ -1618,6 +1618,23 @@ add_jhq_variant(v53_x4 ${V53} JHQ_PAPER_FAITHFUL=1
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=4)
 
+# The bounded selector's deviation, as returned ids rather than as a comment.
+#
+# Section 4's caveat says raising K_LOCAL from 4 to 8 changes 11 of 10,000
+# returned id positions on vogue at nprobe=128 and BLOCK=512.  That number has
+# lived in a source comment (jhq_v53_cap/search.cu) and in the paper, and
+# nowhere else: the ablation that exists, results/.../abl_klocal.csv, is at
+# nprobe=256 and carries only recall and QPS.  A claim about which ids come
+# back needs the ids.
+#
+# v53_x1 is the K_LOCAL=4 arm -- it is the head for search and already built --
+# so only its twin is new.  Nothing in jhq_v53_cap/ is touched; K_LOCAL is a
+# compile-time macro, which is why this is a second target and not a flag.
+add_jhq_variant(v53_kl8 ${V53} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=8 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+
 # v54: the primary distance as an inner product, with no table at all.
 #
 # Equation 4 builds the K codewords as a Cartesian product of equation 3's

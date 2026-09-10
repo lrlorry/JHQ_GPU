@@ -1,11 +1,16 @@
 # cuobjdump -sass of demo_jhq_v59_g{1,2,4,8}, scan_ivf_coalesced_kernel span
-# collected 2026-09-10T13:16:41Z; histogram below, raw spans on the box
+# collected 2026-09-10T13:16:41Z; the raw spans are archived beside this file
+# in sass_raw/sass_g<G>.txt.gz and this histogram is regenerated from them.
+#
+# It used to hold only the top-10 opcodes, which silently truncated G=1's
+# LOP3 -- 24, the eleventh entry, one below MOV at 25 -- and the consumer
+# summed a missing opcode as zero.  That put G=1 at 4.4 instructions per
+# candidate-subspace instead of 5.0.  Every opcode in the span is listed now.
+#
 # reproduce: /usr/local/cuda/bin/cuobjdump -sass build/demo_jhq_v59_g<G> |
 #   awk '/Function : .*scan_ivf_coalesced/{f=1;n=0} f&&/Function : /&&n++{f=0} f'
-# top-10 opcodes per granularity, suffixes stripped:
 
-
-### G=1
+### G=1   (1392 instructions in the span)
     433 IMAD
     221 IADD3
      85 ISETP
@@ -13,10 +18,41 @@
      80 BRA
      60 SHF
      56 LDG
-     42 PRMT
      42 LD
+     42 PRMT
      25 MOV
-### G=2
+     24 LOP3
+     22 BSSY
+     22 BSYNC
+     19 FSETP
+     17 STS
+     17 ULDC
+     16 LEA
+     16 USHF
+     15 IMNMX
+     14 LDS
+     10 STG
+      9 NOP
+      9 ULEA
+      6 UIADD3
+      6 UIMAD
+      4 BAR
+      4 FSEL
+      4 USEL
+      3 CALL
+      3 EXIT
+      3 F2I
+      3 I2F
+      3 MUFU
+      3 S2UR
+      3 SEL
+      2 IABS
+      2 PLOP3
+      2 UISETP
+      1 FMNMX
+      1 HFMA2
+      1 S2R
+### G=2   (1808 instructions in the span)
     572 IMAD
     234 LOP3
     220 IADD3
@@ -26,8 +62,37 @@
      85 ISETP
      84 LD
      56 LDG
+     22 BSSY
      22 BSYNC
-### G=4
+     19 FSETP
+     17 STS
+     17 ULDC
+     16 LEA
+     16 USHF
+     15 IMNMX
+     14 LDS
+     12 NOP
+     10 STG
+      9 ULEA
+      6 UIADD3
+      6 UIMAD
+      4 BAR
+      4 CALL
+      4 FSEL
+      4 USEL
+      3 EXIT
+      3 F2I
+      3 I2F
+      3 MUFU
+      3 S2UR
+      3 SEL
+      2 IABS
+      2 PLOP3
+      2 UISETP
+      1 CS2R
+      1 FMNMX
+      1 S2R
+### G=4   (2472 instructions in the span)
     730 IMAD
     486 LOP3
     221 IADD3
@@ -37,8 +102,37 @@
      86 BRA
      85 ISETP
      56 LDG
+     22 BSSY
      22 BSYNC
-### G=8
+     19 FSETP
+     17 STS
+     17 ULDC
+     16 IMNMX
+     16 LEA
+     16 USHF
+     14 LDS
+     12 NOP
+     10 STG
+      9 ULEA
+      6 UIADD3
+      6 UIMAD
+      4 BAR
+      4 CALL
+      4 FSEL
+      4 USEL
+      3 EXIT
+      3 F2I
+      3 I2F
+      3 MUFU
+      3 S2UR
+      3 SEL
+      2 IABS
+      2 PLOP3
+      2 UISETP
+      1 CS2R
+      1 FMNMX
+      1 S2R
+### G=8   (2096 instructions in the span)
     616 IMAD
     438 LOP3
     163 SHF
@@ -48,4 +142,33 @@
      79 ISETP
      74 BRA
      32 LDG
+     22 BSSY
      22 BSYNC
+     19 FSETP
+     17 STS
+     17 ULDC
+     16 IMNMX
+     16 LEA
+     16 USHF
+     14 LDS
+     12 NOP
+     10 STG
+      9 ULEA
+      6 UIADD3
+      6 UIMAD
+      4 BAR
+      4 CALL
+      4 FSEL
+      4 USEL
+      3 EXIT
+      3 F2I
+      3 I2F
+      3 MUFU
+      3 S2UR
+      3 SEL
+      2 IABS
+      2 PLOP3
+      2 UISETP
+      1 CS2R
+      1 FMNMX
+      1 S2R
