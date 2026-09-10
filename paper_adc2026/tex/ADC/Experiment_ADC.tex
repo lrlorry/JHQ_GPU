@@ -139,7 +139,10 @@ Table~\ref{tab:neg} collects the controls that vary bytes and issued work
 independently. Removing almost all table state loses $30$--$52\%$ while
 \emph{raising} the resident-block count the shared-memory budget implies, so
 neither residency nor attainable occupancy alone is the bottleneck; moving
-identical bytes in 32-bit words gains $30$--$48\%$; fusing residual refinement
+identical bytes in 32-bit words gains $1$--$66\%$ across six datasets, rising
+from $1$--$6\%$ at $\mathit{nprobe}{=}8$ to $9$--$66\%$ at $512$ --- a load is
+paid once per candidate per subspace, so its share grows with the candidates
+scanned together, and a flat interval would hide that; fusing residual refinement
 removes a round trip and still loses, the fused kernel carrying both phases'
 footprints for the whole scan. The probe cursor is an implementation correction
 rather than a contribution, included because its size is diagnostic. LUT
@@ -157,7 +160,7 @@ as the explanation for factorisation.
     \midrule
     table-free exact distance & $-30$ to $-52\%$ & least state is fastest \\
     $G{=}8$ against $G{=}4$   & $-5.8$ to $-38.3\%$ & same footprint, same speed \\
-    packed 32-bit loads       & $+30$ to $+48\%$ & bytes moved predict speed \\
+    packed 32-bit loads       & $+1$ to $+66\%$ & bytes moved predict speed \\
     private probe cursor      & $+2.5$ to $+148\%$ & loop work is negligible \\
     fused residual refinement & $-14.2\%$, $-14.8\%$ & fewer kernels is better \\
     query duplication $D{=}8$ & $+4$ to $+26\%$ & reuse alone drives the scan \\
@@ -262,10 +265,17 @@ $\epsilon$ and $S$ cannot be chosen independently.
 
 Two earlier observations survive. The rule recovers the swept $\alpha$ in three
 of four configurations at $\mathit{nprobe}{=}128$
-(Figure~\ref{fig:calibration}(a)), the fourth censored by $\alpha_{\max}$; and over a broader 32-configuration sweep against
-$\alpha{=}100$ --- six datasets at $S{=}32$, a different configuration from this
-section's, which we do not combine with it --- gain is $1.044$--$2.653\times$
-for at most $0.0048$ recall, median payback $1.75$ batches.
+(Figure~\ref{fig:calibration}(a)), the fourth censored by $\alpha_{\max}$; and
+over a broader sweep against $\alpha{=}100$ --- 24 configurations, six datasets
+at four probe depths and $S{=}32$, a different configuration from this
+section's, which we do not combine with it --- gain is $0.991$--$2.912\times$
+for at most $0.0049$ recall. It loses in one, arxiv-768 at
+$\mathit{nprobe}{=}128$, where the rule selects $\alpha{=}100$ and pays the
+calibration for nothing --- and arxiv-768 is the configuration whose exhaustive
+sweep was still falling at $\alpha_{\max}$, so it is where a label-free rule has
+least to work with. Payback is $4.9$ to $169$ batches of $1{,}000$ queries,
+median $11.5$: calibration costs a fixed number of grid probes while the saving
+scales with the gain, so what gains least repays slowest.
 
 \begin{figure}[tbp]
   \centering

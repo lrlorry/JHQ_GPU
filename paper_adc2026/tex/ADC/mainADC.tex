@@ -94,7 +94,7 @@
 % \email{\{abc,lncs\}@uni-heidelberg.de}}
 
 \author{Rui Luo \and\\
-Mengxuan Zhang\orcidID{0000-0001-8155-4942}}
+Mengxuan Zhang}
 %
 % \authorrunning{Q. Xiong and M. Zhang}
 %
@@ -122,7 +122,7 @@ generous reference on sampled workload queries. On six datasets from 768 to
 byte-count prediction: a table-free form holds least state and loses
 $30$--$52\%$; four- and eight-way splits hold fewer entries than the two-way
 split and lose up to $38\%$; packed loading moves identical bytes and gains
-$30$--$48\%$. Disassembling the emitted kernel sharpens that: the granularity whose table
+$1$--$66\%$, rising with probe depth. Disassembling the emitted kernel sharpens that: the granularity whose table
 does not fit issues the fewest instructions per candidate--sub\-space of any and
 is slower regardless, leaving residency as the term that has to account for it. At $S{=}128$ across four held-out configurations the rule is worth
 $1.095$--$1.469\times$ steady-state, repaid within $4.0$ to $19.2$ batches of

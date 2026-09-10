@@ -1,0 +1,51 @@
+
+=== 2026-09-10T21:26:13Z head=0fd9285 Two runs for the four ranges no generator can produce ===
+### vogue-768 M=96 nlist=4096 np=8 S=32 21:26:14
+  AS_RESULT picked=32 recall_picked=0.6605 qps_picked=495017 recall_max=0.6606 qps_max=253253 gain=1.955 cal_ms=10.5 cal_share=2.6548  tag=vogue-768 np=8 rc=0
+### arxiv-768 M=96 nlist=8192 np=8 S=32 21:26:16
+  AS_RESULT picked=64 recall_picked=0.7898 qps_picked=336326 recall_max=0.7899 qps_max=253104 gain=1.329 cal_ms=8.9 cal_share=2.2647  tag=arxiv-768 np=8 rc=0
+### openai3-1536 M=192 nlist=4096 np=8 S=32 21:26:27
+  AS_RESULT picked=8 recall_picked=0.7575 qps_picked=477696 recall_max=0.7575 qps_max=164065 gain=2.912 cal_ms=19.8 cal_share=3.2428  tag=openai3-1536 np=8 rc=0
+### openai3-3072 M=384 nlist=4096 np=8 S=32 21:26:35
+  AS_RESULT picked=4 recall_picked=0.7464 qps_picked=227612 recall_max=0.7464 qps_max=82107 gain=2.772 cal_ms=43.9 cal_share=3.6080  tag=openai3-3072 np=8 rc=0
+### bge-m3 M=128 nlist=16384 np=8 S=32 21:26:47
+  AS_RESULT picked=64 recall_picked=0.7118 qps_picked=228561 recall_max=0.7118 qps_max=185731 gain=1.231 cal_ms=12.1 cal_share=2.2445  tag=bge-m3 np=8 rc=0
+### stella M=128 nlist=32768 np=8 S=32 21:27:36
+  AS_RESULT picked=16 recall_picked=0.9026 qps_picked=314905 recall_max=0.9027 qps_max=174275 gain=1.807 cal_ms=18.9 cal_share=3.2927  tag=stella np=8 rc=0
+### vogue-768 M=96 nlist=4096 np=32 S=32 21:28:44
+  AS_RESULT picked=64 recall_picked=0.8617 qps_picked=263361 recall_max=0.8618 qps_max=206941 gain=1.273 cal_ms=10.0 cal_share=2.0785  tag=vogue-768 np=32 rc=0
+### arxiv-768 M=96 nlist=8192 np=32 S=32 21:28:48
+  AS_RESULT picked=100 recall_picked=0.9257 qps_picked=183855 recall_max=0.9257 qps_max=181622 gain=1.012 cal_ms=7.5 cal_share=1.3691  tag=arxiv-768 np=32 rc=0
+### openai3-1536 M=192 nlist=4096 np=32 S=32 21:28:59
+  AS_RESULT picked=4 recall_picked=0.8740 qps_picked=357463 recall_max=0.8756 qps_max=143608 gain=2.489 cal_ms=27.1 cal_share=3.8887  tag=openai3-1536 np=32 rc=0
+### openai3-3072 M=384 nlist=4096 np=32 S=32 21:29:08
+  AS_RESULT picked=4 recall_picked=0.8648 qps_picked=153720 recall_max=0.8648 qps_max=69074 gain=2.225 cal_ms=57.6 cal_share=3.9775  tag=openai3-3072 np=32 rc=0
+### bge-m3 M=128 nlist=16384 np=32 S=32 21:29:20
+  AS_RESULT picked=32 recall_picked=0.8469 qps_picked=207363 recall_max=0.8473 qps_max=142082 gain=1.459 cal_ms=21.5 cal_share=3.0549  tag=bge-m3 np=32 rc=0
+### stella M=128 nlist=32768 np=32 S=32 21:30:12
+  AS_RESULT picked=16 recall_picked=0.9685 qps_picked=225972 recall_max=0.9688 qps_max=144015 gain=1.569 cal_ms=22.7 cal_share=3.2790  tag=stella np=32 rc=0
+### vogue-768 M=96 nlist=4096 np=128 S=32 21:31:23
+  AS_RESULT picked=64 recall_picked=0.9645 qps_picked=169687 recall_max=0.9647 qps_max=136166 gain=1.246 cal_ms=13.8 cal_share=1.8752  tag=vogue-768 np=128 rc=0
+### arxiv-768 M=96 nlist=8192 np=128 S=32 21:31:27
+  AS_RESULT picked=100 recall_picked=0.9763 qps_picked=121566 recall_max=0.9763 qps_max=122649 gain=0.991 cal_ms=9.9 cal_share=1.2096  tag=arxiv-768 np=128 rc=0
+### openai3-1536 M=192 nlist=4096 np=128 S=32 21:31:36
+  AS_RESULT picked=4 recall_picked=0.9451 qps_picked=176257 recall_max=0.9473 qps_max=100969 gain=1.746 cal_ms=48.7 cal_share=4.9154  tag=openai3-1536 np=128 rc=0
+### openai3-3072 M=384 nlist=4096 np=128 S=32 21:31:45
+  AS_RESULT picked=4 recall_picked=0.9414 qps_picked=66539 recall_max=0.9414 qps_max=43369 gain=1.534 cal_ms=114.4 cal_share=4.9594  tag=openai3-3072 np=128 rc=0
+### bge-m3 M=128 nlist=16384 np=128 S=32 21:31:58
+  AS_RESULT picked=32 recall_picked=0.9302 qps_picked=91895 recall_max=0.9313 qps_max=76862 gain=1.196 cal_ms=45.1 cal_share=3.4643  tag=bge-m3 np=128 rc=0
+### stella M=128 nlist=32768 np=128 S=32 21:32:48
+  AS_RESULT picked=16 recall_picked=0.9890 qps_picked=109185 recall_max=0.9893 qps_max=86377 gain=1.264 cal_ms=36.0 cal_share=3.1160  tag=stella np=128 rc=0
+### vogue-768 M=96 nlist=4096 np=512 S=32 21:34:02
+  AS_RESULT picked=100 recall_picked=0.9908 qps_picked=76131 recall_max=0.9908 qps_max=72421 gain=1.051 cal_ms=19.0 cal_share=1.3733  tag=vogue-768 np=512 rc=0
+### arxiv-768 M=96 nlist=8192 np=512 S=32 21:34:06
+  AS_RESULT picked=100 recall_picked=0.9881 qps_picked=62225 recall_max=0.9881 qps_max=61726 gain=1.008 cal_ms=21.9 cal_share=1.3495  tag=arxiv-768 np=512 rc=0
+### openai3-1536 M=192 nlist=4096 np=512 S=32 21:34:14
+  AS_RESULT picked=4 recall_picked=0.9803 qps_picked=58641 recall_max=0.9830 qps_max=45405 gain=1.292 cal_ms=127.5 cal_share=5.7889  tag=openai3-1536 np=512 rc=0
+### openai3-3072 M=384 nlist=4096 np=512 S=32 21:34:23
+  AS_RESULT picked=4 recall_picked=0.9813 qps_picked=20351 recall_max=0.9814 qps_max=17311 gain=1.176 cal_ms=332.2 cal_share=5.7509  tag=openai3-3072 np=512 rc=0
+### bge-m3 M=128 nlist=16384 np=512 S=32 21:34:36
+  AS_RESULT picked=16 recall_picked=0.9715 qps_picked=27550 recall_max=0.9764 qps_max=26022 gain=1.059 cal_ms=167.7 cal_share=4.3646  tag=bge-m3 np=512 rc=0
+### stella M=128 nlist=32768 np=512 S=32 21:35:32
+  AS_RESULT picked=16 recall_picked=0.9946 qps_picked=30160 recall_max=0.9949 qps_max=28194 gain=1.070 cal_ms=119.5 cal_share=3.3713  tag=stella np=512 rc=0
+=== ALPHA6CFG_DONE 2026-09-10T21:36:49Z ===
