@@ -42,8 +42,9 @@ codebook, with one measurement per cell.
 Figure~\ref{fig:frontier} gives the measured frontiers and Table~\ref{tab:front}
 reduces them to a single question: at each matched recall, which system is
 fastest? JHQ owns 4 of the 26 comparable cells, and all four are at
-Recall@$10\ge 0.97$. Below $0.95$ CAGRA-int8 leads on every dataset where both
-run, by $1.6$--$2.9\times$. We state this rather than scope it away, because it
+Recall@$10\ge 0.97$. CAGRA-int8 leads in 14 of them, by $1.3$--$2.9\times$ and
+concentrated below Recall@$10{=}0.95$; CAGRA-fp32 leads in 3 by
+$1.1$--$1.4\times$ and IVF-RaBitQ in 4 by $1.0$--$1.4\times$. We state this rather than scope it away, because it
 bounds the claim precisely: JHQ's region is the high-recall end, most clearly at
 high dimension, where openai3-1536 leads at $0.97$ and $0.98$ and openai3-3072
 at $0.97$.
@@ -65,9 +66,10 @@ card, while JHQ indexes both --- a statement about the measured library and
 configuration paths on this device, not about those algorithms in general. And the
 throughput ordering has a build-time counterpart. Comparing cold builds per
 dataset, JHQ takes $1.1$--$13.4$\,s against $4.9$--$73.3$\,s for CAGRA int8,
-between $3.8\times$ and $13.4\times$ faster. Stated as a crossover rather than a
-ratio: CAGRA int8's faster search repays its slower build after $1.6$M queries
-on vogue-768 and $2.1$--$8.9$M on the others, at Recall@10 of $0.90$ and $0.95$.
+between $3.9\times$ and $7.4\times$ faster. Stated as a crossover rather than a
+ratio: where CAGRA int8 is the faster searcher, its throughput repays the build
+gap after $1.6$M to $8.9$M queries across the datasets and the two recall
+targets.
 Below that volume JHQ costs less end to end, and we use CAGRA's fastest observed
 build so the crossover is the one least favourable to us. JHQ therefore trades
 search throughput below $0.95$ for build time and for indexability at a code

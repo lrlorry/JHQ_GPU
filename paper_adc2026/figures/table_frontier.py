@@ -29,6 +29,9 @@ NAME = {"cagra": "CAGRA-fp32", "cagra8": "CAGRA-int8", "ivfpq": "IVF-PQ"}
 RECALLS = (0.90, 0.93, 0.95, 0.97, 0.98, 0.99)
 
 
+MARGINS = collections.defaultdict(list)
+
+
 def frontier_table():
     f, rq, bl = style.load_fronts(), style.load_rabitq(), style.load_baselines()
     lines, win, tot = [], 0, 0
@@ -65,6 +68,8 @@ def frontier_table():
                 # "CAGRA-int8 $2.7\times$" made the six-column table 30pt too
                 # wide for the LNCS block; the caption expands the names.
                 short = best.replace("CAGRA-", "").replace("RaBitQ", "RaBitQ")
+                if jhq:
+                    MARGINS[best].append(row[0][0] / jhq)
                 cells.append("%s $%.1f\\times$" % (short, row[0][0] / jhq)
                              if jhq else short)
         lines.append("%s & %s \\\\" % (style.PRETTY[ds], " & ".join(cells)))
@@ -117,6 +122,10 @@ def main():
         fh.write("\n".join(batch_table()) + "\n\\bottomrule\n\\end{tabular}\n")
     print("  wrote tex/tables/frontier.tex  (JHQ fastest in %d of %d cells)"
           % (win, tot))
+    print("  ranges for the body, so they are not typed by hand:")
+    for nm, v in sorted(MARGINS.items()):
+        print("     %-11s leads in %2d cells, margin over JHQ %.1fx to %.1fx"
+              % (nm, len(v), min(v), max(v)))
     print("  wrote tex/tables/batch.tex")
 
 
