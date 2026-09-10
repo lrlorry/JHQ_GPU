@@ -84,6 +84,33 @@ indexability at a code budget that is not smaller than int8's.
   \label{fig:frontier}
 \end{figure}
 
+\subsection{RQ1, continued: the graph baseline}
+\label{sec:graph}
+CAGRA is off the frontier of Section~\ref{sec:rq1} because it is a different
+index family, not because of how it scores. It is faster than JHQ where both
+run and the recall target is not high: CAGRA-int8 leads in 13 of the 15 cells
+they share, by $1.3$--$2.9\times$, and below Recall@$10{=}0.95$ in 10 of them by
+$1.6$--$2.9\times$; CAGRA-fp32 leads in 8 of 21 by $1.1$--$1.5\times$. We report
+this rather than scope it away.
+
+What it costs is build time, and the trade is quantifiable rather than
+rhetorical. Figure~\ref{fig:build} gives both variants beside JHQ, and where
+CAGRA int8 is the faster searcher its throughput repays the build gap only
+after $1.6$M to $8.9$M queries; below that volume JHQ costs less end to end.
+Neither CAGRA variant builds on stella-trec24 within the card, and fp32 does
+not build on bge-m3 either.
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=\linewidth]{figs/fig_build.pdf}
+  \caption{Index build time, log scale. Bars are the median over swept
+  configurations and repeat builds and whiskers their range, not a confidence
+  interval. JHQ's bar is one cold training plus its median encode: training is
+  cached after a dataset's first row and encoding is not. All indexes train the
+  coarse quantiser at 39 points a centroid; each baseline's fastest build per
+  dataset is used, which is the choice least favourable to us.}
+  \label{fig:build}
+\end{figure} 
 \subsection{RQ2: does the design prediction hold?}
 \label{sec:rq3}
 Section~\ref{sec:designspace} predicted that reducing table state helps only
@@ -298,22 +325,6 @@ statistical bound.
   \label{fig:cpu}
 \end{figure}
 
-\subsection{The graph baseline}
-\label{sec:graph}
-CAGRA is off the frontier of Section~\ref{sec:rq1} because it is a different
-index family, not because of how it scores. It is faster than JHQ where both
-run and the recall target is not high: CAGRA-int8 leads in 13 of the 15 cells
-they share, by $1.3$--$2.9\times$, and below Recall@$10{=}0.95$ in 10 of them by
-$1.6$--$2.9\times$; CAGRA-fp32 leads in 8 of 21 by $1.1$--$1.5\times$. We report
-this rather than scope it away.
-
-What it costs is build time, and the trade is quantifiable rather than
-rhetorical. Figure~\ref{fig:build} gives both variants beside JHQ, and where
-CAGRA int8 is the faster searcher its throughput repays the build gap only
-after $1.6$M to $8.9$M queries; below that volume JHQ costs less end to end.
-Neither CAGRA variant builds on stella-trec24 within the card, and fp32 does
-not build on bge-m3 either.
-
 \subsection{Construction and memory}
 \label{sec:rq6}
 Figure~\ref{fig:build} gives cold build times on every dataset. JHQ is the
@@ -322,17 +333,7 @@ $13.4$\,s against $74.3$\,s for CAGRA int8. Accounting must respect caching:
 training can be cached while add is not, so taking maxima independently
 fabricates a time that never occurred.
 
-\begin{figure}[tbp]
-  \centering
-  \includegraphics[width=\linewidth]{figs/fig_build.pdf}
-  \caption{Index build time, log scale. Bars are the median over swept
-  configurations and repeat builds and whiskers their range, not a confidence
-  interval. JHQ's bar is one cold training plus its median encode: training is
-  cached after a dataset's first row and encoding is not. All indexes train the
-  coarse quantiser at 39 points a centroid; each baseline's fastest build per
-  dataset is used, which is the choice least favourable to us.}
-  \label{fig:build}
-\end{figure} On memory we claim no
+On memory we claim no
 advantage: in the four datasets with measured VRAM JHQ uses $22$--$40\%$ more
 than IVF-RaBitQ, and its budget is not smaller than int8's. JHQ occupies a
 different memory--accuracy--throughput point and still indexes the two largest
