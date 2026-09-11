@@ -1,23 +1,18 @@
 \section{Related Work}
 \label{sec:related}\label{sec:relatedwork}
 \paragraph{Quantisation and grouped ADC.}
-Product quantisation~\cite{pq} decomposes vectors into subspaces for compressed
-storage and asymmetric distance computation. JHQ~\cite{jhq} supplies the
-orthogonal transform, Cartesian primary codebook and residual hierarchy used
-here. PQ Fast Scan~\cite{fastscan} and Quicker ADC~\cite{quickeradc} organise
-small tables for efficient execution, and 16-entry component tables are
-established practice there rather than something this paper introduces: our
-$G{=}2$ is that same granularity. What we contribute is applying the
-trade-off to JHQ's primary representation and measuring its interaction with
-packed access and scan depth. Equation~\ref{eq:split}
-is a direct consequence of that representation; arbitrary learned PQ
-subcodebooks do not in general have the same internal separability.
+PQ~\cite{pq} decomposes vectors into subspaces for compressed storage and
+asymmetric distance computation. JHQ~\cite{jhq} supplies our transform,
+Cartesian primary codebook and residual hierarchy. PQ Fast
+Scan~\cite{fastscan} and Quicker ADC~\cite{quickeradc} establish small-table
+execution, including 16-entry tables. We study grouping and packed access for
+JHQ's representation. Equation~\ref{eq:split} follows from its Cartesian
+construction; arbitrary learned PQ subcodebooks lack this general guarantee
+of internal separability.
 
 \paragraph{Adaptive search and GPU systems.}
-FAISS~\cite{faiss} provides sampled parameter autotuning, while learned early
-termination~\cite{earlyterm} adapts search effort to a query. Our workload policy
-uses an unlabelled self-agreement signal to choose JHQ's residual budget and
-compares it with the exhaustive sweep it replaces. CAGRA~\cite{cagra} offers a
-strong graph-based GPU baseline, and cuVS also implements IVF-PQ. The
-evaluation compares against both and separates search throughput from
-construction cost and resident memory.
+FAISS~\cite{faiss} provides sampled parameter autotuning; learned early
+termination~\cite{earlyterm} controls per-query search effort. Our workload
+policy uses unlabelled output agreement to select JHQ's residual budget, with
+enumeration as an empirical reference. CAGRA~\cite{cagra} and cuVS IVF-PQ
+provide GPU baselines for throughput, construction and memory comparisons.

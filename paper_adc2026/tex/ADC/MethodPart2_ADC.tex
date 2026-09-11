@@ -1,30 +1,26 @@
 \section{Adaptive Hierarchical Refinement}
 \label{sec:method2}
 \subsection{Output-stability criterion}
-The sufficient refinement budget is workload dependent. At
-$\mathit{nprobe}=128$, measured curves range from $\alpha=4$ to at least 200;
-arxiv-768 still improves at 200, so the upper endpoint is a lower bound.
-We choose a workload-level budget using $S$ sampled queries $Q_s$. Let
-$R_{\max}(q)$ and $R_\alpha(q)$ be the returned top-$k$ ID sets at a generous
-$\alpha_{\max}$ and a candidate $\alpha$. Define
+For a fixed index, routing configuration and $k$, we calibrate a workload-level
+budget on $S$ sampled queries $Q_s$ and reuse it for subsequent batches. Let
+$R_{\max}(q)$ and $R_\alpha(q)$ be top-$k$ ID sets at a generous reference
+budget $\alpha_{\max}$ and a candidate $\alpha$. Define
 \begin{equation}
 D(\alpha)=\sum_{q\in Q_s}\bigl[k-|R_\alpha(q)\cap R_{\max}(q)|\bigr].
 \label{eq:disagree}
 \end{equation}
-Acceptance requires $D(\alpha)\le\epsilon$, where $\epsilon$ is a non-negative
-integer counting disagreeing slots over the \emph{whole sample}. It ignores
-permutations of the same IDs. A fixed $\epsilon$ becomes stricter as $S$ grows.
-Stability cannot certify ground-truth recall, recover IVF routing losses, or
-reveal improvement beyond $\alpha_{\max}$.
+Acceptance requires $D(\alpha)\le\epsilon$, where $\epsilon$ is a non-negative integer
+counting allowed disagreeing slots over the whole sample. It ignores ID order,
+and fixed $\epsilon$ becomes stricter as $S$ grows. Agreement neither certifies
+ground-truth recall nor detects improvements beyond $\alpha_{\max}$.
 
 \subsection{Search rule and its assumptions}
 \label{sec:mono}
-For a descending grid $A[0],\ldots,A[L-1]$ with $A[0]=\alpha_{\max}$,
-compute the reference once and initialise $l=0$, $h=L-1$. While $l<h$, test
+For descending grid $A[0],\ldots,A[L-1]$ with $A[0]=\alpha_{\max}$, compute
+the reference once and initialise $l=0$, $h=L-1$. While $l<h$, test
 $j=\lceil(l+h)/2\rceil$. If $D(A[j])\le\epsilon$, set $l=j$; otherwise set
-$h=j-1$. Return $A[l]$. Thus the return is an observed acceptable point, with
-$A[0]$ as fallback if no tested smaller budget passes. Our held-out experiment
-uses $A=(200,100,64,32,16,8,4,2)$ and $\epsilon=1$.
+$h=j-1$. Return $A[l]$, an observed acceptable point, with $A[0]$ as fallback.
+The held-out experiment uses $A=(200,100,64,32,16,8,4,2)$ and $\epsilon=1$.
 
 \begin{proposition}[Monotonicity under exact primary selection]
 \label{prop:mono}
@@ -42,31 +38,19 @@ as $\alpha$ increases. Summing proves the claim. \qed
 \end{proof}
 
 The production selector retains only $\texttt{K\_LOCAL}=4$ candidates per
-thread before merging. It can discard a globally useful candidate, so the
-proposition's premise is not guaranteed. Bisection consequently need not find
-the grid's global minimum acceptable budget. A frozen comparison of local
-capacities 4 and 8 on one vogue-768 index changes 10 ID positions in five
-queries out of 1,000, with no top-10 set differences. This comparison does not
-test against an exact selector. Section~\ref{sec:rq2} compares bisection with
-whole-grid enumeration directly. The stopping behaviour is conservative only
-relative to the sampled acceptance criterion.
-
-Sampling and parameter search are established in ANN tuning. Here the signal is
-JHQ's own output stability and the target is its externally specified residual
-budget; neither labelled neighbours nor a learned predictor is required.
-Section~\ref{sec:related} positions these choices against prior work.
+thread before merging, so it need not satisfy the proposition's premise.
+Bisection therefore does not guarantee the grid's smallest acceptable budget.
+Section~\ref{sec:rq2} compares it directly with whole-grid enumeration.
+Acceptance remains relative to the sampled criterion. Section~\ref{sec:related}
+positions this label-free rule against existing ANN tuning methods.
 
 \subsection{Calibration economics}
 Let $T_{\mathrm{cal}}$ be calibration time and $T_{\mathrm{fixed}}$ and
-$T_{\mathrm{rule}}$ the per-batch times with fixed and selected budgets. For
-$B$ subsequent batches,
-\begin{equation}
-T_{\mathrm{adaptive}}(B)=T_{\mathrm{cal}}+BT_{\mathrm{rule}},\qquad
-T_{\mathrm{fixed,total}}(B)=BT_{\mathrm{fixed}}.
-\label{eq:total}
-\end{equation}
-If $T_{\mathrm{rule}}<T_{\mathrm{fixed}}$, break-even is
-$B^*=T_{\mathrm{cal}}/(T_{\mathrm{fixed}}-T_{\mathrm{rule}})$; otherwise it
-does not repay. Reuse assumes stable queries, index, routing and $k$.
-Periodic recalibration every $H$ batches adds $T_{\mathrm{cal}}/H$ per batch;
-workload-drift detection is outside the measured scope.
+$T_{\mathrm{rule}}$ be batch times with fixed and selected budgets. For $B$
+subsequent batches, adaptive search costs
+$T_{\mathrm{cal}}+BT_{\mathrm{rule}}$ against $BT_{\mathrm{fixed}}$, so
+break-even is
+$B^{*}=T_{\mathrm{cal}}/(T_{\mathrm{fixed}}-T_{\mathrm{rule}})$ and
+calibration never repays once $T_{\mathrm{rule}}\ge T_{\mathrm{fixed}}$. Reuse assumes stable queries, index, routing and $k$. Recalibrating every
+$H$ batches adds $T_{\mathrm{cal}}/H$ per batch; drift detection is outside the
+measured scope.

@@ -3,6 +3,16 @@
 \usepackage{graphicx,booktabs,tabularx,amsfonts,amsmath}
 \usepackage{hyperref}
 \setcounter{tocdepth}{3}
+% LaTeX defaults let at most 0.7 of a page be float before it gives the page
+% over to floats entirely.  Section 6.6 has two figures and about 30 lines of
+% text, which tripped that and produced a float-only page: two captions, no
+% body, and a band of white between them.  These let a page carry more float
+% beside its text.
+\renewcommand{\topfraction}{0.92}
+\renewcommand{\bottomfraction}{0.75}
+\renewcommand{\textfraction}{0.08}
+\renewcommand{\floatpagefraction}{0.85}
+
 \begin{document}
 \title{JHQ-GPU: Representation-Driven GPU Execution and
        Workload-Adaptive Hierarchical Refinement}

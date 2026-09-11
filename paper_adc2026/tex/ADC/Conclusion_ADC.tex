@@ -1,11 +1,16 @@
 \section{Conclusion}
 \label{sec:conclu}
-JHQ's hierarchy creates two distinct GPU decisions. Its Cartesian primary
-representation supports exact table factorisation, but useful granularity
-depends on both table storage and the work needed to access it. Its residual
-budget can be selected from sampled output stability, provided that calibration
-cost and sampling risk are included in the decision. The held-out comparisons
-show why neither a cheap constant nor self-agreement alone settles the quality
-question. JHQ-GPU occupies a useful operating region alongside IVF-PQ
-and CAGRA; the evidence is limited to one GPU, $k=10$, and stationary
-query pools. Cross-device behaviour, other $k$ and drift remain future work.
+JHQ's Cartesian codebook makes its distance table exactly factorisable, and
+the measurements say where that pays. $G{=}2$ has the highest throughput in 23
+of 24 cells over six datasets, while $G{=}4$ and $G{=}8$ hold the same
+footprint and differ only in lookups --- so table size alone does not
+determine scan speed. Stage timings then explain why a refinement budget is
+worth choosing at all: the scan this work makes cheap falls from $32\%$ of a
+query to $22\%$ as dimension grows fourfold, and refinement rises from $57\%$
+to $70\%$.
+
+Calibrating that budget on sampled output agreement buys $1.05$--$2.77\times$
+in ten of twelve held-out cells, and loses in the two where the sufficient
+budget lies at or beyond the tested grid --- a condition visible from the
+sweep before calibration is run. The evidence is one GPU, $k=10$ and
+stationary query pools; drift, other $k$ and other devices are untested.

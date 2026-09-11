@@ -1,35 +1,31 @@
 \section{Introduction}
 \label{sec:intro}
-Compressed approximate nearest-neighbour (ANN) search must balance query
-quality, memory and execution cost. JHQ~\cite{jhq} exposes this balance through
-a hierarchy: after inverted-file (IVF) routing, a compact primary code scores
-$n_c$ candidates at cost $O(n_cM)$, and a per-dimension residual code refines
-only $c_k$ survivors at cost $O(c_kd)$. The original method leaves the refinement
-factor $\alpha$ in $c_k=\alpha k$ externally specified. This raises two
-questions: \emph{how should the primary representation execute on a GPU}, and
-\emph{how many survivors should be refined}?
+Approximate nearest-neighbour (ANN) search with compressed vectors balances
+quality, memory and execution cost. JHQ~\cite{jhq} uses a hierarchy: after inverted-file (IVF)
+routing, a compact primary code scores $n_c$ candidates at cost $O(n_cM)$,
+and residual codes refine $c_k$ survivors at cost $O(c_kd)$. Its refinement
+factor $\alpha$ in $c_k=\alpha k$ is externally specified. We study two
+decisions: how to execute the primary representation on a GPU, and how many
+survivors to refine.
 
-For execution, we exploit the Cartesian construction of JHQ's primary
-codebook. Additivity gives an exact decomposition of its byte-indexed distance
-table into smaller tables, which we combine with coalesced candidate access and
-packed loading. The identity is the mathematical basis of the design, rather
-than a new quantisation algorithm. Grouped small tables are established in
-ADC~\cite{fastscan,quickeradc}; the question here is which grouping
-works for JHQ's representation and execution path. Our comparisons vary table
-granularity and access layout while holding the represented distance fixed.
-They show why table size alone is an insufficient design criterion.
+JHQ's Cartesian primary codebook permits exact decomposition of its distance
+tables. Finer grouping reduces table storage but increases lookups per
+candidate. We combine factorised tables with coalesced access and packed
+loading, and compare grouping and access choices while holding the represented
+distance fixed. The design builds on established small-table
+ADC~\cite{fastscan,quickeradc}; table size alone does not determine scan speed.
 
-For refinement, a small fixed budget can discard useful candidates, while a
-large one may repeat work without changing the returned neighbours. We calibrate
-$\alpha$ by comparing sampled top-$k$ sets with those produced at a generous
-reference budget. This label-free signal is available to the index itself, but
-its usefulness depends on sampling risk and amortisation. We test both against
-fixed alternatives and an offline ground-truth reference.
+For refinement, small budgets can discard useful candidates, while large
+budgets may repeat work without changing the output. We calibrate $\alpha$
+using sampled top-$k$ agreement with a generous reference budget. This requires
+neither ground-truth labels nor a learned predictor. Held-out comparisons with
+fixed budgets and an offline oracle measure selection quality, sampling risk
+and calibration cost.
 
-Our two contributions are an execution design for JHQ's Cartesian primary
-representation, with measured conditions under which factorisation and packed
-access help, and an output-stability policy for its residual budget, with a
-held-out evaluation of selection quality and calibration cost. Evaluation
-against CPU JHQ and modern GPU baselines establishes their operating range on
-one device; it does not imply uniform superiority across recall targets or
-workloads.
+Our contributions are a GPU execution design for JHQ's Cartesian primary
+representation and an output-stability policy for its residual budget, each
+measured on six datasets. Two-group tables are fastest in 23 of 24 cells while
+storing more than the alternatives that lose, and the budget rule buys
+$1.05$--$2.77\times$ in ten of twelve held-out cells --- failing, measurably
+and predictably, on the one dataset whose sufficient budget lies beyond the
+tested grid.

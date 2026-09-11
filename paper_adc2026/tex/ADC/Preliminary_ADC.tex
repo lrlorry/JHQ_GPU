@@ -1,36 +1,20 @@
 \section{Preliminaries}
 \label{sec:preli}
+For database vector $x$ and query $q$ in $\mathbb{R}^d$, JHQ applies a square
+orthogonal transform $Q$: $y=Qx$ and $q'=Qq$. It preserves Euclidean distance
+without reducing dimension. The transformed vector is split into $M$ subspaces
+of dimension $D_s$, with $d=MD_s$. Each $B$-bit primary code selects one of
+$2^B$ codewords formed as Cartesian products of one-dimensional Lloyd--Max
+levels. We use $B=D_s=8$: one bit per coordinate and one byte per subspace.
 
+The residual is $r=y-\hat{y}_{\mathrm{primary}}$, measured against the primary
+reconstruction, not an IVF centroid. With $B_r=8$ residual bits per dimension,
+the logical representation stores one primary and eight residual bits per
+dimension. IVF restricts the candidate set without changing this representation.
 
-
-For a database vector $x$ and query $q$ in $\mathbb{R}^d$, JHQ applies an
-orthogonal $Q\in\mathbb{R}^{d\times d}$: $y=Qx$, $q'=Qq$ (row-major batches use
-$Y=XQ^{\top}$). $Q$ is square, so this is a change of coordinates preserving
-Euclidean distance and hence the neighbour ordering, not dimensionality
-reduction. The transformed vector is split into $M$ subspaces of dimension
-$D_s$, $d=MD_s$; each primary subspace code has $B$ bits selecting one of
-$K=2^{B}$ codewords, and each codeword is a Cartesian product of $D_s$
-one-dimensional Lloyd--Max levels. With $L$ levels per coordinate $L=2^{B/D_s}$,
-so the implementation admits only $D_s$ dividing $B$: at $B{=}8$,
-$D_s\in\{1,2,4,8\}$ gives $\{8,4,2,1\}$ primary bits per coordinate. We use
-$D_s{=}8$, so each coordinate carries one primary bit and each subspace is one
-byte. This Cartesian
-construction is what Section~\ref{sec:designspace} exploits.
-
-The residual is $r=y-\hat{y}_{\mathrm{primary}}$, the displacement from the
-primary reconstruction --- \emph{not} from an IVF centroid. IVF is an external
-routing layer that restricts the candidate set; it does not redefine what the
-residual quantiser represents. The residual code is per dimension, so at $B_r$
-bits it costs about $d B_r$ bits per vector, and at $B_r{=}8$, $D_s{=}8$ the
-logical representation is about 1 primary plus 8 residual bits per dimension.
-
-Routing yields a candidate set $C(q)$. The primary score $D_P$ is evaluated for
-every routed candidate; JHQ keeps the $c_k$ with the smallest primary scores and
-evaluates the hierarchical score $D_H$ only for those, returning the top-$k$
-under $D_H$ among them. We write $c_k=\alpha k$ for exposition; the
-implementation uses $c_k=\max(k,\lceil\alpha k\rceil)$, and since every
-evaluated $\alpha\ge 1$ the $\max$ only enforces the $k$-survivor floor. So
-$\alpha$ controls an irreversible filtering point: a neighbour dropped by
-primary ranking cannot be recovered by refinement, while routing can drop true
-neighbours before the primary stage at all. The two loss sources stay separate
-throughout.
+For every routed candidate, query-specific lookup tables evaluate the primary
+score $D_P$; the query itself is not quantised into a database code. JHQ retains
+$c_k$ primary survivors, evaluates their hierarchical score $D_H$, and returns
+the top-$k$ under $D_H$. We write $c_k=\alpha k$; the implementation uses
+$\max(k,\lceil\alpha k\rceil)$. Refinement cannot recover neighbours excluded
+by routing or primary selection.
