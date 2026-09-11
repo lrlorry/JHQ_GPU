@@ -21,16 +21,15 @@ table into two 16-entry tables. We combine this factorisation with
 candidate-parallel scanning and packed access. Controlled comparisons show
 that smaller tables do not always produce faster scans. We select the residual
 budget using sampled top-$k$ agreement with a generous reference budget,
-without ground-truth labels or a learned predictor. A held-out experiment on all six
-datasets compares fixed budgets, sampled and full-pool calibration,
-enumeration and an offline oracle. With 128 calibration queries the selected
-arm gains $1.05$--$2.77\times$ over fixed $\alpha=100$ on ten of twelve
-cells, repaying calibration in an estimated $1$--$36$ subsequent 500-query
-batches; on the remaining dataset the sufficient budget lies at or beyond the
-tested grid, where the rule is slower than the constant it replaces. Six-dataset system
-comparisons establish operating regions alongside IVF-PQ and CAGRA. The results
-link JHQ's execution choices to its representation and quantify the quality
-and cost trade-offs of refinement calibration.
+without ground-truth labels or a learned predictor. A held-out experiment on
+six datasets compares fixed budgets, sampled and full-pool calibration,
+enumeration and an offline oracle. With 128 calibration queries, selected-arm
+QPS gains are $1.05$--$2.77\times$ over fixed $\alpha=100$ in ten of twelve
+configurations, with estimated payback within 2--37 batches of 500 queries.
+The two arxiv configurations have lower throughput, and sampling risk remains
+workload dependent. System comparisons establish operating regions alongside
+IVF-PQ and CAGRA. The results quantify the execution, quality and calibration
+trade-offs of GPU JHQ.
 \keywords{Approximate nearest neighbour search \and GPU \and Quantisation \and
 Adaptive query processing}
 \end{abstract}
@@ -41,6 +40,20 @@ Adaptive query processing}
 \input{ADC/RelatedWork_ADC}
 \input{ADC/Experiment_ADC}
 \input{ADC/Conclusion_ADC}
+
+\begin{credits}
+\subsubsection{\discintname}
+The authors have no competing interests to declare.
+
+\subsubsection{Use of generative AI.}
+A large language model assistant was used throughout this work: to write and
+run the measurement scripts, to derive the figures and tables from the logs
+they produce, and to draft and revise the text. The authors designed the
+study, chose what to measure, and are responsible for every claim in the
+paper. JHQ itself is prior work and is not a contribution of this paper or of
+the assistant.
+\end{credits}
+
 \bibliographystyle{splncs04}
 \bibliography{reference}
 \end{document}
