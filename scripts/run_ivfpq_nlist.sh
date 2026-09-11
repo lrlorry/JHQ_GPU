@@ -52,10 +52,18 @@ run(){  # dataset nprobe-grid nlist...
     done
 }
 NP="8,32,128,256,512,1024"
-run vogue-768    "$NP" 2048 4096 8192
-run arxiv-768    "$NP" 4096 8192 16384
-run openai3-1536 "$NP" 2048 4096 8192
-run openai3-3072 "$NP" 2048 4096 8192
+# One value a dataset, not the whole grid: JHQ's own.  Three values each came
+# to 360 configurations and about two hours, and two of the three answer a
+# question nobody asked.  The one that matters is what IVF-PQ does at the
+# partition JHQ runs at, because that is the comparison the frontier makes.
+#
+# What this cannot show is IVF-PQ's own nlist optimum, which need not be
+# JHQ's.  If it is still far behind at a matched partition the distinction
+# does not matter; if it overtakes, the full sweep is the follow-up.
+run vogue-768    "$NP" 4096
+run arxiv-768    "$NP" 8192
+run openai3-1536 "$NP" 8192
+run openai3-3072 "$NP" 8192
 say "=== PQNL""_DONE small four ==="
 
 # The large two, where IVF-PQ's default k-means fraction does not fit the card
@@ -72,6 +80,6 @@ runf(){  # dataset fraction nprobe-grid nlist...
         say "  rc=$? rows=$(grep -vc '^#' "$R/${ds}_ivfpq_nl${nl}_f${fr}.csv" 2>/dev/null)"
     done
 }
-runf bge-m3        0.05 "$NP" 4096 16384 32768
-runf stella-trec24 0.02 "$NP" 8192 32768 65536
+runf bge-m3        0.05 "$NP" 32768
+runf stella-trec24 0.02 "$NP" 32768
 say "=== PQNL""_DONE ==="
