@@ -115,7 +115,8 @@ for i, ds in enumerate(order):
     # does.
     ax.scatter([meas[ds] / 1024], [i], marker="|", s=110, color="black",
                zorder=4, lw=1.1)
-ax.text(0.97, 0.03, "(a)", transform=ax.transAxes, fontsize=8, ha="right")
+# No "(a)": the share panel it was paired with is gone, and a lone panel
+# labelled (a) reads as a figure with a missing half.
 
 ax.set_yticks(y); ax.set_yticklabels([PRETTY[d] for d in order])
 ax.set_xlabel("resident GPU memory (GiB)")

@@ -31,9 +31,14 @@ Timing covers host query input to host result output. Frontiers answer all
 $n_q$ queries in one call and report the mean of three warmed runs; frontier
 QPS excludes calibration. Section~\ref{sec:rq2} measures calibration cost
 under its separate held-out protocol. Three cold builds of Vogue recall
-0.9852, 0. Run-to-run timing variance is small beside the effects reported: over the 621 baseline configurations the harness timed three times each, the relative standard deviation of throughput has median $0.39\%$ and ninetieth percentile $2.58\%$, so a $1\%$ paired difference sits at the edge of what a single triple resolves and is reported as the bottom of a range rather than as an effect.9842 and 0.9849, so
-differences below about $10^{-3}$ across builds need repeated evidence;
-differences within one index do not.
+0.9852, 0.9842 and 0.9849, so differences below about $10^{-3}$ across builds
+need repeated evidence; differences within one index do not. Run-to-run timing
+variance is small beside the effects reported: over the 621 baseline
+configurations the harness timed three times each, the relative standard
+deviation of throughput has median $0.39\%$ and ninetieth percentile
+$2.58\%$, so a $1\%$ paired difference sits at the edge of what a single
+triple resolves and is reported as the bottom of a range rather than as an
+effect.
 
 JHQ uses $M=d/8$, $B=B_r=8$, 39 training points per centroid, eight coarse
 iterations and 100,000 residual-training vectors. All JHQ frontier points use
@@ -185,7 +190,7 @@ at $M{=}192$.
 
 \begin{figure}[tbp]
 \centering
-\includegraphics[width=0.92\linewidth]{figs/fig_lutgroups.pdf}
+\includegraphics[width=0.78\linewidth]{figs/fig_lutgroups.pdf}
 \caption{Throughput against the full table, six datasets at four probe
 depths; lines are medians over datasets and bands their range. Factorising to
 $G{=}2$ gains, factorising further gives it back, and both effects grow with
@@ -250,7 +255,7 @@ cost over sufficiently many queries.
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.78\linewidth]{figs/fig_memory.pdf}
+\includegraphics[width=0.72\linewidth]{figs/fig_memory.pdf}
 \caption{Resident memory by component. Markers are measured totals; the
 hatched band is the remainder we cannot attribute.}
 \label{fig:memory}
