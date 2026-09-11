@@ -223,8 +223,14 @@ The six-dataset layout experiment covers four probe depths and four
 full/split$\times$byte/word combinations: 96 measurements and 48 paired
 word-versus-byte ratios. Packing gains 1--66\%, with maximum four-arm
 recall difference 0.0001. Each cell is measured once. Factorisation is the
-representation-specific design; packing is representation-enabled optimisation,
-while the physical transpose and cursor/launch corrections are engineering.
+representation-specific design and packing is representation-enabled
+optimisation; both are ablated here. The cursor correction is generic but
+large enough to report, and Table~\ref{tab:neg} gives it. The physical
+$[N,M]\rightarrow[M,N]$ transpose is neither ablated nor claimed: it is the
+common baseline of every arm in every experiment above, and restoring the
+candidate-major path would mean writing a scan kernel that no longer exists
+rather than setting a flag. It is standard coalescing, and we report it as
+part of the design rather than as a result.
 
 \subsection{RQ4: mechanisms and negative results}
 \label{sec:rq4}
