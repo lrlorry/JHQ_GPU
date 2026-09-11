@@ -67,6 +67,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from style import *
 import style
 import numpy as np
+# Height trimmed from 2.35 to 1.9: Section 6.6 carries two full-width figures
+# and about 25 lines of text, so at the original heights neither could sit
+# with the paragraph that introduces it and one landed in the bibliography.
 
 REPO = os.path.join(HERE, "..", "..")
 ALIAS = {"stella-trec24": "stella"}
@@ -187,7 +190,7 @@ for meth in ("IVF-RaBitQ", "cuVS-CAGRA", "cuVS-CAGRA-int8", "cuVS-IVFPQ"):
         print("     %-16s %.1f to %.1f s   (%s .. %s, %d datasets)"
               % (meth, per[lo], per[hi], lo, hi, len(per)))
 
-fig, ax = plt.subplots(figsize=(WIDE, 2.35))
+fig, ax = plt.subplots(figsize=(WIDE, 1.9))
 W = 0.16
 x = np.arange(len(DATASETS))
 for j, (m, skey) in enumerate(METHODS):

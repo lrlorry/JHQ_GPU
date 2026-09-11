@@ -237,6 +237,14 @@ faster, the model $T_{\mathrm{build}}+Q/\mathrm{QPS}$ puts the crossover at
 $4.9$--$11.2$M queries at recall 0.90/0.95. It combines fastest baseline builds with
 interpolated search frontiers and excludes calibration and control overhead.
 
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\linewidth]{figs/fig_memory.pdf}
+\caption{Resident memory components and shares. Markers show measured
+totals; the hatched remainder reconciles unattributed memory.}
+\label{fig:memory}
+\end{figure}
+
 Training budgets differ: Stella IVF-PQ uses a reduced sample because default
 training exceeds memory. This limits attribution of build differences to the
 quantisers alone. Within JHQ, training accounts for 71\% of the plotted build
@@ -246,10 +254,3 @@ Residual codes are JHQ's largest resident component on Stella.
 Figure~\ref{fig:memory} separates codes, centroids and query workspace from
 the unattributed remainder.
 
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=\linewidth]{figs/fig_memory.pdf}
-\caption{Resident memory components and shares. Markers show measured
-totals; the hatched remainder reconciles unattributed memory.}
-\label{fig:memory}
-\end{figure}

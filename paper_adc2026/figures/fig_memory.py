@@ -32,6 +32,9 @@ import sys, os, re
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from style import *
 import numpy as np
+# Height trimmed from 2.55 to 2.0: Section 6.6 carries two full-width figures
+# and about 25 lines of text, so at the original heights neither could sit
+# with the paragraph that introduces it and one landed in the bibliography.
 
 # index shape per dataset: (N, d, M, nlist), Br = 8, batch = 1024, k = 10
 SHAPE = {
@@ -92,7 +95,7 @@ y = np.arange(len(order))
 # datasets' workspace and centroid segments are a few pixels wide. The second
 # panel is the same stack normalised, which is where the composition is
 # actually readable.
-fig, (ax, axp) = plt.subplots(1, 2, figsize=(WIDE, 2.55),
+fig, (ax, axp) = plt.subplots(1, 2, figsize=(WIDE, 2.0),
                               gridspec_kw=dict(width_ratios=[1.55, 1]))
 left = np.zeros(len(order))
 for p, c in parts:
