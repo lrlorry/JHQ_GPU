@@ -1,105 +1,62 @@
 \section{GPU-Native JHQ}
 \label{sec:method1}
-
 \subsection{Execution and representation}
-The primary stage is $O(n_c M)$ over compact codes and the residual
-stage $O(c_k d)$ over per-dimension codes, so three requirements follow: make
-primary access match candidate-parallel warp execution, keep the primary
-distance representation resident without replacing JHQ's quantiser, and preserve
-selective residual access instead of fusing accurate scoring into the broad
-scan. The orthogonal transform, primary codebook, residual definition and
-hierarchical ordering remain JHQ's; physical representation, execution and the
-external refinement policy change. The scan's bounded per-thread top-$\alpha k$
-selector is characterised in Section~\ref{sec:mono}.
+Batched matrix multiplication applies the square orthogonal transform. IVF
+routing then identifies lists to scan; query-specific lookup tables evaluate
+primary distances, and only primary survivors access the residual codes.
+The transform, codebooks and hierarchy follow JHQ. The execution design changes
+physical layout and primary-distance evaluation while preserving selective
+refinement.
 
-During the broad scan, warp lanes score different candidates while advancing
-through the same subspace $m$, so candidate-major $[N,M]$ storage has the warp
-read one byte per lane with stride $M$ (Figure~\ref{fig:layout}). We store the scan copy subspace-major,
-$[M,N]$, which makes those 32 bytes adjacent: the transpose aligns the
-contiguous memory dimension with the dimension the warp shares. It is standard
-practice, not a claim. Separately, $D_s{=}B{=}8$ makes four subspace codes a
-native 32-bit word that a packed scan loads once and unpacks in registers. After
-the layout fix the fetched sectors are already right, so packing reduces load
-instructions, addresses and loop iterations rather than logical bytes. We do not
-claim wider words are universally better; they add unpacking, dependencies and
-register pressure.
+Warp lanes score different candidates at the same subspace $m$. A scan copy in
+subspace-major $[M,N]$ order makes their byte reads adjacent, whereas
+candidate-major $[N,M]$ order makes them strided. This is standard coalescing.
+Separately, packing four byte codes into a 32-bit word reduces loads, address
+calculations and loop iterations, with unpacking performed in registers.
+Packing changes instruction demand rather than the logical code volume.
 
-\begin{figure}[tbp]
-  \centering
-  \includegraphics[width=\linewidth]{figs/fig_layout.pdf}
-  \caption{Two rearrangements of the same bytes, neither of which changes a
-  distance. (a) Storing the primary codes subspace-major rather than
-  candidate-major turns a warp's strided read into 32 adjacent bytes.
-  (b) At $D_s{=}B{=}8$ four subspaces are 32 dimensions and fit one
-  \texttt{uint32}, so four loads, four addresses and four loop iterations
-  become one. Section~\ref{sec:rq4} measures what that is worth.}
-  \label{fig:layout}
-\end{figure}
-
-
-\subsection{Cartesian factorisation of the primary table}
+\subsection{Cartesian-factorised primary distance tables}
 \label{sec:designspace}
-The question is not how small the table can be but how much table state to
-materialise before saved residency is outweighed by added issued work. For
-subspace $m$ and code $c$, let $T_m[c]=\lVert q'_m - C_m[c]\rVert_2^2$. Because
-$C_m[c]$ is a Cartesian product of one-dimensional levels and squared Euclidean
-distance is additive, any partition of the eight code decisions induces an exact
-sum of smaller tables. For the two-way partition, with $c_{\mathrm{hi}}=c\gg 4$
-and $c_{\mathrm{lo}}=c \bmod 16$,
+For subspace $m$, the primary table is
+$T_m[c]=\lVert q'_m-C_m[c]\rVert_2^2$. Each codeword is a Cartesian product
+of one-dimensional levels. Partitioning its eight code decisions therefore
+partitions the coordinate sum exactly:
 \begin{equation}
-  T_m[c] \;=\; T_m^{\mathrm{hi}}[c_{\mathrm{hi}}] +
-               T_m^{\mathrm{lo}}[c_{\mathrm{lo}}].
-  \label{eq:split}
+T_m[c]=T_m^{\mathrm{hi}}[c\gg4]+T_m^{\mathrm{lo}}[c\bmod16].
+\label{eq:split}
 \end{equation}
-Each component holds 16 entries, so $G{=}2$ stores 32 per subspace and performs
-two lookups. Table construction falls by $16\times$, not the $8\times$ of
-resident entries: the full table evaluates $256 D_s$ coordinate contributions
-per subspace and the split form $32(D_s/2)=16D_s$. An equal $G$-way partition
-stores $G\cdot 2^{8/G}$ entries and needs $G$ lookups per candidate--subspace,
-which states the trade-off analytically: state falls only until the table fits,
-while instruction demand keeps rising.
+The two components contain 16 entries each, replacing 256 with 32. Construction
+evaluates $32(D_s/2)$ coordinate contributions instead of $256D_s$: an
+analytical $16\times$ reduction in that work and $8\times$ in table entries,
+not a search-speedup prediction. Exactness is in real arithmetic; floating-point
+association and tie order can differ. A general equal $G$-way grouping stores
+$G2^{8/G}$ entries and requires $G$ lookups per candidate--subspace.
 
-The residency target is narrower than the device's shared-memory limit, because
-the table is not the only claimant. The scan kernel's admission test is
+The scan admits a table into shared memory only if
 \begin{equation}
-  \texttt{scan\_base} + M \cdot G\cdot 2^{8/G} \cdot 4 \;\le\;
-  \texttt{smem\_optin},
-  \qquad
-  \texttt{scan\_base} = 40\,\cdot\,\texttt{BLOCK}\ \text{bytes},
-  \label{eq:resid}
+40\,\texttt{BLOCK}+4MG2^{8/G}\le\texttt{smem\_optin}.
+\label{eq:resid}
 \end{equation}
-with \texttt{scan\_base} the per-thread candidate scratch claimed first. At the
-tested $\texttt{smem\_optin}=101{,}376$\,B this leaves the table $94.0$\,KiB at
-$\texttt{BLOCK}{=}128$, falling to $59.0$\,KiB at $\texttt{BLOCK}{=}1024$. The
-full table is $M\cdot 256\cdot 4$ bytes --- $96$\,KiB at $M{=}96$ and
-$384$\,KiB at $M{=}384$ --- so \emph{neither} clears the budget at any
-admissible block size, $M{=}96$ missing the most generous by 2\,KiB, while both
-factorised tables clear the least generous at $12$ and $48$\,KiB
-(Figure~\ref{fig:lut}). The full table is thus off chip at both $M$, and what
-grows with $M$ is the cost of the lookups that miss, since the scan pays one per
-candidate per subspace. The prediction Section~\ref{sec:rq3} tests is therefore
-directional, and its crossing should move with $M$ and with probe depth
-together.
-
+The first term is candidate scratch. On the tested device,
+$\texttt{smem\_optin}=101{,}376$ bytes leaves $94$--$59$\,KiB as
+\texttt{BLOCK} rises from 128 to 1024. Full tables require $96$/$384$\,KiB
+at $M=96/384$ and use the global-memory path; split tables require
+$12$/$48$\,KiB and fit throughout this range. Global-memory loads may still
+hit cache. This admission calculation does not measure cache misses or achieved
+occupancy; the performance trade-off requires the comparisons in
+Section~\ref{sec:rq3}.
 \begin{figure}[tbp]
-  \centering
-  \includegraphics[width=\linewidth]{figs/fig_lut.pdf}
-  \caption{Exact Cartesian factorisation of an 8-bit JHQ primary lookup table:
-  256 resident entries become two 16-entry tables. The band on the right is what
-  Equation~\ref{eq:resid} leaves for the table across the admissible block
-  sizes; every factorised table clears its lower edge and every full table
-  overruns its upper one --- $M{=}96$'s by $2$\,KiB, the rest by more.}
-  \label{fig:lut}
+\centering
+\includegraphics[width=\linewidth]{figs/fig_lut.pdf}
+\caption{Cartesian factorisation and required table storage. The band is the
+shared-memory budget remaining after candidate scratch; admission is distinct
+from cache behaviour.}
+\label{fig:lut}
 \end{figure}
 
-Exactness here is in real arithmetic; it promises no bitwise-identical
-floating-point association or tie order.
-
-\subsection{Selective residual refinement, and what it leaves open}
-Reading the per-dimension residual for every routed candidate would turn an
-$O(c_k d)$ stage into work closer to $O(n_c d)$, so only the $c_k$ primary
-survivors trigger residual access. Fusing the two phases is a plausible
-alternative --- it removes a round trip and a kernel boundary --- and
-Section~\ref{sec:rq4} reports why we reject it.
-
-
+\subsection{Selective refinement and the policy question}
+Only $c_k$ survivors are scored with their primary reconstruction plus residual.
+Reading residuals during the broad scan would replace $O(c_kd)$ selective work
+with work approaching $O(n_cd)$. The bounded selector's limitations are stated
+in Section~\ref{sec:mono}. The remaining decision is $c_k=\alpha k$:
+\emph{how many primary survivors should actually be refined}?

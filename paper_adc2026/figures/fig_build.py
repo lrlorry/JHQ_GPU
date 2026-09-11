@@ -81,6 +81,8 @@ for f in glob.glob(os.path.join(REPO, "results", "**", "*.csv"), recursive=True)
     except Exception:
         continue
     for x in rows:
+        if (x.get("status") or "ok").strip() != "ok":
+            continue
         m, t = x.get("method") or "", x.get("train_ms")
         if "cuVS" not in m or not t or t in ("", "None"):
             continue
@@ -135,7 +137,11 @@ for ln in open(datafile("rabitq_o3072_build.log")):
     if m:
         b[("IVF-RaBitQ", "openai3-3072")].append(float(m.group(1)) / 1000)
 
-METHODS = [("JHQ-GPU", "jhq"), ("IVF-RaBitQ", "rabitq"),
+# IVF-RaBitQ is withdrawn from the paper: cuVS ships RaBitQ's quantiser
+# without the exact re-ranking its published results depend on, so every
+# number measured for it here is a number about a configuration we were
+# forced into, not about the method.
+METHODS = [("JHQ-GPU", "jhq"),
            ("cuVS-CAGRA", "cagra"), ("cuVS-CAGRA-int8", "cagra8"),
            ("cuVS-IVFPQ", "ivfpq")]
 # "(this work)" claimed JHQ itself, which the paper explicitly does not; the
@@ -177,7 +183,7 @@ for j, (m, skey) in enumerate(METHODS):
             # 32 GiB card could not serve, and the sizes are in the caption.
             mark = "OOM" if (m, ds) in FAILS else "--"
             ax.text(i + off, 1.05, mark, ha="center", va="bottom",
-                    fontsize=5.5, color=col if mark == "OOM" else "#898781",
+                    fontsize=7, color=col if mark == "OOM" else "#898781",
                     rotation=90)
             continue
         med = st.median(v)
@@ -213,7 +219,7 @@ if any((m, ds) in FAILS for m, _ in METHODS for ds in DATASETS):
 # LNCS text width.  The long note that ran under the axes for the same reason
 # is now in the LaTeX caption, where it costs no drawing area.
 ax.legend(hh, ll, loc="lower center", bbox_to_anchor=(0.5, 1.005), ncol=4,
-          fontsize=6.5, columnspacing=1.0, handlelength=1.2,
+          fontsize=7, columnspacing=1.0, handlelength=1.2,
           borderpad=0.3, labelspacing=0.3)
 
 fig.tight_layout(pad=0.3)

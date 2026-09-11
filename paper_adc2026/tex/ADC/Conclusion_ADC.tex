@@ -1,19 +1,11 @@
 \section{Conclusion}
 \label{sec:conclu}
-
-We asked how JHQ's primary representation should execute on a GPU and how much
-of its hierarchy is worth executing. For the first, the Cartesian codebook
-admits an exact two-table factorisation whose state grows as $32M$ against
-$256M$, and the payoff rises with both $M$ and probe depth while still-smaller
-splits lose to their extra lookups. Disassembling the kernel adds the term the
-controls could not reach: the granularity whose table does not fit issues the
-fewest instructions per candidate--sub\-space and is slower anyway, so the
-target is a residency budget rather than minimum bytes. For the second, a
-label-free stability rule buys $1.095$--$1.469\times$ at $S{=}128$ and selects
-the offline reference budget wherever that reference is resolved --- but some
-samples still exceed a $10^{-3}$ loss, so the sample size is a risk decision,
-not a default. The region this defines is bounded: among quantised IVF methods
-JHQ is fastest in 18 of the 24 cells it shares with the other IVF-routed
-methods, while the graph baseline is faster below Recall@$10{=}0.95$ at several
-times the build cost. Remaining gaps are $k$ beyond 10, workload drift, and cross-GPU
-validation.
+JHQ's hierarchy creates two distinct GPU decisions. Its Cartesian primary
+representation supports exact table factorisation, but useful granularity
+depends on both table storage and the work needed to access it. Its residual
+budget can be selected from sampled output stability, provided that calibration
+cost and sampling risk are included in the decision. The held-out comparisons
+show why neither a cheap constant nor self-agreement alone settles the quality
+question. JHQ-GPU occupies a useful operating region alongside IVF-PQ
+and CAGRA; the evidence is limited to one GPU, $k=10$, and stationary
+query pools. Cross-device behaviour, other $k$ and drift remain future work.

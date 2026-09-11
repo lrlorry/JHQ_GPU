@@ -19,28 +19,25 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from style import *
 
-fronts, rq, base = load_fronts(), load_rabitq(), load_baselines()
+fronts, base = load_fronts(), load_baselines()
 
-fig, axes = plt.subplots(3, 2, figsize=(WIDE, 3.65), sharex=True, sharey=True)
+fig, axes = plt.subplots(3, 2, figsize=(WIDE, 3.85), sharex=True, sharey=True)
 for ax, ds in zip(axes.flat, DATASETS):
     b = base[ds]
 
-    # Both CAGRA variants are out of this figure by choice, not by omission.
-    # The frontier's line is IVF-routed methods -- JHQ, IVF-RaBitQ, IVF-PQ --
-    # which share a routing structure, a build-cost profile and an interface;
-    # CAGRA is a graph index and gets its own subsection, its own build figure
-    # and its crossover, rather than being dropped.  Removing only int8 while
-    # keeping fp32 would be the indefensible version: same system, two
-    # precisions, and the one kept is the one that wins less.
-    # Markers go above every line, not with their own.  On vogue-768 the two
-    # frontiers agree to within a few percent from R=0.955 up, and on a log
-    # axis spanning three decades that puts IVF-RaBitQ's line underneath JHQ's
-    # thicker one for most of the panel -- the baseline read as absent, which
-    # is the one direction a rendering artefact must never fail in.  The lines
-    # still overlap, because they describe the same throughput; the markers
-    # now show that both systems are measured across the whole range.
+    # IVF-RaBitQ is not in this figure.  cuVS ships RaBitQ's quantiser without
+    # the exact re-ranking its published results depend on -- search_params
+    # carries n_probes and mode and nothing else -- and at bits_per_dim=1, the
+    # configuration RaBitQ is known for, recall tops out at 0.78 on vogue-768
+    # however deep the probe.  Reaching the recalls compared here forces
+    # bits_per_dim=8 and a scan eight times more expensive, which is why that
+    # baseline measured 2.3x to 4.9x behind cuVS CAGRA-int8 at R=0.90-0.95 --
+    # the reverse of RaBitQ's own published ordering.  A baseline losing to
+    # the system it reports beating is a configuration error of ours, not a
+    # result about RaBitQ, so it is withdrawn rather than reported.
     drawn = []
-    for key, pts in (("ivfpq", b["ivfpq"]), ("rabitq", rq.get(ds, []))):
+    for key, pts in (("cagra", b["cagra"]), ("cagra8", b["cagra8"]),
+                     ("ivfpq", b["ivfpq"])):
         pts = [p for p in pts if p[0] >= 0.85]
         if pts:
             st = {k: v for k, v in S[key].items() if k not in ("label", "marker")}
@@ -59,7 +56,7 @@ for ax, ds in zip(axes.flat, DATASETS):
     ax.set_xticks([0.85, 0.90, 0.95, 1.00])
     # Dataset name and shape inside the axes: six panels do not have room for
     # six titles above them.
-    ax.text(0.03, 0.05, f"{PRETTY[ds]}\n{b['N']/1e6:.1f}M $\\times$ {b['d']}",
+    ax.text(0.03, 0.05, f"{PRETTY[ds]}\n{b['N']/1e6:.3f}M $\\times$ {b['d']}",
             transform=ax.transAxes, va="bottom", ha="left", fontsize=7,
             linespacing=1.3)
 
@@ -71,8 +68,8 @@ for ax in axes[:, 0]:
 handles = [plt.Line2D([], [], color=S[k]["color"], marker=S[k].get("marker", ""),
                       ls=S[k].get("ls", "-"),
                       lw=1.5 if k == "jhq" else 1.0, label=S[k]["label"])
-           for k in ("jhq", "jhq_fix", "rabitq", "ivfpq")]
+           for k in ("jhq", "jhq_fix", "cagra", "cagra8", "ivfpq")]
 fig.legend(handles=handles, loc="upper center", ncol=3,
-           bbox_to_anchor=(0.5, 1.06), columnspacing=1.2)
+           bbox_to_anchor=(0.5, 1.08), columnspacing=1.2)
 fig.tight_layout(pad=0.3)
 save(fig, "fig_frontier")

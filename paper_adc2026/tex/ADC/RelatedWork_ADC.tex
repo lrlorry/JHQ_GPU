@@ -1,58 +1,24 @@
 \section{Related Work}
-\label{sec:related}
-\label{sec:relatedwork}
+\label{sec:related}\label{sec:relatedwork}
+\paragraph{Quantisation and grouped ADC.}
+Product quantisation~\cite{pq} decomposes vectors into subspaces for compressed
+storage and asymmetric distance computation. JHQ~\cite{jhq} supplies the
+orthogonal transform, Cartesian primary codebook and residual hierarchy used
+here. PQ Fast Scan~\cite{fastscan} and Quicker ADC~\cite{quickeradc} organise
+small tables for efficient execution. GPU IVF-RaBitQ~\cite{ivfrabitq} groups
+$U$ code bits and balances shared-memory capacity against arithmetic. Its
+$U=4$ equals our $G=2$ through $U=8/G$: both use 16 entries per component
+table. We apply this established trade-off to JHQ's primary representation and
+measure its interaction with packed access and scan depth. Equation~\ref{eq:split}
+is a direct consequence of that representation; arbitrary learned PQ
+subcodebooks do not in general have the same internal separability.
 
-We organise related work around the novelty threats that matter for this paper
-rather than as a catalogue.
-
-\paragraph{Quantisation and JHQ.}
-Product Quantization~\cite{pq} established Cartesian decomposition across
-subspaces and asymmetric distance computation; JHQ~\cite{jhq} adds an
-orthogonal transform and hierarchical residual refinement. We claim neither as
-a contribution: our work begins from that representation and asks how its
-specific structure should execute on a GPU.
-
-\paragraph{Grouped lookup tables.}
-This is the closest prior work. PQ Fast
-Scan~\cite{fastscan} showed that cache residency alone is insufficient for fast
-ADC; Quicker ADC~\cite{quickeradc} generalised it with irregular product
-quantisers and split tables. Most directly, GPU IVF-RaBitQ~\cite{ivfrabitq}
-partitions dimensions into groups of $U$ bits, builds one $2^{U}$-entry table
-per group, sums $D/U$ lookups per candidate, and selects $U{=}4$ by trading
-shared-memory capacity against arithmetic. That trade-off is the same one
-Section~\ref{sec:designspace} navigates, it is prior art, and we do not claim
-it.
-
-Two things are ours. First, the object: RaBitQ groups a representation designed
-to be grouped --- its code \emph{is} the bit pattern its table is indexed by ---
-whereas JHQ's primary code is an 8-bit index into 256 codewords with no grouped
-structure on its face. Equation~\ref{eq:split} is an identity that has to be
-derived from the codebook's Cartesian construction, and it does not exist for an
-ordinary $k$-means product quantiser at the same code width. Second, the method: RaBitQ selects its
-group size by measuring which performs best, while Section~\ref{sec:rq3} reads
-an instruction count off the disassembled kernel and uses it to say which of the
-two competing costs each granularity is paying.
-
-The two choices agree, and it is worth saying so rather than manufacturing a
-difference. RaBitQ's $U$ counts bits per group and our $G$ counts groups of an
-eight-bit code, so $U{=}8/G$ and its $U{=}4$ is our $G{=}2$: both land on four
-bits and sixteen entries per table. Two derivations over different
-representations reaching the same group width is corroboration that the
-trade-off is real, not evidence that either is novel for choosing it.
-
-\paragraph{Adaptive ANN control.}
-ANN libraries such as FAISS~\cite{faiss} expose parameter sweeps, and learned
-approaches adapt search termination to the query~\cite{earlyterm}; we claim
-neither sampling nor parameter selection as new. Our rule differs in its signal:
-it needs no labelled neighbours and no learned predictor, comparing the system's
-own returned top-$k$ sets against a generous-budget reference. Because a
-label-free proxy is not a recall guarantee, the evaluation quantifies its
-selection error and its amortisation separately.
-
-\paragraph{GPU ANN systems.}
-CAGRA~\cite{cagra} represents the graph-based GPU frontier and cuVS provides
-production implementations of it, IVF-PQ and IVF-RaBitQ~\cite{ivfrabitq}. These
-are not uniformly weaker than JHQ --- our matched experiments show regime
-crossings in the high-recall tail and with batch size --- which is why we report
-nondominated frontiers and configuration-specific build failures rather than a
-single aggregate speedup.
+\paragraph{Adaptive search and GPU systems.}
+FAISS~\cite{faiss} provides sampled parameter autotuning, while learned early
+termination~\cite{earlyterm} adapts search effort to a query. Our workload policy
+uses an unlabelled self-agreement signal to choose JHQ's residual budget and
+compares it with the exhaustive sweep it replaces. CAGRA~\cite{cagra} offers a
+strong graph-based GPU baseline, and cuVS also implements IVF-PQ. The
+evaluation compares against both and separates search throughput from
+construction cost and resident memory; Section~\ref{sec:setup} says why
+cuVS IVF-RaBitQ is cited but not measured against.

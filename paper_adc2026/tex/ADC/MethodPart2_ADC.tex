@@ -1,85 +1,72 @@
 \section{Adaptive Hierarchical Refinement}
 \label{sec:method2}
-
-\subsection{Criterion}
-Original JHQ leaves $\alpha$ externally specified, and the useful budget is
-workload dependent: at $\mathit{nprobe}{=}128$ openai3-3072 is flat from
-$\alpha{=}4$ while arxiv-768 is still improving at $\alpha{=}200$, a censored
-endpoint rather than a plateau. A single global constant therefore either
-wastes $O(\alpha k d)$ residual work on easy workloads
-or filters candidates before accurate refinement on hard ones. We calibrate a
-workload-level operating point rather than predict $\alpha$ per query, which
-keeps the control path label-free and amortisable.
-
-Let $Q_s$ be $S$ sampled queries from the current workload and $R_{\max}(q)$ the
-top-$k$ ID set returned under a generous $\alpha_{\max}$. For a tested $\alpha$
-with returned set $R_\alpha(q)$, define the total slot disagreement
+\subsection{Output-stability criterion}
+The sufficient refinement budget is workload dependent. At
+$\mathit{nprobe}=128$, measured curves range from $\alpha=4$ to at least 200;
+arxiv-768 still improves at 200, so the upper endpoint is a lower bound.
+We choose a workload-level budget using $S$ sampled queries $Q_s$. Let
+$R_{\max}(q)$ and $R_\alpha(q)$ be the returned top-$k$ ID sets at a generous
+$\alpha_{\max}$ and a candidate $\alpha$. Define
 \begin{equation}
-  D(\alpha) \;=\; \sum_{q \in Q_s}
-  \bigl[\, k - \lvert R_\alpha(q) \cap R_{\max}(q) \rvert \,\bigr],
-  \label{eq:disagree}
+D(\alpha)=\sum_{q\in Q_s}\bigl[k-|R_\alpha(q)\cap R_{\max}(q)|\bigr].
+\label{eq:disagree}
 \end{equation}
-and select the smallest tested-grid $\alpha$ with $D(\alpha)\le\epsilon$.
-Membership asks whether more residual work changes \emph{which} neighbours come
-back, ignoring harmless permutations of the same IDs, and $\epsilon$ is a
-non-negative integer over the whole sample rather than a per-query fraction ---
-so a fixed $\epsilon$ is a stricter test as $S$ grows. $S{=}32$ and
-$\epsilon{=}1$ were our initial defaults; Section~\ref{sec:rq2} measures what
-they risk and withdraws the first. Output stability is observable from the
-running index where ground-truth recall is not, but it is not a recall
-guarantee, so that section validates it against ground truth offline.
+Acceptance requires $D(\alpha)\le\epsilon$, where $\epsilon$ is a non-negative
+integer counting disagreeing slots over the \emph{whole sample}. It ignores
+permutations of the same IDs. A fixed $\epsilon$ becomes stricter as $S$ grows.
+Stability cannot certify ground-truth recall, recover IVF routing losses, or
+reveal improvement beyond $\alpha_{\max}$.
 
-\subsection{Monotonicity and bisection}
+\subsection{Search rule and its assumptions}
 \label{sec:mono}
+For a descending grid $A[0],\ldots,A[L-1]$ with $A[0]=\alpha_{\max}$,
+compute the reference once and initialise $l=0$, $h=L-1$. While $l<h$, test
+$j=\lceil(l+h)/2\rceil$. If $D(A[j])\le\epsilon$, set $l=j$; otherwise set
+$h=j-1$. Return $A[l]$. Thus the return is an observed acceptable point, with
+$A[0]$ as fallback if no tested smaller budget passes. Our held-out experiment
+uses $A=(200,100,64,32,16,8,4,2)$ and $\epsilon=1$.
 
-
-\begin{proposition}[monotonicity of disagreement]
+\begin{proposition}[Monotonicity under exact primary selection]
 \label{prop:mono}
-Let $\alpha_1 \le \alpha_2 \le \alpha_{\max}$. Under exact top-$c_k$ primary
-selection with $c_k$ non-decreasing in $\alpha$, a fixed refined distance, and a
-deterministic total tie rule,
-$D(\alpha_1) \ge D(\alpha_2) \ge D(\alpha_{\max}) = 0$.
+With exact top-$c_k$ primary selection, non-decreasing $c_k$, fixed refined
+scores and a deterministic total tie rule,
+$D(\alpha_1)\ge D(\alpha_2)$ for $\alpha_1\le\alpha_2\le\alpha_{\max}$.
 \end{proposition}
-
 \begin{proof}
-Exact top-$c_k$ selection nests the survivor sets,
-$S_{\alpha_1} \subseteq S_{\alpha_2} \subseteq S_{\alpha_{\max}}$. Order
-$S_{\alpha_{\max}}$ by the refined distance with the deterministic tie key and
-let $R_{\max}$ be its first $k$ elements. Any element of $R_{\max}$ present in
-$S_\alpha$ also appears in $\mathrm{top}\text{-}k(S_\alpha)$, since fewer than
-$k$ elements of $S_{\alpha_{\max}}$ precede it and hence fewer than $k$ of the
-subset $S_\alpha$ do. So $R_\alpha \cap R_{\max} = S_\alpha \cap R_{\max}$,
-which can only grow with $\alpha$. \qed
+The survivor sets nest: $S_{\alpha_1}\subseteq S_{\alpha_2}\subseteq
+S_{\alpha_{\max}}$. Any reference top-$k$ item present in $S_\alpha$ also
+belongs to its refined top-$k$, because fewer than $k$ items of the larger set
+precede it under the fixed ordering. Hence
+$R_\alpha\cap R_{\max}=S_\alpha\cap R_{\max}$, whose size cannot decrease
+as $\alpha$ increases. Summing proves the claim. \qed
 \end{proof}
 
-\paragraph{Implementation caveat and measured deviation.}
-The production scan uses a bounded per-thread selector with
-$\texttt{K\_LOCAL}{=}4$, so a thread can discard a globally top-$c_k$ item when
-more than \texttt{K\_LOCAL} of them fall in its stride class, and
-Proposition~\ref{prop:mono}'s premise is not asserted for the deployed kernel.
-Measured: with the index pinned, vogue-768 at $\mathit{nprobe}{=}128$ and
-$\texttt{BLOCK}{=}512$ --- the harder collision regime, since
-$\texttt{K\_LOCAL}{=}8$ is register-infeasible at the production
-$\texttt{BLOCK}{=}1024$ --- raising \texttt{K\_LOCAL} from 4 to 8 changes 10 of
-10{,}000 returned ID positions across 5 of 1{,}000 queries and \emph{no} result
-set: every difference is two adjacent ranks swapping inside an identical
-top-10. The selector reorders ties rather than discarding, but which items tie
-moves with the codebook, so this is one index instance.
+The production selector retains only $\texttt{K\_LOCAL}=4$ candidates per
+thread before merging. It can discard a globally useful candidate, so the
+proposition's premise is not guaranteed. Bisection consequently need not find
+the grid's global minimum acceptable budget. A frozen comparison of local
+capacities 4 and 8 on one vogue-768 index changes 10 ID positions in five
+queries out of 1,000, with no top-10 set differences. This comparison does not
+test against an exact selector. Section~\ref{sec:rq2} compares bisection with
+whole-grid enumeration directly. The stopping behaviour is conservative only
+relative to the sampled acceptance criterion.
 
-For bisection the consequence is narrow. Across all 15 calibration traces that
-probe two or more grid points, $D(\alpha)$ is non-increasing at the points the
-search visited --- evidence, not proof, since unvisited points are untested. We
-claim only that the stopping behaviour is conservative with respect to the
-sampled criterion, not that bisection returns the grid's global minimum
-acceptable $\alpha$.
+Sampling and parameter search are established in ANN tuning. Here the signal is
+JHQ's own output stability and the target is its externally specified residual
+budget; neither labelled neighbours nor a learned predictor is required.
+Section~\ref{sec:related} positions these choices against prior work.
 
 \subsection{Calibration economics}
-With $T_{\mathrm{cal}}$ the calibration time and $T_{\mathrm{fixed}}$,
-$T_{\mathrm{rule}}$ the per-batch times before and after selection, the
-break-even batch count is
-$B^{*}=T_{\mathrm{cal}}/(T_{\mathrm{fixed}}-T_{\mathrm{rule}})$;
-Section~\ref{sec:rq2} reports both terms. Reuse assumes the query distribution,
-routing configuration, $k$ and index stay stable, which is the price of
-workload-level rather than per-query adaptation. Drift is unmeasured:
-recalibrating every $H$ batches adds $T_{\mathrm{cal}}/H$ per batch, but
-choosing $H$ is a drift-detection problem outside this evidence.
+Let $T_{\mathrm{cal}}$ be calibration time and $T_{\mathrm{fixed}}$ and
+$T_{\mathrm{rule}}$ the per-batch times with fixed and selected budgets. For
+$B$ subsequent batches,
+\begin{equation}
+T_{\mathrm{adaptive}}(B)=T_{\mathrm{cal}}+BT_{\mathrm{rule}},\qquad
+T_{\mathrm{fixed,total}}(B)=BT_{\mathrm{fixed}}.
+\label{eq:total}
+\end{equation}
+If $T_{\mathrm{rule}}<T_{\mathrm{fixed}}$, break-even is
+$B^*=T_{\mathrm{cal}}/(T_{\mathrm{fixed}}-T_{\mathrm{rule}})$; otherwise it
+does not repay. Reuse assumes stable queries, index, routing and $k$.
+Periodic recalibration every $H$ batches adds $T_{\mathrm{cal}}/H$ per batch;
+workload-drift detection is outside the measured scope.

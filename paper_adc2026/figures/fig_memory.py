@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Figure: where JHQ's resident memory goes, and why it is above IVF-RaBitQ's.
+"""Figure: where JHQ's resident memory goes.
+
+The IVF-RaBitQ comparison this figure used to carry is withdrawn with the
+baseline itself: cuVS ships RaBitQ's quantiser without the re-ranking its
+published results depend on, so its footprint here is the footprint of a
+configuration we were forced into.
 
 Section 6.7, the companion to fig_cost. IVF-RaBitQ is 22-39% smaller wherever
 it builds, and its bits per dimension alone predict only 11% -- 8 against 9.
@@ -101,12 +106,9 @@ left += vo
 
 for i, ds in enumerate(order):
     # coincides with the bar end by construction; drawn as the check that it
-    # does, and so the RaBitQ tick has something to be read against.
+    # does.
     ax.scatter([meas[ds] / 1024], [i], marker="|", s=110, color="black",
                zorder=4, lw=1.1)
-    if ds in rq:
-        ax.scatter([rq[ds] / 1024], [i], marker="|", s=110,
-                   color=S["rabitq"]["color"], zorder=4, lw=1.1)
 
 # same stack, as a share of the measured total
 leftp = np.zeros(len(order))
@@ -128,9 +130,8 @@ ax.invert_yaxis(); ax.grid(axis="y", visible=False)
 ax.set_xlim(0, max(left) * 1.08)
 
 h, l = ax.get_legend_handles_labels()
-h += [plt.Line2D([], [], color="black", marker="|", ls="", ms=8, mew=1.1),
-      plt.Line2D([], [], color=S["rabitq"]["color"], marker="|", ls="", ms=8, mew=1.1)]
-l += ["JHQ, measured", "IVF-RaBitQ, measured"]
+h += [plt.Line2D([], [], color="black", marker="|", ls="", ms=8, mew=1.1)]
+l += ["JHQ, measured"]
 fig.legend(h, l, loc="upper center", bbox_to_anchor=(0.5, 1.0), ncol=4,
            fontsize=7, columnspacing=1.2)
 
