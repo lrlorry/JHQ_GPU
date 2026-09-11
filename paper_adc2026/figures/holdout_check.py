@@ -7,10 +7,16 @@ selector.  fhold.log re-runs that protocol twice on one binary: JHQ_AS_HOLDOUT=1
 calibrates on even-indexed queries and reports on odd, JHQ_AS_HOLDOUT=0
 reproduces the pooled behaviour.
 
-QPS is not comparable between the arms -- the reported batch is 500 queries
-under holdout and 1,000 pooled -- so this compares the three quantities that
-are independent of batch size: the selected alpha, the recall it achieves, and
-gain, which is a ratio measured inside one batch.
+The quantity the leak can act on is the selected alpha: that is the whole
+decision calibration makes, and under holdout the selector has seen none of
+the queries the number is then reported on.  If the two arms pick the same
+alpha, seeing 32 of the 1,000 reported queries did not change the outcome.
+
+The other two columns do not isolate the leak and are printed as context.
+Recall is measured on different query sets -- 500 odd-indexed against all
+1,000 -- so a difference there mixes the leak with whichever half is easier.
+QPS is not comparable at all, the batches being 500 against 1,000; gain is,
+since it is a ratio taken inside one batch.
 """
 import collections, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -63,11 +69,17 @@ def main():
           f"最大 |Δ| {max(abs(x) for x in dr):.4f}")
     print(f"gain 差:             中位 {sorted(dg)[len(dg)//2]:+.3f}  "
           f"最大 |Δ| {max(abs(x) for x in dg):.3f}")
-    # The pooled arm scores the queries its selector saw; if the leak flattered
-    # the frontier, the held-out arm's recall is systematically the lower one.
     worse = sum(1 for x in dr if x < -1e-4)
     better = sum(1 for x in dr if x > 1e-4)
-    print(f"held-out 更低 {worse} 个,更高 {better} 个,持平 {diffs-worse-better} 个")
+    print(f"held-out recall 更低 {worse} 个,更高 {better} 个 "
+          f"(含子集效应,不是泄漏的度量)")
+    dis = [(ds, np_) for ds, np_ in cells
+           if (ds, np_, 1) in r and (ds, np_, 0) in r
+           and r[(ds, np_, 1)]["alpha"] != r[(ds, np_, 0)]["alpha"]]
+    if dis:
+        print("选中 alpha 不同的单元: " + ", ".join(
+            f"{d}/{n} ({r[(d,n,1)]['alpha']} vs {r[(d,n,0)]['alpha']})"
+            for d, n in dis))
 
 
 if __name__ == "__main__":
