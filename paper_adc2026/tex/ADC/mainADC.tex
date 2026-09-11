@@ -13,25 +13,24 @@
 \email{Rui.Luo1@anu.edu.au}, \email{mengxuan.zhang@anu.edu.au}}
 \maketitle
 \begin{abstract}
-Hierarchical quantisation scores many candidates with a compact primary code
-and refines only a small survivor set. On a GPU, its efficiency depends both on
-how the primary representation executes and on how much residual refinement a
-workload needs. We study these decisions for JHQ. Its Cartesian primary
-codebook permits an exact decomposition of each 256-entry distance table into
-two 16-entry tables. We combine this representation with candidate-parallel
-scanning and packed access. Controlled comparisons show that the smallest table
-does not give the fastest scan: additional lookups can outweigh the benefit of
-reducing table storage. We then select the residual budget using the system's
-own top-$k$ output stability on sampled queries, without ground-truth labels or
-a learned predictor. A held-out comparison with fixed budgets, full-pool
-calibration, exhaustive enumeration and an offline oracle measures both its
-benefit and its sampling risk. With 128 calibration queries, the selected-arm
-throughput gain is about $1.10$--$1.47\times$ over the fixed reference, with
-estimated repayment in $4$--$19$ subsequent batches; some samples still exceed
-the chosen recall-loss threshold. Experiments on six datasets show distinct
-operating regions for JHQ-GPU, IVF-PQ and CAGRA, rather than a
-universal winner. The results support adapting execution to JHQ's representation
-and choosing refinement jointly with calibration cost and quality risk.
+Hierarchical quantisation scores candidates with a compact primary code and
+refines a small survivor set. We study two GPU decisions for JHQ: how to
+execute its primary representation and how much refinement a workload needs.
+Its Cartesian codebook permits exact decomposition of each 256-entry distance
+table into two 16-entry tables. We combine this factorisation with
+candidate-parallel scanning and packed access. Controlled comparisons show
+that smaller tables do not always produce faster scans. We select the residual
+budget using sampled top-$k$ agreement with a generous reference budget,
+without ground-truth labels or a learned predictor. A held-out experiment on all six
+datasets compares fixed budgets, sampled and full-pool calibration,
+enumeration and an offline oracle. With 128 calibration queries the selected
+arm gains $1.05$--$2.77\times$ over fixed $\alpha=100$ on ten of twelve
+cells, repaying calibration in an estimated $1$--$36$ subsequent 500-query
+batches; on the remaining dataset the sufficient budget lies at or beyond the
+tested grid, where the rule is slower than the constant it replaces. Six-dataset system
+comparisons establish operating regions alongside IVF-PQ and CAGRA. The results
+link JHQ's execution choices to its representation and quantify the quality
+and cost trade-offs of refinement calibration.
 \keywords{Approximate nearest neighbour search \and GPU \and Quantisation \and
 Adaptive query processing}
 \end{abstract}

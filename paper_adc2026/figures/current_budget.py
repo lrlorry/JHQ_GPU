@@ -10,6 +10,13 @@ from pathlib import Path
 import json
 import budget_arms
 import style
+
+# vogue-768 -> vogue, openai3-1536 -> openai3-1.5k: split('-')[0] alone collides
+# on the two OpenAI sets, which is how a twelve-line legend came to name four
+# different datasets "OpenAI".
+SHORT = {'vogue-768': 'vogue', 'arxiv-768': 'arxiv', 'bge-m3': 'bge',
+         'stella': 'stella', 'openai3-1536': 'openai3-1.5k',
+         'openai3-3072': 'openai3-3k'}
 from style import plt, WIDE, DS_COLOR, DS_MARK, save
 
 
@@ -31,7 +38,7 @@ def main():
                           rule_alpha=r['alpha'],gain=gain,cal_ms=r['cal_ms'],
                           repay_batches=repay,mean_loss=r['mean'],p95_loss=r['p95'],
                           failures=round(64*r['over']),draws=64))
-        name = ('Vogue' if ds=='vogue-768' else 'OpenAI')+r'\,/\,%d'%np_
+        name = SHORT.get(ds,ds)+r'\,/\,%d'%np_
         row=[name,fmt(8,*fx[8]),fmt(64,*fx[64]),
              fmt(r['alpha'],ceiling-r['mean'],r['qps']),
              fmt(fa,fre,fq),fmt(oa,ore,oq)]
@@ -53,22 +60,42 @@ def main():
         ax.plot([32,64,128],[100*c['rule'][s]['over'] for s in [32,64,128]],
                 color=DS_COLOR[ds], marker=DS_MARK[ds],
                 ls='-' if np_==128 else '--',
-                label=('%s / %d'%('Vogue' if ds=='vogue-768' else 'OpenAI',np_)))
+                label=(SHORT.get(ds,ds) if np_==128 else None))
     ax.set_xscale('log',base=2);ax.set_xticks([32,64,128]);ax.set_xticklabels(['32','64','128'])
     ax.set_xlabel('Calibration queries, S');ax.set_ylabel(r'Draws losing $>10^{-3}$ (%)')
     ax.set_ylim(-3,78)
-    ax.legend(fontsize=6.2 if len(cells)>6 else 7, handlelength=1.1,
-              ncol=2 if len(cells)>6 else 1, labelspacing=0.25, borderpad=0.25)
+    # Lines fall from upper left to lower right, so the lower left is the only
+    # corner the data leaves free once there are twelve of them.
+    # Six colours name the datasets and two line styles the probe depth, so the
+    # legend carries six entries rather than one a line.  The caption says
+    # which style is which.
+    ax.legend(fontsize=6.0, handlelength=1.1, ncol=2, labelspacing=0.2,
+              columnspacing=0.9, borderpad=0.25, loc='lower left',
+              framealpha=0.92)
     ax.set_title('(a) Held-out quality risk',fontsize=8)
-    for x in stats:
+    # A cell whose selected budget is slower than fixed alpha=100 has a
+    # negative break-even: it never repays, and there is no point on a log axis
+    # for that.  Those are drawn against the top of the panel with a cross, so
+    # the reader sees them rather than a scatter that quietly lost two points.
+    rep_ok=[x for x in stats if x['repay_batches']>0]
+    rep_no=[x for x in stats if x['repay_batches']<=0]
+    for x in rep_ok:
         ds=x['dataset'];np_=x['nprobe']
         bx.scatter(x['gain'],x['repay_batches'],color=DS_COLOR[ds],marker=DS_MARK[ds],
                    facecolors=DS_COLOR[ds] if np_==128 else 'none',s=26)
         # Offsets per point, not per probe depth: at (4,-13) the openai/512
         # label landed beside the vogue/128 marker and read as its label.
-    gs=[x['gain'] for x in stats]; rs=[x['repay_batches'] for x in stats]
+    gs=[x['gain'] for x in stats]; rs=[x['repay_batches'] for x in rep_ok]
     sp=max(gs)-min(gs)+.01
-    bx.set_xlim(min(gs)-0.10*sp, max(gs)+0.10*sp); bx.set_ylim(min(rs)*0.72, max(rs)*1.40)
+    top=max(rs)*2.2
+    for x in rep_no:
+        bx.scatter(x['gain'], top, color=DS_COLOR[x['dataset']], marker='X', s=34,
+                   zorder=5)
+    bx.axhline(max(rs)*1.45, color='0.6', lw=0.6, ls=':')
+    bx.text(0.5, 0.955, 'never repays', transform=bx.transAxes, fontsize=6.4,
+            ha='center', va='top', color='0.35')
+    bx.set_xlim(min(gs)-0.10*sp, max(gs)+0.10*sp)
+    bx.set_ylim(min(rs)*0.72, top*1.35)
     bx.set_yscale('log')
     # set_yticks fixes the major ticks, but the log locator keeps its own
     # minor ticks and the default formatter labels those too, so the axis
