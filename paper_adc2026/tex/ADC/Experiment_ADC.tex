@@ -207,22 +207,22 @@ candidate counts.
 
 \subsection{RQ4: comparison with CPU JHQ}
 \label{sec:rq5}\label{sec:rq6cpu}
-The CPU baseline is the authors' artifact with its build and recall fixes,
-AVX2 and pinned threads, sweeping budgets 2--100 and probes 128--1{,}024;
-lower probes are excluded because thread start-up dominates their timings.
-Both sides bucket recall at $10^{-3}$ before interpolating.
+Against the authors' own CPU artifact, the GPU rule curve is about 52--108
+times faster over the recalls both cover. The more useful number is what the
+budget is worth on each processor: the same $\alpha$ knob buys $2.5$ to
+$3.0\times$ more on the GPU than on the CPU at every probe depth on
+openai3-3072. On the CPU the scan dominates and the budget barely moves
+throughput; on the GPU the scan is what Section~\ref{sec:designspace} makes
+cheap, so refinement takes the larger share and the same cut in survivors
+buys more. Selective refinement is therefore a GPU design decision rather
+than a CPU idea carried across.
 
-The GPU rule curve is about 52--108 times faster over overlapping recall
-coverage. The same $\alpha$ knob is worth $2.5$ to
-$3.0\times$ more on the GPU at every probe depth on
-openai3-3072: on the CPU the scan dominates and the budget
-barely moves throughput, while on the GPU the scan is what
-Section~\ref{sec:designspace} makes cheap, so refinement takes the larger
-share. Selective refinement is a GPU design decision, not a CPU idea carried
-across. Most CPU cells have one timing, so these are order-of-magnitude
-comparisons. Codebooks are trained separately, and both OpenAI sets use 4,096
-CPU lists versus 8,192 on the GPU frontier. CPU results for BGE and Stella
-are unavailable.
+It is a system comparison, not an identical-index speedup. The two
+implementations train separate codebooks, both OpenAI sets use 4{,}096 CPU
+lists against 8{,}192 on the GPU frontier, probes below 128 are excluded
+because thread start-up dominates their timings, and most CPU cells are timed
+once, so these are order-of-magnitude figures. BGE and Stella have no CPU
+measurement.
 
 \subsection{RQ5: construction and memory}
 \label{sec:rq6}
