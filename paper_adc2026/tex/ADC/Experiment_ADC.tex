@@ -158,9 +158,9 @@ throughput in 23 of the 24 cells spanning six datasets and four probe depths
 $G=1$ leads by $0.03\%$. The sharpest form of the argument is between the
 losers: $G=4$ and $G=8$ store 16 entries a subspace each, so footprint is
 constant and only lookups differ, and $G=8$ is 3.4--38.5\% slower across all
-24 pairs, widening with probe depth. Factorisation gains up to 53.8\% at $M=384$;
-at $M=96$ the gains are small and vary in sign, which is the regime where the
-full table nearly fits.
+24 pairs, widening with probe depth. Factorisation against the full table grows with $M$: $-0.0$ to $+9.9\%$ at
+$M{=}96$, where the full table nearly fits, rising to $+4.8$ to $+25.3\%$ at
+$M{=}128$ and a maximum of $+53.4\%$ at $M{=}192$.
 
 \begin{figure}[tbp]
 \centering
