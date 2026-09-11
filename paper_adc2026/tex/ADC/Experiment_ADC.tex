@@ -110,7 +110,8 @@ All six datasets at probes 128 and 512.}
 \input{tables/budget_current}
 \end{table}
 
-The rule's median budget matches the oracle in 10 of 12 cells. The exceptions
+Table~\ref{tab:budget} gives the five arms per cell. The rule's median budget
+matches the oracle in 10 of 12 cells. The exceptions
 are arxiv at probe 128 and OpenAI-3072 at probe 512. Oracle budgets range from
 4 to 200, exposing the trade-off of a shared constant. Median budget agreement
 does not establish held-out quality for every draw.
@@ -239,13 +240,14 @@ training exceeds memory. This limits attribution of build differences to the
 quantisers alone. Within JHQ, training accounts for 71\% of the plotted build
 estimate on Vogue and 27\% on Stella, where encoding dominates.
 
-\begin{figure}[tbp]
+Residual codes are JHQ's largest resident component on Stella.
+Figure~\ref{fig:memory} separates codes, centroids and query workspace from
+the unattributed remainder.
+
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\linewidth]{figs/fig_memory.pdf}
 \caption{Resident memory components and shares. Markers show measured
 totals; the hatched remainder reconciles unattributed memory.}
 \label{fig:memory}
 \end{figure}
-Residual codes are JHQ's largest resident component on Stella.
-Figure~\ref{fig:memory} separates codes, centroids and query workspace from
-the unattributed remainder.

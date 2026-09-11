@@ -1,62 +1,52 @@
 \section{GPU-Native JHQ}
 \label{sec:method1}
 \subsection{Execution and representation}
-Batched matrix multiplication applies the square orthogonal transform. IVF
-routing then identifies lists to scan; query-specific lookup tables evaluate
-primary distances, and only primary survivors access the residual codes.
-The transform, codebooks and hierarchy follow JHQ. The execution design changes
-physical layout and primary-distance evaluation while preserving selective
-refinement.
+The transform, codebooks and hierarchy follow JHQ. Batched matrix
+multiplication applies the orthogonal transform; IVF routing selects lists,
+lookup tables score primary codes, and survivors access residual codes.
 
 Warp lanes score different candidates at the same subspace $m$. A scan copy in
-subspace-major $[M,N]$ order makes their byte reads adjacent, whereas
-candidate-major $[N,M]$ order makes them strided. This is standard coalescing.
-Separately, packing four byte codes into a 32-bit word reduces loads, address
-calculations and loop iterations, with unpacking performed in registers.
-Packing changes instruction demand rather than the logical code volume.
+subspace-major $[M,N]$ order makes their byte reads adjacent, providing standard
+coalescing. Packing four byte codes into a 32-bit word reduces loads, address
+calculations and loop iterations; registers handle unpacking. The logical code
+volume is unchanged.
 
 \subsection{Cartesian-factorised primary distance tables}
 \label{sec:designspace}
-For subspace $m$, the primary table is
-$T_m[c]=\lVert q'_m-C_m[c]\rVert_2^2$. Each codeword is a Cartesian product
-of one-dimensional levels. Partitioning its eight code decisions therefore
-partitions the coordinate sum exactly:
+For subspace $m$, $T_m[c]=\lVert q'_m-C_m[c]\rVert_2^2$. The Cartesian
+codeword construction partitions the coordinate sum exactly:
 \begin{equation}
 T_m[c]=T_m^{\mathrm{hi}}[c\gg4]+T_m^{\mathrm{lo}}[c\bmod16].
 \label{eq:split}
 \end{equation}
-The two components contain 16 entries each, replacing 256 with 32. Construction
-evaluates $32(D_s/2)$ coordinate contributions instead of $256D_s$: an
-analytical $16\times$ reduction in that work and $8\times$ in table entries,
-not a search-speedup prediction. Exactness is in real arithmetic; floating-point
-association and tie order can differ. A general equal $G$-way grouping stores
+Two 16-entry tables replace 256 entries. Construction evaluates
+$32(D_s/2)$ coordinate contributions instead of $256D_s$, reducing this
+arithmetic by $16\times$ and table entries by $8\times$. These counts do not
+predict search speedup. Exactness holds in real arithmetic; floating-point
+association and tie order can differ. Equal $G$-way grouping stores
 $G2^{8/G}$ entries and requires $G$ lookups per candidate--subspace.
 
-The scan admits a table into shared memory only if
+The scan admits a table into shared memory when
 \begin{equation}
-40\,\texttt{BLOCK}+4MG2^{8/G}\le\texttt{smem\_optin}.
+40\,\texttt{BLOCK}+4MG2^{8/G}\le\texttt{smem\_optin},
 \label{eq:resid}
 \end{equation}
-The first term is candidate scratch. On the tested device,
+where the first term is candidate scratch. On the tested device,
 $\texttt{smem\_optin}=101{,}376$ bytes leaves $94$--$59$\,KiB as
-\texttt{BLOCK} rises from 128 to 1024. Full tables require $96$/$384$\,KiB
-at $M=96/384$ and use the global-memory path; split tables require
-$12$/$48$\,KiB and fit throughout this range. Global-memory loads may still
-hit cache. This admission calculation does not measure cache misses or achieved
-occupancy; the performance trade-off requires the comparisons in
-Section~\ref{sec:rq3}.
+\texttt{BLOCK} rises from 128 to 1024. At $M=96/384$, full tables need
+$96$/$384$\,KiB and use the global-memory path; split tables need
+$12$/$48$\,KiB and fit throughout this range (Figure~\ref{fig:lut}). Global loads may hit cache;
+Section~\ref{sec:rq3} measures the performance trade-off.
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\linewidth]{figs/fig_lut.pdf}
-\caption{Cartesian factorisation and required table storage. The band is the
-shared-memory budget remaining after candidate scratch; admission is distinct
-from cache behaviour.}
+\caption{Cartesian factorisation and table storage. The band shows shared
+memory available after candidate scratch, not measured cache behaviour.}
 \label{fig:lut}
 \end{figure}
 
 \subsection{Selective refinement and the policy question}
-Only $c_k$ survivors are scored with their primary reconstruction plus residual.
-Reading residuals during the broad scan would replace $O(c_kd)$ selective work
-with work approaching $O(n_cd)$. The bounded selector's limitations are stated
-in Section~\ref{sec:mono}. The remaining decision is $c_k=\alpha k$:
-\emph{how many primary survivors should actually be refined}?
+Only $c_k$ survivors are scored using primary reconstruction plus residual.
+Accessing residuals during the broad scan would increase this work from
+$O(c_kd)$ towards $O(n_cd)$. The remaining decision is $c_k=\alpha k$:
+\emph{how many primary survivors should be refined}?

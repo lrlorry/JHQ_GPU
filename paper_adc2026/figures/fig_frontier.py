@@ -21,7 +21,10 @@ from style import *
 
 fronts, base = load_fronts(), load_baselines()
 
-fig, axes = plt.subplots(3, 2, figsize=(WIDE, 3.85), sharex=True, sharey=True)
+# 3x2 at 3.85in tall took 55% of a text page and left its page with 32 lines of
+# body text where a dense page carries 45.  The same six panels as 2x3 are
+# wider and much shorter; nothing about the data changes.
+fig, axes = plt.subplots(2, 3, figsize=(WIDE, 2.55), sharex=True, sharey=True)
 for ax, ds in zip(axes.flat, DATASETS):
     b = base[ds]
 
