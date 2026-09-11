@@ -11,8 +11,7 @@ exported vectors and squared-L2 top-10 truth, without further normalisation.
 
 \begin{table}[htbp]
 \centering
-\caption{Database shape and JHQ routing. $n_q$ is the actual query count.
-Vogue and arxiv use supplied JHQ-format exports.}
+\caption{Database shape and JHQ routing; $n_q$ is the actual query count.}
 \label{tab:data}
 \footnotesize
 \begin{tabular}{lrrrr}\toprule
@@ -64,10 +63,9 @@ IVF-PQ is behind throughout.
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\linewidth]{figs/fig_frontier.pdf}
-\caption{Steady-state Recall@10--QPS, entire query set per call. Markers and
-line styles distinguish all baselines. Endpoints are sweep endpoints. The
-calibrated JHQ curve uses the frontier protocol stated in
-Section~\ref{sec:setup}, not the held-out budget experiment.}
+\caption{Steady-state Recall@10--QPS, entire query set per call. Endpoints
+are sweep endpoints, not architectural ceilings. The calibrated JHQ curve uses
+Section~\ref{sec:setup}'s frontier protocol, not the held-out experiment.}
 \label{fig:frontier}
 \end{figure}
 
@@ -102,10 +100,9 @@ grid point within $10^{-3}$ of the maximum measured recall.
 
 \begin{table}[tbp]
 \centering
-\caption{Held-out budget comparison, $\epsilon=1$, $\alpha_{\max}=200$.
-Each entry gives $\alpha$ and Recall@10, then kQPS. Rule entries report median
-$\alpha$, mean recall and mean selected-arm QPS over 64 draws at $S=128$.
-All six datasets at probes 128 and 512.}
+\caption{Held-out budget comparison, $\epsilon=1$, $\alpha_{\max}=200$. Each
+entry gives $\alpha$ and Recall@10, then kQPS. Rule entries are the median
+$\alpha$, mean recall and mean selected-arm QPS over 64 draws at $S=128$.}
 \label{tab:budget}
 \input{tables/budget_current}
 \end{table}
@@ -166,8 +163,7 @@ $M{=}128$ and a maximum of $+53.4\%$ at $M{=}192$.
 \centering
 \includegraphics[width=\linewidth]{figs/fig_lutgroups.pdf}
 \caption{Six datasets, four probe depths; lines are medians over datasets and
-bands their range. (a) Granularity, normalised per cell to its own $G{=}2$;
-$4{\times}4$ and $8{\times}2$ hold the same table and differ only in lookups.
+bands their range. (a) Granularity, normalised per cell to its own $G{=}2$.
 (b) Factorised against full table, under byte and packed loads.}
 \label{fig:lutgroups}
 \end{figure}
@@ -230,9 +226,9 @@ are unavailable.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{figs/fig_build.pdf}
-\caption{Index build time, log scale. Bars are medians over recorded clean
-configurations and repeats and whiskers their range, not a confidence
-interval. JHQ's bar is one cold training plus its median encode.}
+\caption{Index build time, log scale. Bars are medians over clean
+configurations and repeats, whiskers their range, not a confidence interval.
+JHQ's bar is one cold training plus its median encode.}
 \label{fig:build}
 \end{figure}
 Figure~\ref{fig:build} reports index build times. Where CAGRA fp32 searches
