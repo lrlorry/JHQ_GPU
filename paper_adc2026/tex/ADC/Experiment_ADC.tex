@@ -237,18 +237,15 @@ part of the design rather than as a result.
 \subsection{RQ4: mechanisms and negative results}
 \label{sec:rq4}
 Table~\ref{tab:neg} gives counterexamples to simple design heuristics.
-Table-free distance uses less table state yet runs slower; finer grouping
-also adds lookups. The private probe cursor is the sharpest of them and moves
-no bytes at all: it removes a redundant traversal of the probe list, changes
-no distance --- recall moves by at most $10^{-4}$ across its twenty
-dataset$\times$probe-depth pairs --- and is worth up to $+148.5\%$, while two
-low-probe cells give back $1.4\%$. Table construction is a separate candidate
-explanation and is too small to be one, at $0.20$ to $2.30\%$ of a batch over
-18 configurations. These observations are consistent with instruction demand
-and memory access jointly affecting performance. They do not isolate cache,
-register pressure or achieved occupancy. Without hardware counters, static
-SASS counts cannot assign the remaining time to residency. We consequently do
-not decompose runtime into independently measured issue and residency terms.
+Table-free distance uses less table state yet runs slower, and finer grouping
+adds lookups. The probe cursor is the sharpest: it removes a redundant
+traversal, moves no bytes and changes no distance --- recall moves by at most
+$10^{-4}$ over its twenty pairs --- and is worth up to $+148.5\%$. Table
+construction is too small to be the explanation instead, at $0.20$ to
+$2.30\%$ of a batch. Instruction demand and memory access evidently both
+matter, but without hardware counters we cannot isolate cache, register
+pressure or occupancy, and do not decompose runtime into issue and residency
+terms.
 
 \begin{table}[tbp]
 \centering
@@ -273,19 +270,15 @@ candidate counts, not an explanation for every performance difference.
 
 \subsection{RQ5: what the port buys over CPU JHQ}
 \label{sec:rq5}\label{sec:rq6cpu}
-The CPU comparison uses the authors' JHQ artifact with documented build and
-recall fixes, FAISS commit \texttt{4a2393741}, AVX2, and the best of 16/32
-threads pinned with \texttt{OMP\_PROC\_BIND=close},
-\texttt{OMP\_PLACES=cores}. Its envelope sweeps
-$\alpha\in\{2,4,8,16,32,100\}$ and probes 128/256/512/1,024;
-lower probes are excluded because the short batch timings are dominated by
-thread start-up. Both sides use $10^{-3}$ recall buckets before interpolation.
-The GPU rule curve is about 52--108 times faster at the measured overlapping
-recalls. Most CPU cells have one timing; these are order-of-magnitude results.
-The two implementations train separate codebooks, and OpenAI-1536 uses
-4,096 CPU lists versus 8,192 GPU lists. Thus this is a system comparison,
-not an identical-index kernel speedup. CPU results for BGE and Stella are
-unavailable; source provenance limits are explicit in the artifact.
+The CPU baseline is the authors' JHQ artifact with its documented build and
+recall fixes, AVX2, and the better of 16 and 32 pinned threads, sweeping
+$\alpha\in\{2,4,8,16,32,100\}$ and probes 128--1{,}024; lower probes are
+excluded because thread start-up dominates their timings. At matched recall
+the GPU is $52$--$108$ times faster. Four caveats: most CPU cells are timed
+once, so these are order-of-magnitude figures; the two implementations train
+separate codebooks; OpenAI-1536 uses 4{,}096 CPU lists against 8{,}192 on the
+GPU; and BGE and Stella have no CPU measurement. It is a system comparison,
+not an identical-index kernel speedup.
 
 \subsection{RQ6: construction and memory}
 \label{sec:rq6}
