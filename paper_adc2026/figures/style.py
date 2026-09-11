@@ -75,12 +75,15 @@ plt.rcParams.update({
 # Hue order chosen so adjacent pairs stay separable under deuteranopia and
 # protanopia; markers carry the same information again.
 S = {
-    # "JHQ (this work)" claimed the method, which Section 2 explicitly does not:
-    # JHQ is Han et al.'s, and this paper is the GPU port the title names.
-    # The dashed line is the same system with the budget rule switched off, so
-    # it is labelled by what is missing rather than by a parameter value the
-    # reader has to look up.
-    "jhq":    dict(color="#1f6fc4", marker="o", label="JHQ-GPU (ours)",
+    # Neither "(this work)" nor "(ours)".  The first claimed the method, which
+    # the paper explicitly does not -- the transform, the primary codebook and
+    # the residual hierarchy are JHQ's, and Related Work concedes the grouped
+    # table too.  "(ours)" makes the same claim in a softer voice, on a curve
+    # whose name is the prior method's.  What is ours is the execution path and
+    # the calibration rule, and the paper says so in words; a legend that
+    # annotates one of four series and not the others reads as advocacy rather
+    # than labelling, and the thickest blue line is not hard to find.
+"jhq":    dict(color="#1f6fc4", marker="o", label="JHQ-GPU",
                    mec="white"),
     "jhq_fix":dict(color="#9c9a93", marker="",
                    label=r"JHQ-GPU, no calibration ($\alpha{=}100$)", ls=(0, (4, 2))),

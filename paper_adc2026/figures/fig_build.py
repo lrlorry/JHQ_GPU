@@ -169,7 +169,7 @@ METHODS = [("JHQ-GPU", "jhq"),
 # "(this work)" claimed JHQ itself, which the paper explicitly does not; the
 # port is what is ours, and the title calls it JHQ-GPU.  style.py's S dict was
 # corrected and this one was missed.
-LAB = {"JHQ-GPU": "JHQ-GPU (ours)", "IVF-RaBitQ": "IVF-RaBitQ",
+LAB = {"JHQ-GPU": "JHQ-GPU", "IVF-RaBitQ": "IVF-RaBitQ",
        "cuVS-CAGRA": "CAGRA fp32", "cuVS-CAGRA-int8": "CAGRA int8",
        "cuVS-IVFPQ": "IVF-PQ"}
 
