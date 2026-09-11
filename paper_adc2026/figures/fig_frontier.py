@@ -54,14 +54,19 @@ for ax in axes[-1]:          # bottom row, whatever the grid shape is
 for ax in axes[:, 0]:
     ax.set_ylabel("QPS")
 
+# Four entries on one row.  At ncol=2 the second label wrapped into the first
+# row's rule and the dashed handle was drawn through its own text; both JHQ
+# labels are short enough now that one row fits, and the caption carries what
+# "calibrated" means.
 handles = [plt.Line2D([], [], color=S["jhq"]["color"], marker="o", lw=1.5,
-                     label=r"JHQ-GPU, fixed $\alpha=100$"),
+                     label=r"JHQ-GPU, $\alpha{=}100$"),
            plt.Line2D([], [], color="#6e8eab", ls="--", lw=1.0,
-                     label="JHQ-GPU, same-pool calibration")]
+                     label="JHQ-GPU, calibrated")]
 handles += [plt.Line2D([], [], color=S[k]["color"], marker=S[k]["marker"],
                       ls=S[k].get("ls", "-"), lw=1.0, label=S[k]["label"])
             for k in ("cagra", "ivfpq")]
-fig.legend(handles=handles, loc="upper center", ncol=2,
-           bbox_to_anchor=(0.5, 1.08), columnspacing=1.2)
+fig.legend(handles=handles, loc="upper center", ncol=4,
+           bbox_to_anchor=(0.5, 1.045), columnspacing=1.0,
+           handlelength=1.6, fontsize=7)
 fig.tight_layout(pad=0.3)
 save(fig, "fig_frontier")
