@@ -295,6 +295,20 @@ recall 0.90/0.95. This combines fastest baseline builds with interpolated
 search frontiers and omits calibration/control overhead; it is an estimate
 under those assumptions, not a measured lifecycle comparison.
 
+Two asymmetries in that comparison, pointing opposite ways. The coarse
+training budgets are not matched and cannot be: cuVS's k-means trains on half
+the dataset by default, which allocates $36.4$\,GiB at Stella's
+$17.8$M$\,\times\,$1024 and does not fit this card, so IVF-PQ runs there at
+$2$--$10\%$ against JHQ's $7.2\%$ --- and on the four smaller sets at the
+default $50\%$ against JHQ's $14$--$32\%$. Measured on bge-m3, the reduction
+is worth $34\%$ of IVF-PQ's build ($32.2$\,s at the default against
+$21.1$\,s reduced), so the advantage is overstated on the small sets and
+understated on the large ones. Second, the advantage narrows with $N$ for a
+reason internal to JHQ: training is $71\%$ of its build on vogue-768 and
+$27\%$ on Stella, where encoding every vector dominates. Cheap training is
+where JHQ's advantage lies, and it is the part that stops mattering as $N$
+grows.
+
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\linewidth]{figs/fig_memory.pdf}
