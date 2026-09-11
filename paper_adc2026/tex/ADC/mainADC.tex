@@ -35,7 +35,7 @@ budget using sampled top-$k$ agreement with a generous reference budget,
 without ground-truth labels or a learned predictor. A held-out experiment on
 six datasets compares fixed budgets, sampled and full-pool calibration,
 enumeration and an offline oracle. With 128 calibration queries, selected-arm
-QPS gains average $1.05$--$2.77\times$ over fixed $\alpha=100$ in ten of twelve
+mean selected-arm QPS is $1.05$--$2.77\times$ that of fixed $\alpha=100$ in ten of twelve
 configurations, with 5.2--30.8\,ms calibration. The two arxiv configurations
 have lower throughput and higher mean recall. Quality risk is workload
 dependent: up to 40 of 64 calibration draws lose more than $10^{-3}$ held-out

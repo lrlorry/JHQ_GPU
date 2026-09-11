@@ -46,8 +46,12 @@ this training setup and probes $\{8,32,128,256,512,1024\}$. The primary
 system comparison fixes $\alpha=100$. The additional same-pool calibration
 curve uses $S=32$, $\epsilon=1$ and $\alpha_{\max}=100$ on the evaluated
 query pool. The separate held-out evaluation uses $S=128$ and
-$\alpha_{\max}=200$ (Section~\ref{sec:rq2}); its quality results do not
-validate the frontier's calibration protocol.
+$\alpha_{\max}=200$ (Section~\ref{sec:rq2}). Repeating the frontier's own
+selection with those 32 queries drawn from a disjoint half of each pool leaves
+the mean ratio of selected-arm to $\alpha_{\max}$ throughput almost unchanged,
+$1.60\times$ against $1.59\times$ over 36 dataset--probe cells, but selects a
+different budget in 18 of them, which is why the dashed curves are reported as
+context rather than as a policy result.
 
 IVF-PQ sweeps 8-bit subcodes at 96--768-byte code lengths and CAGRA sweeps
 graph degree, search width and intermediate top-$k$; GPU memory is not
@@ -65,11 +69,10 @@ the ordering on the OpenAI sets depends on the target recall.
 \centering
 \includegraphics[width=\linewidth]{figs/fig_frontier.pdf}
 \caption{Recall@10--QPS, entire query set per call. Solid JHQ fixes
-$\alpha=100$; dashed calibrates on a 32-query sample of the pool it reports,
-excluding calibration cost. Drawing that sample from a disjoint half leaves
-mean gain unchanged, $1.60$ against $1.59$, but moves the selected budget in
-18 of 36 cells, so it is context rather than a held-out result
-(Section~\ref{sec:rq2}). Endpoints are measured sweep endpoints.}
+$\alpha=100$; dashed calibrates on a 32-query sample of the evaluated pool and
+excludes calibration cost, so it is contextual rather than held out.
+Section~\ref{sec:rq2} evaluates calibration on held-out queries. Endpoints are
+measured sweep endpoints.}
 \label{fig:frontier}
 \end{figure}
 
@@ -89,7 +92,8 @@ savings and subsequent batch count (Section~\ref{sec:rq2}).
 IVF-PQ was run at its own partition and at JHQ's; at JHQ's it reaches only
 $0.19$--$0.76$ of its own throughput on five datasets and gains $1.5\times$ on
 Stella, so each system is reported at its better measured partition. CAGRA
-fails to build on BGE and Stella, and one Stella row marked
+exhausts the card's 32\,GB during construction on BGE and Stella, and one
+Stella row marked
 \texttt{CONTAMINATED} by the harness is excluded throughout.
 
 \subsection{RQ2: selection quality and calibration economics}
@@ -186,7 +190,7 @@ rather than what a minimal JQ index would cost.
 depths; lines are medians over datasets and bands their range. Factorising to
 $G{=}2$ gains, factorising further gives it back, and both effects grow with
 probe depth. $4{\times}4$ and $8{\times}2$ store the same 16 entries and
-differ only in lookups.}
+require different numbers of lookups.}
 \label{fig:lutgroups}
 \end{figure}
 
@@ -195,7 +199,7 @@ throughput in 23 of the 24 cells spanning six datasets and four probe depths
 (Figure~\ref{fig:lutgroups}); the exception is arxiv-768 at probe 128, where
 $G=1$ leads by $0.03\%$. The sharpest form of the argument is between the
 losers: $G=4$ and $G=8$ store 16 entries a subspace each, so footprint is
-constant and only lookups differ, and $G=8$ is 3.4--38.5\% slower over all 24
+constant and the number of lookups differs, and $G=8$ is 3.4--38.5\% slower over all 24
 pairs, widening with probe depth. Factorisation grows with $M$: $-0.0$ to
 $+9.9\%$ at $M{=}96$, where the full table nearly fits, and up to $+53.4\%$
 at $M{=}192$.
@@ -221,17 +225,17 @@ candidate counts.
 
 \subsection{RQ4: comparison with CPU JHQ}
 \label{sec:rq5}\label{sec:rq6cpu}
-Against the authors' own CPU artifact, the GPU same-pool rule curve is about 52--108
-times faster over the recalls both cover. The more useful number is what the
-budget is worth on each processor: the same $\alpha$ knob buys $2.5$ to
-$3.0\times$ more on the GPU than on the CPU at every probe depth on
-openai3-3072. On the CPU the scan dominates and the budget barely moves
-throughput; on the GPU the scan is what Section~\ref{sec:designspace} makes
-cheap, so refinement takes the larger share and the same cut in survivors
-buys more. The observations motivate retuning the inherited refinement
-budget for the GPU execution path.
+What the refinement budget is worth differs by processor: the same $\alpha$
+knob buys $2.5$ to $3.0\times$ more throughput on the GPU than on the CPU at
+every probe depth on openai3-3072. For context the two artifacts differ by
+roughly two orders of magnitude over the recalls both cover, though that is a
+comparison of artifacts and not an identical-index speedup. On the CPU the
+scan dominates and the budget barely moves throughput; on the GPU the scan is
+what Section~\ref{sec:designspace} makes cheap, so refinement takes the larger
+share and the same cut in survivors buys more. The observations motivate
+retuning the inherited refinement budget for the GPU execution path.
 
-It is a system comparison, not an identical-index speedup. The two
+The two
 implementations train separate codebooks, both OpenAI sets use 4{,}096 CPU
 lists against 8{,}192 on the GPU frontier, probes below 128 are excluded
 because thread start-up dominates their timings, and most CPU cells are timed
@@ -269,7 +273,7 @@ quantisers alone. Within JHQ, training accounts for 71\% of the plotted build
 estimate on Vogue and 27\% on Stella, where encoding dominates.
 
 That advantage does not extend to memory (Figure~\ref{fig:memory}). The
-residual level dominates every index and grows with $N$ --- $48\%$ of
+residual level dominates every measured JHQ index and grows with $N$ --- $48\%$ of
 $1.4$\,GiB on Vogue, $83\%$ of $20.4$\,GiB on Stella --- and it is the level that buys the high-recall end
 of Section~\ref{sec:rq1}, so JHQ occupies a different
 memory--accuracy--throughput point rather than a better one. An unattributed

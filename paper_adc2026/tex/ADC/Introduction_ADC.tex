@@ -24,8 +24,9 @@ and calibration cost.
 
 Our contributions are a GPU execution design for JHQ's Cartesian primary
 representation and an output-stability policy for its residual budget, each
-measured on six datasets. Two-group tables are fastest in 23 of 24 cells while
-storing more than the alternatives that lose, and the budget rule buys
-$1.05$--$2.77\times$ in ten of twelve held-out cells --- failing, measurably
-and predictably, on the one dataset whose sufficient budget lies beyond the
-tested grid.
+measured on six datasets. Two-group tables have the highest observed
+throughput in 23 of 24 cells, despite using more storage than finer groupings.
+Mean selected-arm QPS is $1.05$--$2.77\times$ that of fixed $\alpha=100$ in
+ten of twelve held-out cells. On arxiv, larger selected budgets improve mean recall over
+fixed $\alpha=100$ but reduce throughput. We report these speed--quality
+trade-offs separately from sampling risk and calibration cost.
