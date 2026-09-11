@@ -15,10 +15,11 @@ IVF-RaBitQ~\cite{ivfrabitq} is the closest execution design: a cheap filter
 feeding a refinement stage, grouped lookup tables and a GPU layout. Two-stage
 execution and grouped lookup are shared ideas; ours are their measured
 trade-off for JHQ's Cartesian codebook and the calibration of its residual
-budget. We do not report it as a baseline: we could not configure the GPU
-implementation available to us so that its search reproduced the two-stage
-behaviour its paper describes, and we prefer no measurement to one of a
-configuration we cannot vouch for. CAGRA~\cite{cagra} and cuVS
+budget. We do not report it as a baseline. Its two-stage behaviour is not what the
+search call of the implementation available to us performs on its own; it has
+to be assembled from that call and a separate re-ranking primitive, and we
+have not validated that assembly against the published system. We leave the
+comparison open rather than report a configuration we cannot vouch for. CAGRA~\cite{cagra} and cuVS
 IVF-PQ~\cite{cuvs} supply the GPU comparisons; GPU compressed-domain scanning
 and $k$-selection go back to Faiss-GPU~\cite{faissgpu}.
 
