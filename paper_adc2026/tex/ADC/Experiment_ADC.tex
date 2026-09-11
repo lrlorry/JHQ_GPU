@@ -258,16 +258,19 @@ unavailable; source provenance limits are explicit in the artifact.
 \caption{Build-time medians and ranges over recorded clean configurations
 and repeats, not confidence intervals. JHQ combines its cold training time
 with the median and range of encoding times. Baseline bars use all recorded
-clean builds; the lifecycle estimate uses their fastest builds separately.}
+clean builds; the lifecycle estimate uses their fastest builds separately.
+CAGRA int8 is not drawn: only its fp32 variant appears here, and int8's
+construction cost is quoted in the text where its search advantage is.}
 \label{fig:build}
 \end{figure}
 Figure~\ref{fig:build} shows a construction advantage for JHQ in the tested
-configurations. JHQ's cold Stella build takes 13.4\,s; the fastest clean
-CAGRA-int8 build takes 74.3\,s. A model $T_{\mathrm{build}}+Q/\mathrm{QPS}$ gives
-CAGRA-int8 crossover estimates of 1.6--8.9M queries where its search is
-faster at recall 0.90/0.95. This combines fastest baseline builds with
-interpolated search frontiers and omits calibration/control overhead; it is
-an estimate under those assumptions, not a measured lifecycle comparison.
+configurations. JHQ's cold Stella build takes 13.4\,s against 39.0\,s for the
+fastest clean IVF-PQ build, the only compared index that builds there. Where
+CAGRA-int8 searches faster (Section~\ref{sec:rq1}), a model
+$T_{\mathrm{build}}+Q/\mathrm{QPS}$ puts the crossover at 1.6--8.9M queries at
+recall 0.90/0.95. This combines fastest baseline builds with interpolated
+search frontiers and omits calibration/control overhead; it is an estimate
+under those assumptions, not a measured lifecycle comparison.
 
 \begin{figure}[tbp]
 \centering

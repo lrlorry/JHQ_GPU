@@ -142,7 +142,7 @@ for ln in open(datafile("rabitq_o3072_build.log")):
 # number measured for it here is a number about a configuration we were
 # forced into, not about the method.
 METHODS = [("JHQ-GPU", "jhq"),
-           ("cuVS-CAGRA", "cagra"), ("cuVS-CAGRA-int8", "cagra8"),
+           ("cuVS-CAGRA", "cagra"),
            ("cuVS-IVFPQ", "ivfpq")]
 # "(this work)" claimed JHQ itself, which the paper explicitly does not; the
 # port is what is ours, and the title calls it JHQ-GPU.  style.py's S dict was
