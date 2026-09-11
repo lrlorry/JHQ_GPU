@@ -95,11 +95,8 @@ y = np.arange(len(order))
 # datasets' workspace and centroid segments are a few pixels wide. The second
 # panel is the same stack normalised, which is where the composition is
 # actually readable.
-# One panel, not two.  The share panel restated the stack as percentages, and
-# Section 6.6 now gives the three numbers that mattered -- residual at 48% of
-# 1.4 GiB on Vogue and 83% of 20.4 GiB on Stella.  Two panels cost the page
-# that Section 6.6's second figure needed.
-fig, ax = plt.subplots(figsize=(WIDE * 0.72, 1.55))
+fig, (ax, axp) = plt.subplots(1, 2, figsize=(WIDE, 2.0),
+                              gridspec_kw=dict(width_ratios=[1.55, 1]))
 left = np.zeros(len(order))
 for p, c in parts:
     v = np.array(vals[p]) / 1024          # GiB
@@ -115,8 +112,20 @@ for i, ds in enumerate(order):
     # does.
     ax.scatter([meas[ds] / 1024], [i], marker="|", s=110, color="black",
                zorder=4, lw=1.1)
-# No "(a)": the share panel it was paired with is gone, and a lone panel
-# labelled (a) reads as a figure with a missing half.
+
+# same stack, as a share of the measured total
+leftp = np.zeros(len(order))
+tot = np.array([meas[d] for d in order])
+for p_, c in parts + [(OTHER, "#f2f1ec")]:
+    v = np.array(vals[p_]) / tot * 100
+    axp.barh(y, v, left=leftp, height=0.5, color=c, ec="none" if p_ != OTHER else "#898781",
+             lw=0 if p_ != OTHER else 0.5, hatch=None if p_ != OTHER else "///")
+    leftp += v
+axp.set_xlim(0, 100); axp.set_yticks(y); axp.set_yticklabels([])
+axp.set_xlabel("share of measured total (%)")
+axp.invert_yaxis(); axp.grid(axis="y", visible=False)
+axp.text(0.03, 0.03, "(b)", transform=axp.transAxes, fontsize=8)
+ax.text(0.97, 0.03, "(a)", transform=ax.transAxes, fontsize=8, ha="right")
 
 ax.set_yticks(y); ax.set_yticklabels([PRETTY[d] for d in order])
 ax.set_xlabel("resident GPU memory (GiB)")
@@ -130,6 +139,7 @@ fig.legend(h, l, loc="upper center", bbox_to_anchor=(0.5, 1.0), ncol=4,
            fontsize=7, columnspacing=1.2)
 
 fig.tight_layout(pad=0.3, rect=(0, 0, 1, 0.80))
+fig.subplots_adjust(wspace=0.10)
 # Section 6.7's VRAM comparison, printed both ways round.  The two differ by
 # their denominator and the body once quoted one while phrasing the other:
 # "RaBitQ uses 22-39% less than JHQ" is the JHQ-denominated statement, and
