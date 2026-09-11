@@ -95,7 +95,13 @@ def med(cell, g):
 
 import statistics as _st
 
-fig, (a, b) = plt.subplots(1, 2, figsize=(WIDE, 3.05))
+# One panel.  Panel (b) plotted G=2/G=1 against nprobe for two load layouts:
+# the same quantity as this panel's G=2 point, its two lines within 3% of each
+# other, and a min-max band four times the spread of the medians.  Its only
+# distinct claim -- that factorisation pays under both layouts, so the two
+# changes multiply rather than substitute -- is a clause in Section 6.4, and a
+# chart whose message is "these agree" reads as one line drawn twice.
+fig, a = plt.subplots(figsize=(WIDE * 0.78, 2.15))
 GS = [1, 2, 4, 8]
 SETS = [("vogue-768", 96), ("openai3-3072", 384)]
 
@@ -136,108 +142,8 @@ a.set_ylabel(r"QPS $\div$ QPS at $G{=}1$ (full table)")
 a.set_ylim(0.3, 1.75)   # headroom above 1.0 for the tag, below for the note
 a.legend(loc="lower left", fontsize=6.4, labelspacing=0.2, borderpad=0.3,
          handlelength=1.4, framealpha=0.93, bbox_to_anchor=(-0.012, -0.015))
-a.text(0.03, 0.965, "(a)", transform=a.transAxes, fontsize=8, va="top")
 # Short enough for the strip right of the legend; the tick labels already
 # spell out 4x4 and 8x2, so the note only has to say they are equal.
 
-
-# ── (b) factorisation against the full table, both layouts ─────────────────
-# This was two datasets at three probe depths, six bars a layout, while
-# layout6.log has the same square on six datasets at four depths -- 48 cells,
-# already parsed by layout_square.py and quoted in Section 6.4's prose but
-# never drawn.  The encoding follows panel (a): one line a layout, the median
-# over datasets, the spread as a band.  Twelve bars a layout is not a figure.
-sq = collections.defaultdict(dict)
-for ln in open(datafile("layout6.log")):
-    m = re.search(r"^\s+(\S+)\s+M=\d+\s+layout=(\w+)\s+G=(\d+)\s+np=(\d+)\s+"
-                  r"recall=([\d.]+)\s+qps=(\d+)", ln)
-    if m:
-        sq[(m.group(1), m.group(2), int(m.group(4)))][int(m.group(3))] = int(m.group(6))
-NP2 = [8, 32, 128, 512]
-SQ_DS = sorted({k[0] for k in sq})
-x2 = np.arange(len(NP2))
-for lay, col, lab in (("byte", "#9c9a93", "byte loads"),
-                      ("word", "#1f6fc4", "packed 32-bit loads")):
-    per = []
-    for ds in SQ_DS:
-        r = [sq.get((ds, lay, n), {}) for n in NP2]
-        if all(1 in c and 2 in c for c in r):
-            per.append([c[2] / c[1] for c in r])
-    if not per:
-        continue
-    arr = np.array(per)
-    b.fill_between(x2, arr.min(0), arr.max(0), color=col, alpha=0.13, lw=0)
-    b.plot(x2, np.median(arr, 0), color=col, lw=1.3, marker="o", ms=3.2,
-           mec="white", mew=0.5, label=lab)
-    note = "%d datasets, %d cells" % (len(per), 2 * len(per) * len(NP2))
-b.axhline(1.0, color="0.35", lw=0.7, ls=":")
-b.set_xticks(x2); b.set_xticklabels([str(v) for v in NP2])
-b.set_xlabel("nprobe")
-b.set_ylabel("factorised $\\div$ full table")
-b.legend(loc="upper left", fontsize=6.6, handlelength=1.3, borderpad=0.3,
-         labelspacing=0.22, framealpha=0.93, bbox_to_anchor=(0.115, 0.985))
-# The panel tag sits bottom-left, where the legend is not: the band fills the
-# top of this panel and the annotation the bottom right.
-b.text(0.03, 0.965, "(b)", transform=b.transAxes, fontsize=8, va="top")
-fig.tight_layout(pad=0.3)
-# The numbers Table 2 and Section 6.2 quote from this panel, printed so they
-# have a generator instead of an ad-hoc calculation. G*2^(8/G) is 16 for both
-# G=4 and G=8, so the pair holds the table footprint fixed.
-pairs = []
-for key in sorted(rows):
-    if key[2] != "word" or key[0] == "square":
-        continue          # the granularity phases carry G=4 and G=8
-    d = rows[key]
-    if 4 in d and 8 in d:
-        pairs.append((key[1], key[3], 100.0 * (med(d, 8) / med(d, 4) - 1.0)))
-if pairs:
-    print("  G=8 against G=4, identical footprint, only lookups differ:")
-    for ds, np_, pct in pairs:
-        print("     %-14s nprobe=%-5d %+.1f%%" % (ds, np_, pct))
-    print("     range %+.1f%% to %+.1f%%"
-          % (min(p[2] for p in pairs), max(p[2] for p in pairs)))
-    # Panel (a) draws the sweep phase only, so the counts the caption and
-    # Section 6.2 quote have to come from the sweep phase only.  Folding the
-    # square phase into the same range is what put a -4.2% cell in the text
-    # that no line in panel (a) can show.
-    def g12(phase):
-        return [(k[1], k[3], 100.0 * (med(rows[k], 2) / med(rows[k], 1) - 1.0))
-                for k in sorted(rows)
-                if k[0] == phase and 1 in rows[k] and 2 in rows[k]
-                and (phase != "sweep" or k[2] == "word")]
-    sw = g12("sweep")
-    if sw:
-        print("  panel (a), sweep phase -- G=2 against G=1, %d cells:" % len(sw))
-        print("     G=2 wins %d of %d" % (sum(1 for p in sw if p[2] > 0), len(sw)))
-        for M in (96, 384):
-            v = [p for p in sw if (M == 96) == ("vogue" in p[0])]
-            if v:
-                pct = [p[2] for p in v]
-                print("     M=%d: %+.1f%% to %+.1f%%   by nprobe %s"
-                      % (M, min(pct), max(pct),
-                         ", ".join("np%d %+.1f%%" % (p[1], p[2])
-                                   for p in sorted(v, key=lambda q: q[1]))))
-    sq = g12("square")
-    if sq:
-        neg = [p for p in sq if p[2] <= 0]
-        print("  square phase (panel (b)'s cells), %d of %d negative:" % (len(neg), len(sq)))
-        for ds, np_, pct in neg:
-            same = [p for p in sw if p[0] == ds and p[1] == np_]
-            print("     %-14s nprobe=%-4d %+.1f%%%s"
-                  % (ds, np_, pct,
-                     "   same point in the sweep phase: %+.1f%%" % same[0][2]
-                     if same else ""))
-        print("  panel (b), factorised/full by layout:")
-        for ds in ("vogue-768", "openai3-3072"):
-            for np_ in (32, 128, 512):
-                v = {}
-                for lay in ("byte", "word"):
-                    d = rows.get(("square", ds, lay, np_))
-                    if d and 1 in d and 2 in d:
-                        v[lay] = med(d, 2) / med(d, 1)
-                if len(v) == 2:
-                    print("     %-14s nprobe=%-4d byte %.3f  packed %.3f  "
-                          "gap %+.1f%%" % (ds, np_, v["byte"], v["word"],
-                                           100 * (v["word"] / v["byte"] - 1)))
 
 save(fig, "fig_lutgroups")

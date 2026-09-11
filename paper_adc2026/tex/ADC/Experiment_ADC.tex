@@ -143,7 +143,7 @@ refutes; \emph{cells} is how many paired comparisons the range spans.
 describe a common workload.}
 \label{tab:neg}
 \footnotesize
-\begin{tabular}{llrl}\toprule
+\begin{tabular}{ll@{\hspace{1.2em}}r@{\hspace{1.2em}}l}\toprule
 Change & QPS effect & cells & Simple heuristic challenged\\\midrule
 Table-free exact score & $-30$ to $-52\%$ & 12 & Minimum table state\\
 $G=8$ versus $G=4$ & $-3.4$ to $-38.5\%$ & 24 & Equal footprint, equal speed\\
@@ -170,21 +170,20 @@ at $M{=}192$.
 
 \begin{figure}[tbp]
 \centering
-\includegraphics[width=\linewidth]{figs/fig_lutgroups.pdf}
-\caption{Six datasets, four probe depths; lines are medians over datasets and
-bands their range. (a) Throughput against the full table $G{=}1$: factorising
-to $G{=}2$ gains, factorising further gives it back, and both effects grow
-with probe depth. $4{\times}4$ and $8{\times}2$ store the same 16 entries and
-differ only in lookups. (b) The $G{=}2$ gain under byte and packed loads.}
+\includegraphics[width=0.92\linewidth]{figs/fig_lutgroups.pdf}
+\caption{Throughput against the full table, six datasets at four probe
+depths; lines are medians over datasets and bands their range. Factorising to
+$G{=}2$ gains, factorising further gives it back, and both effects grow with
+probe depth. $4{\times}4$ and $8{\times}2$ store the same 16 entries and
+differ only in lookups.}
 \label{fig:lutgroups}
 \end{figure}
 
 \paragraph{Access.} Full and split tables with byte and word loads, six
 datasets at four probe depths: 96 measurements, 48 paired ratios, packing
 worth 1--66\% with a maximum four-arm recall difference of 0.0001.
-Factorisation pays under both layouts and pays more with depth
-(Figure~\ref{fig:lutgroups}b), so the two changes largely multiply rather
-than substitute. Every arm
+Factorisation pays under both layouts and pays more with depth, so the two
+changes largely multiply rather than substitute. Every arm
 uses the subspace-major layout, so this does not isolate the physical
 transpose, which is standard coalescing and is not claimed.
 
