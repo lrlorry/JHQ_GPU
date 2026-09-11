@@ -69,10 +69,10 @@ The authors have no competing interests to declare that are relevant to the
 content of this article.
 \end{credits}
 
-%% The reference list lives in tex/mainADC.bbl, which is maintained directly.
-%% reference.bib is empty, so running bibtex WILL delete every reference --
-%% it already emptied ADC/mainADC.bbl once. LNCS accepts the .bbl in a
-%% submission; compile with pdflatex alone.
+%% reference.bib was zero bytes and the list existed only as a .bbl, so
+%% bibtex deleted references instead of building them. The .bib is
+%% reconstructed and verified: bibtex regenerates the previous .bbl line for
+%% line. Run it from tex/ with BIBINPUTS=./ADC: so it finds the file.
 \bibliographystyle{splncs04}
 \bibliography{reference}
 \end{document}
