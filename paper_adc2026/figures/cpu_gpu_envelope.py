@@ -42,7 +42,7 @@ DATA = os.path.join(HERE, os.pardir, "data")
 # (data/anchors5.log) place at the bottom of a 765-1015 spread whose median is
 # 1003.  Every other cell is cpu5.log's single measurement, unchanged.
 CPU_LOG = (sys.argv[1] if len(sys.argv) > 1
-           else os.path.join(DATA, "cpu5_remeasured.log"))
+           else os.path.join(DATA, "cpu6.log"))
 
 CPU_NPROBE_FLOOR = 128
 GPU_V57 = ["paper_fronts.log", "openai3072_v57_front.log"]

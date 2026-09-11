@@ -106,9 +106,12 @@ not build on bge-m3 either.
   \caption{Index build time, log scale. Bars are the median over swept
   configurations and repeat builds and whiskers their range, not a confidence
   interval. JHQ's bar is one cold training plus its median encode: training is
-  cached after a dataset's first row and encoding is not. All indexes train the
-  coarse quantiser at 39 points a centroid; each baseline's fastest build per
-  dataset is used, which is the choice least favourable to us.}
+  cached after a dataset's first row and encoding is not. Each baseline's
+  fastest build per dataset is used, which is the choice least favourable to us.
+  The coarse-training budgets differ and are not controlled here: JHQ trains at
+  39 points a centroid, cuVS defaults to 256, so IVF-RaBitQ trains on $5.8$ to
+  $6.6\times$ as many points. Part of its build gap is that budget rather than
+  the index, and the same budget buys it better centroids at search time.}
   \label{fig:build}
 \end{figure} 
 \subsection{RQ2: does the design prediction hold?}
@@ -286,12 +289,15 @@ project's monotonicity check.
 \subsection{RQ6: what does the port buy over CPU JHQ?}
 \label{sec:rq6cpu}
 Figure~\ref{fig:cpu}(a) puts both sides' $(\alpha,\mathit{nprobe})$ envelopes on
-one recall axis. The GPU reaches $52$ to $85\times$ the CPU envelope on
-vogue-768 and $75$ to $77\times$ on openai3-3072; pinning $\alpha{=}100$ on
-\emph{both} sides, so neither may tune the budget, gives $41$ to $71\times$ and
-$48$ to $60\times$. We give both denominators because they move in opposite
-directions: freedom over $\alpha$ and threads is worth more to the CPU on
-openai3-3072 than on vogue-768.
+one recall axis. Across the four datasets the CPU baseline covers, the GPU
+reaches $52$ to $108\times$ the CPU envelope; pinning $\alpha{=}100$ on
+\emph{both} sides, so neither may tune the budget, gives $41$ to $114\times$.
+We give both denominators because they move in opposite directions: freedom
+over $\alpha$ and threads is worth more to the CPU on some datasets than on
+others. Four of six, because the reference is the authors' own artifact rather
+than a reimplementation and bge-m3 and stella-trec24 were not reached; the
+comparison is therefore not made on the two datasets where JHQ is the only
+system that builds.
 
 Panel~(b) is why this comparison is worth a figure. The same $\alpha$ knob is
 worth $2.5$ to $3.0\times$ more on the GPU than on the CPU, at every probe
