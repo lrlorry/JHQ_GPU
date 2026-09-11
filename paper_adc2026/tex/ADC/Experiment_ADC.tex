@@ -165,16 +165,19 @@ $M{=}128$ and a maximum of $+53.4\%$ at $M{=}192$.
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\linewidth]{figs/fig_lutgroups.pdf}
-\caption{(a) Granularity sweep, each line normalised to its $G=2$ point,
-probes 8/32/128/512. (b) Separate table$\times$access phase, probes
-32/128/512. Phases are not pooled as repeated measurements of one
-configuration.}
+\caption{Six datasets at four probe depths; each line is the median over
+datasets and each band their full range. (a) Granularity, normalised per cell
+to its own $G=2$. (b) Factorised against full table, for byte and packed
+loads. The two panels are separate experiments and are not pooled.}
 \label{fig:lutgroups}
 \end{figure}
 
 \paragraph{Access.} Full and split tables with byte and word loads, six
 datasets at four probe depths: 96 measurements, 48 paired ratios, packing
-worth 1--66\% with a maximum four-arm recall difference of 0.0001. Every arm
+worth 1--66\% with a maximum four-arm recall difference of 0.0001.
+Factorisation pays under both layouts and pays more with depth
+(Figure~\ref{fig:lutgroups}b), so the two changes largely multiply rather
+than substitute. Every arm
 uses the subspace-major layout, so this does not isolate the physical
 transpose, which is standard coalescing and is not claimed.
 

@@ -143,38 +143,49 @@ a.annotate("smaller table,\nslower", xy=(2.55, 0.60), xytext=(1.35, 0.47),
            fontsize=7, color="#52514e", linespacing=1.3,
            arrowprops=dict(arrowstyle="-|>", lw=0.7, color="#898781"))
 
-# ── (b) the 2x2 ────────────────────────────────────────────────────────────
-NP2 = [32, 128, 512]   # the phase-3 2x2 grid; nprobe=8 lives in phase 1
-w, xs = 0.34, np.arange(len(NP2))
-for i, (ds, M) in enumerate(SETS):
-    off = (i - 0.5) * w
-    lut_b, lut_w = [], []
-    for np_ in NP2:
-        gb = rows.get(("square", ds, "byte", np_), {})
-        gw = rows.get(("square", ds, "word", np_), {})
-        lut_b.append(med(gb,2)/med(gb,1) if 1 in gb and 2 in gb else np.nan)
-        lut_w.append(med(gw,2)/med(gw,1) if 1 in gw and 2 in gw else np.nan)
-    b.bar(xs + off, lut_b, width=w * 0.44, color=DS_COLOR[ds], alpha=0.45,
-          ec=DS_COLOR[ds], lw=0.6,
-          label="%s, byte layout" % PRETTY[ds].split("-")[0])
-    b.bar(xs + off + w * 0.46, lut_w, width=w * 0.44, color=DS_COLOR[ds],
-          ec="none", label="%s, packed" % PRETTY[ds].split("-")[0])
+# ── (b) factorisation against the full table, both layouts ─────────────────
+# This was two datasets at three probe depths, six bars a layout, while
+# layout6.log has the same square on six datasets at four depths -- 48 cells,
+# already parsed by layout_square.py and quoted in Section 6.4's prose but
+# never drawn.  The encoding follows panel (a): one line a layout, the median
+# over datasets, the spread as a band.  Twelve bars a layout is not a figure.
+sq = collections.defaultdict(dict)
+for ln in open(datafile("layout6.log")):
+    m = re.search(r"^\s+(\S+)\s+M=\d+\s+layout=(\w+)\s+G=(\d+)\s+np=(\d+)\s+"
+                  r"recall=([\d.]+)\s+qps=(\d+)", ln)
+    if m:
+        sq[(m.group(1), m.group(2), int(m.group(4)))][int(m.group(3))] = int(m.group(6))
+NP2 = [8, 32, 128, 512]
+SQ_DS = sorted({k[0] for k in sq})
+x2 = np.arange(len(NP2))
+for lay, col, lab in (("byte", "#9c9a93", "byte loads"),
+                      ("word", "#1f6fc4", "packed 32-bit loads")):
+    per = []
+    for ds in SQ_DS:
+        r = [sq.get((ds, lay, n), {}) for n in NP2]
+        if all(1 in c and 2 in c for c in r):
+            per.append([c[2] / c[1] for c in r])
+    if not per:
+        continue
+    arr = np.array(per)
+    b.fill_between(x2, arr.min(0), arr.max(0), color=col, alpha=0.13, lw=0)
+    b.plot(x2, np.median(arr, 0), color=col, lw=1.3, marker="o", ms=3.2,
+           mec="white", mew=0.5, label=lab)
+    note = "%d datasets, %d cells" % (len(per), 2 * len(per) * len(NP2))
 b.axhline(1.0, color="0.35", lw=0.7, ls=":")
-b.set_xticks(xs); b.set_xticklabels([str(v) for v in NP2])
+b.set_xticks(x2); b.set_xticklabels([str(v) for v in NP2])
 b.set_xlabel("nprobe")
 b.set_ylabel("factorised $\\div$ full table")
-b.set_ylim(0.9, 1.72)
-b.legend(loc="upper left", fontsize=7, ncol=1, columnspacing=0.9,
-         handlelength=1.1, bbox_to_anchor=(0.0, 1.02))
-# "barely moves" was drawn from five of six cells; the sixth moves 12.6%,
-# and it is the cell carrying the largest gain, so the claim now names the
-# range instead of averaging it away.
-b.text(0.03, 0.78, "(b)  the two layouts agree\n"
-       "      within $6\\%$ in five of six\n"
-       "      cells, so the gains mostly\n"
-       "      multiply rather than overlap", transform=b.transAxes, fontsize=7,
-       ha="left", va="top", color="#52514e", linespacing=1.35)
-
+b.legend(loc="upper left", fontsize=7, handlelength=1.2, borderpad=0.3,
+         bbox_to_anchor=(0.0, 0.98))
+# The panel tag sits bottom-left, where the legend is not: the band fills the
+# top of this panel and the annotation the bottom right.
+b.text(0.03, 0.05, "(b)", transform=b.transAxes, fontsize=8, va="bottom")
+b.text(0.115, 0.055, note, transform=b.transAxes, fontsize=6.4,
+       color="#898781", va="bottom")
+b.annotate("both layouts gain,\nand gain more\nwith probe depth",
+           xy=(0.97, 0.06), xycoords="axes fraction", ha="right", va="bottom",
+           fontsize=7, color="#52514e", linespacing=1.3)
 fig.tight_layout(pad=0.3)
 # The numbers Table 2 and Section 6.2 quote from this panel, printed so they
 # have a generator instead of an ad-hoc calculation. G*2^(8/G) is 16 for both
