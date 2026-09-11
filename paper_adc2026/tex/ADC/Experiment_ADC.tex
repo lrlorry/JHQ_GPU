@@ -269,19 +269,19 @@ with it --- gain is $1.044$--$2.653\times$ for at most $0.0048$ recall.
 \subsection{RQ5: does batch size change the ordering?}
 \label{sec:rq5}
 Table~\ref{tab:batch} gives matched-recall ratios against IVF-RaBitQ at four
-batch sizes. It does: on openai3-3072 JHQ leads at every measured point, while
-on vogue-768 it crosses parity between batch 128 and 512. The frontier ratios of
-Section~\ref{sec:rq1} are therefore the batch-1{,}024 column of this sweep and
-not batch-independent summaries. Two datasets carry this sweep, the extremes of
-the dimension range; the openai3-3072 batch-1{,}024, $R{=}0.97$ cell is
-excluded, its RaBitQ anchor being the one matched point that failed the
-project's monotonicity check.
+batch sizes, on the four datasets where IVF-RaBitQ builds. It does: JHQ leads at
+every measured point on three of them, while on vogue-768 it crosses parity
+between batch 128 and 512. The frontier ratios of Section~\ref{sec:rq1} are
+therefore the batch-1{,}024 column of this sweep and not batch-independent
+summaries. One cell is absent, arxiv-768 at $R{=}0.90$, where the two curves do
+not overlap at that recall.
 
 \begin{table}[tbp]
   \centering
   \caption{Matched-recall JHQ\,/\,IVF-RaBitQ throughput, by batch size, at
-  Recall@$10$ of $0.90$ and $0.95$. Each system's curve is interpolated at the
-  target recall.}
+  Recall@$10$ of $0.90$ and $0.95$, on the four datasets IVF-RaBitQ builds on.
+  Each system's curve is interpolated at the target recall; ``--'' is a recall
+  the two curves do not both reach.}
   \label{tab:batch}
   \input{tables/batch}
 \end{table}

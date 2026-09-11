@@ -1,0 +1,88 @@
+
+23:52:07 queued behind the CPU baseline; head=2c8b064 The build comparison measured RaBitQ's training budget, not its index
+00:06:21 CPU baseline finished or was never running; taking the GPU
+00:06:35 build_rc=0/0
+00:06:35 got the GPU
+00:06:35 ########## arxiv-768: batch x nprobe, both systems ##########
+  JHQ     arxiv-768      np=32    a=64.0  batch=32     recall=0.9245   qps=45039    
+  RaBitQ  arxiv-768      np=32                batch=32     recall=0.9239   qps=41445    
+  JHQ     arxiv-768      np=64    a=64.0  batch=32     recall=0.9569   qps=34324    
+  RaBitQ  arxiv-768      np=64                batch=32     recall=0.9592   qps=38478    
+  JHQ     arxiv-768      np=128   a=64.0  batch=32     recall=0.9748   qps=24735    
+  RaBitQ  arxiv-768      np=128               batch=32     recall=0.9778   qps=30019    
+  JHQ     arxiv-768      np=256   a=64.0  batch=32     recall=0.9823   qps=16270    
+  RaBitQ  arxiv-768      np=256               batch=32     recall=0.9879   qps=28252    
+  JHQ     arxiv-768      np=512   a=64.0  batch=32     recall=0.9851   qps=9627     
+  RaBitQ  arxiv-768      np=512               batch=32     recall=0.9931   qps=19683    
+  JHQ     arxiv-768      np=32    a=64.0  batch=128    recall=0.9245   qps=144926   
+  RaBitQ  arxiv-768      np=32                batch=128    recall=0.9233   qps=84888    
+  JHQ     arxiv-768      np=64    a=64.0  batch=128    recall=0.9569   qps=113900   
+  RaBitQ  arxiv-768      np=64                batch=128    recall=0.9570   qps=80763    
+  JHQ     arxiv-768      np=128   a=64.0  batch=128    recall=0.9748   qps=85810    
+  RaBitQ  arxiv-768      np=128               batch=128    recall=0.9759   qps=71022    
+  JHQ     arxiv-768      np=256   a=64.0  batch=128    recall=0.9823   qps=59009    
+  RaBitQ  arxiv-768      np=256               batch=128    recall=0.9880   qps=51017    
+  JHQ     arxiv-768      np=512   a=64.0  batch=128    recall=0.9851   qps=36512    
+  RaBitQ  arxiv-768      np=512               batch=128    recall=0.9932   qps=44122    
+  JHQ     arxiv-768      np=32    a=64.0  batch=512    recall=0.9245   qps=230027   
+  RaBitQ  arxiv-768      np=32                batch=512    recall=0.9216   qps=173086   
+  JHQ     arxiv-768      np=64    a=64.0  batch=512    recall=0.9569   qps=190613   
+  RaBitQ  arxiv-768      np=64                batch=512    recall=0.9552   qps=40694    
+  JHQ     arxiv-768      np=128   a=64.0  batch=512    recall=0.9748   qps=147278   
+  RaBitQ  arxiv-768      np=128               batch=512    recall=0.9758   qps=124720   
+  JHQ     arxiv-768      np=256   a=64.0  batch=512    recall=0.9823   qps=102324   
+  RaBitQ  arxiv-768      np=256               batch=512    recall=0.9894   qps=95805    
+  JHQ     arxiv-768      np=512   a=64.0  batch=512    recall=0.9851   qps=63221    
+  RaBitQ  arxiv-768      np=512               batch=512    recall=0.9943   qps=68740    
+  JHQ     arxiv-768      np=32    a=64.0  batch=1024   recall=0.9245   qps=272588   
+  RaBitQ  arxiv-768      np=32                batch=1024   recall=0.9244   qps=224234   
+  JHQ     arxiv-768      np=64    a=64.0  batch=1024   recall=0.9569   qps=220031   
+  RaBitQ  arxiv-768      np=64                batch=1024   recall=0.9561   qps=189102   
+  JHQ     arxiv-768      np=128   a=64.0  batch=1024   recall=0.9748   qps=171262   
+  RaBitQ  arxiv-768      np=128               batch=1024   recall=0.9752   qps=157055   
+  JHQ     arxiv-768      np=256   a=64.0  batch=1024   recall=0.9823   qps=120642   
+  RaBitQ  arxiv-768      np=256               batch=1024   recall=0.9888   qps=117383   
+  JHQ     arxiv-768      np=512   a=64.0  batch=1024   recall=0.9851   qps=74314    
+  RaBitQ  arxiv-768      np=512               batch=1024   recall=0.9933   qps=84478    
+00:13:12 ########## openai3-1536: batch x nprobe, both systems ##########
+  JHQ     openai3-1536   np=32    a=8.0   batch=32     recall=0.8756   qps=55034    
+  RaBitQ  openai3-1536   np=32                batch=32     recall=0.8714   qps=24300    
+  JHQ     openai3-1536   np=64    a=8.0   batch=32     recall=0.9177   qps=37283    
+  RaBitQ  openai3-1536   np=64                batch=32     recall=0.9190   qps=23285    
+  JHQ     openai3-1536   np=128   a=8.0   batch=32     recall=0.9473   qps=24097    
+  RaBitQ  openai3-1536   np=128               batch=32     recall=0.9501   qps=20959    
+  JHQ     openai3-1536   np=256   a=8.0   batch=32     recall=0.9696   qps=14506    
+  RaBitQ  openai3-1536   np=256               batch=32     recall=0.9717   qps=18183    
+  JHQ     openai3-1536   np=512   a=8.0   batch=32     recall=0.9829   qps=8063     
+  RaBitQ  openai3-1536   np=512               batch=32     recall=0.9856   qps=8150     
+  JHQ     openai3-1536   np=32    a=8.0   batch=128    recall=0.8756   qps=180819   
+  RaBitQ  openai3-1536   np=32                batch=128    recall=0.8703   qps=61461    
+  JHQ     openai3-1536   np=64    a=8.0   batch=128    recall=0.9177   qps=133543   
+  RaBitQ  openai3-1536   np=64                batch=128    recall=0.9182   qps=51635    
+  JHQ     openai3-1536   np=128   a=8.0   batch=128    recall=0.9473   qps=89880    
+  RaBitQ  openai3-1536   np=128               batch=128    recall=0.9510   qps=45585    
+  JHQ     openai3-1536   np=256   a=8.0   batch=128    recall=0.9696   qps=56054    
+  RaBitQ  openai3-1536   np=256               batch=128    recall=0.9713   qps=36434    
+  JHQ     openai3-1536   np=512   a=8.0   batch=128    recall=0.9829   qps=31492    
+  RaBitQ  openai3-1536   np=512               batch=128    recall=0.9862   qps=28784    
+  JHQ     openai3-1536   np=32    a=8.0   batch=512    recall=0.8756   qps=314637   
+  RaBitQ  openai3-1536   np=32                batch=512    recall=0.8732   qps=112983   
+  JHQ     openai3-1536   np=64    a=8.0   batch=512    recall=0.9177   qps=232878   
+  RaBitQ  openai3-1536   np=64                batch=512    recall=0.9183   qps=97166    
+  JHQ     openai3-1536   np=128   a=8.0   batch=512    recall=0.9473   qps=160899   
+  RaBitQ  openai3-1536   np=128               batch=512    recall=0.9484   qps=80541    
+  JHQ     openai3-1536   np=256   a=8.0   batch=512    recall=0.9696   qps=97706    
+  RaBitQ  openai3-1536   np=256               batch=512    recall=0.9717   qps=62162    
+  JHQ     openai3-1536   np=512   a=8.0   batch=512    recall=0.9829   qps=54353    
+  RaBitQ  openai3-1536   np=512               batch=512    recall=0.9865   qps=45491    
+  JHQ     openai3-1536   np=32    a=8.0   batch=1024   recall=0.8756   qps=373247   
+  RaBitQ  openai3-1536   np=32                batch=1024   recall=0.8734   qps=144874   
+  JHQ     openai3-1536   np=64    a=8.0   batch=1024   recall=0.9177   qps=282961   
+  RaBitQ  openai3-1536   np=64                batch=1024   recall=0.9182   qps=124884   
+  JHQ     openai3-1536   np=128   a=8.0   batch=1024   recall=0.9473   qps=187873   
+  RaBitQ  openai3-1536   np=128               batch=1024   recall=0.9484   qps=92948    
+  JHQ     openai3-1536   np=256   a=8.0   batch=1024   recall=0.9696   qps=115744   
+  RaBitQ  openai3-1536   np=256               batch=1024   recall=0.9725   qps=78573    
+  JHQ     openai3-1536   np=512   a=8.0   batch=1024   recall=0.9829   qps=65582    
+  RaBitQ  openai3-1536   np=512               batch=1024   recall=0.9859   qps=55060    
+00:18:37 === BATCH2MORE_DONE ===
