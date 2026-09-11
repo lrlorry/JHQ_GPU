@@ -65,8 +65,11 @@ the ordering on the OpenAI sets depends on the target recall.
 \centering
 \includegraphics[width=\linewidth]{figs/fig_frontier.pdf}
 \caption{Recall@10--QPS, entire query set per call. Solid JHQ fixes
-$\alpha=100$. Dashed JHQ calibrates on the evaluated query pool and excludes
-calibration cost; it does not validate reuse on unseen queries.
+$\alpha=100$. Dashed JHQ calibrates on a 32-query sample of the pool it
+reports and excludes calibration cost. Drawing that sample from a disjoint
+half instead leaves mean gain over $\alpha_{\max}$ unchanged, $1.60$ against
+$1.59$, but selects a different budget in 18 of 36 cells, so the dashed curve
+is context for the fixed-budget comparison rather than a held-out result.
 Section~\ref{sec:rq2} evaluates calibration held out. Endpoints are measured
 sweep endpoints.}
 \label{fig:frontier}
