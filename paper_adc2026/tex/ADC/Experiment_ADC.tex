@@ -31,13 +31,11 @@ IVF-routed family, which shares JHQ's routing structure, build-cost profile and
 interface; CAGRA is a graph index and is reported in
 Section~\ref{sec:rq1} with its margins, its build cost and the query volume at
 which the two repay each other --- separately, and in both variants, so that
-neither the one that wins nor the one that loses is the one we chose to show. JHQ runs use
-dense coarse training, $\texttt{JHQ\_N\_TRAIN}=39\cdot\mathit{nlist}$; we mix in
-no under-trained points and union no fronts across binaries. The CPU JHQ
-baseline runs the same index parameters on the same host with threads pinned
-(\texttt{OMP\_PROC\_BIND=close}, \texttt{OMP\_PLACES=cores}) and its own
-$(\alpha,\mathit{nprobe})$ sweep, sharing the training procedure but not a
-codebook, with one measurement per cell.
+neither the one that wins nor the one that loses is the one we chose to show. JHQ trains its
+coarse quantiser at 39 points a centroid; cuVS defaults to 256, and
+Section~\ref{sec:rq1} says where that difference matters. The CPU JHQ baseline
+is the authors' own artifact on the same host with threads pinned, sweeping
+$(\alpha,\mathit{nprobe})$ as the GPU side does.
 
 \subsection{RQ1: where does JHQ actually lead?}
 \label{sec:rq1}
@@ -215,12 +213,13 @@ queries and reporting recall on the odd-indexed half: each fixed $\alpha$ on the
 grid; the sampled rule over 64 random samples at each $S$; the same criterion on
 the whole calibration pool; a whole-grid walk on the sample the rule bisects;
 and, for reference only, the fastest $\alpha$ within $10^{-3}$ of the best any
-$\alpha$ reaches, chosen with ground truth. Table~\ref{tab:budget} is the
-result.
+$\alpha$ reaches, chosen with ground truth. Figure~\ref{fig:knobs}(a) and the text below are the result.
 
 \emph{A constant meets the quality bar only by overpaying.} The reference budget
-is an order of magnitude apart on the two datasets; its conservative end
-generalises and its cheap end does not, so the only fixed choice safe everywhere
+is an order of magnitude apart on the two datasets --- on openai3-3072 every
+$\alpha$ from 4 to 16 is within $10^{-3}$ of attainable recall, so what the
+measurement resolves there is the magnitude and not the grid point. Its
+conservative end generalises and its cheap end does not, so the only fixed choice safe everywhere
 is the expensive one, and on openai3-3072 that costs $32\%$ of throughput for no
 recall. The question is not whether a constant exists but what it costs.
 
@@ -229,8 +228,7 @@ reference wherever the reference is resolved, and where it does not --- $S{=}32$
 on vogue-768 --- it errs cheap, not expensive. Against the $\alpha{=}100$
 default the selection is worth $1.095$--$1.469\times$ in steady state.
 
-\emph{The sample is the risk, and $S{=}32$ is too small.} The right-hand block
-of Table~\ref{tab:budget} is a draw-level failure rate, not an average: at
+\emph{The sample is the risk, and $S{=}32$ is too small.} Figure~\ref{fig:knobs}(a) is a draw-level failure rate, not an average: at
 $S{=}32$ most draws on vogue-768 give up more than $10^{-3}$ of held-out recall,
 and at $S{=}128$ that is at worst $8\%$ --- small, and not zero. A $2{,}000$-draw
 resampling shows the rate is workload dependent rather than a property of $S$.
@@ -240,7 +238,8 @@ $S{=}128$ is where the tolerance becomes small.
 \emph{Neither the sample nor the bisection is the approximation.} The whole-grid
 walk reproduces the bisection's choice in all $768$ draws, so the search is exact
 on what it sees; evaluating the criterion on the entire pool costs more and
-selects a \emph{more} conservative budget. The reason is in
+selects a \emph{more} conservative budget --- $\alpha{=}100$ on vogue-768,
+where the reference is $64$. The reason is in
 Equation~\ref{eq:disagree}: $\epsilon$ counts disagreeing slots absolutely
 while a sample of $S$ queries has
 $S\!\cdot\!k$ of them, so the same $\epsilon{=}1$ tightens as the sample grows.
@@ -254,37 +253,27 @@ over a broader 32-configuration sweep against $\alpha{=}100$ --- six datasets at
 $S{=}32$, a different configuration from this section's, which we do not combine
 with it --- gain is $1.044$--$2.653\times$ for at most $0.0048$ recall.
 
-\begin{table}[tbp]
+
+\begin{figure}[tbp]
   \centering
-  \caption{The five arms on one index. \emph{ref.} is the ground-truth
-  reference budget; the rule's median selection over 64 samples is shown at each
-  $S$, then the share of those samples that give up more than $10^{-3}$ of
-  held-out recall, then what the criterion selects on the whole calibration
-  pool. On openai3-3072 every $\alpha$ from 4 to 16 is within $10^{-3}$ of
-  attainable recall, so the reference there is resolved only to its magnitude.}
-  \label{tab:budget}
-  \input{tables/budget}
-\end{table}
+  \includegraphics[width=\linewidth]{figs/fig_knobs.pdf}
+  \caption{Sensitivity to the two knobs the evaluation varies. (a) The share of
+  64 random calibration samples that give up more than $10^{-3}$ of held-out
+  recall, against the sample size $S$; solid is $\mathit{nprobe}{=}128$, dashed
+  $512$. (b) JHQ over IVF-RaBitQ at matched Recall@10 of $0.95$, against batch
+  size, on the four datasets IVF-RaBitQ builds on; above 1 is JHQ ahead.}
+  \label{fig:knobs}
+\end{figure}
 
 \subsection{RQ5: does batch size change the ordering?}
 \label{sec:rq5}
-Table~\ref{tab:batch} gives matched-recall ratios against IVF-RaBitQ at four
-batch sizes, on the four datasets where IVF-RaBitQ builds. It does: JHQ leads at
-every measured point on three of them, while on vogue-768 it crosses parity
-between batch 128 and 512. The frontier ratios of Section~\ref{sec:rq1} are
-therefore the batch-1{,}024 column of this sweep and not batch-independent
-summaries. One cell is absent, arxiv-768 at $R{=}0.90$, where the two curves do
-not overlap at that recall.
+Figure~\ref{fig:knobs}(b) gives matched-recall ratios against IVF-RaBitQ at
+four batch sizes, on the four datasets where IVF-RaBitQ builds. It does: JHQ
+leads at every measured batch on three of them, while on vogue-768 it crosses
+parity between 128 and 512. The frontier ratios of Section~\ref{sec:rq1} are
+therefore the batch-1{,}024 point of this sweep and not batch-independent
+summaries.
 
-\begin{table}[tbp]
-  \centering
-  \caption{Matched-recall JHQ\,/\,IVF-RaBitQ throughput, by batch size, at
-  Recall@$10$ of $0.90$ and $0.95$, on the four datasets IVF-RaBitQ builds on.
-  Each system's curve is interpolated at the target recall; ``--'' is a recall
-  the two curves do not both reach.}
-  \label{tab:batch}
-  \input{tables/batch}
-\end{table}
 
 \subsection{RQ6: what does the port buy over CPU JHQ?}
 \label{sec:rq6cpu}
