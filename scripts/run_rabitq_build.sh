@@ -64,14 +64,19 @@ one(){  # tag paths nlist tpl mode rep
     out=$(env JHQ_RQ_TRAIN_PER_LIST="$tpl" timeout 9000 \
           build/bench_rq_build $paths "$nl" 8 8 10 "$md" 1 2>&1)
     tr_ms=$(printf '%s\n' "$out" | awk '/^  train:/{print $2;exit}')
+    local bo se de
+    bo=$(printf '%s\n' "$out" | awk '/^  build_only:/{print $2;exit}')
+    se=$(printf '%s\n' "$out" | awk '/^  serialize:/{print $2;exit}')
+    de=$(printf '%s\n' "$out" | awk '/^  deserialize:/{print $2;exit}')
     used=$(printf '%s\n' "$out"  | grep -oE 'train_per_list=[0-9]+' | head -1 | cut -d= -f2)
     r=$(printf '%s\n' "$out"     | awk '/^Recall@10/{print $3;exit}')
     if [ -z "${tr_ms:-}" ]; then
         echo "  RQB $tag nlist=$nl tpl=$tpl rep=$rep MISSING <-- no train line" >> "$L"
         printf '%s\n' "$out" | tail -4 | sed 's/^/      | /' >> "$L"
     else
-        printf "  RQB %-14s nlist=%-6s tpl=%-4s used=%-6s mode=%-2s rep=%-2s recall=%-8s train_ms=%s\n" \
-            "$tag" "$nl" "$tpl" "${used:-?}" "$md" "$rep" "${r:-?}" "$tr_ms" >> "$L"
+        printf "  RQB %-14s nlist=%-6s tpl=%-4s used=%-6s mode=%-2s rep=%-2s recall=%-8s train_ms=%-10s build_only=%-10s ser=%-9s deser=%s\n" \
+            "$tag" "$nl" "$tpl" "${used:-?}" "$md" "$rep" "${r:-?}" "$tr_ms" \
+            "${bo:-?}" "${se:-?}" "${de:-?}" >> "$L"
     fi
 }
 

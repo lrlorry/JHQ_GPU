@@ -189,6 +189,14 @@ int main(int argc, char** argv) {
     // again.
     const bool host_in = std::getenv("JHQ_RQ_HOST") != nullptr;
 
+    // build() alone, and the serialize/deserialize round-trip separately.
+    // The round-trip is required -- cuVS's own test does it because build()
+    // does not leave the index in the layout search reads -- but it goes
+    // through a file, so what it costs is disk bandwidth against index size,
+    // not index construction. Reporting only their sum compares JHQ's
+    // in-memory build against RaBitQ's build plus a few GB written and read
+    // back, which is not the same quantity.
+    double t_built = 0.0, t_ser = 0.0;
     auto t0 = clk::now();
     cuvs::neighbors::ivf_rabitq::index<int64_t> loaded(res);
     {
@@ -210,6 +218,7 @@ int main(int argc, char** argv) {
                 xb.data(), nb, d);
             auto built = cuvs::neighbors::ivf_rabitq::build(res, ip, h_view);
             raft::resource::sync_stream(res);
+            t_built = ms_since(t0);
             cuvs::neighbors::ivf_rabitq::serialize(res, rt_file, built);
         } else {
             auto d_base = raft::make_device_matrix<float, int64_t>(res, nb, d);
@@ -220,8 +229,11 @@ int main(int argc, char** argv) {
                 res, ip, raft::make_device_matrix_view<const float, int64_t>(
                              d_base.data_handle(), nb, d));
             raft::resource::sync_stream(res);
+            t_built = ms_since(t0);
             cuvs::neighbors::ivf_rabitq::serialize(res, rt_file, built);
         }
+        raft::resource::sync_stream(res);
+        t_ser = ms_since(t0);
         cuvs::neighbors::ivf_rabitq::deserialize(res, rt_file, &loaded);
         raft::resource::sync_stream(res);
     }
@@ -359,6 +371,9 @@ int main(int argc, char** argv) {
     std::printf("Latency   : %.2f ms  (%d queries, batch %d)\n", ms, nq, qbatch);
     std::printf("QPS       : %.0f\n", nq / (ms / 1000.0));
     std::printf("  train: %.1f ms\n", build_ms);
+    std::printf("  build_only: %.1f ms\n", t_built);
+    std::printf("  serialize: %.1f ms\n", t_ser - t_built);
+    std::printf("  deserialize: %.1f ms\n", build_ms - t_ser);
     std::printf("VRAM used : %.1f MiB\n", (double)(free0 - free1) / (1024.0 * 1024.0));
     std::printf("rep_ms    :");
     for (double v : rep_ms) std::printf(" %.3f", v);
