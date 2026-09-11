@@ -328,7 +328,7 @@ int main(int argc, char** argv) {
                        (size_t)B * d, st);
             // The two stages refine.hpp's own example prescribes: the
             // quantised scan proposes alpha*k, exact distance picks k.
-            cuvs::neighbors::ivf_rabitq::search(res, sp, idx, civ, cdv);
+            cuvs::neighbors::ivf_rabitq::search(res, sp, idx, qv, civ, cdv);
             cuvs::neighbors::refine(
                 res,
                 raft::make_device_matrix_view<const float, int64_t>(
