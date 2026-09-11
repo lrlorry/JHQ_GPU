@@ -1,7 +1,8 @@
 \documentclass[runningheads]{llncs}
 \usepackage[T1]{fontenc}
 \usepackage{graphicx,booktabs,tabularx,amsfonts,amsmath}
-\usepackage{hyperref}
+% Coloured boxes round every \ref and DOI are the default and they print.
+\usepackage[hidelinks]{hyperref}
 \setcounter{tocdepth}{3}
 % LaTeX defaults let at most 0.7 of a page be float before it gives the page
 % over to floats entirely.  Section 6.6 has two figures and about 30 lines of
@@ -34,10 +35,12 @@ budget using sampled top-$k$ agreement with a generous reference budget,
 without ground-truth labels or a learned predictor. A held-out experiment on
 six datasets compares fixed budgets, sampled and full-pool calibration,
 enumeration and an offline oracle. With 128 calibration queries, selected-arm
-QPS gains are $1.05$--$2.77\times$ over fixed $\alpha=100$ in ten of twelve
-configurations, with estimated payback within 2--37 batches of 500 queries.
-The two arxiv configurations have lower throughput, and sampling risk remains
-workload dependent. System comparisons establish operating regions alongside
+QPS gains average $1.05$--$2.77\times$ over fixed $\alpha=100$ in ten of twelve
+configurations, with 5.2--30.8\,ms calibration. The two arxiv configurations
+have lower throughput and higher mean recall. Quality risk is workload
+dependent: up to 40 of 64 calibration draws lose more than $10^{-3}$ held-out
+recall relative to the best tested budget. Fixed-budget system comparisons
+establish operating regions alongside
 IVF-PQ and CAGRA. The results quantify the execution, quality and calibration
 trade-offs of GPU JHQ.
 \keywords{Approximate nearest neighbour search \and GPU \and Quantisation \and
@@ -52,10 +55,8 @@ Adaptive query processing}
 \input{ADC/Conclusion_ADC}
 
 \begin{credits}
-%% \subsubsection{\ackname} goes here if the work is funded: llncs.cls
-%% defines the macro, and Springer's own sample places it above the
-%% disclosure of interests.
-\subsubsection{Use of generative AI.}
+\subsubsection{\ackname}
+\textit{Use of generative AI.}
 A large language model assistant was used throughout this work: to write and
 run the measurement scripts, to derive the figures and tables from the logs
 they produce, and to draft and revise the text. The authors designed the
@@ -68,6 +69,10 @@ The authors have no competing interests to declare that are relevant to the
 content of this article.
 \end{credits}
 
+%% The reference list lives in tex/mainADC.bbl, which is maintained directly.
+%% reference.bib is empty, so running bibtex WILL delete every reference --
+%% it already emptied ADC/mainADC.bbl once. LNCS accepts the .bbl in a
+%% submission; compile with pdflatex alone.
 \bibliographystyle{splncs04}
 \bibliography{reference}
 \end{document}

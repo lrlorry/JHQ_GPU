@@ -31,7 +31,7 @@ Timing covers host query input to host result output. Frontiers answer all
 $n_q$ queries in one call and report the mean of three warmed runs; frontier
 QPS excludes calibration. Section~\ref{sec:rq2} measures calibration cost
 under its separate held-out protocol. Three cold builds of Vogue recall
-0.9852, 0.9842 and 0.9849, so
+0.9852, 0. Run-to-run timing variance is small beside the effects reported: over the 621 baseline configurations the harness timed three times each, the relative standard deviation of throughput has median $0.39\%$ and ninetieth percentile $2.58\%$, so a $1\%$ paired difference sits at the edge of what a single triple resolves and is reported as the bottom of a range rather than as an effect.9842 and 0.9849, so
 differences below about $10^{-3}$ across builds need repeated evidence;
 differences within one index do not.
 
