@@ -88,7 +88,7 @@ Section~\ref{sec:setup}, not the held-out budget experiment.}
 Against CAGRA fp32 the sign of the margin tracks dimension rather than
 dataset size. On the two 768-dimensional sets CAGRA fp32 is level or ahead,
 by up to $1.5\times$ at matched recall; on the two OpenAI sets JHQ leads by
-$1.2$--$1.8\times$. The two systems differ in both terms of the same product.
+$1.3$--$1.8\times$. The two systems differ in both terms of the same product.
 A graph walk touches hundreds of candidates where an IVF scan at these probe
 depths touches tens of thousands, which favours CAGRA; JHQ reads $d/8$ bytes
 a candidate in its primary stage against fp32's $4d$, which favours JHQ by
@@ -98,9 +98,10 @@ and as $d$ grows the per-candidate cost grows with it until the narrower read
 outweighs the wider walk. Section~\ref{sec:rq3}'s ablation is consistent ---
 factorisation is worth a few percent at $M{=}96$ and $+53.8\%$ at $M{=}384$
 --- but it compares JHQ against itself and does not establish the crossing.
-Dimension is also not separated from partition granularity here:
-openai3-1536 holds 122 vectors a list against openai3-3072's 244, so the
-larger margin at the smaller dimension is not attributable to $d$ alone.
+Both OpenAI sets hold 122 vectors a list, so the comparison between them
+is not confounded by partition granularity. The margin is still not monotone
+in $d$ --- it is larger at 1{,}536 than at 3{,}072 --- so what the evidence
+supports is a regime boundary between 768 and these two, not a rate.
 
 The tested CAGRA-fp32 build path fails on BGE and Stella;
 CAGRA-int8 succeeds on both. Stella's default IVF-PQ path fails, but a 2\%

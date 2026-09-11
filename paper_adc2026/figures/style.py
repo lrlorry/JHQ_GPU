@@ -130,17 +130,42 @@ def pareto(points):
 
 
 def load_fronts():
-    """paper_fronts.log -> {dataset: {'rule': [...], 'fix': [...]}}, 72 runs, one build."""
+    """The frontier: paper_fronts.log, with openai3-3072 re-measured.
+
+    nlist was tuned per dataset -- results/front6/nlist6.log sweeps four values
+    each -- and five of the six datasets run at the value that sweep picked.
+    openai3-3072 ran at 4096 while its own sweep picks 8192 at every recall
+    target it resolves.  run_front6.sh's second block took both OpenAI sets
+    from 1024 to 4096; openai3-1536 was later moved to 8192 and this one was
+    not, so the highest-dimensional dataset was measured at a partition its own
+    experiment rejected.
+
+    o30_nlist8192.log re-runs it under /root/_pa.sh's protocol, changing only
+    nlist and the 39-points-a-centroid training count that follows it.  At
+    matched recall it is worth 1.04x to 1.19x, and it removes a confound from
+    Section 6.2's dimension argument: at 4096 this dataset held 244 vectors a
+    list against openai3-1536's 122, so the same probe depth scanned twice the
+    candidates on the higher-dimensional set.  Both hold 122 now.
+
+    The 4096 rows stay in paper_fronts.log; they are skipped here rather than
+    deleted, so the pair remains available as the measurement of what the
+    partition is worth.
+    """
     fix = collections.defaultdict(list)
     rule = collections.defaultdict(list)
-    for ln in open(datafile("paper_fronts.log")):
-        m = re.search(r"^  FIX\s+(\S+)\s+M=\d+\s+nlist=\d+\s+np=(\d+)\s+a=100 "
-                      r"recall=([\d.]+)\s+qps=(\d+)", ln)
-        if m:
-            fix[m.group(1)].append((float(m.group(3)), int(m.group(4))))
-        m = re.search(r"^  RULE\s+(\S+).*recall_picked=([\d.]+) qps_picked=(\d+)", ln)
-        if m:
-            rule[m.group(1)].append((float(m.group(2)), int(m.group(3))))
+    REPLACED = {"openai3-3072"}          # superseded by the file below
+    for src in ("paper_fronts.log", "o30_nlist8192.log"):
+        p = datafile(src)
+        if not os.path.exists(p):
+            continue
+        for ln in open(p, errors="ignore"):
+            m = re.search(r"^\s*FIX\s+(\S+)\s+M=\d+\s+nlist=(\d+)\s+np=(\d+)\s+a=100 "
+                          r"recall=([\d.]+)\s+qps=(\d+)", ln)
+            if m and not (src == "paper_fronts.log" and m.group(1) in REPLACED):
+                fix[m.group(1)].append((float(m.group(4)), int(m.group(5))))
+            m = re.search(r"^\s*RULE\s+(\S+).*recall_picked=([\d.]+) qps_picked=(\d+)", ln)
+            if m and not (src == "paper_fronts.log" and m.group(1) in REPLACED):
+                rule[m.group(1)].append((float(m.group(2)), int(m.group(3))))
     return {d: {"rule": pareto(rule[d]), "fix": pareto(fix[d])} for d in fix}
 
 
@@ -153,8 +178,7 @@ def load_rabitq():
     LUT32 wins on vogue-768 and arxiv-768 by 14% and 6%, LUT16 on openai3-1536
     by 6% -- so the published frontier compared JHQ against a baseline below
     its own best.  rq_best.log re-runs each dataset at its winner, and is used
-    wherever it covers a dataset; bge-m3 and stella are not there because
-    RaBitQ cannot build on them at all.
+    wherever it covers a dataset; bge-m3 and stella are absent because the tested build paths failed.
     """
     rq = collections.defaultdict(list)
     for ln in open(datafile("paper_rabitq.log")):
@@ -226,6 +250,18 @@ def load_baselines():
                    "cagra8": pareto(keep(v["series"].get("CAGRA int8", []))),
                    "ivfpq": pareto(keep(v["series"].get("IVF-PQ", []))),
                    "N": v["N"], "d": v["d"]}
+    # The default Stella IVF-PQ path failed, but this archived reduced-training
+    # path completed. Include its successful search points in the same envelope.
+    import csv
+    extra = os.path.join(HERE, "..", "..", "results", "pre_freeze_v22_s2b1",
+                         "fair_stella_ivfpq_f0.02.csv")
+    with open(extra) as fh:
+        rows = csv.DictReader(l for l in fh if not l.startswith("#"))
+        pts = [(float(r["recall"]), float(r["qps_mean"])) for r in rows
+               if r.get("status") == "ok"]
+    out["stella"]["ivfpq"] = pareto(out["stella"]["ivfpq"] + pts)
+    # fronts.json rounded Vogue's N; use the actual loader/ID metadata.
+    out["vogue-768"]["N"] = 932328
     return out
 
 

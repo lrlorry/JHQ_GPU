@@ -1,0 +1,12 @@
+  FIX   openai3-3072   M=384  nlist=8192   np=8     a=100 recall=0.7276   qps=92591     train=1138.4    add=771.3      vram=4147.2    rc=0
+  RULE  openai3-3072   M=384  nlist=8192   np=8     AF_RESULT picked=4 probes=3 recall_picked=0.7276 qps_picked=219303 recall_max=0.7276 qps_max=92870 gain=2.361 cal_ms=3.8 batches_to_repay=0.6 rc=0
+  FIX   openai3-3072   M=384  nlist=8192   np=32    a=100 recall=0.8456   qps=60974     train=113.7     add=673.2      vram=4147.2    rc=0
+  RULE  openai3-3072   M=384  nlist=8192   np=32    AF_RESULT picked=4 probes=3 recall_picked=0.8456 qps_picked=179274 recall_max=0.8456 qps_max=61261 gain=2.926 cal_ms=4.2 batches_to_repay=0.4 rc=0
+  FIX   openai3-3072   M=384  nlist=8192   np=128   a=100 recall=0.9266   qps=44704     train=110.6     add=703.5      vram=4147.2    rc=0
+  RULE  openai3-3072   M=384  nlist=8192   np=128   AF_RESULT picked=4 probes=3 recall_picked=0.9266 qps_picked=123243 recall_max=0.9266 qps_max=44973 gain=2.740 cal_ms=6.6 batches_to_repay=0.5 rc=0
+  FIX   openai3-3072   M=384  nlist=8192   np=256   a=100 recall=0.9521   qps=37073     train=107.8     add=676.3      vram=4149.2    rc=0
+  RULE  openai3-3072   M=384  nlist=8192   np=256   AF_RESULT picked=2 probes=3 recall_picked=0.9457 qps_picked=82582 recall_max=0.9521 qps_max=37162 gain=2.222 cal_ms=9.3 batches_to_repay=0.6 rc=0
+  FIX   openai3-3072   M=384  nlist=8192   np=512   a=100 recall=0.9712   qps=28384     train=109.0     add=668.9      vram=4153.2    rc=0
+  RULE  openai3-3072   M=384  nlist=8192   np=512   AF_RESULT picked=4 probes=3 recall_picked=0.9711 qps_picked=51226 recall_max=0.9712 qps_max=28354 gain=1.807 cal_ms=14.1 batches_to_repay=0.9 rc=0
+  FIX   openai3-3072   M=384  nlist=8192   np=1024  a=100 recall=0.9847   qps=19450     train=135.5     add=737.5      vram=4157.2    rc=0
+  RULE  openai3-3072   M=384  nlist=8192   np=1024  AF_RESULT picked=4 probes=3 recall_picked=0.9846 qps_picked=28102 recall_max=0.9847 qps_max=19381 gain=1.450 cal_ms=23.6 batches_to_repay=1.5 rc=0
