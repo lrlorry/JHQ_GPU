@@ -153,10 +153,12 @@ ablation keeps the full allocation, so it measures what the second level buys
 rather than what a minimal JQ index would cost.
 
 \paragraph{Granularity.} With distance fixed, $G=2$ has the highest observed
-throughput in all eight granularity-sweep cells (Figure~\ref{fig:lutgroups}).
-The sharpest form of the argument is between the losers: $G=4$ and $G=8$ store
-16 entries a subspace each, so footprint is constant and only lookups differ,
-and $G=8$ is 5.8--38.3\% slower. Factorisation gains up to 53.8\% at $M=384$;
+throughput in 23 of the 24 cells spanning six datasets and four probe depths
+(Figure~\ref{fig:lutgroups}); the exception is arxiv-768 at probe 128, where
+$G=1$ leads by $0.03\%$. The sharpest form of the argument is between the
+losers: $G=4$ and $G=8$ store 16 entries a subspace each, so footprint is
+constant and only lookups differ, and $G=8$ is 3.4--38.5\% slower across all
+24 pairs, widening with probe depth. Factorisation gains up to 53.8\% at $M=384$;
 at $M=96$ the gains are small and vary in sign, which is the regime where the
 full table nearly fits.
 
@@ -186,7 +188,7 @@ describe a common workload.}
 \begin{tabular}{llrl}\toprule
 Change & QPS effect & cells & Simple heuristic challenged\\\midrule
 Table-free exact score & $-30$ to $-52\%$ & 12 & Minimum table state\\
-$G=8$ versus $G=4$ & $-5.8$ to $-38.3\%$ & 8 & Equal footprint, equal speed\\
+$G=8$ versus $G=4$ & $-3.4$ to $-38.5\%$ & 24 & Equal footprint, equal speed\\
 Packed 32-bit loads & $+1$ to $+66\%$ & 48 & Bytes moved predict speed\\
 Private probe cursor & $-1.4$ to $+148.5\%$ & 20 & Loop work is negligible\\
 \bottomrule

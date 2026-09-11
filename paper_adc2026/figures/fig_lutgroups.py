@@ -61,6 +61,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from style import *
 import numpy as np
 
+# lutgroups6.log is the same sweep on six datasets; lut_groups.log's phase 3
+# is the only source for the table x layout square, so both are read.
 rows, sec = collections.defaultdict(dict), None
 for ln in open(datafile("lut_groups.log")):
     if "phase 2" in ln: sec = "sweep"
@@ -68,8 +70,15 @@ for ln in open(datafile("lut_groups.log")):
     elif "phase" in ln: sec = None
     m = re.search(r"^  (\S+)\s+M=(\d+)\s+layout=(\w+)\s+G=(\d+)\s+np=(\d+)\s+"
                   r"recall=([\d.]+)\s+qps=(\d+)", ln)
-    if m and sec:
+    if m and sec == "square":
         cell = rows[(sec, m.group(1), m.group(3), int(m.group(5)))]
+        cell.setdefault(int(m.group(4)), []).append(
+            (float(m.group(6)), int(m.group(7))))
+for ln in open(datafile("lutgroups6.log")):
+    m = re.search(r"^\s+(\S+)\s+M=(\d+)\s+layout=(\w+)\s+G=(\d+)\s+np=(\d+)\s+"
+                  r"recall=([\d.]+)\s+qps=(\d+)", ln)
+    if m:
+        cell = rows[("sweep", m.group(1), m.group(3), int(m.group(5)))]
         cell.setdefault(int(m.group(4)), []).append(
             (float(m.group(6)), int(m.group(7))))
 
@@ -93,16 +102,26 @@ SETS = [("vogue-768", 96), ("openai3-3072", 384)]
 # ── (a) granularity ────────────────────────────────────────────────────────
 NP = [8, 32, 128, 512]
 x = np.arange(len(GS))
-for ds, M in SETS:
-    for np_ in NP:
+# Six datasets at four depths is 24 curves, which is not a figure.  Each depth
+# is drawn once as the median over datasets, with the full spread as a band --
+# the claim is about the shape, and the band is what says how tight it is.
+SWEEP_DS = sorted({k[1] for k in rows if k[0] == "sweep" and k[2] == "word"})
+for np_ in NP:
+    per = []
+    for ds in SWEEP_DS:
         g = rows.get(("sweep", ds, "word", np_))
-        if not g or 2 not in g:
-            continue
-        base = med(g, 2)
-        a.plot(x, [med(g, q) / base for q in GS], color=DS_COLOR[ds],
-               marker=DS_MARK[ds], ms=3.2, lw=0.9,
-               alpha=0.35 + 0.65 * NP.index(np_) / (len(NP) - 1),
-               mew=1.0 if DS_MARK[ds] == "x" else 0.5)
+        if g and 2 in g and all(q in g for q in GS):
+            base = med(g, 2)
+            per.append([med(g, q) / base for q in GS])
+    if not per:
+        continue
+    arr = np.array(per)
+    sh = 0.30 + 0.70 * NP.index(np_) / (len(NP) - 1)
+    a.fill_between(x, arr.min(0), arr.max(0), color="#1f6fc4", alpha=0.10 * sh,
+                   lw=0)
+    a.plot(x, np.median(arr, 0), color="#1f6fc4", alpha=sh, lw=1.2,
+           marker="o", ms=3.0, mec="white", mew=0.5,
+           label=r"$\mathit{nprobe}{=}%d$" % np_)
 a.axhline(1.0, color="0.5", lw=0.7, ls=":")
 a.set_xticks(x)
 a.set_xticklabels(["1\n$256$", "2\n$2{\\times}16$", "4\n$4{\\times}4$",
@@ -110,12 +129,10 @@ a.set_xticklabels(["1\n$256$", "2\n$2{\\times}16$", "4\n$4{\\times}4$",
 a.set_xlabel("groups $G$, and the table it gives")
 a.set_ylabel(r"QPS $\div$ QPS at $G{=}2$")
 a.set_ylim(0.26, 1.13)   # headroom above 1.0 for the tag, below for the note
-for ds, M in SETS:
-    a.plot([], [], color=DS_COLOR[ds], marker=DS_MARK[ds], ms=3.2, lw=0.9,
-           label="%s, $M{=}%d$" % (PRETTY[ds], M))
-a.legend(loc="lower left", fontsize=7)
-a.text(0.97, 0.975, "one line a probe depth; darker is deeper", fontsize=7,
-       color="#898781", transform=a.transAxes, ha="right", va="top")
+a.legend(loc="lower left", fontsize=6.6, labelspacing=0.25, borderpad=0.3)
+a.text(0.97, 0.975, "median over six datasets;\nband is their range",
+       fontsize=6.6, color="#898781", transform=a.transAxes, ha="right",
+       va="top", linespacing=1.3)
 a.text(0.03, 0.965, "(a)", transform=a.transAxes, fontsize=8, va="top")
 # Short enough for the strip right of the legend; the tick labels already
 # spell out 4x4 and 8x2, so the note only has to say they are equal.
