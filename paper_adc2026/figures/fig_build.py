@@ -202,11 +202,12 @@ seen, hh, ll = set(), [], []
 for a_, b_ in zip(h, l):
     if b_ and b_ not in seen:
         seen.add(b_); hh.append(a_); ll.append(b_)
-hh.append(plt.Line2D([], [], color="#898781", marker=r"$\mathrm{OOM}$", ls="",
-                     ms=9))
-ll.append("out of memory")
-hh.append(plt.Line2D([], [], color="#898781", marker="$-$", ls="", ms=5))
-ll.append("not timed")
+# Every absent cell is an out-of-memory build; nothing here is untimed, so a
+# "not timed" key was an entry for a state that does not occur.
+if any((m, ds) in FAILS for m, _ in METHODS for ds in DATASETS):
+    hh.append(plt.Line2D([], [], color="#898781", marker=r"$\mathrm{OOM}$",
+                         ls="", ms=9))
+    ll.append("out of memory")
 # Seven legend entries across one row is a two-column figure's legend; here it
 # is what pushed the axes down to nothing while save() held the file at the
 # LNCS text width.  The long note that ran under the axes for the same reason

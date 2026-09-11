@@ -12,3 +12,6 @@ done
 echo "== audit_numbers.py"
 python3 audit_numbers.py || { echo "AUDIT FAILED -- unsourced numbers above"; exit 1; }
 echo "PDF and PNG in out/"
+
+echo "== sync_figs.sh"
+bash ./sync_figs.sh
