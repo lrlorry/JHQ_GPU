@@ -1749,6 +1749,18 @@ target_compile_definitions(demo_jhq_alpha_v57 PRIVATE
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
 target_link_libraries(demo_jhq_alpha_v57 PRIVATE jhq_v57_exp)
 
+# The same binary with calibration and reporting on disjoint query halves.
+# demo_jhq_alpha_v57 strides its calibration sample out of the query set it
+# then scores on -- 32 of 1,000 on the frontier -- so the budget is chosen
+# knowing part of what it is measured against.  JHQ_AS_HOLDOUT=0 restores the
+# pooled behaviour, so one run reports both and the gap is measured.
+add_executable(demo_jhq_alpha_holdout examples/demo_jhq_alpha_holdout.cu)
+target_compile_definitions(demo_jhq_alpha_holdout PRIVATE
+    JHQ_INDEX_HEADER="${V57}/jhq_gpu_index.cuh" JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+target_link_libraries(demo_jhq_alpha_holdout PRIVATE jhq_v57_exp)
+
 # Every budget arm on one index: fixed alphas, the sampled rule, the same
 # criterion on all queries, and a ground-truth oracle. v57 so the numbers sit
 # on the same build as the reported frontier.
@@ -1758,6 +1770,14 @@ target_compile_definitions(demo_jhq_budget_arms PRIVATE
     JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
 target_link_libraries(demo_jhq_budget_arms PRIVATE jhq_v57_exp)
+
+# Review harness adds per-draw costs; the frozen search library is unchanged.
+add_executable(demo_jhq_budget_review examples/demo_jhq_budget_review.cu)
+target_compile_definitions(demo_jhq_budget_review PRIVATE
+    JHQ_INDEX_HEADER="${V57}/jhq_gpu_index.cuh" JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1 JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+target_link_libraries(demo_jhq_budget_review PRIVATE jhq_v57_exp)
 # The plain front demo too, since sizing the launch changes every search, not
 # only calibration -- a 999-query batch on a 1024 workspace included 25
 # queries of zeros in every number this project has reported.
