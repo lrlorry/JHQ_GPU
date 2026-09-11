@@ -95,7 +95,11 @@ y = np.arange(len(order))
 # datasets' workspace and centroid segments are a few pixels wide. The second
 # panel is the same stack normalised, which is where the composition is
 # actually readable.
-fig, (ax, axp) = plt.subplots(1, 2, figsize=(WIDE, 2.0),
+# 1.85 rather than the 2.0 this had: at 2.0 the figure pushes two more
+# references onto the last page, at 1.85 one, and below 1.85 nothing further
+# is recovered.  Both panels stay -- the flattening that came of dropping one
+# is what this height is protecting against.
+fig, (ax, axp) = plt.subplots(1, 2, figsize=(WIDE, 1.85),
                               gridspec_kw=dict(width_ratios=[1.55, 1]))
 left = np.zeros(len(order))
 for p, c in parts:

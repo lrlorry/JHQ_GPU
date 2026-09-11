@@ -65,13 +65,11 @@ the ordering on the OpenAI sets depends on the target recall.
 \centering
 \includegraphics[width=\linewidth]{figs/fig_frontier.pdf}
 \caption{Recall@10--QPS, entire query set per call. Solid JHQ fixes
-$\alpha=100$. Dashed JHQ calibrates on a 32-query sample of the pool it
-reports and excludes calibration cost. Drawing that sample from a disjoint
-half instead leaves mean gain over $\alpha_{\max}$ unchanged, $1.60$ against
-$1.59$, but selects a different budget in 18 of 36 cells, so the dashed curve
-is context for the fixed-budget comparison rather than a held-out result.
-Section~\ref{sec:rq2} evaluates calibration held out. Endpoints are measured
-sweep endpoints.}
+$\alpha=100$; dashed calibrates on a 32-query sample of the pool it reports,
+excluding calibration cost. Drawing that sample from a disjoint half leaves
+mean gain unchanged, $1.60$ against $1.59$, but moves the selected budget in
+18 of 36 cells, so it is context rather than a held-out result
+(Section~\ref{sec:rq2}). Endpoints are measured sweep endpoints.}
 \label{fig:frontier}
 \end{figure}
 
@@ -259,10 +257,9 @@ cost over sufficiently many queries.
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\linewidth]{figs/fig_memory.pdf}
-\caption{Resident memory by component. (a) absolute, with markers at the
-measured totals; (b) the same stack as a share, where the small datasets'
-segments are readable. The hatched band is the remainder we cannot
-attribute.}
+\caption{Resident memory by component: (a) absolute, markers at measured
+totals; (b) the same stack as a share, where the five smaller sets are
+readable. Hatched is the unattributed remainder.}
 \label{fig:memory}
 \end{figure}
 
