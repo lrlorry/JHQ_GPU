@@ -5,11 +5,11 @@ Product quantisation~\cite{pq} decomposes vectors into subspaces for compressed
 storage and asymmetric distance computation. JHQ~\cite{jhq} supplies the
 orthogonal transform, Cartesian primary codebook and residual hierarchy used
 here. PQ Fast Scan~\cite{fastscan} and Quicker ADC~\cite{quickeradc} organise
-small tables for efficient execution. GPU IVF-RaBitQ~\cite{ivfrabitq} groups
-$U$ code bits and balances shared-memory capacity against arithmetic. Its
-$U=4$ equals our $G=2$ through $U=8/G$: both use 16 entries per component
-table. We apply this established trade-off to JHQ's primary representation and
-measure its interaction with packed access and scan depth. Equation~\ref{eq:split}
+small tables for efficient execution, and 16-entry component tables are
+established practice there rather than something this paper introduces: our
+$G{=}2$ is that same granularity. What we contribute is applying the
+trade-off to JHQ's primary representation and measuring its interaction with
+packed access and scan depth. Equation~\ref{eq:split}
 is a direct consequence of that representation; arbitrary learned PQ
 subcodebooks do not in general have the same internal separability.
 
@@ -20,5 +20,4 @@ uses an unlabelled self-agreement signal to choose JHQ's residual budget and
 compares it with the exhaustive sweep it replaces. CAGRA~\cite{cagra} offers a
 strong graph-based GPU baseline, and cuVS also implements IVF-PQ. The
 evaluation compares against both and separates search throughput from
-construction cost and resident memory; Section~\ref{sec:setup} says why
-cuVS IVF-RaBitQ is cited but not measured against.
+construction cost and resident memory.

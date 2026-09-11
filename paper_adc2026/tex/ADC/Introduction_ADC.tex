@@ -14,7 +14,7 @@ codebook. Additivity gives an exact decomposition of its byte-indexed distance
 table into smaller tables, which we combine with coalesced candidate access and
 packed loading. The identity is the mathematical basis of the design, rather
 than a new quantisation algorithm. Grouped small tables are established in
-ADC~\cite{fastscan,quickeradc,ivfrabitq}; the question here is which grouping
+ADC~\cite{fastscan,quickeradc}; the question here is which grouping
 works for JHQ's representation and execution path. Our comparisons vary table
 granularity and access layout while holding the represented distance fixed.
 They show why table size alone is an insufficient design criterion.

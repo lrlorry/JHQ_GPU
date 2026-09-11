@@ -52,16 +52,7 @@ Baselines are IVF-PQ with 8-bit subcodes and multiple code lengths, and
 CAGRA in fp32 and int8. These are memory--quality trade-offs, not equal-VRAM
 configurations.
 
-IVF-RaBitQ~\cite{ivfrabitq} is cited but not compared against. The cuVS
-implementation exposes \texttt{n\_probes} and a search kernel and no exact
-re-ranking stage, and at one bit per dimension --- the configuration the
-method is known for --- Recall@10 does not exceed $0.79$ on the datasets here
-at any probe depth we measured. Reaching the recalls compared in this section
-therefore requires eight bits per dimension and a scan eight times more
-expensive, at which point the baseline measures $2.3$ to $4.9\times$ slower
-than CAGRA-int8 at Recall@10 $0.90$--$0.95$ --- the reverse of its own
-published ordering. That is a statement about the configuration available to
-us, not about RaBitQ, so we withdraw it rather than report it. IVF-PQ sweeps 96--768-byte
+IVF-PQ sweeps 96--768-byte
 codes on the four smaller sets and 128--512-byte codes on the larger sets;
 CAGRA sweeps graph degree 32/64, search width 1/2 and intermediate top-$k$
 32--2,048 where feasible. The artifact parameter table records actual
