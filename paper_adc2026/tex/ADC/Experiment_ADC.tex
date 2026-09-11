@@ -4,7 +4,9 @@
 \label{sec:setup}
 Measurements use one RTX 5090 (32\,GB, 170 SMs), a Xeon Platinum 8470Q
 host (208 logical CPUs), CUDA 13.0, driver 595.71.05 and cuVS 26.08.01.
-Table~\ref{tab:data} lists database sizes. OpenAI, BGE and Stella conversion
+Table~\ref{tab:data} cites the source datasets and lists database sizes.
+The OpenAI sets contain DBpedia embeddings; BGE uses Italian Wikipedia,
+and Stella uses the TREC24 BioGen corpus. OpenAI, BGE and Stella conversion
 removes non-finite vectors, normalises nonzero vectors and holds queries out
 with seed 42; Stella queries are corpus samples. All systems use the same
 exported vectors and squared-L2 top-10 truth, without further normalisation.
@@ -16,58 +18,66 @@ exported vectors and squared-L2 top-10 truth, without further normalisation.
 \footnotesize
 \begin{tabular}{lrrrr}\toprule
 Dataset & $N$ & $d$ & $n_q$ & $\mathit{nlist}$\\\midrule
-vogue-768 & 932,328 & 768 & 1,000 & 4,096\\
-arxiv-768 & 2,253,000 & 768 & 1,000 & 8,192\\
-bge-m3 & 10,091,524 & 1,024 & 1,000 & 32,768\\
-stella-trec24 & 17,776,615 & 1,024 & 999 & 32,768\\
-openai3-1536 & 999,000 & 1,536 & 1,000 & 8,192\\
-openai3-3072 & 999,000 & 3,072 & 1,000 & 8,192\\\bottomrule
+vogue-768~\cite{data_vogue} & 932,328 & 768 & 1,000 & 4,096\\
+arxiv-768~\cite{data_arxiv} & 2,253,000 & 768 & 1,000 & 8,192\\
+bge-m3~\cite{data_bge} & 10,091,524 & 1,024 & 1,000 & 32,768\\
+stella-trec24~\cite{data_stella} & 17,776,615 & 1,024 & 999 & 32,768\\
+openai3-1536~\cite{data_openai1536} & 999,000 & 1,536 & 1,000 & 8,192\\
+openai3-3072~\cite{data_openai3072} & 999,000 & 3,072 & 1,000 & 8,192\\\bottomrule
 \end{tabular}
 \end{table}
 
 Timing covers host query input to host result output. Frontiers answer all
 $n_q$ queries in one call and report the mean of three warmed runs; frontier
-QPS excludes one-time calibration, which the break-even analysis accounts for
-separately. Three cold builds of Vogue recall 0.9852, 0.9842 and 0.9849, so
+QPS excludes calibration. Section~\ref{sec:rq2} measures calibration cost
+under its separate held-out protocol. Three cold builds of Vogue recall
+0.9852, 0.9842 and 0.9849, so
 differences below about $10^{-3}$ across builds need repeated evidence;
 differences within one index do not.
 
 JHQ uses $M=d/8$, $B=B_r=8$, 39 training points per centroid, eight coarse
 iterations and 100,000 residual-training vectors. All JHQ frontier points use
-this training setup and probes $\{8,32,128,256,512,1024\}$. Frontier
-calibration uses $S=32$, $\epsilon=1$ and $\alpha_{\max}=100$ on the query
-pool itself. The separate held-out evaluation uses $S=128$ and
+this training setup and probes $\{8,32,128,256,512,1024\}$. The primary
+system comparison fixes $\alpha=100$. The additional same-pool calibration
+curve uses $S=32$, $\epsilon=1$ and $\alpha_{\max}=100$ on the evaluated
+query pool. The separate held-out evaluation uses $S=128$ and
 $\alpha_{\max}=200$ (Section~\ref{sec:rq2}); its quality results do not
 validate the frontier's calibration protocol.
 
 IVF-PQ sweeps 8-bit subcodes at 96--768-byte code lengths and CAGRA sweeps
-graph degree, search width and intermediate top-$k$; the configurations trade
-memory against quality differently and GPU memory is not matched. Curves keep
-nondominated clean points, and matched-recall ratios interpolate
-$\log(\mathrm{QPS})$ within measured coverage without extrapolating. The
-implementation, harness and plotting scripts will be released on publication.
+graph degree, search width and intermediate top-$k$; GPU memory is not
+matched. Curves keep nondominated clean points and matched-recall ratios
+interpolate $\log(\mathrm{QPS})$ without extrapolating. The implementation,
+harness and plotting scripts will be released on publication.
+GPU IVF-RaBitQ is discussed in Section~\ref{sec:related}, but its archived
+measurements are excluded pending validation of our configuration against
+the published GPU artifact; the comparisons do not establish superiority
+over that method.
 
 \subsection{RQ1: end-to-end operating regions}
 \label{sec:rq1}
-Figure~\ref{fig:frontier} compares JHQ with IVF-PQ and CAGRA fp32. CAGRA
-fp32 leads on the two 768-dimensional sets and JHQ on the two OpenAI ones;
-IVF-PQ is behind throughout.
+Figure~\ref{fig:frontier} compares fixed-budget JHQ with IVF-PQ and CAGRA
+fp32. CAGRA leads on the two 768-dimensional sets at recall 0.90/0.95;
+the ordering on the OpenAI sets depends on the target recall.
 
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\linewidth]{figs/fig_frontier.pdf}
-\caption{Steady-state Recall@10--QPS, entire query set per call. Endpoints
-are sweep endpoints, not architectural ceilings. The dashed curve is JHQ
-without budget calibration, so the gap is what Section~\ref{sec:method2}'s
-rule contributes --- calibrated here on the query pool itself, which makes
-that gap optimistic; Section~\ref{sec:rq2} measures the rule held out.}
+\caption{Recall@10--QPS, entire query set per call. Solid JHQ fixes
+$\alpha=100$. Dashed JHQ calibrates on the evaluated query pool and excludes
+calibration cost; it does not validate reuse on unseen queries.
+Section~\ref{sec:rq2} evaluates calibration held out. Endpoints are measured
+sweep endpoints.}
 \label{fig:frontier}
 \end{figure}
 
 \paragraph{Operating regions and stage costs.}
-At matched recall, CAGRA fp32 is level or up to $1.5\times$ faster on the
-768-dimensional datasets; JHQ is $1.3$--$1.8\times$ faster on the OpenAI
-datasets. These cross-dataset observations do not isolate a dimension effect.
+At recall 0.90/0.95, CAGRA fp32 is $1.45$--$2.03\times$ faster than fixed
+JHQ on the 768-dimensional datasets. On OpenAI-1536, JHQ is near parity at
+0.95 and $1.52\times$ faster at 0.98; on OpenAI-3072 its QPS is $0.66$ and
+$1.09$ times CAGRA's at these recalls. IVF-PQ is slower at the evaluated
+targets within common measured coverage. These cross-dataset observations
+do not isolate a dimension effect.
 Separate JHQ stage measurements show refinement taking 57\% of timed work on
 Vogue and 70\% on OpenAI-3072 at $\alpha=100$, $\mathit{nprobe}=32$.
 The refinement share motivates budget calibration; payback depends on the
@@ -93,7 +103,7 @@ Even-indexed queries calibrate, odd-indexed ones measure.
 \begin{table}[tbp]
 \centering
 \caption{Held-out budget comparison, $\epsilon=1$, $\alpha_{\max}=200$. Each
-entry gives $\alpha$ and Recall@10, then kQPS. Rule entries are the median
+cell gives $\alpha$ and Recall@10, then kQPS. Rule entries are the median
 $\alpha$, mean recall and mean selected-arm QPS over 64 draws at $S=128$.}
 \label{tab:budget}
 \input{tables/budget_current}
@@ -109,26 +119,35 @@ does not establish held-out quality for every draw.
 With $S=32$, 27--98\% of draws lose more than $10^{-3}$ held-out recall;
 at $S=128$, failures range from zero to 40/64 (Figure~\ref{fig:budget}a).
 These are repeated draws from fixed pools; zero observations do not establish
-zero risk. Enumeration and bisection agree in all 2,304 draws across
+zero risk. With fixed $\epsilon=1$, increasing $S$ also tightens the allowed
+disagreement fraction, so this is not an isolated sample-size effect.
+Enumeration and bisection agree in all 2,304 draws across
 $S=32,64,128$. Enumeration costs $1.66$--$2.00\times$ as much, with reference
 search included in both timers.
+
+
+\paragraph{Gain and repayment.}
+At $S=128$, mean selected-arm QPS gains are $1.05$--$2.77\times$ in ten of twelve
+cells, with 5.2--30.8\,ms calibration and estimated payback of 1.4--36.4
+500-query batches. Gains do not imply reliable satisfaction of the quality
+threshold: BGE at probe 512 gains $1.05\times$ but exceeds it in 24/64 draws.
+On arxiv, QPS is 12--14\% lower than fixed $\alpha=100$, while mean recall
+increases from 0.9748/0.9878 to 0.9751/0.9885 at probes 128/512; larger
+budgets trade speed for quality. Calibration does not repay in throughput
+there. Payback uses the reciprocal of mean selected fixed-arm QPS, which
+underestimates mean batch time when selections differ and gives an optimistic
+aggregate estimate. Calibration includes reference search and agreement
+checks but excludes sample gathering.
 
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\linewidth]{figs/fig_budget_current.pdf}
-\caption{(a) Held-out sampling risk. (b) Selected-arm throughput gain and
-estimated payback at $S=128$, relative to fixed $\alpha=100$. Filled/open
-markers indicate probes 128/512. Payback is in 500-query equivalents.}
+\caption{(a) Draws losing $>10^{-3}$ recall against the best tested budget;
+solid/dashed lines denote probes 128/512. (b) Mean selected-arm QPS gain and
+optimistic aggregate payback at $S=128$, relative to fixed $\alpha=100$;
+filled/open markers denote probes 128/512. Payback uses 500-query equivalents.}
 \label{fig:budget}
 \end{figure}
-
-\paragraph{Gain and repayment.}
-At $S=128$, selected-arm QPS gains are $1.05$--$2.77\times$ in ten of twelve
-cells, with 5.2--30.8\,ms calibration and estimated payback of 1.4--36.4
-500-query batches. The two arxiv cells have 12--14\% lower QPS than fixed
-$\alpha=100$, so calibration does not repay. Payback uses the reciprocal of
-mean selected fixed-arm QPS, not a measured service workload. Calibration
-includes reference search and agreement checks but excludes sample gathering.
 
 \subsection{RQ3: what the representation is worth, and what it is not}
 \label{sec:rq3}\label{sec:rq4}
@@ -200,15 +219,15 @@ candidate counts.
 
 \subsection{RQ4: comparison with CPU JHQ}
 \label{sec:rq5}\label{sec:rq6cpu}
-Against the authors' own CPU artifact, the GPU rule curve is about 52--108
+Against the authors' own CPU artifact, the GPU same-pool rule curve is about 52--108
 times faster over the recalls both cover. The more useful number is what the
 budget is worth on each processor: the same $\alpha$ knob buys $2.5$ to
 $3.0\times$ more on the GPU than on the CPU at every probe depth on
 openai3-3072. On the CPU the scan dominates and the budget barely moves
 throughput; on the GPU the scan is what Section~\ref{sec:designspace} makes
 cheap, so refinement takes the larger share and the same cut in survivors
-buys more. Selective refinement is therefore a GPU design decision rather
-than a CPU idea carried across.
+buys more. The observations motivate retuning the inherited refinement
+budget for the GPU execution path.
 
 It is a system comparison, not an identical-index speedup. The two
 implementations train separate codebooks, both OpenAI sets use 4{,}096 CPU
@@ -227,12 +246,11 @@ configurations and repeats, whiskers their range, not a confidence interval.
 JHQ's bar is one cold training plus its median encode.}
 \label{fig:build}
 \end{figure}
-JHQ is the cheapest index to build on all six datasets, by $3.5$ to
-$8.5\times$ over the fastest compared alternative (Figure~\ref{fig:build}).
-Where CAGRA fp32 searches faster, the model
-$T_{\mathrm{build}}+Q/\mathrm{QPS}$ puts the crossover at $4.9$--$11.2$M
-queries at recall 0.90/0.95; it combines fastest baseline builds with
-interpolated search frontiers and excludes calibration overhead.
+Among the compared systems and configurations, JHQ has the lowest build
+estimate on all six datasets, by $3.5$--$8.5\times$ over the fastest compared
+alternative (Figure~\ref{fig:build}). Faster construction can favour workloads
+with frequent rebuilds, while a faster search path can repay its larger build
+cost over sufficiently many queries.
 
 \begin{figure}[!htbp]
 \centering
@@ -254,4 +272,3 @@ of Section~\ref{sec:rq1}, so JHQ occupies a different
 memory--accuracy--throughput point rather than a better one. An unattributed
 remainder of $4$--$41\%$ is plotted rather than assigned a cause we did not
 measure.
-

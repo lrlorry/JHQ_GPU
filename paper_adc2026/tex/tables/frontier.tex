@@ -6,11 +6,11 @@
 \cmidrule(l){2-7}
 dataset & $0.90$ & $0.93$ & $0.95$ & $0.97$ & $0.98$ & $0.99$ \\
 \midrule
-vogue-768 & \textbf{JHQ} & \textbf{JHQ} & \textbf{JHQ} & RaBitQ $1.0\times$ & RaBitQ $1.1\times$ & \textbf{JHQ} \\
-arxiv-768 & \textbf{JHQ} & \textbf{JHQ} & \textbf{JHQ} & RaBitQ $1.1\times$ & RaBitQ $1.2\times$ & -- \\
-bge-m3 & \textbf{JHQ} & \textbf{JHQ} & -- & -- & -- & -- \\
+vogue-768 & int8 $2.7\times$ & int8 $2.0\times$ & fp32 $1.1\times$ & \textbf{JHQ} & \textbf{JHQ} & RaBitQ $1.1\times$ \\
+arxiv-768 & int8 $2.9\times$ & int8 $2.9\times$ & int8 $2.5\times$ & fp32 $1.4\times$ & fp32 $1.4\times$ & fp32 \\
+bge-m3 & int8 $2.4\times$ & int8 $1.7\times$ & -- & -- & -- & -- \\
 stella-trec24 & -- & -- & -- & -- & -- & -- \\
-openai3-1536 & \textbf{JHQ} & \textbf{JHQ} & \textbf{JHQ} & \textbf{JHQ} & \textbf{JHQ} & -- \\
-openai3-3072 & \textbf{JHQ} & \textbf{JHQ} & \textbf{JHQ} & \textbf{JHQ} & RaBitQ $1.1\times$ & RaBitQ $1.4\times$ \\
+openai3-1536 & int8 $1.9\times$ & int8 $1.6\times$ & int8 $1.3\times$ & \textbf{JHQ} & \textbf{JHQ} & -- \\
+openai3-3072 & int8 $2.2\times$ & int8 $1.8\times$ & int8 $1.5\times$ & \textbf{JHQ} & \textbf{JHQ} & -- \\
 \bottomrule
 \end{tabular}

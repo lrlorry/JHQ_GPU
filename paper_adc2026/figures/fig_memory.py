@@ -99,7 +99,7 @@ y = np.arange(len(order))
 # Section 6.6 now gives the three numbers that mattered -- residual at 48% of
 # 1.4 GiB on Vogue and 83% of 20.4 GiB on Stella.  Two panels cost the page
 # that Section 6.6's second figure needed.
-fig, ax = plt.subplots(figsize=(WIDE * 0.72, 1.72))
+fig, ax = plt.subplots(figsize=(WIDE * 0.72, 1.55))
 left = np.zeros(len(order))
 for p, c in parts:
     v = np.array(vals[p]) / 1024          # GiB

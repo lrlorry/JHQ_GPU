@@ -101,7 +101,7 @@ import statistics as _st
 # distinct claim -- that factorisation pays under both layouts, so the two
 # changes multiply rather than substitute -- is a clause in Section 6.4, and a
 # chart whose message is "these agree" reads as one line drawn twice.
-fig, a = plt.subplots(figsize=(WIDE * 0.78, 2.15))
+fig, a = plt.subplots(figsize=(WIDE * 0.78, 1.78))
 GS = [1, 2, 4, 8]
 SETS = [("vogue-768", 96), ("openai3-3072", 384)]
 

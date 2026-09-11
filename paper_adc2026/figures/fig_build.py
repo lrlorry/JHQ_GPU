@@ -159,10 +159,10 @@ for ln in open(datafile("rabitq_o3072_build.log")):
     if m:
         b[("IVF-RaBitQ", "openai3-3072")].append(float(m.group(1)) / 1000)
 
-# IVF-RaBitQ is withdrawn from the paper: cuVS ships RaBitQ's quantiser
-# without the exact re-ranking its published results depend on, so every
-# number measured for it here is a number about a configuration we were
-# forced into, not about the method.
+# Archived IVF-RaBitQ measurements remain outside the reported comparison
+# pending configuration validation against the published GPU artifact.
+# Its GPU refinement uses additional quantized bits, not exact raw-vector
+# reranking. Missing exact reranking does not justify excluding a GPU result.
 METHODS = [("JHQ-GPU", "jhq"),
            ("cuVS-CAGRA", "cagra"),
            ("cuVS-IVFPQ", "ivfpq")]
