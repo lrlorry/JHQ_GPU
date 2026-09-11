@@ -234,14 +234,8 @@ Vogue also has an imbalanced coarse list containing about 14.5\% of its
 vectors. This is an observed workload characteristic that affects routed
 candidate counts, not an explanation for every performance difference.
 
-\subsection{RQ5: batch sensitivity and CPU comparison}
+\subsection{RQ5: what the port buys over CPU JHQ}
 \label{sec:rq5}\label{sec:rq6cpu}
-A separate matched-recall sweep uses batches 32/128/512/1,024 on four
-datasets. JHQ's own throughput is strongly batch dependent, which is why the
-frontier fixes batch 1{,}024 and reports it as a setting rather than as a
-property. Fixed-probe batch curves in the artifact are labelled as such;
-duplicated queries are not treated as larger independent workloads.
-
 The CPU comparison uses the authors' JHQ artifact with documented build and
 recall fixes, FAISS commit \texttt{4a2393741}, AVX2, and the best of 16/32
 threads pinned with \texttt{OMP\_PROC\_BIND=close},
