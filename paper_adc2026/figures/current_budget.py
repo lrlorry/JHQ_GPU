@@ -43,13 +43,11 @@ def main():
         r'Dataset / probe & Fixed 8 & Fixed 64 & Rule & Full pool & Oracle \\ \midrule'+'\n'+
         '\n'.join(rows)+'\n'+r'\bottomrule\end{tabular}'+'\n')
     (dst/'budget_values.json').write_text(json.dumps(stats,indent=2)+'\n')
-    # Four points, two near-collisions; each label is placed by hand.
-    # (dx, dy, horizontal alignment).  openai/512 sits at x=1.12, close
-    # enough to the left spine that a left-placed label runs into the axis
-    # label, and a right-placed one lands on the vogue/128 marker; it goes
-    # underneath instead.
-    LBL={('vogue-768',128):(7,4,'left'),('vogue-768',512):(7,3,'left'),
-         ('openai3-3072',128):(-7,4,'right'),('openai3-3072',512):(0,9,'center')}
+    # Each point carried its probe depth and calibration time as text.  That
+    # was placed by hand for four points and does not survive twelve -- the
+    # labels collide with each other and with the spines whatever the offset
+    # rule.  Both quantities are columns of Table 2, so the panel keeps the
+    # relationship it exists to show and drops the annotation.
     fig,(ax,bx)=plt.subplots(1,2,figsize=(WIDE,2.05))
     for (ds,np_),c in cells.items():
         ax.plot([32,64,128],[100*c['rule'][s]['over'] for s in [32,64,128]],
@@ -58,7 +56,9 @@ def main():
                 label=('%s / %d'%('Vogue' if ds=='vogue-768' else 'OpenAI',np_)))
     ax.set_xscale('log',base=2);ax.set_xticks([32,64,128]);ax.set_xticklabels(['32','64','128'])
     ax.set_xlabel('Calibration queries, S');ax.set_ylabel(r'Draws losing $>10^{-3}$ (%)')
-    ax.set_ylim(-3,78);ax.legend(fontsize=7,handlelength=1.1)
+    ax.set_ylim(-3,78)
+    ax.legend(fontsize=6.2 if len(cells)>6 else 7, handlelength=1.1,
+              ncol=2 if len(cells)>6 else 1, labelspacing=0.25, borderpad=0.25)
     ax.set_title('(a) Held-out quality risk',fontsize=8)
     for x in stats:
         ds=x['dataset'];np_=x['nprobe']
@@ -66,20 +66,18 @@ def main():
                    facecolors=DS_COLOR[ds] if np_==128 else 'none',s=26)
         # Offsets per point, not per probe depth: at (4,-13) the openai/512
         # label landed beside the vogue/128 marker and read as its label.
-        dx,dy,ha=LBL[(ds,np_)]
-        bx.annotate('%d / %.1f ms'%(np_,x['cal_ms']),
-                    (x['gain'],x['repay_batches']),xytext=(dx,dy),
-                    textcoords='offset points',fontsize=7,ha=ha,
-                    annotation_clip=False)
-    bx.set_xlim(1.02,1.75);bx.set_ylim(2.8,28)
+    gs=[x['gain'] for x in stats]; rs=[x['repay_batches'] for x in stats]
+    sp=max(gs)-min(gs)+.01
+    bx.set_xlim(min(gs)-0.10*sp, max(gs)+0.10*sp); bx.set_ylim(min(rs)*0.72, max(rs)*1.40)
     bx.set_yscale('log')
     # set_yticks fixes the major ticks, but the log locator keeps its own
     # minor ticks and the default formatter labels those too, so the axis
     # came out reading 2x10^1 / 16 / 8 / 6x10^0 / 4 / 3x10^0.
     bx.yaxis.set_minor_locator(style.matplotlib.ticker.NullLocator())
-    bx.set_yticks([4,8,16])
+    tk=[v for v in (1,2,4,8,16,32,64) if min(rs)*0.7 <= v <= max(rs)*1.5]
+    bx.set_yticks(tk)
     bx.yaxis.set_major_formatter(
-        style.matplotlib.ticker.FixedFormatter(['4','8','16']))
+        style.matplotlib.ticker.FixedFormatter([str(v) for v in tk]))
     bx.set_xlabel(r'Selected-arm QPS / fixed $\alpha=100$')
     bx.set_ylabel('Estimated batches to repay')
     bx.set_title('(b) Calibration economics, S=128',fontsize=8)
