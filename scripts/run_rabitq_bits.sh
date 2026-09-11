@@ -77,15 +77,17 @@ one(){  # tag paths nlist bits nprobe mode
 }
 
 NP="8 32 128 256 512 1024"
-# dataset|paths|nlist|best mode from rq_train.log's kernel sweep
-SET="vogue-768|$VG|4096|1 arxiv-768|$AX|8192|1 openai3-1536|$O15|4096|0 openai3-3072|$O30|4096|2"
 
+# The dataset table cannot be a whitespace-separated string: $VG and friends
+# are three paths each, so word splitting tears every entry apart and every
+# field after the first lands empty.  One explicit call a dataset instead.
+# mode is the search kernel rq_train.log's sweep found best for that dataset.
 for bt in 1 2 4 8; do
     say "########## bits_per_dim=$bt ##########"
-    for s in $SET; do
-        IFS='|' read -r tag paths nl md <<< "$s"
-        for np in $NP; do one "$tag" "$paths" "$nl" "$bt" "$np" "$md"; done
-    done
+    for np in $NP; do one vogue-768    "$VG"  4096 "$bt" "$np" 1; done
+    for np in $NP; do one arxiv-768    "$AX"  8192 "$bt" "$np" 1; done
+    for np in $NP; do one openai3-1536 "$O15" 4096 "$bt" "$np" 0; done
+    for np in $NP; do one openai3-3072 "$O30" 4096 "$bt" "$np" 2; done
 done
 rm -f "$JHQ_RQ_IDX"
 say "=== RQBITS""_DONE ==="
