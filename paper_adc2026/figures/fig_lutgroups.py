@@ -129,19 +129,19 @@ a.set_xticklabels(["1\n$256$", "2\n$2{\\times}16$", "4\n$4{\\times}4$",
 a.set_xlabel("groups $G$, and the table it gives")
 a.set_ylabel(r"QPS $\div$ QPS at $G{=}2$")
 a.set_ylim(0.26, 1.13)   # headroom above 1.0 for the tag, below for the note
-a.legend(loc="lower left", fontsize=6.6, labelspacing=0.25, borderpad=0.3)
+a.legend(loc="lower left", fontsize=6.4, labelspacing=0.2, borderpad=0.3,
+         handlelength=1.4, framealpha=0.93, bbox_to_anchor=(-0.012, -0.015))
 a.text(0.97, 0.975, "median over six datasets;\nband is their range",
        fontsize=6.6, color="#898781", transform=a.transAxes, ha="right",
        va="top", linespacing=1.3)
 a.text(0.03, 0.965, "(a)", transform=a.transAxes, fontsize=8, va="top")
 # Short enough for the strip right of the legend; the tick labels already
 # spell out 4x4 and 8x2, so the note only has to say they are equal.
-a.annotate(r"$4{\times}4$ and $8{\times}2$:" "\n" "same table,\nmore lookups",
-           xy=(0.97, 0.03), xycoords="axes fraction", ha="right", va="bottom",
-           fontsize=7, color="#52514e", linespacing=1.3)
-a.annotate("smaller table,\nslower", xy=(2.55, 0.60), xytext=(1.35, 0.47),
-           fontsize=7, color="#52514e", linespacing=1.3,
-           arrowprops=dict(arrowstyle="-|>", lw=0.7, color="#898781"))
+a.text(0.97, 0.885, r"$4{\times}4$ and $8{\times}2$ hold the" "\n"
+       "same table and differ only" "\n" "in lookups",
+       transform=a.transAxes, ha="right", va="top", fontsize=6.6,
+       color="#52514e", linespacing=1.35)
+
 
 # ── (b) factorisation against the full table, both layouts ─────────────────
 # This was two datasets at three probe depths, six bars a layout, while
@@ -176,13 +176,13 @@ b.axhline(1.0, color="0.35", lw=0.7, ls=":")
 b.set_xticks(x2); b.set_xticklabels([str(v) for v in NP2])
 b.set_xlabel("nprobe")
 b.set_ylabel("factorised $\\div$ full table")
-b.legend(loc="upper left", fontsize=7, handlelength=1.2, borderpad=0.3,
-         bbox_to_anchor=(0.0, 0.98))
+b.legend(loc="upper left", fontsize=6.6, handlelength=1.3, borderpad=0.3,
+         labelspacing=0.22, framealpha=0.93, bbox_to_anchor=(0.115, 0.985))
 # The panel tag sits bottom-left, where the legend is not: the band fills the
 # top of this panel and the annotation the bottom right.
-b.text(0.03, 0.05, "(b)", transform=b.transAxes, fontsize=8, va="bottom")
-b.text(0.115, 0.055, note, transform=b.transAxes, fontsize=6.4,
-       color="#898781", va="bottom")
+b.text(0.03, 0.965, "(b)", transform=b.transAxes, fontsize=8, va="top")
+b.text(0.03, 0.72, note, transform=b.transAxes, fontsize=6.4,
+       color="#898781", va="top")
 b.annotate("both layouts gain,\nand gain more\nwith probe depth",
            xy=(0.97, 0.06), xycoords="axes fraction", ha="right", va="bottom",
            fontsize=7, color="#52514e", linespacing=1.3)
