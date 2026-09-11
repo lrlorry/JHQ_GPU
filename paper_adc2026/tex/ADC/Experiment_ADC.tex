@@ -156,10 +156,10 @@ throughput in 23 of the 24 cells spanning six datasets and four probe depths
 (Figure~\ref{fig:lutgroups}); the exception is arxiv-768 at probe 128, where
 $G=1$ leads by $0.03\%$. The sharpest form of the argument is between the
 losers: $G=4$ and $G=8$ store 16 entries a subspace each, so footprint is
-constant and only lookups differ, and $G=8$ is 3.4--38.5\% slower across all
-24 pairs, widening with probe depth. Factorisation against the full table grows with $M$: $-0.0$ to $+9.9\%$ at
-$M{=}96$, where the full table nearly fits, rising to $+4.8$ to $+25.3\%$ at
-$M{=}128$ and a maximum of $+53.4\%$ at $M{=}192$.
+constant and only lookups differ, and $G=8$ is 3.4--38.5\% slower over all 24
+pairs, widening with probe depth. Factorisation grows with $M$: $-0.0$ to
+$+9.9\%$ at $M{=}96$, where the full table nearly fits, and up to $+53.4\%$
+at $M{=}192$.
 
 \begin{figure}[tbp]
 \centering
@@ -196,29 +196,30 @@ Private probe cursor & $-1.4$ to $+148.5\%$ & 20 & Loop work is negligible\\
 \end{tabular}
 \end{table}
 
-\paragraph{What none of it isolates.} Table footprint alone does not predict
-speed: removing a redundant probe traversal moves no bytes, changes recall by
-at most $10^{-4}$ over 20 pairs, and changes throughput in both directions.
-Table construction is too small to be the explanation instead, at
-0.20--2.30\% of batch time over 18 configurations. Instruction work and memory
-access evidently both matter, but without hardware counters we cannot separate
-cache, register pressure and occupancy, and static SASS counts cannot
-decompose runtime into issue and residency terms. Vogue's largest coarse list
-also holds about 14.5\% of its vectors, an imbalance that affects routed
+\paragraph{What none of it isolates.} Footprint alone does not predict speed:
+removing a redundant probe traversal moves no bytes, changes recall by at most
+$10^{-4}$ over 20 pairs, and moves throughput in both directions. Table
+construction cannot be the explanation instead, at 0.20--2.30\% of batch time.
+Instruction work and memory access both matter, but without hardware counters
+we cannot separate cache, register pressure and occupancy. Vogue's largest
+coarse list also holds about 14.5\% of its vectors, which affects routed
 candidate counts.
 
 \subsection{RQ4: comparison with CPU JHQ}
 \label{sec:rq5}\label{sec:rq6cpu}
-The CPU baseline uses the authors' artifact with build and recall fixes,
-FAISS commit \texttt{4a2393741} and AVX2. Threads are pinned with
-\texttt{OMP\_PROC\_BIND=close} and \texttt{OMP\_PLACES=cores}. Vogue and
-OpenAI-3072 use the best recorded 16/32-thread results; arxiv and OpenAI-1536
-use 32 threads. The sweep tests budgets 2, 4, 8, 16, 32 and 100, with
-probes 128, 256, 512 and 1,024. Lower probes are excluded because thread
-start-up dominates short timings. Both sides use $10^{-3}$ recall buckets before interpolation.
+The CPU baseline is the authors' artifact with its build and recall fixes,
+AVX2 and pinned threads, sweeping budgets 2--100 and probes 128--1{,}024;
+lower probes are excluded because thread start-up dominates their timings.
+Both sides bucket recall at $10^{-3}$ before interpolating.
 
 The GPU rule curve is about 52--108 times faster over overlapping recall
-coverage. Most CPU cells have one timing, so these are order-of-magnitude
+coverage. The same $\alpha$ knob is worth $2.5$ to
+$3.0\times$ more on the GPU at every probe depth on
+openai3-3072: on the CPU the scan dominates and the budget
+barely moves throughput, while on the GPU the scan is what
+Section~\ref{sec:designspace} makes cheap, so refinement takes the larger
+share. Selective refinement is a GPU design decision, not a CPU idea carried
+across. Most CPU cells have one timing, so these are order-of-magnitude
 comparisons. Codebooks are trained separately, and both OpenAI sets use 4,096
 CPU lists versus 8,192 on the GPU frontier. CPU results for BGE and Stella
 are unavailable.
