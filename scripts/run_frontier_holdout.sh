@@ -72,15 +72,21 @@ O30="$D/openai3-3072/base.fvecs $D/openai3-3072/query.fvecs $D/openai3-3072/grou
 
 # nlist, n_train and BLOCK follow the frontier; openai3-3072 is at the 8192 its
 # own sweep chose, which the frontier now reports.
-for ho in 1 0; do
-  say "########## JHQ_AS_HOLDOUT=$ho ##########"
-  for np in 8 32 128 256 512 1024; do
-    one vogue-768    "$VG"  96  4096  159744  512  $np $ho
-    one arxiv-768    "$AX"  96  8192  319488  512  $np $ho
-    one openai3-1536 "$O15" 192 8192  319488  512  $np $ho
-    one openai3-3072 "$O30" 384 8192  319488  1024 $np $ho
-    one bge-m3       "$BG"  128 32768 1277952 512  $np $ho
-    one stella       "$ST"  128 32768 1277952 512  $np $ho
-  done
+#
+# Both arms of a cell run back to back.  Sweeping all of holdout=1 before any
+# of holdout=0 -- which is how this was first written -- produces no comparable
+# pair until run 37 of 72, and the deep probes make 72 runs a three-hour job,
+# so an interrupted sweep yielded nothing.  Pairing here means every depth that
+# finishes is complete.
+pair(){ one "$@" 1; one "$@" 0; }
+for np in 8 32 128 256 512 1024; do
+  say "########## nprobe=$np ##########"
+  pair vogue-768    "$VG"  96  4096  159744  512  $np
+  pair arxiv-768    "$AX"  96  8192  319488  512  $np
+  pair openai3-1536 "$O15" 192 8192  319488  512  $np
+  pair openai3-3072 "$O30" 384 8192  319488  1024 $np
+  pair bge-m3       "$BG"  128 32768 1277952 512  $np
+  pair stella       "$ST"  128 32768 1277952 512  $np
+  say "---------- nprobe=$np complete ----------"
 done
 say "=== FH""_DONE ==="
