@@ -95,9 +95,22 @@ a candidate in its primary stage against fp32's $4d$, which favours JHQ by
 the same $32\times$ at every $d$. Since the ratio is constant, what moves with
 dimension is which term dominates: at $d{=}768$ the candidate count decides,
 and as $d$ grows the per-candidate cost grows with it until the narrower read
-outweighs the wider walk. Section~\ref{sec:rq3}'s ablation is consistent ---
-factorisation is worth a few percent at $M{=}96$ and $+53.8\%$ at $M{=}384$
---- but it compares JHQ against itself and does not establish the crossing.
+outweighs the wider walk. Stage timings measure our own half of that directly. Between vogue-768
+($d{=}768$, $M{=}96$) and openai3-3072 ($d{=}3072$, $M{=}384$) the primary
+scan costs $2.2$--$2.8\times$ more while the residual stage costs
+$4.2$--$4.7\times$ more, at every one of six
+$(\mathit{nprobe},\alpha)$ combinations measured: the scan is sub-linear in
+$d$ because the factorised table and packed loading are what
+Section~\ref{sec:designspace} changes, while refinement reads a byte a
+dimension for each of $c_k$ survivors and is not changed by this work. The
+share moves with it --- at $\alpha{=}100$, $\mathit{nprobe}{=}32$ the scan
+falls from $32\%$ of the query to $22\%$ and refinement rises from $57\%$ to
+$70\%$. That is the mechanism behind both contributions, since the budget
+sizing $c_k$ is worth calibrating exactly when refinement dominates, and it
+is equally the limit: the stage this work does not optimise is the one that
+takes over at high $d$. It explains JHQ's own scaling, not CAGRA's, so the
+crossing itself remains an observation. Stage timings cover two of the six
+datasets.
 Both OpenAI sets hold 122 vectors a list, so the comparison between them
 is not confounded by partition granularity. The margin is still not monotone
 in $d$ --- it is larger at 1{,}536 than at 3{,}072 --- so what the evidence
