@@ -140,53 +140,46 @@ $\alpha=100$, so calibration does not repay. Payback uses the reciprocal of
 mean selected fixed-arm QPS, not a measured service workload. Calibration
 includes reference search and agreement checks but excludes sample gathering.
 
-\subsection{RQ3: representation and execution ablation}
-\label{sec:rq3}
-\paragraph{Value of the residual hierarchy.}
-The maximum primary-only recall is 0.5135--0.8642 across six datasets.
-Residual refinement extends these ranges. This ablation
-retains the full allocation and measures hierarchy value rather than minimal
-JQ memory.
+\subsection{RQ3: what the representation is worth, and what it is not}
+\label{sec:rq3}\label{sec:rq4}
+Every experiment here holds the represented distance fixed and varies one
+choice, so Table~\ref{tab:neg} collects them with the heuristic each one
+refutes; \emph{cells} is how many paired comparisons the range spans.
 
-\paragraph{Factorisation and packed access.}
-With distance fixed, $G=2$ has the highest observed throughput in all eight
-granularity-sweep cells (Figure~\ref{fig:lutgroups}). $G=4$ and $G=8$ each
-store 16 entries per subspace, yet $G=8$ is 5.8--38.3\% slower.
-Factorisation gains up to 53.8\% at $M=384$; smaller gains at $M=96$ vary
-in sign across phases. Small differences do not establish general optimality
-or significance.
+\paragraph{The hierarchy.} Primary-only recall tops out at 0.5135--0.8642
+across the six datasets, and residual refinement extends every range. The
+ablation keeps the full allocation, so it measures what the second level buys
+rather than what a minimal JQ index would cost.
+
+\paragraph{Granularity.} With distance fixed, $G=2$ has the highest observed
+throughput in all eight granularity-sweep cells (Figure~\ref{fig:lutgroups}).
+The sharpest form of the argument is between the losers: $G=4$ and $G=8$ store
+16 entries a subspace each, so footprint is constant and only lookups differ,
+and $G=8$ is 5.8--38.3\% slower. Factorisation gains up to 53.8\% at $M=384$;
+at $M=96$ the gains are small and vary in sign, which is the regime where the
+full table nearly fits.
 
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\linewidth]{figs/fig_lutgroups.pdf}
 \caption{(a) Granularity sweep, each line normalised to its $G=2$ point,
 probes 8/32/128/512. (b) Separate table$\times$access phase, probes
-32/128/512. Factorisation and packing are distinct changes; phases are not
-pooled as repeated measurements of one configuration.}
+32/128/512. Phases are not pooled as repeated measurements of one
+configuration.}
 \label{fig:lutgroups}
 \end{figure}
 
-The access experiment tests full and split tables with byte and word loads
-on six datasets at four probe depths: 96 measurements and 48 paired access
-ratios. Packing gains 1--66\%, with maximum four-arm recall difference 0.0001;
-each cell is measured once. All arms use subspace-major layout, so the
-experiment does not isolate the physical transpose. Table~\ref{tab:neg}
-separately reports the cursor correction.
-
-\subsection{RQ4: mechanisms and negative results}
-\label{sec:rq4}
-Table~\ref{tab:neg} shows that table footprint alone does not predict speed.
-Removing redundant probe traversal changes recall by at most $10^{-4}$ across
-20 pairs, with throughput effects of both signs. Table construction accounts
-for 0.20--2.30\% of batch time across 18 configurations. These observations
-support considering instruction work alongside memory access; they do not
-isolate cache, register or occupancy effects, and static SASS counts cannot
-decompose runtime into measured issue and residency costs.
+\paragraph{Access.} Full and split tables with byte and word loads, six
+datasets at four probe depths: 96 measurements, 48 paired ratios, packing
+worth 1--66\% with a maximum four-arm recall difference of 0.0001. Every arm
+uses the subspace-major layout, so this does not isolate the physical
+transpose, which is standard coalescing and is not claimed.
 
 \begin{table}[tbp]
 \centering
-\caption{Paired observations. Cells count comparisons within each source
-experiment; ranges do not describe a common aggregate workload.}
+\caption{Paired observations, each holding the represented distance fixed.
+\emph{Cells} counts comparisons within a source experiment; the ranges do not
+describe a common workload.}
 \label{tab:neg}
 \footnotesize
 \begin{tabular}{llrl}\toprule
@@ -199,10 +192,18 @@ Private probe cursor & $-1.4$ to $+148.5\%$ & 20 & Loop work is negligible\\
 \end{tabular}
 \end{table}
 
-Vogue's largest reported coarse list contains about 14.5\% of its vectors,
-an imbalance affecting routed candidate counts.
+\paragraph{What none of it isolates.} Table footprint alone does not predict
+speed: removing a redundant probe traversal moves no bytes, changes recall by
+at most $10^{-4}$ over 20 pairs, and changes throughput in both directions.
+Table construction is too small to be the explanation instead, at
+0.20--2.30\% of batch time over 18 configurations. Instruction work and memory
+access evidently both matter, but without hardware counters we cannot separate
+cache, register pressure and occupancy, and static SASS counts cannot
+decompose runtime into issue and residency terms. Vogue's largest coarse list
+also holds about 14.5\% of its vectors, an imbalance that affects routed
+candidate counts.
 
-\subsection{RQ5: comparison with CPU JHQ}
+\subsection{RQ4: comparison with CPU JHQ}
 \label{sec:rq5}\label{sec:rq6cpu}
 The CPU baseline uses the authors' artifact with build and recall fixes,
 FAISS commit \texttt{4a2393741} and AVX2. Threads are pinned with
@@ -218,7 +219,7 @@ comparisons. Codebooks are trained separately, and both OpenAI sets use 4,096
 CPU lists versus 8,192 on the GPU frontier. CPU results for BGE and Stella
 are unavailable.
 
-\subsection{RQ6: construction and memory}
+\subsection{RQ5: construction and memory}
 \label{sec:rq6}
 \begin{figure}[htbp]
 \centering
