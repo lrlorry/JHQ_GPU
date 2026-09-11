@@ -230,7 +230,13 @@ while the physical transpose and cursor/launch corrections are engineering.
 \label{sec:rq4}
 Table~\ref{tab:neg} gives counterexamples to simple design heuristics.
 Table-free distance uses less table state yet runs slower; finer grouping
-also adds lookups. These observations are consistent with instruction demand
+also adds lookups. The private probe cursor is the sharpest of them and moves
+no bytes at all: it removes a redundant traversal of the probe list, changes
+no distance --- recall moves by at most $10^{-4}$ across its twenty
+dataset$\times$probe-depth pairs --- and is worth up to $+148.5\%$, while two
+low-probe cells give back $1.4\%$. Table construction is a separate candidate
+explanation and is too small to be one, at $0.20$ to $2.30\%$ of a batch over
+18 configurations. These observations are consistent with instruction demand
 and memory access jointly affecting performance. They do not isolate cache,
 register pressure or achieved occupancy. Without hardware counters, static
 SASS counts cannot assign the remaining time to residency. We consequently do
@@ -246,6 +252,8 @@ in each source experiment, not a common aggregate workload.}
 Change & QPS effect & Simple heuristic challenged\\\midrule
 Table-free exact score & $-30$ to $-52\%$ & Minimum table state\\
 $G=8$ versus $G=4$ & $-5.8$ to $-38.3\%$ & Equal footprint, equal speed\\
+Packed 32-bit loads & $+1$ to $+66\%$ & Bytes moved predict speed\\
+Private probe cursor & $-1.4$ to $+148.5\%$ & Loop work is negligible\\
 Fused refinement & $-14.2\%$, $-14.8\%$ & Fewer kernel boundaries\\
 Duplicate queries, $D=8$ & $+4$ to $+26\%$ & Reuse as a sole explanation\\\bottomrule
 \end{tabular}
