@@ -71,7 +71,7 @@ handles = [plt.Line2D([], [], color=S[k]["color"], marker=S[k].get("marker", "")
                       ls=S[k].get("ls", "-"),
                       lw=1.5 if k == "jhq" else 1.0, label=S[k]["label"])
            for k in ("jhq", "jhq_fix", "cagra", "ivfpq")]
-fig.legend(handles=handles, loc="upper center", ncol=3,
+fig.legend(handles=handles, loc="upper center", ncol=4,
            bbox_to_anchor=(0.5, 1.08), columnspacing=1.2)
 fig.tight_layout(pad=0.3)
 save(fig, "fig_frontier")

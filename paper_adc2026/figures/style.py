@@ -86,7 +86,7 @@ S = {
 "jhq":    dict(color="#1f6fc4", marker="o", label="JHQ-GPU",
                    mec="white"),
     "jhq_fix":dict(color="#9c9a93", marker="",
-                   label=r"JHQ-GPU, no calibration ($\alpha{=}100$)", ls=(0, (4, 2))),
+                   label=r"JHQ-GPU, fixed $\alpha{=}100$", ls=(0, (4, 2))),
     # Filled markers throughout, each with the page's white as a rim, so a
     # crossing does not merge two series into one shape.
     "rabitq": dict(color="#d1443f", marker="s", label="IVF-RaBitQ", mec="white"),

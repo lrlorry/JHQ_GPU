@@ -64,8 +64,10 @@ IVF-PQ is behind throughout.
 \centering
 \includegraphics[width=\linewidth]{figs/fig_frontier.pdf}
 \caption{Steady-state Recall@10--QPS, entire query set per call. Endpoints
-are sweep endpoints, not architectural ceilings. The calibrated JHQ curve uses
-Section~\ref{sec:setup}'s frontier protocol, not the held-out experiment.}
+are sweep endpoints, not architectural ceilings. The dashed curve is JHQ
+without budget calibration, so the gap is what Section~\ref{sec:method2}'s
+rule contributes --- calibrated here on the query pool itself, which makes
+that gap optimistic; Section~\ref{sec:rq2} measures the rule held out.}
 \label{fig:frontier}
 \end{figure}
 
