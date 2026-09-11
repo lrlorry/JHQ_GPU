@@ -85,51 +85,37 @@ Section~\ref{sec:setup}, not the held-out budget experiment.}
 \end{figure}
 
 \paragraph{Why the ordering turns with dimension.}
-Against CAGRA fp32 the sign of the margin tracks dimension rather than
-dataset size. On the two 768-dimensional sets CAGRA fp32 is level or ahead,
-by up to $1.5\times$ at matched recall; on the two OpenAI sets JHQ leads by
-$1.3$--$1.8\times$. The two systems differ in both terms of the same product.
-A graph walk touches hundreds of candidates where an IVF scan at these probe
-depths touches tens of thousands, which favours CAGRA; JHQ reads $d/8$ bytes
-a candidate in its primary stage against fp32's $4d$, which favours JHQ by
-the same $32\times$ at every $d$. Since the ratio is constant, what moves with
-dimension is which term dominates: at $d{=}768$ the candidate count decides,
-and as $d$ grows the per-candidate cost grows with it until the narrower read
-outweighs the wider walk. Stage timings measure our own half of that directly. Between vogue-768
-($d{=}768$, $M{=}96$) and openai3-3072 ($d{=}3072$, $M{=}384$) the primary
-scan costs $2.2$--$2.8\times$ more while the residual stage costs
-$4.2$--$4.7\times$ more, at every one of six
-$(\mathit{nprobe},\alpha)$ combinations measured: the scan is sub-linear in
-$d$ because the factorised table and packed loading are what
-Section~\ref{sec:designspace} changes, while refinement reads a byte a
-dimension for each of $c_k$ survivors and is not changed by this work. The
-share moves with it --- at $\alpha{=}100$, $\mathit{nprobe}{=}32$ the scan
+CAGRA fp32 is level or ahead by up to $1.5\times$ on the two 768-dimensional
+sets; JHQ leads by $1.3$--$1.8\times$ on the two OpenAI ones. The systems
+differ in both terms of the same product: a graph walk touches hundreds of
+candidates where an IVF scan at these depths touches tens of thousands, while
+JHQ reads $d/8$ bytes a candidate against fp32's $4d$. That byte ratio is
+$32\times$ at every $d$, so what dimension changes is which term dominates.
+
+Stage timings measure our half of it. From vogue-768 ($d{=}768$) to
+openai3-3072 ($d{=}3072$) the primary scan costs $2.2$--$2.8\times$ more and
+the residual stage $4.2$--$4.7\times$, at all six
+$(\mathit{nprobe},\alpha)$ points measured: the scan is sub-linear because the
+factorised table and packed loading are what Section~\ref{sec:designspace}
+changes, refinement is not. At $\alpha{=}100$, $\mathit{nprobe}{=}32$ the scan
 falls from $32\%$ of the query to $22\%$ and refinement rises from $57\%$ to
-$70\%$. That is the mechanism behind both contributions, since the budget
-sizing $c_k$ is worth calibrating exactly when refinement dominates, and it
-is equally the limit: the stage this work does not optimise is the one that
-takes over at high $d$. It explains JHQ's own scaling, not CAGRA's, so the
-crossing itself remains an observation. Stage timings cover two of the six
-datasets.
-Both OpenAI sets hold 122 vectors a list, so the comparison between them
-is not confounded by partition granularity. The margin is still not monotone
-in $d$ --- it is larger at 1{,}536 than at 3{,}072 --- so what the evidence
-supports is a regime boundary between 768 and these two, not a rate.
+$70\%$. That is why the budget sizing $c_k$ is worth calibrating, and equally
+the limit: the stage we do not optimise takes over at high $d$.
+
+Three things it does not establish. It explains JHQ's scaling and not CAGRA's,
+so the crossing stays an observation; it covers two of six datasets; and the
+margin is larger at $1{,}536$ than at $3{,}072$ although both hold 122 vectors
+a list, so the evidence supports a boundary between 768 and these two rather
+than a rate.
 
 \paragraph{IVF-PQ is reported at its own partition, having been offered ours.}
-The archived cuVS sweep varies code size over four values and probe depth over
-six and fixes \texttt{n\_lists} at one value a dataset, while JHQ's was swept
-over four and the frontier reports the winner --- one side tuned on a parameter
-the other was not. Re-running IVF-PQ at JHQ's value settles it in the
-baseline's favour on five of the six datasets: at matched recall it reaches
-$0.19$ to $0.76$ of its own archived throughput there, so the coarser
-partition it already had is the better one for it. Stella-trec24 is the
-exception, where the finer partition is worth $1.5\times$ at recall 0.80, and
-the frontier reports it there. Otherwise the two families want opposite
-granularities --- JHQ holds 122 vectors a list on openai3-1536 against
-IVF-PQ's 976 --- and a cheap primary scan is what makes the fine partition
-and the deep probe affordable. Each system is reported at whichever of its
-measured partitions gives the better front.
+The archived cuVS sweep varies code size and probe depth and fixes
+\texttt{n\_lists} at one value a dataset, while JHQ's was swept over four ---
+one side tuned on a parameter the other was not. Re-run at JHQ's value,
+IVF-PQ reaches only $0.19$ to $0.76$ of its own archived throughput on five of
+six datasets, so the coarser partition it had is the better one for it;
+Stella-trec24 is the exception at $1.5\times$, and is reported there. Each
+system is reported at its better measured partition.
 
 The tested CAGRA-fp32 build path fails on BGE and Stella;
 CAGRA-int8 succeeds on both. Stella's default IVF-PQ path fails, but a 2\%
@@ -315,27 +301,22 @@ construction cost is quoted in the text where its search advantage is.}
 \label{fig:build}
 \end{figure}
 Figure~\ref{fig:build} shows a construction advantage for JHQ in the tested
-configurations. JHQ's cold Stella build takes 13.4\,s against 39.0\,s for the
-fastest clean IVF-PQ build, the only compared index that builds there. Where
+configurations. JHQ's cold Stella build takes 13.4\,s against 55.7\,s for the
+fastest clean IVF-PQ build, the only compared index that builds there --- and
+that figure is IVF-PQ at the finer partition its Stella front now comes from,
+which buys the search throughput reported above and costs the build time
+reported here. Where
 CAGRA-int8 searches faster (Section~\ref{sec:rq1}), a model
 $T_{\mathrm{build}}+Q/\mathrm{QPS}$ puts the crossover at 1.6--8.9M queries at
 recall 0.90/0.95. This combines fastest baseline builds with interpolated
 search frontiers and omits calibration/control overhead; it is an estimate
 under those assumptions, not a measured lifecycle comparison.
 
-Two asymmetries in that comparison, pointing opposite ways. The coarse
-training budgets are not matched and cannot be: cuVS's k-means trains on half
-the dataset by default, which allocates $36.4$\,GiB at Stella's
-$17.8$M$\,\times\,$1024 and does not fit this card, so IVF-PQ runs there at
-$2$--$10\%$ against JHQ's $7.2\%$ --- and on the four smaller sets at the
-default $50\%$ against JHQ's $14$--$32\%$. Measured on bge-m3, the reduction
-is worth $34\%$ of IVF-PQ's build ($32.2$\,s at the default against
-$21.1$\,s reduced), so the advantage is overstated on the small sets and
-understated on the large ones. Second, the advantage narrows with $N$ for a
-reason internal to JHQ: training is $71\%$ of its build on vogue-768 and
-$27\%$ on Stella, where encoding every vector dominates. Cheap training is
-where JHQ's advantage lies, and it is the part that stops mattering as $N$
-grows.
+Two caveats. cuVS's default k-means trains on half the data and does not fit
+at Stella's scale, so IVF-PQ runs at $2$--$10\%$ there against $50\%$ on the
+smaller sets --- worth $34\%$ of its build on bge-m3 --- which overstates the
+advantage where the sets are small. And it narrows with $N$ because training,
+where JHQ is cheap, falls from $71\%$ of JHQ's build to $27\%$.
 
 \begin{figure}[tbp]
 \centering

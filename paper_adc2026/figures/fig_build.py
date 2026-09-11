@@ -65,6 +65,7 @@ import sys, os, re, csv, glob, collections
 import statistics as st
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from style import *
+import style
 import numpy as np
 
 REPO = os.path.join(HERE, "..", "..")
@@ -72,6 +73,15 @@ ALIAS = {"stella-trec24": "stella"}
 b = collections.defaultdict(list)
 
 # cuVS baselines: train_ms, written by bench_all.py, dropped by fronts.json
+# Which IVF-PQ partition each dataset is reported at.  results/pq_nlist/ holds
+# a re-run at JHQ's nlist for every dataset, and those builds are real but they
+# build a different index: on stella-trec24 the unreported nlist=32768 moved
+# IVF-PQ's median build from 43.0 s to 55.7 s, which would have charged the
+# baseline for a configuration the frontier does not use -- in our favour.
+# The bars count only the partition the front comes from.
+style.load_baselines()
+PQ_REPORTED = dict(style.PQ_REPORTED)
+
 for f in glob.glob(os.path.join(REPO, "results", "**", "*.csv"), recursive=True):
     lines = [l for l in open(f) if not l.startswith("#")]
     if not lines:
@@ -86,7 +96,16 @@ for f in glob.glob(os.path.join(REPO, "results", "**", "*.csv"), recursive=True)
         m, t = x.get("method") or "", x.get("train_ms")
         if "cuVS" not in m or not t or t in ("", "None"):
             continue
-        b[(m, ALIAS.get(x.get("dataset"), x.get("dataset")))].append(float(t) / 1000)
+        ds = ALIAS.get(x.get("dataset"), x.get("dataset"))
+        if "IVFPQ" in m:
+            want = PQ_REPORTED.get(ds, "absent")
+            in_rerun = os.path.sep + "pq_nlist" + os.path.sep in f
+            # want is None when the archived sweep's partition won, so the
+            # re-run rows are dropped; when a re-run won, only it is kept.
+            if (want is None and in_rerun) or (want not in (None, "absent")
+                                               and not in_rerun):
+                continue
+        b[(m, ds)].append(float(t) / 1000)
 
 # JHQ: train + add, and the two phases cache differently, which an earlier
 # version of this figure got wrong.

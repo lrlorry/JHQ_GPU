@@ -235,6 +235,16 @@ def _quarantined():
     return bad
 
 
+# Which n_lists each dataset's reported IVF-PQ front came from, filled in by
+# load_baselines.  None means the archived sweep's value.  fig_build reads it
+# so that the build bars count only the partition the frontier reports: the
+# re-run at JHQ's nlist builds a different index, and on stella-trec24 that
+# moved IVF-PQ's median build from 43.0 s to 55.7 s for a configuration the
+# frontier does not use.
+PQ_NLIST = {}
+PQ_REPORTED = {}
+
+
 def load_baselines():
     """cuVS fronts from the v47 sweep; unchanged since, and not re-run."""
     import json
@@ -291,7 +301,15 @@ def load_baselines():
                 continue
             ds = alias.get(rows[0].get("dataset"), rows[0].get("dataset"))
             if pts and ds in out:
-                by_ds[ds].append(pareto(pts))
+                fr = pareto(pts)
+                by_ds[ds].append(fr)
+                try:
+                    import json as _j
+                    nl_seen = _j.loads(rows[0]["params"]).get("n_lists")
+                except Exception:
+                    nl_seen = None
+                PQ_NLIST[(ds, id(fr))] = nl_seen
+        nl_of = {}          # front id -> the n_lists that produced it
         for ds, fronts in by_ds.items():
             # "Better front" is area under the curve over the recalls both
             # partitions reach, so one extra high-recall point cannot win it.
@@ -304,7 +322,10 @@ def load_baselines():
             lo = max(min(r for r, _ in c) for c in cands)
             hi = min(max(r for r, _ in c) for c in cands)
             if hi > lo:
-                out[ds]["ivfpq"] = max(cands, key=lambda c: score(c, lo, hi))
+                best = max(cands, key=lambda c: score(c, lo, hi))
+                out[ds]["ivfpq"] = best
+                # None means the archived sweep's own nlist, whatever it was.
+                PQ_REPORTED[ds] = PQ_NLIST.get((ds, id(best)))
 
     # fronts.json rounded Vogue's N; use the actual loader/ID metadata.
     out["vogue-768"]["N"] = 932328
