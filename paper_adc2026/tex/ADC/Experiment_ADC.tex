@@ -264,9 +264,7 @@ not decompose runtime into independently measured issue and residency terms.
 \centering
 \caption{Controlled observations. Effects refer to the paired configurations
 in each source experiment, not a common aggregate workload, and \emph{cells}
-is how many such pairs each range spans. Fusing refinement into the scan is
-negative on three of its four cells and slightly positive on the fourth;
-the range carries both ends rather than the losing ones only.}
+is how many such pairs each range spans.}
 \label{tab:neg}
 \footnotesize
 \begin{tabular}{llrl}\toprule
@@ -275,13 +273,10 @@ Table-free exact score & $-30$ to $-52\%$ & 12 & Minimum table state\\
 $G=8$ versus $G=4$ & $-5.8$ to $-38.3\%$ & 8 & Equal footprint, equal speed\\
 Packed 32-bit loads & $+1$ to $+66\%$ & 48 & Bytes moved predict speed\\
 Private probe cursor & $-1.4$ to $+148.5\%$ & 20 & Loop work is negligible\\
-Fused refinement & $+0.6$ to $-14.8\%$ & 4 & Fewer kernel boundaries\\
-Duplicate queries, $D=8$ & $+4$ to $+26\%$ & 8 & Reuse as a sole explanation\\\bottomrule
+\bottomrule
 \end{tabular}
 \end{table}
 
-Query duplication is a controlled reuse proxy: it changes reuse and execution
-amortisation together, so it does not independently identify an L2 effect.
 Vogue also has an imbalanced coarse list containing about 14.5\% of its
 vectors. This is an observed workload characteristic that affects routed
 candidate counts, not an explanation for every performance difference.
