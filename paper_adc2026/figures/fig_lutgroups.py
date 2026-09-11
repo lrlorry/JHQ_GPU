@@ -110,8 +110,13 @@ for np_ in NP:
     per = []
     for ds in SWEEP_DS:
         g = rows.get(("sweep", ds, "word", np_))
-        if g and 2 in g and all(q in g for q in GS):
-            base = med(g, 2)
+        if g and 1 in g and all(q in g for q in GS):
+            # Normalised to G=1, the full table, not to G=2.  Against G=2 every
+            # curve passed through exactly 1.0 at the winner, so the claim the
+            # panel exists to make looked like an artefact of the reference
+            # point.  Against the full table the peak at G=2 is a measurement:
+            # factorisation gains, over-factorisation gives it back.
+            base = med(g, 1)
             per.append([med(g, q) / base for q in GS])
     if not per:
         continue
@@ -127,8 +132,8 @@ a.set_xticks(x)
 a.set_xticklabels(["1\n$256$", "2\n$2{\\times}16$", "4\n$4{\\times}4$",
                    "8\n$8{\\times}2$"])
 a.set_xlabel("groups $G$, and the table it gives")
-a.set_ylabel(r"QPS $\div$ QPS at $G{=}2$")
-a.set_ylim(0.26, 1.13)   # headroom above 1.0 for the tag, below for the note
+a.set_ylabel(r"QPS $\div$ QPS at $G{=}1$ (full table)")
+a.set_ylim(0.3, 1.75)   # headroom above 1.0 for the tag, below for the note
 a.legend(loc="lower left", fontsize=6.4, labelspacing=0.2, borderpad=0.3,
          handlelength=1.4, framealpha=0.93, bbox_to_anchor=(-0.012, -0.015))
 a.text(0.03, 0.965, "(a)", transform=a.transAxes, fontsize=8, va="top")

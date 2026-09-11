@@ -172,8 +172,10 @@ at $M{=}192$.
 \centering
 \includegraphics[width=\linewidth]{figs/fig_lutgroups.pdf}
 \caption{Six datasets, four probe depths; lines are medians over datasets and
-bands their range. (a) Granularity, normalised per cell to its own $G{=}2$.
-(b) Factorised against full table, under byte and packed loads.}
+bands their range. (a) Throughput against the full table $G{=}1$: factorising
+to $G{=}2$ gains, factorising further gives it back, and both effects grow
+with probe depth. $4{\times}4$ and $8{\times}2$ store the same 16 entries and
+differ only in lookups. (b) The $G{=}2$ gain under byte and packed loads.}
 \label{fig:lutgroups}
 \end{figure}
 
