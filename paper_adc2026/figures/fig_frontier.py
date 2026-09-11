@@ -36,8 +36,7 @@ for ax, ds in zip(axes.flat, DATASETS):
     # the system it reports beating is a configuration error of ours, not a
     # result about RaBitQ, so it is withdrawn rather than reported.
     drawn = []
-    for key, pts in (("cagra", b["cagra"]), ("cagra8", b["cagra8"]),
-                     ("ivfpq", b["ivfpq"])):
+    for key, pts in (("cagra", b["cagra"]), ("ivfpq", b["ivfpq"])):
         pts = [p for p in pts if p[0] >= 0.85]
         if pts:
             st = {k: v for k, v in S[key].items() if k not in ("label", "marker")}
@@ -68,7 +67,7 @@ for ax in axes[:, 0]:
 handles = [plt.Line2D([], [], color=S[k]["color"], marker=S[k].get("marker", ""),
                       ls=S[k].get("ls", "-"),
                       lw=1.5 if k == "jhq" else 1.0, label=S[k]["label"])
-           for k in ("jhq", "jhq_fix", "cagra", "cagra8", "ivfpq")]
+           for k in ("jhq", "jhq_fix", "cagra", "ivfpq")]
 fig.legend(handles=handles, loc="upper center", ncol=3,
            bbox_to_anchor=(0.5, 1.08), columnspacing=1.2)
 fig.tight_layout(pad=0.3)
