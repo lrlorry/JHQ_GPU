@@ -19,11 +19,13 @@ budget. We do not report it as a baseline: we could not configure the GPU
 implementation available to us so that its search reproduced the two-stage
 behaviour its paper describes, and we prefer no measurement to one of a
 configuration we cannot vouch for. CAGRA~\cite{cagra} and cuVS
-IVF-PQ~\cite{cuvs} supply the GPU comparisons.
+IVF-PQ~\cite{cuvs} supply the GPU comparisons; GPU compressed-domain scanning
+and $k$-selection go back to Faiss-GPU~\cite{faissgpu}.
 
 \paragraph{Adaptive search.}
-FAISS~\cite{faiss} provides sampled parameter autotuning; learned early
-termination~\cite{earlyterm} controls per-query search effort. Our workload
+Faiss~\cite{faisslib} sweeps search-time settings and keeps the
+Pareto-optimal ones; learned early termination~\cite{earlyterm} controls
+per-query search effort. Our workload
 policy uses unlabelled output agreement to select JHQ's residual budget, with
 enumeration as an empirical reference. It calibrates a shared budget for
 subsequent batches under stationary queries; it neither predicts per-query
