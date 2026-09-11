@@ -251,17 +251,20 @@ not decompose runtime into independently measured issue and residency terms.
 \begin{table}[tbp]
 \centering
 \caption{Controlled observations. Effects refer to the paired configurations
-in each source experiment, not a common aggregate workload.}
+in each source experiment, not a common aggregate workload, and \emph{cells}
+is how many such pairs each range spans. Fusing refinement into the scan is
+negative on three of its four cells and slightly positive on the fourth;
+the range carries both ends rather than the losing ones only.}
 \label{tab:neg}
 \footnotesize
-\begin{tabular}{lll}\toprule
-Change & QPS effect & Simple heuristic challenged\\\midrule
-Table-free exact score & $-30$ to $-52\%$ & Minimum table state\\
-$G=8$ versus $G=4$ & $-5.8$ to $-38.3\%$ & Equal footprint, equal speed\\
-Packed 32-bit loads & $+1$ to $+66\%$ & Bytes moved predict speed\\
-Private probe cursor & $-1.4$ to $+148.5\%$ & Loop work is negligible\\
-Fused refinement & $-14.2\%$, $-14.8\%$ & Fewer kernel boundaries\\
-Duplicate queries, $D=8$ & $+4$ to $+26\%$ & Reuse as a sole explanation\\\bottomrule
+\begin{tabular}{llrl}\toprule
+Change & QPS effect & cells & Simple heuristic challenged\\\midrule
+Table-free exact score & $-30$ to $-52\%$ & 12 & Minimum table state\\
+$G=8$ versus $G=4$ & $-5.8$ to $-38.3\%$ & 8 & Equal footprint, equal speed\\
+Packed 32-bit loads & $+1$ to $+66\%$ & 48 & Bytes moved predict speed\\
+Private probe cursor & $-1.4$ to $+148.5\%$ & 20 & Loop work is negligible\\
+Fused refinement & $+0.6$ to $-14.8\%$ & 4 & Fewer kernel boundaries\\
+Duplicate queries, $D=8$ & $+4$ to $+26\%$ & 8 & Reuse as a sole explanation\\\bottomrule
 \end{tabular}
 \end{table}
 
