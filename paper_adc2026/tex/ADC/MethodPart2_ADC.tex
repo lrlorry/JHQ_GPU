@@ -19,20 +19,17 @@ with returned set $R_\alpha(q)$, define the total slot disagreement
   \bigl[\, k - \lvert R_\alpha(q) \cap R_{\max}(q) \rvert \,\bigr],
   \label{eq:disagree}
 \end{equation}
-and select the smallest tested-grid $\alpha$ with $D(\alpha)\le\epsilon$. The
-tolerance $\epsilon$ is a non-negative integer over the whole sample, not a
-per-query fraction. Set membership asks whether more residual work changes
-\emph{which} neighbours are returned while ignoring harmless permutations of the
-same IDs. $S{=}32$ and $\epsilon{=}1$ were our initial defaults;
-Section~\ref{sec:rq2} measures what they risk and withdraws the first of them.
-The two are also not independent: $\epsilon$ counts slots over the whole
-sample, so a fixed $\epsilon$ is a stricter test as $S$ grows. Ground-truth
-recall is what we care about but is unavailable online, and a learned predictor
-costs labels, maintenance and drift behaviour outside this scope. Output
-stability is observable from the running index, but cannot recover routing
-losses, certify recall, or see past $\alpha_{\max}$; Section~\ref{sec:rq2}
-validates it against ground truth offline rather than treating self-agreement as
-a guarantee.
+and select the smallest tested-grid $\alpha$ with $D(\alpha)\le\epsilon$.
+Membership asks whether more residual work changes \emph{which} neighbours come
+back, ignoring harmless permutations of the same IDs, and $\epsilon$ is a
+non-negative integer over the whole sample rather than a per-query fraction ---
+so a fixed $\epsilon$ is a stricter test as $S$ grows, which
+Section~\ref{sec:rq2} returns to. $S{=}32$ and $\epsilon{=}1$ were our initial
+defaults; that section measures what they risk and withdraws the first.
+Output stability is observable from the running index where ground-truth recall
+is not, but it cannot recover routing losses, certify recall, or see past
+$\alpha_{\max}$, so Section~\ref{sec:rq2} validates it against ground truth
+offline rather than treating self-agreement as a guarantee.
 
 \subsection{Monotonicity and bisection}
 \label{sec:mono}
@@ -60,8 +57,8 @@ which can only grow with $\alpha$. \qed
 \paragraph{Implementation caveat and measured deviation.}
 The production scan uses a bounded per-thread selector with
 $\texttt{K\_LOCAL}{=}4$, so a thread can discard a globally top-$c_k$ item when
-more than \texttt{K\_LOCAL} of them fall in its stride class, and theorem-level
-nestedness is not asserted for the deployed kernel. We measure the gap rather
+more than \texttt{K\_LOCAL} of them fall in its stride class, so
+Proposition~\ref{prop:mono}'s premise is not asserted for the deployed kernel. We measure the gap rather
 than hide it behind aggregate recall: with the index pinned, vogue-768 at
 $\mathit{nprobe}{=}128$ and $\texttt{BLOCK}{=}512$, raising \texttt{K\_LOCAL}
 from 4 to 8 changes 10 of 10{,}000 returned ID positions across 5 of 1{,}000
@@ -73,8 +70,7 @@ $\texttt{BLOCK}{=}512$ is deliberately the harder collision regime, and
 $\texttt{K\_LOCAL}{=}8$ is register-infeasible at the production
 $\texttt{BLOCK}{=}1024$.
 
-The consequence for bisection should be stated precisely. Across all 15
-calibration traces that probe two or more grid points, $D(\alpha)$ is
+The consequence for bisection, precisely. Across all 15 calibration traces that probe two or more grid points, $D(\alpha)$ is
 non-increasing at the points the search visited. That is evidence, not a proof:
 points the search never visited are untested, so we do not claim bisection
 returns the global minimum acceptable $\alpha$ on the grid, only that its

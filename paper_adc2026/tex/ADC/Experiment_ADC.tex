@@ -29,8 +29,8 @@ Baselines are the cuVS implementations of IVF-RaBitQ~\cite{ivfrabitq}, IVF-PQ,
 and CAGRA~\cite{cagra} in fp32 and int8. The frontier's comparison line is the
 IVF-routed family, which shares JHQ's routing structure, build-cost profile and
 interface; CAGRA is a graph index and is reported in
-Section~\ref{sec:graph} with its margins, its build cost and the query volume
-at which the two repay each other --- separately, and in both variants, so that
+Section~\ref{sec:rq1} with its margins, its build cost and the query volume at
+which the two repay each other --- separately, and in both variants, so that
 neither the one that wins nor the one that loses is the one we chose to show. JHQ runs use
 dense coarse training, $\texttt{JHQ\_N\_TRAIN}=39\cdot\mathit{nlist}$; we mix in
 no under-trained points and union no fronts across binaries. The CPU JHQ
@@ -46,8 +46,8 @@ reduces them to a single question: at each matched recall, which system is
 fastest? Among IVF-routed methods JHQ owns 18 of the 24 comparable cells and
 IVF-RaBitQ the other 6, by $1.0$--$1.4\times$. The line drawn here is the index
 family: JHQ, IVF-RaBitQ and IVF-PQ share a routing structure, a build-cost
-profile and an interface, and the graph baseline is reported separately in
-Section~\ref{sec:graph} rather than dropped. On stella-trec24 no compared
+profile and an interface, and the graph baseline is reported below rather than
+dropped. On stella-trec24 no compared
 baseline builds at all, which is why its panel carries one curve. One further
 row is excluded throughout: stella-trec24's CAGRA-int8 point at Recall@10
 $0.9692$ is \texttt{status=CONTAMINATED} in the harness's own record, and the
@@ -58,7 +58,7 @@ frontier generator had dropped only \texttt{FAILED} rows.
   \caption{Fastest system at each matched recall, batch 1{,}024, with its margin
   over JHQ. \textsf{int8} and \textsf{fp32} are cuVS CAGRA, \textsf{RaBitQ} is
   cuVS IVF-RaBitQ; ``--'' is a recall no two systems both reach. JHQ is fastest
-  in 18 of 25 cells; the graph baseline is Section~\ref{sec:graph}.}
+  in 18 of 25 cells; the graph baseline is reported in the text.}
   \label{tab:front}
   \input{tables/frontier}
 \end{table}
@@ -84,10 +84,9 @@ indexability at a code budget that is not smaller than int8's.
   \label{fig:frontier}
 \end{figure}
 
-\subsection{RQ1, continued: the graph baseline}
-\label{sec:graph}
-CAGRA is off the frontier of Section~\ref{sec:rq1} because it is a different
-index family, not because of how it scores. It is faster than JHQ where both
+The second half of that answer is the graph baseline, which is off the frontier
+above because it is a different index family, not because of how it scores. It
+is faster than JHQ where both
 run and the recall target is not high: CAGRA-int8 leads in 13 of the 15 cells
 they share, by $1.3$--$2.9\times$, and below Recall@$10{=}0.95$ in 10 of them by
 $1.6$--$2.9\times$; CAGRA-fp32 leads in 8 of 21 by $1.1$--$1.5\times$. We report
@@ -241,8 +240,9 @@ $S{=}128$ is where the tolerance becomes small.
 \emph{Neither the sample nor the bisection is the approximation.} The whole-grid
 walk reproduces the bisection's choice in all $768$ draws, so the search is exact
 on what it sees; evaluating the criterion on the entire pool costs more and
-selects a \emph{more} conservative budget. The reason is in the criterion:
-$\epsilon$ counts disagreeing slots absolutely while a sample of $S$ queries has
+selects a \emph{more} conservative budget. The reason is in
+Equation~\ref{eq:disagree}: $\epsilon$ counts disagreeing slots absolutely
+while a sample of $S$ queries has
 $S\!\cdot\!k$ of them, so the same $\epsilon{=}1$ tightens as the sample grows.
 $\epsilon$ and $S$ cannot be chosen independently, which is the rule's
 substantive limitation.
