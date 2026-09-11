@@ -30,8 +30,7 @@ and CAGRA~\cite{cagra} in fp32 and int8. The frontier's comparison line is the
 IVF-routed family, which shares JHQ's routing structure, build-cost profile and
 interface; CAGRA is a graph index and is reported in
 Section~\ref{sec:rq1} with its margins, its build cost and the query volume at
-which the two repay each other --- separately, and in both variants, so that
-neither the one that wins nor the one that loses is the one we chose to show. JHQ trains its
+which the two repay each other, in both variants. JHQ trains its
 coarse quantiser at 39 points a centroid; cuVS defaults to 256, and
 Section~\ref{sec:rq1} says where that difference matters. The CPU JHQ baseline
 is the authors' own artifact on the same host with threads pinned, sweeping
@@ -65,9 +64,9 @@ Two things beside the table complete the picture. On bge-m3 and stella-trec24
 the tested cuVS IVF-RaBitQ host-input build path fails with an out-of-memory
 allocation after entering streaming construction and CAGRA fp32 does not fit the
 card; on stella-trec24 IVF-PQ fails the same way, which is why
-Figure~\ref{fig:frontier} shows it one curve short of bge-m3. JHQ indexes all
-six --- a statement about the measured library and configuration paths on this
-device, not about those algorithms in general. And the throughput ordering has a
+Figure~\ref{fig:frontier} shows it one curve short of bge-m3. JHQ indexes all six.
+These are the tested library's paths on this device, not a property of the
+algorithms. And the throughput ordering has a
 build-time counterpart, reported in Section~\ref{sec:rq6}: JHQ trades search
 throughput below Recall@$10{=}0.95$ for a build several times cheaper, and for
 indexability at a code budget that is not smaller than int8's.
@@ -87,8 +86,7 @@ above because it is a different index family, not because of how it scores. It
 is faster than JHQ where both
 run and the recall target is not high: CAGRA-int8 leads in 13 of the 15 cells
 they share, by $1.3$--$2.9\times$, and below Recall@$10{=}0.95$ in 10 of them by
-$1.6$--$2.9\times$; CAGRA-fp32 leads in 8 of 21 by $1.1$--$1.5\times$. We report
-this rather than scope it away.
+$1.6$--$2.9\times$; CAGRA-fp32 leads in 8 of 21 by $1.1$--$1.5\times$.
 
 What it costs is build time, and the trade is quantifiable rather than
 rhetorical. Figure~\ref{fig:build} gives both variants beside JHQ, and where
@@ -104,7 +102,7 @@ not build on bge-m3 either.
   configurations and repeat builds and whiskers their range, not a confidence
   interval. JHQ's bar is one cold training plus its median encode: training is
   cached after a dataset's first row and encoding is not. Each baseline's
-  fastest build per dataset is used, which is the choice least favourable to us.
+  fastest build per dataset is used.
   The coarse-training budgets differ and are not controlled here: JHQ trains at
   39 points a centroid, cuVS defaults to 256, so IVF-RaBitQ trains on $5.8$ to
   $6.6\times$ as many points. Part of its build gap is that budget rather than
@@ -283,10 +281,7 @@ reaches $52$ to $108\times$ the CPU envelope; pinning $\alpha{=}100$ on
 \emph{both} sides, so neither may tune the budget, gives $41$ to $114\times$.
 We give both denominators because they move in opposite directions: freedom
 over $\alpha$ and threads is worth more to the CPU on some datasets than on
-others. Four of six, because the reference is the authors' own artifact rather
-than a reimplementation and bge-m3 and stella-trec24 were not reached; the
-comparison is therefore not made on the two datasets where JHQ is the only
-system that builds.
+others. bge-m3 and stella-trec24 have no CPU measurement.
 
 Panel~(b) is why this comparison is worth a figure. The same $\alpha$ knob is
 worth $2.5$ to $3.0\times$ more on the GPU than on the CPU, at every probe
@@ -329,7 +324,6 @@ $13.4$\,s against $74.3$\,s for CAGRA int8. Accounting must respect caching:
 training can be cached while add is not, so taking maxima independently
 fabricates a time that never occurred.
 
-On memory we claim no advantage.
 Figure~\ref{fig:memory} accounts for what is resident: in the four datasets
 with measured VRAM JHQ uses $22$--$40\%$ more than IVF-RaBitQ, and its budget
 is not smaller than int8's. The residual level is where it goes --- at

@@ -42,14 +42,13 @@ is worth $1.095$--$1.469\times$ at $S{=}128$, while at a quarter of that sample
 the quality risk varies enough by workload that the default we started from does
 not survive its own test.
 
-The competitive picture is bounded and we state it as such. Among IVF-routed
+Among IVF-routed
 methods --- the family JHQ belongs to, sharing its routing structure and
 interface --- JHQ is fastest in 18 of the 24 comparable cells and indexes two
 datasets where the tested cuVS IVF-RaBitQ build path runs out of memory. It is
 not the fastest system measured: the graph baseline, CAGRA, is faster wherever
 the recall target is not high, by $1.6$--$2.9\times$ below Recall@$10{=}0.95$ in
-its int8 form, at $3.9$--$7.4\times$ the build time. We report that comparison
-in its own section rather than leave it out of the frontier without saying so.
+its int8 form, at $3.9$--$7.4\times$ the build time.
 
 \smallskip\noindent\textbf{Contributions.} \textbf{(i)} Evidence that the
 primary scan's cost divides into an issue term and a residency term.
