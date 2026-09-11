@@ -10,9 +10,17 @@ JHQ's representation. Equation~\ref{eq:split} follows from its Cartesian
 construction; arbitrary learned PQ subcodebooks lack this general guarantee
 of internal separability.
 
-\paragraph{Adaptive search and GPU systems.}
+\paragraph{GPU quantised search.}
+IVF-RaBitQ~\cite{ivfrabitq} is the closest execution design: a cheap filter
+feeding a refinement stage, grouped lookup tables and a GPU layout. Two-stage
+execution and grouped lookup are shared ideas; ours are their measured
+trade-off for JHQ's Cartesian codebook and the calibration of its residual
+budget. CAGRA~\cite{cagra} and cuVS IVF-PQ supply the GPU comparisons.
+
+\paragraph{Adaptive search.}
 FAISS~\cite{faiss} provides sampled parameter autotuning; learned early
 termination~\cite{earlyterm} controls per-query search effort. Our workload
 policy uses unlabelled output agreement to select JHQ's residual budget, with
-enumeration as an empirical reference. CAGRA~\cite{cagra} and cuVS IVF-PQ
-provide GPU baselines for throughput, construction and memory comparisons.
+enumeration as an empirical reference. It calibrates a shared budget for
+subsequent batches under stationary queries; it neither predicts per-query
+difficulty nor guarantees a target ground-truth recall.

@@ -49,15 +49,6 @@ graph degree, search width and intermediate top-$k$; GPU memory is not
 matched. Curves keep nondominated clean points and matched-recall ratios
 interpolate $\log(\mathrm{QPS})$ without extrapolating. The implementation,
 harness and plotting scripts will be released on publication.
-GPU IVF-RaBitQ is discussed in Section~\ref{sec:related} but not measured
-against. The cuVS implementation exposes probe count and a search kernel and
-no re-ranking stage, and at one bit per dimension --- the configuration the
-method is known for --- Recall@10 does not exceed $0.85$ here at any probe
-depth. Reaching the recalls compared in this section needs eight bits and a
-scan eight times more expensive, at which point it measures slower than
-CAGRA-int8 at $R{=}0.90$--$0.95$, inverting its own published ordering. That
-is a statement about the configuration available to us, so nothing here
-establishes superiority over the method.
 
 \subsection{RQ1: end-to-end operating regions}
 \label{sec:rq1}
