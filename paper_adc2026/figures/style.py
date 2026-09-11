@@ -14,7 +14,7 @@ submission:
 * Every series carries a marker as well as a colour, so the figure survives
   greyscale printing and the two most common colour-vision deficiencies.
 """
-import re, os, math, collections
+import re, os, math, collections, csv
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -260,6 +260,52 @@ def load_baselines():
         pts = [(float(r["recall"]), float(r["qps_mean"])) for r in rows
                if r.get("status") == "ok"]
     out["stella"]["ivfpq"] = pareto(out["stella"]["ivfpq"] + pts)
+
+    # IVF-PQ at the partition JHQ runs at, where that was measured.
+    #
+    # The archived sweep varies pq_dim over four code sizes and n_probes over
+    # six depths and pins n_lists at one value a dataset -- 1024 on vogue-768
+    # and both OpenAI sets, 2048 on arxiv-768 -- while JHQ's own nlist was
+    # swept over four values and the frontier reports the winner.  One side was
+    # tuned on a parameter the other was not.  At openai3-1536 that is 976
+    # vectors a list against JHQ's 122.
+    #
+    # results/pq_nlist/ re-runs IVF-PQ at JHQ's value.  Each dataset is then
+    # reported at whichever of its two partitions gives the better front, which
+    # is how JHQ is reported and is the reason the two are not merged into one
+    # envelope: JHQ's curve is a single nlist, so pooling partitions on one side
+    # only would hand the baseline a choice its opponent does not get.
+    pq_dir = os.path.join(HERE, "..", "..", "results", "pq_nlist")
+    if os.path.isdir(pq_dir):
+        alias = {"stella-trec24": "stella"}
+        by_ds = collections.defaultdict(list)
+        for f in sorted(os.listdir(pq_dir)):
+            if not f.endswith(".csv"):
+                continue
+            with open(os.path.join(pq_dir, f)) as fh:
+                rows = list(csv.DictReader(l for l in fh if not l.startswith("#")))
+            pts = [(float(r["recall"]), float(r["qps_mean"])) for r in rows
+                   if (r.get("status") or "").strip() == "ok"
+                   and r.get("qps_mean") not in (None, "")]
+            if not rows:
+                continue
+            ds = alias.get(rows[0].get("dataset"), rows[0].get("dataset"))
+            if pts and ds in out:
+                by_ds[ds].append(pareto(pts))
+        for ds, fronts in by_ds.items():
+            # "Better front" is area under the curve over the recalls both
+            # partitions reach, so one extra high-recall point cannot win it.
+            def score(fr, lo, hi):
+                xs = [lo + (hi - lo) * i / 20.0 for i in range(21)]
+                vs = [interp(fr, x) for x in xs]
+                return sum(v for v in vs if v) if any(vs) else 0.0
+            cands = fronts + [out[ds]["ivfpq"]]
+            cands = [c for c in cands if c]
+            lo = max(min(r for r, _ in c) for c in cands)
+            hi = min(max(r for r, _ in c) for c in cands)
+            if hi > lo:
+                out[ds]["ivfpq"] = max(cands, key=lambda c: score(c, lo, hi))
+
     # fronts.json rounded Vogue's N; use the actual loader/ID metadata.
     out["vogue-768"]["N"] = 932328
     return out
