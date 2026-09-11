@@ -69,9 +69,10 @@ content of this article.
 \end{credits}
 
 %% reference.bib was zero bytes and the list existed only as a .bbl, so
-%% bibtex deleted references instead of building them. The .bib is
-%% reconstructed and verified: bibtex regenerates the previous .bbl line for
-%% line. Run it from tex/ with BIBINPUTS=./ADC: so it finds the file.
+%% bibtex deleted references instead of building them.  It is reconstructed
+%% and verified: bibtex regenerates the previous .bbl line for line.
+%% The path is spelled out so bibtex finds it without BIBINPUTS being set,
+%% which is what a hosted editor will do.
 \bibliographystyle{splncs04}
-\bibliography{reference}
+\bibliography{ADC/reference}
 \end{document}
