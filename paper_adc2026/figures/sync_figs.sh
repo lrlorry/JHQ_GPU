@@ -1,16 +1,17 @@
 #!/bin/bash
-# Copy exactly the figures the manuscript includes, discovered from the tex.
-# A hand-written list went stale the moment a figure was added: fig_build and
-# fig_cpu were added after it and the paper kept using hour-old PDFs.
-set -u
-cd "$(dirname "$0")" 2>/dev/null || true
-R=/Users/apple/github/JHQ_GPU/paper_adc2026
-n=0
-for f in $(grep -roh 'figs/[a-z_0-9]*\.pdf' $R/tex/ADC/*.tex | sed 's|figs/||;s|\.pdf||' | sort -u); do
-  if [ -f "$R/figures/out/$f.pdf" ]; then
-    cp "$R/figures/out/$f.pdf" "$R/tex/figs/$f.pdf"; n=$((n+1))
-  else
-    echo "  MISSING generator output: $f"
-  fi
-done
-echo "  synced $n figures the manuscript includes"
+# Copy exactly the graphics referenced by the current manuscript; fail if absent.
+set -euo pipefail
+cd "$(dirname "$0")"
+python3 - <<'PY'
+from pathlib import Path
+import re,shutil
+root=Path.cwd().parent
+main=(root/'tex/ADC/mainADC.tex').read_text()
+files=[root/'tex'/f'{p}.tex' for p in re.findall(r'\\input\{(ADC/[^}]+)\}',main)]
+names=sorted(set(re.findall(r'figs/(\w+\.pdf)','\n'.join(p.read_text() for p in files))))
+for name in names:
+ src=root/'figures/out'/name
+ if not src.is_file():raise FileNotFoundError(src)
+ shutil.copy2(src,root/'tex/figs'/name)
+print(f'Synced {len(names)} figures')
+PY

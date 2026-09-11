@@ -2,7 +2,7 @@
 """Two LaTeX tables the body needs, generated so no number is typed by hand.
 
 `frontier`  -- who is fastest at each matched recall, every baseline included.
-              JHQ owns 4 of 26 comparable cells. A reviewer reading Figure 5
+              Counts are recomputed from the current frozen inputs. A reviewer reading Figure 5
               works this out in a minute; stating it is the only way the paper
               keeps its credibility while claiming the region it does own.
 
@@ -25,9 +25,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import style
 
-# The frontier table draws the same line as Figure 2: IVF-routed methods.
-# CAGRA is reported in its own subsection with its build cost and crossover.
-NAME = {"ivfpq": "IVF-PQ"}
+# The table and figure include all main GPU baselines.
+NAME = {"ivfpq": "IVF-PQ", "cagra": "CAGRA-fp32", "cagra8": "CAGRA-int8"}
 RECALLS = (0.90, 0.93, 0.95, 0.97, 0.98, 0.99)
 
 

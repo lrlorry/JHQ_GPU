@@ -15,8 +15,7 @@ described as small rather than safe.
 
 (b) JHQ over IVF-RaBitQ at matched recall, against batch size, on the four
 datasets IVF-RaBitQ builds on. Above 1 is JHQ ahead. vogue-768 crosses parity
-between 128 and 512, which is why the frontier's ratios are the batch-1,024
-column of this sweep and not batch-independent summaries.
+between 128 and 512, The batch experiment and main frontier are independent measurements.
 """
 import os
 import re
@@ -66,7 +65,7 @@ def main():
     a.set_xlabel(r"calibration sample $S$")
     a.set_ylabel(r"draws losing $>10^{-3}$ (\%)")
     a.set_ylim(-4, 78)
-    a.legend(loc="upper right", fontsize=6.3, labelspacing=0.2,
+    a.legend(loc="upper right", fontsize=7, labelspacing=0.2,
              handlelength=1.5, borderpad=0.25)
     a.text(0.03, 0.05, "(a)", transform=a.transAxes, fontsize=8)
 
@@ -92,7 +91,7 @@ def main():
     b.get_xaxis().set_minor_locator(matplotlib.ticker.NullLocator())
     b.set_xlabel("batch size")
     b.set_ylabel(r"JHQ $\div$ IVF-RaBitQ at $R{=}0.95$")
-    b.legend(loc="upper left", fontsize=6.3, ncol=1, labelspacing=0.2,
+    b.legend(loc="upper left", fontsize=7, ncol=1, labelspacing=0.2,
              handlelength=1.5, borderpad=0.25)
     b.text(0.97, 0.05, "(b)", transform=b.transAxes, fontsize=8, ha="right")
 

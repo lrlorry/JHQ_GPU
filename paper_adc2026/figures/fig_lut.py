@@ -24,8 +24,8 @@ scratch that is claimed first. At the device's 101,376 B opt-in limit that
 leaves 94.0 KiB for the table at BLOCK=128 and 59.0 KiB at BLOCK=1024. The
 smallest full table in this paper is 96 KiB, so it misses the most generous of
 those by 2 KiB and every factorised table clears the least generous. The
-residency threshold in Section 3.3 is real, but the full table is off-chip at
-every M, and what scales with M is the cost of the lookups that then miss.
+residency threshold in Section 3.3 is real, but the full table uses the global-memory path at every M. Cache behaviour
+and performance require measurement beyond this admission calculation.
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -63,7 +63,7 @@ for x, n, col, lab in [(0.06, 16, "#9ec5f4", "$T^{\\mathrm{hi}}_m$"),
 ax.text(0.5, 0.11,
         r"$T_m[c] = T^{\mathrm{hi}}_m[c \gg 4] + T^{\mathrm{lo}}_m[c \wedge 15]$",
         ha="center", fontsize=7.5)
-ax.text(0.5, -0.02, "exact for the Eq. 4 codebook;\nchecked against the centroids at train time",
+ax.text(0.5, -0.02, "exact for the Cartesian codebook;\nchecked against the centroids at train time",
         ha="center", va="bottom", fontsize=7, color="#52514e", style="italic",
         linespacing=1.25)
 
@@ -71,7 +71,7 @@ ax.text(0.5, -0.02, "exact for the Eq. 4 codebook;\nchecked against the centroid
 bx.set_xlim(0, 1); bx.set_ylim(0, 1)
 rows = [("$M{=}96$\n(d=768)", 96), ("$M{=}128$\n(d=1024)", 128),
         ("$M{=}192$\n(d=1536)", 192), ("$M{=}384$\n(d=3072)", 384)]
-bx.text(0.0, 0.99, "resident table per query", ha="left", va="top", fontsize=7,
+bx.text(0.0, 0.99, "table storage per query", ha="left", va="top", fontsize=7,
         color="#52514e")
 maxkb = 384 * 256 * 4 / 1024
 

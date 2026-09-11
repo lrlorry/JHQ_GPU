@@ -1,27 +1,13 @@
 #!/usr/bin/env python3
-"""Does the budget rule earn its place, or would one small fixed alpha do?
+"""Current five-arm held-out protocol, from budget_arms.log.
 
-The paper reported the rule's gain against alpha=100 -- the default JHQ leaves
-behind -- which invites the obvious objection: pin alpha=8 and skip the
-calibration. budget_arms.log answers it. Every arm is measured on one index and
-one timing harness, with calibration on even-indexed queries and every recall
-below on the odd-indexed half.
-
-What the numbers say, in the order that matters:
-
-  1. No single fixed alpha works. The ground-truth oracle picks 64 on vogue-768
-     and 4 on openai3-3072 -- a factor of sixteen apart. Pinning 4 costs vogue
-     0.08 recall; pinning 64 costs openai3-3072 a quarter of its throughput for
-     no recall at all.
-  2. The rule finds the oracle's alpha at S>=64 in all four cells.
-  3. S=32 is not safe, and the paper's default has to change: 25% to 69% of
-     random samples at S=32 lose more than 1e-3 of held-out recall. At S=128
-     that falls to 0-8%.
-  4. Removing the sampling does not help. The full-pool criterion is *more*
-     conservative than a sample -- it picks 100 on vogue where the oracle is 64
-     -- because epsilon is an absolute slot count, so its relative strictness
-     tightens as the pool grows. That is a property of the criterion the paper
-     states but does not draw out.
+The offline fastest qualifying arms are 64/64/8/8; S128 median selections
+are 64/64/4/4. OpenAI's 4 and 8 lie on a nearby performance plateau, with
+recall 0.9800 versus 0.9802 at nprobe=512. Fixed alpha=64 satisfies all four
+quality thresholds but overpays on OpenAI. Sampling retains residual risk.
+RULE mean_qps averages previously measured selected fixed-arm QPS, rather
+than timing a new mixed service workload. Repayment based on that aggregate
+is an estimate; calibration excludes the initial sample gather.
 """
 import collections
 import os
