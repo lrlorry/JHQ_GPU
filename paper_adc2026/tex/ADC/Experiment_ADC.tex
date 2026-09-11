@@ -9,11 +9,10 @@ removes non-finite vectors, normalises nonzero vectors and holds queries out
 with seed 42; Stella queries are corpus samples. All systems use the same
 exported vectors and squared-L2 top-10 truth, without further normalisation.
 
-\begin{table}[tbp]
+\begin{table}[htbp]
 \centering
 \caption{Database shape and JHQ routing. $n_q$ is the actual query count.
-Vogue and arxiv use supplied JHQ-format exports; the other sources and the
-conversion script are listed in the artifact protocol.}
+Vogue and arxiv use supplied JHQ-format exports.}
 \label{tab:data}
 \footnotesize
 \begin{tabular}{lrrrr}\toprule
@@ -45,7 +44,7 @@ $\alpha_{\max}=200$ (Section~\ref{sec:rq2}); its quality results do not
 validate the frontier's calibration protocol.
 
 IVF-PQ sweeps 8-bit subcodes with 96--768-byte codes on the four smaller sets
-and 128--512-byte codes on the larger sets. CAGRA sweeps fp32/int8, graph
+and 128--512-byte codes on the larger sets. CAGRA sweeps graph
 degree 32/64, search width 1/2 and intermediate top-$k$ 32--2,048 where
 feasible. These configurations offer different memory and quality trade-offs;
 GPU memory is not matched.
@@ -58,11 +57,11 @@ are available in the project repository.\footnote{\url{https://github.com/lrlorr
 
 \subsection{RQ1: end-to-end operating regions}
 \label{sec:rq1}
-Figure~\ref{fig:frontier} compares JHQ with IVF-PQ and CAGRA fp32.
-CAGRA-int8 leads JHQ in 13 of 15 comparable target cells, including
-$1.6$--$2.9\times$ gains in the ten cells below recall 0.95.
+Figure~\ref{fig:frontier} compares JHQ with IVF-PQ and CAGRA fp32. CAGRA
+fp32 leads on the two 768-dimensional sets and JHQ on the two OpenAI ones;
+IVF-PQ is behind throughout.
 
-\begin{figure}[tbp]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\linewidth]{figs/fig_frontier.pdf}
 \caption{Steady-state Recall@10--QPS, entire query set per call. Markers and
@@ -85,10 +84,10 @@ savings and subsequent batch count (Section~\ref{sec:rq2}).
 IVF-PQ is evaluated at its original partition and at JHQ's selected list count.
 The latter reaches 0.19--0.76 of the original throughput on five datasets;
 Stella gains $1.5\times$. Each system uses its better measured partition.
-CAGRA fp32 fails to build on BGE and Stella, while int8 succeeds. Successful
+CAGRA fails to build on BGE and Stella. Successful
 Stella IVF-PQ runs use reduced training and 128/256-byte codes; the reported
-partition has 32,768 lists. The Stella CAGRA-int8 row marked
-\texttt{CONTAMINATED} is excluded from throughput and build summaries.
+partition has 32,768 lists. One Stella row marked \texttt{CONTAMINATED} in
+the harness's own record is excluded from throughput and build summaries.
 
 \subsection{RQ2: selection quality and calibration economics}
 \label{sec:rq2}
@@ -97,8 +96,8 @@ At probe 128, the six-dataset alpha sweep requires budgets from 4 to at
 least 200; arxiv still improves at the largest tested value. The held-out
 experiment compares fixed budgets, the sampled rule, full-pool calibration,
 same-sample enumeration and an offline oracle on one index per dataset.
-Even-indexed queries form a 500-query calibration pool; 500 odd-indexed queries
-provide recall and timing. The oracle uses held-out truth to select the fastest
+Even-indexed queries form a 500-query calibration pool. Odd-indexed queries
+provide recall and timing: 499 on Stella and 500 on the other datasets. The oracle uses held-out truth to select the fastest
 grid point within $10^{-3}$ of the maximum measured recall.
 
 \begin{table}[tbp]
@@ -111,46 +110,41 @@ All six datasets at probes 128 and 512.}
 \input{tables/budget_current}
 \end{table}
 
-The rule's median budget matches the offline oracle in 10 of the 12 cells,
-and the two it misses lie on performance plateaus. No fixed budget does as
-well across the six: the oracle ranges from 4 on OpenAI-3072 to 200 on arxiv,
-a fiftyfold spread, so any constant either overpays where the budget is small
-or underfills where it is large.
+The rule's median budget matches the oracle in 10 of 12 cells. The exceptions
+are arxiv at probe 128 and OpenAI-3072 at probe 512. Oracle budgets range from
+4 to 200, exposing the trade-off of a shared constant. Median budget agreement
+does not establish held-out quality for every draw.
 
 \paragraph{Sampling risk and enumeration.}
-With $S=32$, $27$--$98\%$ of draws lose more than $10^{-3}$ held-out recall;
-at $S=128$ failures still range from zero to 40/64
-(Figure~\ref{fig:budget}a). Four datasets reach at most 7/64 there; arxiv and
-bge-m3 do not, and $S=128$ is therefore not a safe setting so much as the
-largest we measured. Enumeration and bisection agree in every tested draw, at
-$1.5$--$1.7\times$ the cost.
+With $S=32$, 27--98\% of draws lose more than $10^{-3}$ held-out recall;
+at $S=128$, failures range from zero to 40/64 (Figure~\ref{fig:budget}a).
+These are repeated draws from fixed pools; zero observations do not establish
+zero risk. Enumeration and bisection agree in all 2,304 draws across
+$S=32,64,128$. Enumeration costs $1.66$--$2.00\times$ as much, with reference
+search included in both timers.
 
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\linewidth]{figs/fig_budget_current.pdf}
 \caption{(a) Held-out sampling risk. (b) Selected-arm throughput gain and
 estimated payback at $S=128$, relative to fixed $\alpha=100$. Filled/open
-markers indicate probes 128/512. Each batch contains 500 held-out queries.}
+markers indicate probes 128/512. Payback is in 500-query equivalents.}
 \label{fig:budget}
 \end{figure}
 
 \paragraph{Gain and repayment.}
-At $S=128$ the selected arm is worth $1.05$--$2.77\times$ on ten of the twelve
-cells, for $5.2$--$30.8$\,ms of calibration, repaid in an estimated $1.4$--$36.4$
-subsequent 500-query batches. The other two are arxiv, where the rule is
-$12$--$14\%$ \emph{slower} than fixed $\alpha=100$ and so never repays: the
-sufficient budget there is at or beyond $\alpha_{\max}$, and a rule that
-searches a grid cannot help when the answer is outside it. That is the
-condition under which this contribution does not apply, and it is visible from
-the sweep before calibration is run. Payback uses the reciprocal of mean
-selected fixed-arm QPS, not a new service-throughput measurement, and
-calibration excludes sample gathering.
+At $S=128$, selected-arm QPS gains are $1.05$--$2.77\times$ in ten of twelve
+cells, with 5.2--30.8\,ms calibration and estimated payback of 1.4--36.4
+500-query batches. The two arxiv cells have 12--14\% lower QPS than fixed
+$\alpha=100$, so calibration does not repay. Payback uses the reciprocal of
+mean selected fixed-arm QPS, not a measured service workload. Calibration
+includes reference search and agreement checks but excludes sample gathering.
 
 \subsection{RQ3: representation and execution ablation}
 \label{sec:rq3}
 \paragraph{Value of the residual hierarchy.}
-Across six datasets, maximum measured primary-only recall ranges from
-0.5135 to 0.8642; residual refinement extends these ranges. This ablation
+The maximum primary-only recall is 0.5135--0.8642 across six datasets.
+Residual refinement extends these ranges. This ablation
 retains the full allocation and measures hierarchy value rather than minimal
 JQ memory.
 
@@ -211,12 +205,12 @@ an imbalance affecting routed candidate counts.
 \subsection{RQ5: comparison with CPU JHQ}
 \label{sec:rq5}\label{sec:rq6cpu}
 The CPU baseline uses the authors' artifact with build and recall fixes,
-FAISS commit \texttt{4a2393741}, AVX2 and pinned threads
-(\texttt{OMP\_PROC\_BIND=close}, \texttt{OMP\_PLACES=cores}). Vogue and
+FAISS commit \texttt{4a2393741} and AVX2. Threads are pinned with
+\texttt{OMP\_PROC\_BIND=close} and \texttt{OMP\_PLACES=cores}. Vogue and
 OpenAI-3072 use the best recorded 16/32-thread results; arxiv and OpenAI-1536
-use 32 threads. Sweeps cover $\alpha\in\{2,4,8,16,32,100\}$ and probes
-128/256/512/1,024; lower probes are excluded because thread start-up dominates
-short timings. Both sides use $10^{-3}$ recall buckets before interpolation.
+use 32 threads. The sweep tests budgets 2, 4, 8, 16, 32 and 100, with
+probes 128, 256, 512 and 1,024. Lower probes are excluded because thread
+start-up dominates short timings. Both sides use $10^{-3}$ recall buckets before interpolation.
 
 The GPU rule curve is about 52--108 times faster over overlapping recall
 coverage. Most CPU cells have one timing, so these are order-of-magnitude
@@ -226,19 +220,17 @@ are unavailable.
 
 \subsection{RQ6: construction and memory}
 \label{sec:rq6}
-\begin{figure}[tbp]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{figs/fig_build.pdf}
-\caption{Build-time summaries and observed ranges. JHQ combines cold
-training with a representative encoding time; ranges cover encoding runs.
-IVF-PQ and CAGRA fp32 bars give medians over recorded clean configurations and
-repeats. Whiskers are not confidence intervals. CAGRA int8 is omitted.}
+\caption{Index build time, log scale. Bars are medians over recorded clean
+configurations and repeats and whiskers their range, not a confidence
+interval. JHQ's bar is one cold training plus its median encode.}
 \label{fig:build}
 \end{figure}
-Figure~\ref{fig:build} compares construction costs at the reported
-partitions. Where CAGRA-int8 searches faster, the model
-$T_{\mathrm{build}}+Q/\mathrm{QPS}$ estimates crossover after 1.6--8.9M
-queries at recall 0.90/0.95. It combines fastest baseline builds with
+Figure~\ref{fig:build} reports index build times. Where CAGRA fp32 searches
+faster, the model $T_{\mathrm{build}}+Q/\mathrm{QPS}$ puts the crossover at
+$4.9$--$11.2$M queries at recall 0.90/0.95. It combines fastest baseline builds with
 interpolated search frontiers and excludes calibration and control overhead.
 
 Training budgets differ: Stella IVF-PQ uses a reduced sample because default
