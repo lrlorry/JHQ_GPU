@@ -2,17 +2,15 @@
 \label{sec:method1}
 
 \subsection{Execution and representation}
-We begin from the work JHQ requires after routing rather than from CUDA
-primitives. The primary stage is $O(n_c M)$ over compact codes and the residual
+The primary stage is $O(n_c M)$ over compact codes and the residual
 stage $O(c_k d)$ over per-dimension codes, so three requirements follow: make
 primary access match candidate-parallel warp execution, keep the primary
 distance representation resident without replacing JHQ's quantiser, and preserve
 selective residual access instead of fusing accurate scoring into the broad
 scan. The orthogonal transform, primary codebook, residual definition and
 hierarchical ordering remain JHQ's; physical representation, execution and the
-external refinement policy change, and the scan uses a bounded per-thread
-top-$\alpha k$ selector whose deviation from exact selection
-Section~\ref{sec:mono} measures.
+external refinement policy change. The scan's bounded per-thread top-$\alpha k$
+selector is characterised in Section~\ref{sec:mono}.
 
 During the broad scan, warp lanes score different candidates while advancing
 through the same subspace $m$, so candidate-major $[N,M]$ storage has the warp
@@ -58,8 +56,8 @@ two lookups. Table construction falls by $16\times$, not the $8\times$ of
 resident entries: the full table evaluates $256 D_s$ coordinate contributions
 per subspace and the split form $32(D_s/2)=16D_s$. An equal $G$-way partition
 stores $G\cdot 2^{8/G}$ entries and needs $G$ lookups per candidate--subspace,
-which states the trade-off analytically --- state falls only until the table
-fits, while instruction demand keeps rising.
+which states the trade-off analytically: state falls only until the table fits,
+while instruction demand keeps rising.
 
 The residency target is narrower than the device's shared-memory limit, because
 the table is not the only claimant. The scan kernel's admission test is
@@ -79,10 +77,9 @@ admissible block size, $M{=}96$ missing the most generous by 2\,KiB, while both
 factorised tables clear the least generous at $12$ and $48$\,KiB
 (Figure~\ref{fig:lut}). The full table is thus off chip at both $M$, and what
 grows with $M$ is the cost of the lookups that miss, since the scan pays one per
-candidate per subspace. The prediction we test in Section~\ref{sec:rq3} is
-therefore directional: reducing table state should help until the extra lookup
-work outweighs the residency it buys, and the crossing should move with $M$ and
-with probe depth together.
+candidate per subspace. The prediction Section~\ref{sec:rq3} tests is therefore
+directional, and its crossing should move with $M$ and with probe depth
+together.
 
 \begin{figure}[tbp]
   \centering
@@ -95,12 +92,8 @@ with probe depth together.
   \label{fig:lut}
 \end{figure}
 
-Section~\ref{sec:related} states what grouped tables already owe to GPU
-IVF-RaBitQ. What Equation~\ref{eq:split} adds is that the grouping exists at
-all here: it follows from the Cartesian construction, and does not exist for an
-ordinary $k$-means product quantiser at the same width. Exactness is in real
-arithmetic; it promises no bitwise-identical floating-point association or tie
-order.
+Exactness here is in real arithmetic; it promises no bitwise-identical
+floating-point association or tie order.
 
 \subsection{Selective residual refinement, and what it leaves open}
 Reading the per-dimension residual for every routed candidate would turn an

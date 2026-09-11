@@ -4,9 +4,9 @@
 \subsection{Criterion}
 Original JHQ leaves $\alpha$ externally specified, and the useful budget is
 workload dependent: at $\mathit{nprobe}{=}128$ openai3-3072 is flat from
-$\alpha{=}4$ over the measured grid while arxiv-768 is still improving at
-$\alpha{=}200$, a censored upper endpoint rather than a plateau. A single global
-constant therefore either wastes $O(\alpha k d)$ residual work on easy workloads
+$\alpha{=}4$ while arxiv-768 is still improving at $\alpha{=}200$, a censored
+endpoint rather than a plateau. A single global constant therefore either
+wastes $O(\alpha k d)$ residual work on easy workloads
 or filters candidates before accurate refinement on hard ones. We calibrate a
 workload-level operating point rather than predict $\alpha$ per query, which
 keeps the control path label-free and amortisable.
@@ -23,13 +23,11 @@ and select the smallest tested-grid $\alpha$ with $D(\alpha)\le\epsilon$.
 Membership asks whether more residual work changes \emph{which} neighbours come
 back, ignoring harmless permutations of the same IDs, and $\epsilon$ is a
 non-negative integer over the whole sample rather than a per-query fraction ---
-so a fixed $\epsilon$ is a stricter test as $S$ grows, which
-Section~\ref{sec:rq2} returns to. $S{=}32$ and $\epsilon{=}1$ were our initial
-defaults; that section measures what they risk and withdraws the first.
-Output stability is observable from the running index where ground-truth recall
-is not, but it cannot recover routing losses, certify recall, or see past
-$\alpha_{\max}$, so Section~\ref{sec:rq2} validates it against ground truth
-offline rather than treating self-agreement as a guarantee.
+so a fixed $\epsilon$ is a stricter test as $S$ grows. $S{=}32$ and
+$\epsilon{=}1$ were our initial defaults; Section~\ref{sec:rq2} measures what
+they risk and withdraws the first. Output stability is observable from the
+running index where ground-truth recall is not, but it is not a recall
+guarantee, so that section validates it against ground truth offline.
 
 \subsection{Monotonicity and bisection}
 \label{sec:mono}
@@ -57,40 +55,31 @@ which can only grow with $\alpha$. \qed
 \paragraph{Implementation caveat and measured deviation.}
 The production scan uses a bounded per-thread selector with
 $\texttt{K\_LOCAL}{=}4$, so a thread can discard a globally top-$c_k$ item when
-more than \texttt{K\_LOCAL} of them fall in its stride class, so
-Proposition~\ref{prop:mono}'s premise is not asserted for the deployed kernel. We measure the gap rather
-than hide it behind aggregate recall: with the index pinned, vogue-768 at
-$\mathit{nprobe}{=}128$ and $\texttt{BLOCK}{=}512$, raising \texttt{K\_LOCAL}
-from 4 to 8 changes 10 of 10{,}000 returned ID positions across 5 of 1{,}000
-queries, and \emph{no} query gets a different result set: every difference is
-two adjacent ranks swapping inside an identical top-10, so here the bounded
-selector reorders ties rather than discarding. Which items tie moves with the
-codebook, so this is one index instance, not a constant.
-$\texttt{BLOCK}{=}512$ is deliberately the harder collision regime, and
+more than \texttt{K\_LOCAL} of them fall in its stride class, and
+Proposition~\ref{prop:mono}'s premise is not asserted for the deployed kernel.
+Measured: with the index pinned, vogue-768 at $\mathit{nprobe}{=}128$ and
+$\texttt{BLOCK}{=}512$ --- the harder collision regime, since
 $\texttt{K\_LOCAL}{=}8$ is register-infeasible at the production
-$\texttt{BLOCK}{=}1024$.
+$\texttt{BLOCK}{=}1024$ --- raising \texttt{K\_LOCAL} from 4 to 8 changes 10 of
+10{,}000 returned ID positions across 5 of 1{,}000 queries and \emph{no} result
+set: every difference is two adjacent ranks swapping inside an identical
+top-10. The selector reorders ties rather than discarding, but which items tie
+moves with the codebook, so this is one index instance.
 
-The consequence for bisection, precisely. Across all 15 calibration traces that probe two or more grid points, $D(\alpha)$ is
-non-increasing at the points the search visited. That is evidence, not a proof:
-points the search never visited are untested, so we do not claim bisection
-returns the global minimum acceptable $\alpha$ on the grid, only that its
-stopping behaviour is conservative with respect to the sampled criterion.
-Floating-point ties are a separate matter --- the proposition assumes a
-deterministic total order, not bitwise-identical association.
-
-Against the prior art of Section~\ref{sec:related}, our contribution here is
-narrow: a predictor-free top-$k$ stability signal applied to JHQ's external
-residual budget, with its proxy error and economics quantified.
+For bisection the consequence is narrow. Across all 15 calibration traces that
+probe two or more grid points, $D(\alpha)$ is non-increasing at the points the
+search visited --- evidence, not proof, since unvisited points are untested. We
+claim only that the stopping behaviour is conservative with respect to the
+sampled criterion, not that bisection returns the grid's global minimum
+acceptable $\alpha$.
 
 \subsection{Calibration economics}
 With $T_{\mathrm{cal}}$ the calibration time and $T_{\mathrm{fixed}}$,
 $T_{\mathrm{rule}}$ the per-batch times before and after selection, the
 break-even batch count is
-$B^{*}=T_{\mathrm{cal}}/(T_{\mathrm{fixed}}-T_{\mathrm{rule}})$ whenever
-$T_{\mathrm{rule}}<T_{\mathrm{fixed}}$; Section~\ref{sec:rq2} reports both
-terms. Reuse assumes the query distribution, routing configuration, $k$ and
-index stay stable --- the price of workload-level rather than per-query
-adaptation --- and drift is unmeasured: recalibrating every $H$ batches adds
-$T_{\mathrm{cal}}/H$ per batch, but choosing $H$ is a drift-detection problem
-outside this evidence. The timer starts after sample copying, so the cost is
-algorithm-level.
+$B^{*}=T_{\mathrm{cal}}/(T_{\mathrm{fixed}}-T_{\mathrm{rule}})$;
+Section~\ref{sec:rq2} reports both terms. Reuse assumes the query distribution,
+routing configuration, $k$ and index stay stable, which is the price of
+workload-level rather than per-query adaptation. Drift is unmeasured:
+recalibrating every $H$ batches adds $T_{\mathrm{cal}}/H$ per batch, but
+choosing $H$ is a drift-detection problem outside this evidence.
