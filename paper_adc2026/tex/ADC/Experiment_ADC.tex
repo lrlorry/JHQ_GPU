@@ -329,10 +329,23 @@ $13.4$\,s against $74.3$\,s for CAGRA int8. Accounting must respect caching:
 training can be cached while add is not, so taking maxima independently
 fabricates a time that never occurred.
 
-On memory we claim no
-advantage: in the four datasets with measured VRAM JHQ uses $22$--$40\%$ more
-than IVF-RaBitQ, and its budget is not smaller than int8's. JHQ occupies a
-different memory--accuracy--throughput point and still indexes the two largest
-datasets where the compared paths fail. The accounting carries an unattributed
-component that should not be relabelled as allocator overhead without direct
-measurement.
+On memory we claim no advantage.
+Figure~\ref{fig:memory} accounts for what is resident: in the four datasets
+with measured VRAM JHQ uses $22$--$40\%$ more than IVF-RaBitQ, and its budget
+is not smaller than int8's. The residual level is where it goes --- at
+stella-trec24 the residual codes alone are most of a 20\,GiB index --- which is
+the same second level that buys the high-recall end of Section~\ref{sec:rq1}.
+JHQ occupies a different memory--accuracy--throughput point and still indexes
+the two largest datasets where the compared paths fail. The accounting carries
+an unattributed component, plotted as such, that we do not relabel as allocator
+overhead without direct measurement.
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=\linewidth]{figs/fig_memory.pdf}
+  \caption{Where the resident index sits, by component. (a) Absolute, with the
+  measured totals for JHQ and IVF-RaBitQ marked; (b) the same as shares. The
+  hatched band is measured total minus the components we can attribute, and is
+  shown rather than folded into one of them.}
+  \label{fig:memory}
+\end{figure}

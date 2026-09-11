@@ -98,8 +98,12 @@ for y, lab, n_ld, col, note in [
     b.text(0.42, y + 0.033, note, fontsize=7, color="#52514e",
            va="center", linespacing=1.35)
 
+# The published "+30% to +48%" came from a prose note, not from the log it
+# claimed; layout_square.py measures +1% to +66% over six datasets, rising
+# with probe depth, and the figure states the mechanism rather than a range
+# the caption would have to keep in step with.
 b.text(0.03, 0.015, "(b) four subspaces in one load: fewer instructions,\n"
-       "     not fewer bytes  ($+30\\%$ to $+48\\%$)",
+       "     not fewer bytes",
        fontsize=7, color="black", linespacing=1.4)
 
 fig.tight_layout(pad=0.2)

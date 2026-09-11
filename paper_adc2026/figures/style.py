@@ -145,7 +145,17 @@ def load_fronts():
 
 
 def load_rabitq():
-    """paper_rabitq.log plus the openai3-3072 QUANT4 sweep measured separately."""
+    """IVF-RaBitQ at the search kernel it is fastest on, per dataset.
+
+    The archived sweep (paper_rabitq.log) ran every dataset at cuVS's QUANT4
+    mode and never recorded that it had.  A mode sweep afterwards found QUANT4
+    is *not* the best kernel on three of the four datasets RaBitQ builds on --
+    LUT32 wins on vogue-768 and arxiv-768 by 14% and 6%, LUT16 on openai3-1536
+    by 6% -- so the published frontier compared JHQ against a baseline below
+    its own best.  rq_best.log re-runs each dataset at its winner, and is used
+    wherever it covers a dataset; bge-m3 and stella are not there because
+    RaBitQ cannot build on them at all.
+    """
     rq = collections.defaultdict(list)
     for ln in open(datafile("paper_rabitq.log")):
         m = re.search(r"^  (\S+)\s+nlist=\d+\s+np=(\d+)\s+\S+\s+recall=([\d.]+)\s+qps=(\d+)", ln)
@@ -153,6 +163,17 @@ def load_rabitq():
             rq[m.group(1)].append((float(m.group(3)), int(m.group(4))))
     rq["openai3-3072"] = [(0.8606, 76165), (0.9055, 67883), (0.9414, 58790),
                           (0.9666, 45244), (0.9839, 31218), (0.9943, 22095)]
+    best = collections.defaultdict(list)
+    p = datafile("rq_best.log")
+    if os.path.exists(p):
+        for ln in open(p, errors="ignore"):
+            m = re.match(r"\s*RQ\s+(\S+)\s+nlist=\d+\s+tpl=\d+\s+used=\S+\s+"
+                         r"mode=\d+\s+np=\d+\s+recall=([\d.]+)\s+qps=(\d+)", ln)
+            if m:
+                best[m.group(1)].append((float(m.group(2)), int(m.group(3))))
+    for d, v in best.items():
+        if len(v) >= 3:                 # a partial run must not replace a full one
+            rq[d] = v
     return {d: pareto(v) for d, v in rq.items() if v}
 
 

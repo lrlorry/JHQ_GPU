@@ -63,18 +63,21 @@ box(a, 0.02, 0.53, 0.50, 0.16,
 arr(a, 0.27, 0.53, 0.27, 0.43)
 box(a, 0.02, 0.26, 0.50, 0.16,
     "bisect the grid: answer the same $S$ at the\nmidpoint, count top-$k$ slots that differ")
-arr(a, 0.52, 0.34, 0.66, 0.34)
-box(a, 0.66, 0.42, 0.32, 0.14, "within tolerance:\nsearch below it", fc="#d8f0e4",
+arr(a, 0.52, 0.34, 0.64, 0.34)
+# The text was wider than the 0.32 box and overflowed left across the
+# "bisect the grid" box beside it; shorter labels fit what the arrows
+# already say about direction.
+box(a, 0.64, 0.42, 0.34, 0.14, "within tolerance:\ngo lower", fc="#d8f0e4",
     ec=GOOD)
-box(a, 0.66, 0.20, 0.32, 0.14, "not within:\nsearch above it", fc="#fadcda",
+box(a, 0.64, 0.20, 0.34, 0.14, "not within:\ngo higher", fc="#fadcda",
     ec=BAD)
-arr(a, 0.82, 0.42, 0.82, 0.36, col=GOOD)
-a.add_patch(FancyArrowPatch((0.66, 0.49), (0.53, 0.49), arrowstyle="-|>",
+arr(a, 0.81, 0.42, 0.81, 0.36, col=GOOD)
+a.add_patch(FancyArrowPatch((0.64, 0.49), (0.53, 0.49), arrowstyle="-|>",
                             mutation_scale=6.5, lw=0.7, color=GOOD,
                             connectionstyle="arc3,rad=0.3"))
 box(a, 0.02, 0.02, 0.50, 0.14, "run the rest of the batch at $\\alpha^{*}$",
     fc="white", ec=OURS, tc=OURS, lw=1.0)
-a.add_patch(FancyArrowPatch((0.66, 0.27), (0.53, 0.31), arrowstyle="-|>",
+a.add_patch(FancyArrowPatch((0.64, 0.27), (0.53, 0.31), arrowstyle="-|>",
                             mutation_scale=6.5, lw=0.7, color=BAD,
                             connectionstyle="arc3,rad=-0.3"))
 arr(a, 0.27, 0.26, 0.27, 0.17, col=OURS)

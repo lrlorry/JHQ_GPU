@@ -16,7 +16,7 @@ Section~\ref{sec:mono} measures.
 
 During the broad scan, warp lanes score different candidates while advancing
 through the same subspace $m$, so candidate-major $[N,M]$ storage has the warp
-read one byte per lane with stride $M$. We store the scan copy subspace-major,
+read one byte per lane with stride $M$ (Figure~\ref{fig:layout}). We store the scan copy subspace-major,
 $[M,N]$, which makes those 32 bytes adjacent: the transpose aligns the
 contiguous memory dimension with the dimension the warp shares. It is standard
 practice, not a claim. Separately, $D_s{=}B{=}8$ makes four subspace codes a
@@ -25,6 +25,18 @@ the layout fix the fetched sectors are already right, so packing reduces load
 instructions, addresses and loop iterations rather than logical bytes. We do not
 claim wider words are universally better; they add unpacking, dependencies and
 register pressure.
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=\linewidth]{figs/fig_layout.pdf}
+  \caption{Two rearrangements of the same bytes, neither of which changes a
+  distance. (a) Storing the primary codes subspace-major rather than
+  candidate-major turns a warp's strided read into 32 adjacent bytes.
+  (b) At $D_s{=}B{=}8$ four subspaces are 32 dimensions and fit one
+  \texttt{uint32}, so four loads, four addresses and four loop iterations
+  become one. Section~\ref{sec:rq4} measures what that is worth.}
+  \label{fig:layout}
+\end{figure}
 
 
 \subsection{Cartesian factorisation of the primary table}
