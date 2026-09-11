@@ -322,12 +322,13 @@ statistical bound.
 \begin{figure}[tbp]
   \centering
   \includegraphics[width=\linewidth]{figs/fig_cpu.pdf}
-  \caption{GPU against CPU JHQ at the same index parameters. (a) Both sides'
-  $(\alpha,\mathit{nprobe})$ envelopes, annotated with the ratio at matched
-  recall; open markers are the CPU points the envelope is taken over.
-  (b) What the $\alpha$ budget is worth on each processor, at matched recall on
-  openai3-3072 --- the reason the budget is worth choosing on a GPU and not on
-  a CPU.}
+  \caption{GPU against CPU JHQ at the same index parameters, on the four
+  datasets the CPU reference covers. (a) Both sides'
+  $(\alpha,\mathit{nprobe})$ envelopes: solid is the GPU, dotted with open
+  markers the CPU points the envelope is taken over, and the legend gives each
+  dataset's range of matched-recall ratios. (b) What the $\alpha$ budget is
+  worth on each processor, at matched recall on openai3-3072 --- the reason the
+  budget is worth choosing on a GPU and not on a CPU.}
   \label{fig:cpu}
 \end{figure}
 

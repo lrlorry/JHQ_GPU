@@ -28,9 +28,14 @@ import style
 from style import DS_COLOR, DS_MARK, PRETTY, COL, WIDE, plt
 import cpu_gpu_envelope as env
 
-# Only these two datasets have a CPU run; openai3-3072 is the one with a GPU
-# alpha sweep on the same nprobe grid, so panel (b) uses it.
-DS = ["vogue-768", "openai3-3072"]
+# The datasets with a CPU run.  It was two for most of this project; arxiv-768
+# and openai3-1536 were added once the authors' artifact had been made to
+# build, and bge-m3 and stella-trec24 are the two on which no compared baseline
+# builds at all.  Panel (b) stays on openai3-3072, the one dataset with a GPU
+# alpha sweep on the same nprobe grid.
+DS = [d for d in ("vogue-768", "arxiv-768", "openai3-1536", "openai3-3072",
+                  "bge-m3", "stella")
+      if any(k[0] == d for k in env.read_cpu(env.CPU_LOG))]
 CPU_C = "#8f8d86"          # the JQ/secondary grey from style.S
 XLO = 0.93                 # the recall range where both envelopes have points
 
@@ -92,41 +97,26 @@ def main():
                ls="-")
         a.plot([p[0] for p in cf], [p[1] for p in cf], color=c, marker=mk,
                ls=":", mfc="none")
-        # Direct labels: with two datasets on two devices a legend box either
-        # covers the CPU curves or the GPU ones.
-        # Anchor the name where the curve crosses the left edge, not at a data
-        # point: every visible point already carries its matched-recall ratio,
-        # and the two labels landed on top of each other.
-        y0 = env.interp(gf, XLO) or gf[0][1]
-        # Below the curve: above it the text meets the leftmost ratio label,
-        # while the band under each GPU curve is empty.
-        a.annotate("%s, GPU" % PRETTY[ds], (XLO, y0), textcoords="offset points",
-                   xytext=(3, -9), fontsize=7, color=c)
-        a.annotate("CPU", (cf[0][0], cf[0][1]), textcoords="offset points",
-                   xytext=(2, -9), fontsize=7, color=c)
-        # The ratio, quoted only where both envelopes cover the recall.  On
-        # vogue the last three GPU points sit within a few thousandths of
-        # recall of one another, so their labels stack: alternate the offset
-        # above and below the curve rather than letting them overprint.
-        # Start the two series on opposite parities: with the same one, the
-        # first ratio of the lower curve lands beside the upper curve's name.
-        placed = si
-        for r, q, _ in gf:
-            cq = env.interp(cf, r)
-            if cq is None:
-                continue
-            right = r > XLO + 0.85 * (1.0 - XLO)
-            dy = 5 if placed % 2 == 0 else -11
-            a.annotate(r"$%.0f\times$" % (q / cq), (r, q),
-                       textcoords="offset points",
-                       xytext=(-3 if right else 2, dy), fontsize=7, color=c,
-                       ha="right" if right else "left")
-            placed += 1
+        # Four series and five ratios each is twenty numbers over one set of
+        # axes; every arrangement of them collided with the panel label, with
+        # the curves, or with each other.  The ratio belongs beside the
+        # identity, so it goes in the legend: one range per dataset, which is
+        # also exactly what the text quotes.
+        rr = [env.interp(cf, r) for r, q, _ in gf]
+        rat = [q / cq for (r, q, _), cq in zip(gf, rr) if cq]
+        # LaTeX's "--" is not mathtext's; matplotlib renders it as two hyphens.
+        lab = PRETTY[ds] + (u"  %.0f\u2013%.0f\u00d7" % (min(rat), max(rat))
+                            if rat else "")
+        a.plot([], [], color=c, marker=mk, ls="-", label=lab)
         # Say out loud where the CPU stops, so the gap is not read as a ratio.
         a.plot([cf[-1][0]], [cf[-1][1]], color=c, marker="|", ms=7, mew=1.0)
     a.set_yscale("log")
     a.set_xlabel("Recall@10")
     a.set_ylabel("QPS")
+    # Solid is the GPU envelope, dotted the CPU one, on the same colour; the
+    # caption says so, so the legend only has to carry the dataset.
+    a.legend(loc="lower left", fontsize=6.5, ncol=1, labelspacing=0.22,
+             handlelength=1.4, borderpad=0.25)
     a.set_xlim(XLO, 1.0)
     a.text(0.02, 0.97, "(a)", transform=a.transAxes, fontsize=7,
            va="top", color="#52514e")
