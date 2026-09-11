@@ -33,7 +33,12 @@ for ax, ds in zip(axes.flat, DATASETS):
             ax.plot(*zip(*pts), **st, zorder=2)
             drawn.append((key, pts))
     f = fronts[ds]
-    ax.plot(*zip(*f["rule"]), color="#6e8eab", ls="--", lw=1.0, zorder=3)
+    # Same blue as the solid curve, not a second one.  Colour names the system
+    # and line style the configuration; two hues for two settings of one system
+    # read as two systems, and #6e8eab was close enough to JHQ's blue to be
+    # neither.
+    ax.plot(*zip(*f["rule"]), color=S["jhq"]["color"], ls="--", lw=1.1,
+            alpha=0.75, zorder=3)
     ax.plot(*zip(*f["fix"]), color=S["jhq"]["color"], lw=1.5, zorder=4)
     for key, pts in drawn + [("jhq", f["fix"])]:
         ax.plot(*zip(*pts), ls="none", marker=S[key]["marker"], ms=4.2,
@@ -60,8 +65,8 @@ for ax in axes[:, 0]:
 # "calibrated" means.
 handles = [plt.Line2D([], [], color=S["jhq"]["color"], marker="o", lw=1.5,
                      label=r"JHQ-GPU, $\alpha{=}100$"),
-           plt.Line2D([], [], color="#6e8eab", ls="--", lw=1.0,
-                     label="JHQ-GPU, calibrated")]
+           plt.Line2D([], [], color=S["jhq"]["color"], ls="--", lw=1.1,
+                     alpha=0.75, label="JHQ-GPU, calibrated")]
 handles += [plt.Line2D([], [], color=S[k]["color"], marker=S[k]["marker"],
                       ls=S[k].get("ls", "-"), lw=1.0, label=S[k]["label"])
             for k in ("cagra", "ivfpq")]
