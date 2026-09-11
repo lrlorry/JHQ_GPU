@@ -32,14 +32,26 @@ for ax, ds in zip(axes.flat, DATASETS):
     # and its crossover, rather than being dropped.  Removing only int8 while
     # keeping fp32 would be the indefensible version: same system, two
     # precisions, and the one kept is the one that wins less.
+    # Markers go above every line, not with their own.  On vogue-768 the two
+    # frontiers agree to within a few percent from R=0.955 up, and on a log
+    # axis spanning three decades that puts IVF-RaBitQ's line underneath JHQ's
+    # thicker one for most of the panel -- the baseline read as absent, which
+    # is the one direction a rendering artefact must never fail in.  The lines
+    # still overlap, because they describe the same throughput; the markers
+    # now show that both systems are measured across the whole range.
+    drawn = []
     for key, pts in (("ivfpq", b["ivfpq"]), ("rabitq", rq.get(ds, []))):
         pts = [p for p in pts if p[0] >= 0.85]
         if pts:
-            ax.plot(*zip(*pts), **{k: v for k, v in S[key].items() if k != "label"},
-                    zorder=2)
+            st = {k: v for k, v in S[key].items() if k not in ("label", "marker")}
+            ax.plot(*zip(*pts), **st, zorder=2)
+            drawn.append((key, pts))
     f = fronts[ds]
     ax.plot(*zip(*f["fix"]), color=S["jhq_fix"]["color"], ls="--", lw=1.0, zorder=3)
-    ax.plot(*zip(*f["rule"]), color=S["jhq"]["color"], marker="o", lw=1.5, zorder=4)
+    ax.plot(*zip(*f["rule"]), color=S["jhq"]["color"], lw=1.5, zorder=4)
+    for key, pts in drawn + [("jhq", f["rule"])]:
+        ax.plot(*zip(*pts), ls="none", marker=S[key]["marker"], ms=4.2,
+                color=S[key]["color"], mec="white", mew=0.7, zorder=6)
 
     ax.set_yscale("log")
     ax.set_xlim(0.85, 1.005)
