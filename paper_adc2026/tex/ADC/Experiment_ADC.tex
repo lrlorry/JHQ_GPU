@@ -11,7 +11,7 @@ removes non-finite vectors, normalises nonzero vectors and holds queries out
 with seed 42; Stella queries are corpus samples. All systems use the same
 exported vectors and squared-L2 top-10 truth, without further normalisation.
 
-\begin{table}[htbp]
+\begin{table}[bp]
 \centering
 \caption{Database shape and JHQ routing; $n_q$ is the actual query count.}
 \label{tab:data}
@@ -102,7 +102,7 @@ same-sample enumeration, and an offline oracle that uses held-out truth to
 pick the fastest grid point within $10^{-3}$ of the best measured recall.
 Even-indexed queries calibrate, odd-indexed ones measure.
 
-\begin{table}[tbp]
+\begin{table}[bp]
 \centering
 \caption{Held-out budget comparison, $\epsilon=1$, $\alpha_{\max}=200$. Each
 cell gives $\alpha$ and Recall@10, then kQPS. Rule entries are the median
@@ -179,17 +179,7 @@ across the six datasets, and residual refinement extends every range. The
 ablation keeps the full allocation, so it measures what the second level buys
 rather than what a minimal JQ index would cost.
 
-\paragraph{Granularity.} With distance fixed, $G=2$ has the highest observed
-throughput in 23 of the 24 cells spanning six datasets and four probe depths
-(Figure~\ref{fig:lutgroups}); the exception is arxiv-768 at probe 128, where
-$G=1$ leads by $0.03\%$. The sharpest form of the argument is between the
-losers: $G=4$ and $G=8$ store 16 entries a subspace each, so footprint is
-constant and only lookups differ, and $G=8$ is 3.4--38.5\% slower over all 24
-pairs, widening with probe depth. Factorisation grows with $M$: $-0.0$ to
-$+9.9\%$ at $M{=}96$, where the full table nearly fits, and up to $+53.4\%$
-at $M{=}192$.
-
-\begin{figure}[tbp]
+\begin{figure}[bp]
 \centering
 \includegraphics[width=0.78\linewidth]{figs/fig_lutgroups.pdf}
 \caption{Throughput against the full table, six datasets at four probe
@@ -199,6 +189,16 @@ probe depth. $4{\times}4$ and $8{\times}2$ store the same 16 entries and
 differ only in lookups.}
 \label{fig:lutgroups}
 \end{figure}
+
+\paragraph{Granularity.} With distance fixed, $G=2$ has the highest observed
+throughput in 23 of the 24 cells spanning six datasets and four probe depths
+(Figure~\ref{fig:lutgroups}); the exception is arxiv-768 at probe 128, where
+$G=1$ leads by $0.03\%$. The sharpest form of the argument is between the
+losers: $G=4$ and $G=8$ store 16 entries a subspace each, so footprint is
+constant and only lookups differ, and $G=8$ is 3.4--38.5\% slower over all 24
+pairs, widening with probe depth. Factorisation grows with $M$: $-0.0$ to
+$+9.9\%$ at $M{=}96$, where the full table nearly fits, and up to $+53.4\%$
+at $M{=}192$.
 
 \paragraph{Access.} Full and split tables with byte and word loads, six
 datasets at four probe depths: 96 measurements, 48 paired ratios, packing
@@ -240,7 +240,7 @@ measurement.
 
 \subsection{RQ5: construction and memory}
 \label{sec:rq6}
-\begin{figure}[htbp]
+\begin{figure}[bp]
 \centering
 \includegraphics[width=\linewidth]{figs/fig_build.pdf}
 \caption{Index build time, log scale. Bars are medians over clean
