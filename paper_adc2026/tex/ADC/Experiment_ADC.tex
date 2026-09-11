@@ -121,11 +121,15 @@ The archived cuVS sweep varies code size over four values and probe depth over
 six and fixes \texttt{n\_lists} at one value a dataset, while JHQ's was swept
 over four and the frontier reports the winner --- one side tuned on a parameter
 the other was not. Re-running IVF-PQ at JHQ's value settles it in the
-baseline's favour: at matched recall it reaches $0.20$ to $0.67$ of its own
-archived throughput there, so the coarser partition it already had is the
-better one for it. The two families want opposite granularities. JHQ holds
-122 vectors a list on openai3-1536 and IVF-PQ 976, and a cheap primary scan is
-what makes the fine partition and the deep probe affordable.
+baseline's favour on five of the six datasets: at matched recall it reaches
+$0.19$ to $0.76$ of its own archived throughput there, so the coarser
+partition it already had is the better one for it. Stella-trec24 is the
+exception, where the finer partition is worth $1.5\times$ at recall 0.80, and
+the frontier reports it there. Otherwise the two families want opposite
+granularities --- JHQ holds 122 vectors a list on openai3-1536 against
+IVF-PQ's 976 --- and a cheap primary scan is what makes the fine partition
+and the deep probe affordable. Each system is reported at whichever of its
+measured partitions gives the better front.
 
 The tested CAGRA-fp32 build path fails on BGE and Stella;
 CAGRA-int8 succeeds on both. Stella's default IVF-PQ path fails, but a 2\%
