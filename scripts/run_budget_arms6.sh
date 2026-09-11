@@ -50,7 +50,13 @@ one(){  # tag paths M nlist n_train BLOCK nprobe
   local tag=$1 paths=$2 M=$3 nl=$4 nt=$5 blk=$6 np=$7
   local C=$CACHE/${tag}; mkdir -p "$C"
   echo "### $tag M=$M nlist=$nl np=$np $(date -u +%T)"
+  # JHQ_RES_TRAIN_N=100000 is the frontier's setting (/root/_pa.sh).  The old
+  # arms.sh omitted it and got away with a warm cache; without one the residual
+  # codebook trains on the whole set, which is both slow and a different index
+  # from the one the frontier reports -- defeating the point of aligning them.
   env JHQ_INDEX_CACHE="$C" JHQ_BLOCK=$blk JHQ_TILE_M_RT=$M JHQ_N_TRAIN=$nt \
+      JHQ_GPU_CODEBOOK=1 JHQ_ENCODE_GROUPED_OFF=1 JHQ_Y_TRANSPOSED=1 \
+      JHQ_RES_TRAIN_N=100000 \
       JHQ_AS_GRID=200,100,64,32,16,8,4,2 JHQ_AS_SLOTS=1 \
       JHQ_ARM_S=32,64,128 JHQ_ARM_REPS=64 JHQ_ORACLE_TAU=0.001 \
       timeout 9000 build/demo_jhq_budget_arms $paths $M 8 8 100.0 10 $nl $np 8 1024 "" 3
