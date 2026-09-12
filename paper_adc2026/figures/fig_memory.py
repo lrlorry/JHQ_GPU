@@ -43,15 +43,22 @@ SHAPE = {
     "bge-m3":       (10091524, 1024, 128, 32768),
     "stella":       (17776615, 1024, 128, 32768),
     "openai3-1536": (999000,   1536, 192, 8192),
-    "openai3-3072": (999000,   3072, 384, 4096),
+    # 8192, not the 4096 this used to carry.  The frontier reports this
+    # dataset at the partition its own sweep chose, and load_fronts() skips
+    # paper_fronts.log's 4096 rows for it -- but this figure read that file
+    # directly, so the modelled centroids and the measured total below both
+    # described a configuration the rest of the paper no longer reports.
+    "openai3-3072": (999000,   3072, 384, 8192),
 }
 BR, BATCH, CK = 8, 1024, 1000
 
 meas = {}
-for ln in open(datafile("paper_fronts.log")):
-    m = re.search(r"^  FIX\s+(\S+)\s+.*vram=([\d.]+)", ln)
-    if m:
-        meas[m.group(1)] = float(m.group(2))
+for src in ("paper_fronts.log", "o30_nlist8192.log"):
+    # the re-measured file comes second so its openai3-3072 total wins
+    for ln in open(datafile(src), errors="ignore"):
+        m = re.search(r"^  FIX\s+(\S+)\s+.*vram=([\d.]+)", ln)
+        if m:
+            meas[m.group(1)] = float(m.group(2))
 rq = {}
 for ln in open(datafile("vram.log")):
     m = re.search(r"^  (\S+)\s+nlist=\d+\s+vram=([\d.]+)", ln)
