@@ -1,0 +1,396 @@
+\section{Experiments}
+\label{sec:experi}
+
+%\paragraph{Hardware.}
+All experiments run on a Linux node equipped with an AMD EPYC 9654 processor (96 cores, 192 threads, 594\,GB RAM). For each experiment, 16 CPU cores are allocated with 128\,GB of memory; multi-threaded runs use 16 threads. 
+
+\subsection{Experimental Setup}
+\label{sec:setup}
+
+\subsubsection{Methods}
+\label{sec:method-list}
+Two batches of method are used in different stages of the experimental study: 
+
+\begin{itemize}
+    \item The first batch is ten filtered ANN methods used in our initial benchmark, which are used to implement extensive experimental study and derive our motivation to propose novel router. They are Pre-filter \cite{FilteredANNBenchmark2024}, Post-filter \cite{FilteredANNBenchmark2024}, UNG\cite{UNG2024}, SIEVE\cite{SIEVE2025}, ACORN-$\gamma$, ACORN-1\cite{ACORN2024}, NHQ\cite{NHQNPG2023}, CAPS\cite{CAPS2023}, FilteredVamana and StichedVamana\cite{FilteredStitchedVamana2023}, which cover almost all existing categorical filtered ANN methods. Our systematic experimental results for these methods are shown in Figure~\ref{fig:methods-comparison}.
+
+    \item The second batch is the baseline methods, which will be compared with our proposed methods. We select five methods (UNG, Post-filter, SIEVE, ACORN-$\gamma$, and FilteredVamana) from the first batch, as they have optimal performance on at least one combination of dataset and predicate type, as shown in Figure~\ref{fig:methods-comparison}. 
+%We adopt five methods from the benchmark as candidates in the routing action space: UNG, Post-filter, SIEVE, ACORN-$\gamma$, and FilteredVamana. All five support the AND, OR, and EQUAL query predicate types; each attains the Pareto optimum on some (dataset, predicate type) combinations, and together they constitute the Pareto frontier across workloads (Section~\ref{sec:single-methods}).
+The remaining methods in the empirial study are excluded from the candidate set out of different reasons: Pre-filter has recall = 1, however its QPS is far lower than the other methods% (often by an order of magnitude or more)
+; ACORN-1 is the $\gamma=1$ special case of ACORN-$\gamma$, and ACORN-1 either performs comparably to ACORN-$\gamma$ or is dominated by it; CAPS and NHQ restrict labels to fixed-length formats and cannot handle the variable-length label structures present in real world depolyment. We further observed that StitchedVamana exhibits stability issues across many parameter parameter settings: some parameter settings crash with segmentation faults, while others %complete with reported \texttt{status=success} but 
+produce corrupted indices that yield zreo recall. %These methods nonetheless appear in the Pareto comparison of Section~\ref{sec:single-methods} as reference points.
+
+We also include our RuleRouter (introduced in section \ref{sec:method1}) as one baseline method, which is a hand-crafted router that select the best performed method based on dataset-level features and predicate type.
+
+Moreover, Gan~\cite{LearningBasedQueryPlanning2026} proposes a learned binary planner that picks either Pre-filter or Post-filter execution for each query. Since both pre-filter and Post-filter are already sit within our setting, the action space of \cite{LearningBasedQueryPlanning2026} is therefore a strict subset of ours. So we do not include this work as our baseline.
+
+% Their routing operates at the execution-strategy level (how to apply a filter over one index), whereas ours operates at the algorithm-paradigm level (which structurally different method to use). The two action spaces are disjoint and complementary: our router first selects a method, after which their planner could further optimize the execution strategy within that method. We therefore do not include them as a direct point of comparison.
+\end{itemize}
+
+We report recall@10 and average QPS over 16 threads as the primary metrics; the ML router's QPS aggregates both the routing time and per-query search latency.
+
+
+
+\subsubsection{Training}
+
+% \paragraph{Datasets.}
+% We use six real-world training datasets~\cite{FilteredANNBenchmark2024} \textcolor{red}{as shown in Table ..}: \textcolor{red}{the dataset details from "arxiv" to "3{,}862 labels)" can be shown in a table} arxiv (132K academic paper embeddings, 768d, 4{,}231 subject labels), yfcc (1M Flickr image vectors, 192d, 181{,}931 image tags from the YFCC100M subset), LAION-1M (1M image--text pair vectors, 512d, 30 categorical labels), tripclick (1M travel-search log vectors, 768d, 29 categorical labels), ytb\_audio (5M YouTube-8M audio embeddings, 128d, 3{,}862 labels), and ytb\_video (1M YouTube-8M video embeddings, 1024d, 3{,}862 labels). These datasets span a wide range of vector dimensions, sizes, label cardinalities, and LID, covering the typical workload characteristics of filtered ANN retrieval. Released bundle of vectors and labels is available \href{https://huggingface.co/datasets/ffa500/filterbenchmark}{here}. 
+
+\paragraph{Datasets.}
+We use six real-world training datasets~\cite{FilteredANNBenchmark2024} as summarised in Table~\ref{tab:training-datasets}. These datasets span a wide range of domain, size, dimensionality, and label cardinality, along with $\mathrm{LID}_{\mathrm{mean}}$ and $card(V)$ as shown in Table \ref{tab:best-method-per-cell}. They cover the typical workload characteristics of filtered ANN retrieval and can be downloaded\footnote{\label{fn:datasets}\url{https://huggingface.co/datasets/ffa500/filterbenchmark}}.
+
+% \href{https://huggingface.co/datasets/ffa500/filterbenchmark}{here}.
+
+
+
+
+\begin{table}[!htbp]
+\centering
+\caption{Six real-world training datasets.}
+\label{tab:training-datasets}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llrrr@{}}
+\toprule
+Dataset & Domain & Size & Dim & \#Labels \\
+\midrule
+arxiv      & academic paper embeddings   & 132K & 768  & 4{,}231 \\
+yfcc       & Flickr images (YFCC100M)    & 1M   & 192  & 181{,}931 \\
+LAION-1M   & image--text pairs           & 1M   & 512  & 30 \\
+tripclick  & travel-search logs          & 1M   & 768  & 29 \\
+ytb\_audio & YouTube-8M audio            & 5M   & 128  & 3{,}862 \\
+ytb\_video & YouTube-8M video            & 1M   & 1024 & 3{,}862 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Training data collection.}
+\label{ssec:training-data}
+For each training data containing the combination of training dataset, predicate type, and candidate methods, we first perform a parameter sweep over the method's parameter space. Candidate methods are five methods in the second batch of method as mentioned in section \ref{sec:method-list}. Table~\ref{tab:sweep-ranges} lists each method's sweep range and a typical best parameter setting as a reference.
+Then we select the parameter setting with the best recall--QPS tradeoff for each training data and run the full query workload under the selected parameter setting to record per-query recall@10. 
+
+The resulting training set contains approximately $6 \times 3 \times 1{,}000 \times 5 \approx 90{,}000$ records, which are produced under 6 training datasets, 3 predicate types, $1{,}000$ queries on each dataset, 5 candidate methods. The candidate methods serve as labels for the MLP-Reg model.
+%\textcolor{red}{what's MP regression model? it cannot be seen in the methodology part. The calculation here is accurate? The combination here seems messy and inconsistent}.
+
+% \begin{table*}[!htbp]
+% \centering
+% \captionsetup{justification=centering, singlelinecheck=false}
+% \caption{Parameter sweep ranges for training data collection. Each (dataset, predicate type, method) combination independently selects its best parameter setting.}
+% \label{tab:sweep-ranges}
+% \small
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabularx}{\textwidth}{l X X X}
+% \toprule
+% Method & Build parameters & Search parameter & Typical best config \\
+% \midrule
+% UNG            & max\_degree=\{32,48,64,96\}, $L_\text{build}$=\{100,150,200\} & $L_\text{search}$=\{100,300,500\} & max\_degree=96, $L_\text{build}$=200, $L_\text{search}$=500 \\
+% Post-filter    & $M$=\{32,48,64\}, efc=\{100,200,400\} & ef=\{1200,1500,2000\} & $M$=64, efc=100, ef=2000 \\
+% SIEVE          & $M$=\{16,32\}, index\_budget=\{1,2,3\}, hist\_pct=\{0.25,0.5\} & ef\_search=[30,200] & $M$=32, index\_budget=2.0, hist\_pct=0.25, ef\_search=200 \\
+% ACORN-$\gamma$ & $M$=\{48,64\}, $M_\beta$=\{48,64,96\}, $\gamma$=\{1,4,8,12,24\} & ef=\{1000,1200\} & $M$=64, $M_\beta$=96, $\gamma$=8, ef=1200 \\
+% FilteredVamana & $R$=\{32,64,128\} & $L_\text{search}$=\{100,200,500,1000,2000\} & $R$=128, $L_\text{search}$=2000 \\
+% \bottomrule
+% \end{tabularx}
+% \end{table*}
+\begin{table*}[!htbp]
+\centering
+\captionsetup{justification=centering, singlelinecheck=false}
+\caption{Parameter sweep ranges for training data collection. %Each (dataset, predicate type, method) combination independently selects its best parameter setting.
+}
+\label{tab:sweep-ranges}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{l X X X}
+\toprule
+Method & Build parameters & Search parameter & Typical best config \\
+\midrule
+UNG            & max\_degree=\{32,48,64,96\}, $L_\text{build}$=\{100,150,200\} & $L_\text{search}$=\{100,300,500\} & max\_degree=96, $L_\text{build}$=200, $L_\text{search}$=500 \\
+\midrule
+Post-filter    & $M$=\{32,48,64\}, efc=\{100,200,400\} & ef=\{1200,1500,2000\} & $M$=64, efc=100, ef=2000 \\
+\midrule
+SIEVE          & $M$=\{16,32\}, index\_budget=\{1,2,3\}, hist\_pct=\{0.25,0.5\} & ef\_search=[30,200] & $M$=32, index\_budget=2.0, hist\_pct=0.25, ef\_search=200 \\
+\midrule
+ACORN-$\gamma$ & $M$=\{48,64\}, $M_\beta$=\{48,64,96\}, $\gamma$=\{1,4,8,12,24\} & ef=\{1000,1200\} & $M$=64, $M_\beta$=96, $\gamma$=8, ef=1200 \\
+\midrule
+FilteredVamana & $R$=\{32,64,128\} & $L_\text{search}$=\{100,200,500,1000,2000\} & $R$=128, $L_\text{search}$=2000 \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+We select the best parameter setting for each candidate method under all combinations of dataset and predicate type, rather than a globally fixed setting. This ensures that the training labels reflect each method's potential best performance for that specific combination. It can avoid the underestimation that would arise if a parameter setting is globally reasonable but locally underfit. The drawback is that method selection and parameter setting selection must be modeled separately. Specifically, MLP-Reg predicts the query performance of each candidate method given one query.
+%for each query and each candidate method, the per-query recall@10 the method would attain at its training-time best parameter setting on that combination 
+%\textcolor{red}{what does this sentence mean? from "Specifically" to "that combination"}. 
+
+%The resulting training set contains approximately $6 \times 3 \times 1{,}000 \times 5 \approx 90{,}000$ (query, method, recall) records (6 training datasets, 3 predicate types, $1{,}000$ queries per combination, 5 candidate methods), which serve as labels for the MLP regression model.
+
+\subsubsection{Validation}
+
+% \paragraph{Datasets.}
+% The validation set comprises five datasets that the router never sees during training. \textcolor{red}{how about putting the validation set in one table as well?} Three synthetic datasets cover controlled axes of variation: synth\_192d (800K vectors, 192d, 200 labels), synth\_512d (800K, 512d, 30 labels matching LAION's cardinality), and synth\_768d\_hc (800K, 768d, 1{,}000 labels). All three are generated by sampling Zipf-distributed label sets over Gaussian vector clusters with a fixed seed. The two real-world text datasets are yahoo800k (800K vectors from the Yahoo Answers Topic Classification dataset~\cite{Zhang2015CharCNN}, 768d, 14 topic labels) and dbpedia560k (560K vectors from DBpedia ontology classes~\cite{Zhang2015CharCNN}, 768d, 14 topic labels); both are encoded with the same sentence-transformer model. The two text datasets evaluate the router on natural-language workloads that differ structurally from the FANNS training distributions. For each (dataset, predicate type) pair we sample $1{,}000$ queries, yielding $15{,}000$ validation queries in total.
+\paragraph{Datasets.}
+There are five validation datasets that router never sees during training, as summarised in Table~\ref{tab:validation-datasets}. Their dimensions and label cardinality generally follow that of the training datasets. Three synthetic datasets are generated by sampling Zipf-distributed label sets over Gaussian vector clusters with a fixed seed.
+%Three synthetic datasets cover controlled axes of variation, generated by sampling Zipf-distributed label sets over Gaussian vector clusters with a fixed seed.
+The two real-world text datasets (yahoo800k and dbpedia560k), both encoded with the same sentence-transformer model, evaluate the router on natural-language workloads that differ structurally from distributions of the training datasets. For each combination of dataset and predicate type, we sample $1{,}000$ queries, yielding $15{,}000$ validation queries in total.
+
+\begin{table}[!htbp]
+\centering
+\caption{Five validation datasets.%: three synthetic and two unseen real-world text.
+}
+\label{tab:validation-datasets}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llrrr@{}}
+\toprule
+Dataset & Domain & Size & Dim & \#Labels \\
+\midrule
+synth\_192d     & synthetic (Zipf/Gaussian)                    & 800K & 192  &   200 \\
+synth\_512d     & synthetic (Zipf/Gaussian)                    & 800K & 512  &    30 \\
+synth\_768d\_hc & synthetic (Zipf/Gaussian)                    & 800K & 768  & 1{,}000 \\
+\midrule
+yahoo800k       & Yahoo Answers topics~\cite{Zhang2015CharCNN} & 800K & 768  &    14 \\
+dbpedia560k     & DBpedia ontology~\cite{Zhang2015CharCNN}     & 560K & 768  &    14 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+
+\paragraph{Dataset preparation and query generation.}
+We use each dataset as it ships from its source. Each dataset comes with two parts: a \emph{base set} (the vectors over which the index is built) and a separate \emph{query set} (a small subset of vectors held out for testing); we use both as released. Every base vector $v_i$ carries a label set $L_i$ from the dataset's metadata (subject classifications for arxiv, image tags for yfcc, $30$ categorical labels for LAION1M).
+
+To evaluate the router under arbitrary query workloads, we generate $1{,}000$ queries for each combination of dataset and predicate type. 
+%Each query has two parts: a query vector $x_q$ drawn from the dataset's hold-out \textcolor{red}{what does hold-out mean?} query set, and a query label set $L_q$. We choose the size of $L_q$ to simulate how real queries are typically issued. For Equality and AND, users usually specify a relatively small number of tags with a small $|L_q|$; for OR, users typically cast a wider net with a large $|L_q|$.
+Each query has two parts: a query vector $q$ and a query label set $L_q$. The query vectors are drawn from a pre-defined set that is disjoint from the dataset. 
+Specifically, for the two real-world text datasets (yahoo800k and dbpedia560k), the query set originates from the source dataset; for the three synthetic datasets, query vectors are constructed by adding Gaussian noise (scale = 10\% of median base-vector norm) to randomly chosen vectors from the datasets.
+We choose the size of $L_q$ to match how real queries are typically issued: for Equality and AND predicate types, queries are usually specified with a few labels, so $|L_q|$ is small (1--3); for OR predicate type, query labels are typically span a wide range, so $|L_q|$ is broader.
+
+The ground-truth results for validation
+%of filtered ANN query 
+are obtained through brute-force search over all candidate vectors $v_i$ whose label set $L_i$ satisfies the query predicate with $L_q$.
+
+% After the recall value is produced by MLP-Reg models, an online lookup table selects the concrete parameter setting; the lookup-table mechanism is described in Algorithm~\ref{alg:per-query-routing} \textcolor{red}{why we mention the inference, for what reason?}.
+
+\subsection{Design Ablations}
+\label{sec:compared}
+
+%With the setup of Section~\ref{sec:setup} in place, 
+%In this section, we probe the ML router's two key designs. 
+% first justify the routing action space by comparing all ten benchmarked 
+%\textcolor{red}{the benchmarked methods are not introduced before. It is suggested to introduce the benchmarked methods in 6.1.1 and then compared (or baseline) methods in 6.1.2} 
+% methods in our empirical study in section \ref{sec:method1}, then 
+% in section \ref{sec:ablations}. %choices through ablations on the feature set and its design.
+% \subsubsection{Single-Method Comparison: Action Space Justification}
+% \label{sec:single-methods}
+
+% We run a parameter sweep over all benchmark methods listed in Section~\ref{sec:method-list} on the $6 \times 3 = 18$ training (dataset, predicate type) combinations and compare their recall--QPS Pareto frontiers\footref{fn:methods-comparison} \textcolor{red}{so this is the figure in Github repo?}. We observe that no single method dominates all combinations.
+% The Pareto frontier is jointly formed by the five candidate methods (UNG, Post-filter, SIEVE, ACORN-$\gamma$, FilteredVamana); each is irreplaceable on some (dataset, predicate type) combinations.
+% This empirically justifies the choice of these five methods as the routing action space in Section~\ref{sec:compared}.
+
+%\subsubsection{Ablation study of ML Router}
+%\label{sec:ablations}
+
+In this section, we conduct ablation studies for the ML router from three perspectives: feature selection, model type (classification vs.\ regression), and MLP depth.
+%All ablation experiments use MLP-Reg model,z are trained on the training set %(6 datasets) 
+%and evaluated on the validation set %(5 datasets $\times$ 3 predicate types $\times$ $1{,}000$ queries $=$ $15{,}000$ queries) 
+%% under plain argmax routing \textcolor{red}{what means plain argmax?}.
+% The reported recall is the mean of the selected method's measured per-query recall@10 across all validation queries.
+
+% We define the per-query \textit{Oracle} as a hypothetical router that, selects the method achieving the highest measured per-query recall for each query.
+% The Oracle recall is the theoretical upper bound of plain argmax routing under our five candidate methods; \textcolor{red}{this should be replaced in sec 6.3}
+
+% on the validation set, $\text{Oracle} = 0.9954$.
+
+% The ``gap to Oracle'' columns in the subsequent tables show each model's distance from this bound. \textcolor{red}{the per-query Oracle cannot be found in other places}
+
+\paragraph{(a) Feature Selection.}
+\label{sssec:feature-selection}
+
+Starting from the $22$ candidate features described in Section~\ref{ssec:features}, we will test which are actually needed by MLP-Reg.
+We rank numeric candidate features by RandomForest feature importance on the training set and construct a nested family of subsets with different sizes, each prepended with \texttt{predicate type}.
+We use $n$ to denote the number of most important features.
+For every $n$, we train MLP-Reg under five random seeds %($\{42, 7, 13, 21, 99\}$) 
+and report the mean and standard deviation of validation recall@10.
+Multi-seed averaging is necessary because MLP training is sensitive to initialisation, and a single-seed estimate at the same $n$ would make the curve essentially unreadable.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.7\linewidth]{figs/ablation_features_multiseed.pdf}
+\captionsetup{justification=centering, singlelinecheck=false}
+\caption{MLP-Reg validation recall vs.\ feature count.% X-axis: number of input features (importance-ordered nested subsets). Y-axis: mean recall@10 over $5$ seeds, error bars are $\pm 1$ std.
+}
+\label{fig:ablation-features}
+\end{figure}
+
+%The 14 \textcolor{red}{why 14?} variants
+The validation recall under different feature numbers is shown in Figure~\ref{fig:ablation-features}.
+For $n \ge 10$ the curve becomes non-monotone and per-seed variance grows by an order of magnitude (std up to $0.06$). This can be explained that individual feature additions can either lift or depress mean recall depending on whether the added feature is informative or merely a dataset ``fingerprint'' that overfits the six training dataset. We therefore restrict the number of candidate feature to $n \le 8$, where the mean recall is stable and high across seeds, and pick candidates in this range.
+Within the $n \le 8$ plateau, the model achieves the highest recall with $n = 2$ and $n = 3$.
+%two parameter settings sit on the recall envelope\textcolor{red}{meaning?}: $n = 2$ and $n = 3$. 
+The two candidates are separated by only $0.005$ recall and both have tight per-seed variance, so recall alone does not distinguish them. We therefore evaluate them on per-query latency before committing to the final minimal feature set.
+% : treating the router's predicted method as the executed plan and looking up per-(dataset, predicate type, method) latency from the offline benchmark table, 
+Table~\ref{tab:feature-latency-tradeoff} reports the per-query latency on two real-world validation datasets.
+On both real-world text datasets, $n = 3$ is $1.7$ to $5.6$ times faster than $n = 2$, because the \texttt{LID\_mean} feature steers the router away from latency-heavy methods such as UNG on AND/OR queries (where UNG must scan many label partitions per query, which is slow on the high-LID text embeddings these datasets produce). So we adopt $n=3$ as our final number of features.
+
+
+
+\begin{table}[!htbp]
+\centering
+\captionsetup{justification=centering, singlelinecheck=false}
+\caption{Per-query latency under two candidate feature sets %on the two real-world text datasets ($5$ seeds averaged).
+}
+\label{tab:feature-latency-tradeoff}
+\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Dataset             & $n=2$ latency ($\mu$s) & $n=3$ latency ($\mu$s) \\
+\midrule
+dbpedia560k         & $8559$                 & $\mathbf{4993}$~~~($1.7\times$) \\
+yahoo800k           & $20974$                & $\mathbf{3727}$~~~($5.6\times$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%On both real-world text datasets, $n = 3$ is $1.7$ to $5.6$ times faster than $n = 2$, because the \texttt{LID\_mean} feature steers the router away from latency-heavy methods such as UNG on AND/OR queries (where UNG must scan many label partitions per query, which is slow on the high-LID text embeddings these datasets produce). So we adopt $n=3$ as our final number of features.
+
+% Since real-deployment workloads resemble these datasets more than the controlled synthetic-label datasets, so
+
+%So, we adopt $n = 3$ (\texttt{selectivity}, \texttt{LID\_mean}, \texttt{predicate type}) as our final feature set. 
+
+%Feature extraction has three components. Selectivity counts the fraction of base vectors matching the query's predicate. We maintain one bitmap per label, marking which base vectors carry that label. For AND queries we intersect the bitmaps of the query's labels; for OR we union them; for Equality we use a precomputed hash table from label set to count. Roaring bitmaps make AND/OR set operations fast. Dividing the result count by the dataset size $n$ gives the selectivity. $\mathrm{LID}_{\mathrm{mean}}$ is computed offline the first time a dataset is seen and then cached as an $O(1)$ lookup. Predicate type is read directly from the query. Per-step latency measurements are reported in Section~\ref{ssec:routing-latency}.
+
+\paragraph{(b) Classification vs.\ Regression.}
+\label{sssec:cls-vs-reg}
+
+The ML model can be trained either as a classifier or as a regressor.
+The two model families share the same input features, training set, and network capacity, but they differ in training objective and output form. Specifically, classification directly outputs the discrete top-1 method label, whereas regression outputs a continuous predicted recall for each candidate method.
+
+For a fair comparison of the two training objectives, we reduce the regression output to plain argmax (selecting the method with the highest predicted recall) to align with the classifier's top-1 output.
+Note that the model in the deployment evaluation of Section~\ref{sec:main-result} additionally filters methods by their predicted recall ($\hat{r}_m \geq T$) before selecting the lookup-table max-QPS parameter setting, which a classifier cannot do since it emits only a single label.
+The plain argmax evaluation in this section therefore underestimates regression's deployment time performance.
+
+%We select three representative algorithms from each model family: classification uses LogisticRegression, MLP, and RandomForest; regression uses Ridge, MLP-Reg, and RF-Reg.
+%Table~\ref{tab:cls-vs-reg} demonstrates their recall in two datasets (yahoo800k, dbpedia560k) along with the aggregate recall (denoted as Aggregate in the Table) on all five validation datasets.
+
+% For each query we look up the per-query measured recall@10 of the selected method and average across the $15{,}000$ validation queries; per-dataset results for 3 representative datasets yahoo800k, dbpedia560k, and synth\_192d, together with the aggregate, are shown in Table~\ref{tab:cls-vs-reg}.
+
+% \begin{table*}[!htbp]
+% \centering
+% \captionsetup{justification=centering, singlelinecheck=false}
+% \caption{Plain argmax recall@10 of three classification routers and three regression routers across five validation datasets.}
+% \label{tab:cls-vs-reg}
+% \small
+% \begin{tabular}{@{}lcccccc@{}}
+% \toprule
+% & \multicolumn{3}{c}{Classification} & \multicolumn{3}{c}{Regression} \\
+% \cmidrule(lr){2-4} \cmidrule(lr){5-7}
+% Dataset & LogisticReg & MLP & RandomForest & Ridge & MLP-Reg & RF-Reg \\
+% \midrule
+% yahoo800k        & 0.892 & 0.871 & 0.940 & 0.954 & 0.957 & 0.950 \\
+% dbpedia560k      & 0.931 & 0.933 & 0.927 & 0.977 & 0.993 & 0.994 \\
+% synth\_192d      & 0.821 & 0.974 & 0.980 & 1.000 & 1.000 & 0.997 \\
+% synth\_512d      & 0.951 & 0.960 & 0.960 & 0.994 & 0.987 & 0.999 \\
+% synth\_768d\_hc  & 0.919 & 0.948 & 0.984 & 1.000 & 0.995 & 0.996 \\
+% \midrule
+% \textbf{Aggregate} & \textbf{0.903} & \textbf{0.937} & \textbf{0.958} & \textbf{0.985} & \textbf{0.986} & \textbf{0.987} \\
+% \bottomrule
+% \end{tabular}
+% \end{table*}
+
+\begin{table}[!htbp]
+\centering
+\captionsetup{justification=centering, singlelinecheck=false}
+\caption{Recall@10 of classification and regression models
+% , %on the two unseen real-world text datasets 
+% and aggregate over all five validation datasets.
+}
+\label{tab:cls-vs-reg}
+\small
+\begin{tabular}{@{}llccc@{}}
+\toprule
+Family & Router & yahoo800k & dbpedia560k & Aggregate \\
+\midrule
+\multirow{3}{*}{Classification}
+ & LogisticReg  & 0.892 & 0.931 & 0.903 \\
+ & MLP          & 0.871 & 0.933 & 0.937 \\
+ & RandomForest & 0.940 & 0.927 & 0.958 \\
+\midrule
+\multirow{3}{*}{Regression}
+ & Ridge        & 0.954 & 0.977 & 0.985 \\
+ & MLP-Reg      & 0.957 & 0.993 & \textbf{0.986} \\
+ & RF-Reg       & 0.950 & 0.994 & \textbf{0.987} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+We select three representative algorithms from each model family: classification uses LogisticRegression, MLP, and RandomForest; regression uses Ridge, MLP-Reg, and RF-Reg.
+Table~\ref{tab:cls-vs-reg} demonstrates their recall in two datasets (yahoo800k, dbpedia560k) along with the aggregate recall (denoted as Aggregate in the Table) on all five validation datasets.
+The regression family is significantly better than the classification family overall. %The same ranking holds within each individual validation dataset, with the classification--regression gap increasing on the real-world text datasets (yahoo800k, dbpedia560k) relative to the synthetic dataset (synth\_192d/512d/768d\_hc).
+The gap stems from how much information the two training losses can exploit. Classification is trained with cross-entropy loss, which only checks whether the argmax falls on the ground-truth method: a prediction is either correct or wrong, with no distinction between being slightly off (picking a method whose recall is $0.005$ below the best) and being far off (picking one $0.5$ below). On validation set where almost every method's recall sits close to the ceiling, ties are frequent and the cross-entropy gradient cannot smoothly steer the model toward the truly optimal method. Regression instead is trained with MSE on each candidate's measured recall, giving a continuous, differentiable error that grows with the distance between predicted and true recall. The gradient is proportional to the induced recall loss, so the argmax stays stable when several methods sit at similar recall.
+We therefore choose regression as the training objective.
+
+Within the regression family, the three models have nearly identical overall recall (Ridge $0.985$ / MLP-Reg $0.986$ / RF-Reg $0.987$), but inference latency differs by an order of magnitude ($0.13$ / $0.74$ / $7.83\,\mu$s per query): RF-Reg is $10.5\times$ slower than MLP-Reg.
+Filtered ANN queries in high-QPS workloads commonly take hundreds of microseconds, so any routing overhead exceeding $1$--$2\,\mu$s starts to reduce the overall QPS.
+We therefore select MLP-Reg, since its recall is only $0.001$ below the strongest RF-Reg and its latency is an order of magnitude lower.
+
+
+
+\paragraph{(c) MLP Depth.}
+\label{sssec:mlp-depth}
+
+Since the input is only $3$ features, the model does not need to be deep. We adopt a $2$-hidden-layer MLP $(64, 32)$: with so few inputs, a single hidden layer has limited capacity to capture interactions among the features (in the worst case collapsing toward a logistic-regression-like decision boundary), while two layers reach adequate approximation capacity at sub-microsecond inference cost. Deeper hidden layers (such as $3$-$4$) bring no obvious recall gain on this low-dimensional input but raise inference latency $3$-$7\times$ per query as shown in Table~\ref{tab:mlp-depth}.
+
+\begin{table}[t]
+  \centering
+  \caption{MLP depth ablation: routing recall and inference latency.}
+  \label{tab:mlp-depth}
+  \begin{tabular}{ccc}
+    \toprule
+    \#Layers & Recall & $\mu$s/query \\
+    \midrule
+    2 & $0.9863$ & $0.50$ \\
+    3 & $0.9896$ & $1.50$ \\
+    4 & $0.9874$ & $3.38$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Main Result: Full Recall-QPS Comparison}
+\label{sec:main-result}
+
+Having fixed the ML Router design in section \ref{sec:compared}, we compare the router against all baselines and RuleRouter in the (recall, QPS) plane on all five validation datasets over three predicate types, with results shown in Figure~\ref{fig:main-result}.
+
+\begin{figure*}[!tbp]
+\centering
+\includegraphics[width=\textwidth]{figs/v2_recall_qps_perquery.pdf}
+\caption{Recall--QPS Pareto on all combinations of dataset and predicate type.}
+\label{fig:main-result}
+\end{figure*}
+
+\paragraph{Overall performance.}
+%Across the $15$ (dataset, predicate type) combinations in Figure~\ref{fig:main-result}, 
+We define the \textit{Oracle} as a hypothetical router that selects the method achieving the highest recall for each query, i.e., the \textit{Oracle} achieves the theoretical best performance.
+%The Oracle recall is the theoretical upper bound of plain argmax routing under our five candidate methods; 
+The ML Router curve (magenta) has the best performance on almost all datasets and predicate types.
+%closely tracks or crosses the strongest baseline curve in each combination, and we observe no combination where the ML Router curve is dominated by any single-method baseline across the entire recall range.
+%This confirms the Section~\ref{sec:single-methods} observation that no single method is optimal across all datasets and predicate types.
+By routing each query to the method the model deems most suitable via per-query prediction, the ML Router achieves a multi-workload aggregate performance that no single method can match.
+
+\paragraph{Gains over RuleRouter.}
+Since RuleRouter picks one candidate method for each combination of validation dataset and predicate type, its performance will overlap with one baseline method. So we only mark its picked method rather than show its recall-QPS curve~\ref{fig:main-result}.
+The ML Router's gains over RuleRouter manifest in two situations.
+First, for the OR predicate type on several datasets (synth\_768d\_hc, yahoo800k, synth\_192d, dbpedia560k), the RuleRouter chooses Post-filter via an LID threshold, but Post-filter must use a very slow parameter setting to reach recall $\geq 0.9$ on these workloads, with QPS pushed down to the $10$--$100$ range.
+The ML Router routes most queries to SIEVE or FilteredVamana, achieving overall QPS one to two orders of magnitude higher.
+Second, for the AND predicate type on two datasets (yahoo800k, dbpedia560k), the rule chooses UNG, which attains a maximum mean recall of only $0.67$ and $0.82$ respectively across all sweep parameter settings, short of threshold $T$ = 0.9. Therefore, RuleRouter could fail to meet the recall threshold, which degrades its performance.
+
+%Under RuleRouter deployment these two combinations would fail to meet the recall target; the ML Router routes most queries to SIEVE and successfully delivers the target recall.
+
+% \paragraph{Note on equal predicate type.}
+% On the five equal-predicate-type subplots of Figure~\ref{fig:main-result}, the ML Router trails the UNG baseline by a narrow margin in the high-recall region. This local loss does not overturn the global picture: UNG itself is far from optimal on the other predicate types (AND/OR), where it underperforms by orders of magnitude relative to the ML Router (Section~\ref{sec:single-methods}). Aggregated across all $15$ (dataset, predicate type) combinations, the ML Router curve still dominates every single-method baseline.
+
+\paragraph{ML Router latency.}
+\label{ssec:routing-latency}
+To put the routing overhead in context, we measured the full streaming routing pipeline (Roaring-bitmap selectivity + feature scaling + 5 MLP-Reg forwards + offline config lookup) over all $1{,}000$ queries on all combinations of validation datasets and predicate types.
+%each timed 100 times ($100{,}000$ timed samples per step per combination) on the same EPYC node as the ANN search. 
+The 5 MLP forwards account for 41\,$\mu$s (median); Roaring-bitmap selectivity takes $\sim 0.4\,\mu$s on Equality (hash lookup over the precomputed set-count table) and 5--58\,$\mu$s on AND/OR (bitmap intersection/union over query labels). Across all $15{,}000$ queries, the routing per-query latency has median 54\,$\mu$s, p95 93\,$\mu$s, and max 167\,$\mu$s. The routing-to-query latency ratio is overall 0.2\% with a worst-case of 2.6\% on synth\_512d/AND.
+Therefore, the routing latency is negligible compared to the query latency.
+
+%Relative to query latency at the router-selected parameter setting, per-combination median routing-to-total-latency ratio is 0.2\% with worst case 2.6\% on synth\_512d/AND, where the filtered ANN search itself takes only 2.5\,ms.

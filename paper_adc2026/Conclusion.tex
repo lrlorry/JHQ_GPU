@@ -1,0 +1,12 @@
+\section{Conclusion}
+\label{sec:conclu}
+We presented a per-query ML routing framework for categorical filtered ANN query processing. Motivated by two key observations obtained from extensive experimental study, we propose a framework to train a lightweight router to predict each candidate method's recall on the incoming query, and selects the best method along with the parameter settting.
+%(method, configuration) pair that best balances recall and QPS via an offline benchmark table. 
+%A feature ablation shows that three features (selectivity, LID, and scenario) suffice to drive the router; switching from a classification target to per-method recall regression closes the gap to the Oracle upper bound by penalising prediction errors in proportion to the induced recall loss.
+On five validation datasets unseen during training, the router attains average recall@10 $=$ 0.986, with 0.9\% gap to the ground truth. %, and improves over the RuleRouter baseline by 10 and 7 percentage points respectively on the two real-world text corpora. 
+Routing overhead has a median latency of around $54\,\mu$s per query, which is two orders of magnitude lower than the millisecond-scale latency of the underlying filtered ANN search. This demonstrates the practicality of the framework in real-world deployment.
+Our two observations could also apply for range filtered ANN methods. Therefore, in the future, we plan to extend our framework to per-query routing among range filtered ANN methods.%%~\cite{iRangeGraph2024, SeRF2024, WindowFilters2024, RangePQ2025}.
+
+%where prabably different method wins on different dataset and predicate type combinations, 
+
+%where the multi-method, per-workload winner heterogeneity observed in the categorical-label setting is likely to carry over.

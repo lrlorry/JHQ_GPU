@@ -1,0 +1,43 @@
+\section{Preliminaries}
+\label{sec:preli}
+
+We now formally define the filtered ANN problem and review its key evaluation metrics.
+
+\subsection{Filtered ANN Problem Definition}
+\label{ssec:problem}
+
+%We follow the standard filtered ANN formulation~\cite{FilteredANNBenchmark2024,UNG2024,ACORN2024}. 
+Let the dataset $V = \{(v_i, L_i)\}_{i=1}^{n}$ contain $n$ vectors with attribute labels, where $v_i \in \mathbb{R}^d$ and $L_i \subseteq U$ is a discrete subset of a label universe $U$. A filtered ANN query is a triple $q = (x_q, L_q, P)$ comprising a query vector $x_q \in \mathbb{R}^d$, a query label set $L_q \subseteq U$, and a Boolean predicate $P : 2^U \times 2^U \to \{\mathrm{true}, \mathrm{false}\}$. Three predicate types are commonly used:
+\begin{itemize}
+    \item Equality: $P(L_i, L_q) = (L_i = L_q)$, requiring identical label sets.
+    \item Containment (AND): $P(L_i, L_q) = (L_q \subseteq L_i)$, requiring the candidate to carry every query label.
+    \item Overlap (OR): $P(L_i, L_q) = (L_q \cap L_i \neq \emptyset)$, requiring at least one shared label.
+\end{itemize}
+
+An entry $(v_i, L_i)$ is considered a valid candidate if and only if $P(L_i, L_q) = \mathrm{true}$; otherwise, it is excluded.
+Given $q$ and an integer $k$, the goal is to retrieve $k$ vectors with the smallest Euclidean distance to $x_q$ from the valid candidates. ANN algorithms trade a small amount of accuracy for query speed and return an approximate top-$k$ set $R(q)$ as:
+\begin{equation}
+    %\mathrm{TopK}(q) = 
+    R(q)=\mathop{\arg\min}\limits^{k}_{(v_i, L_i) \in V,\; P(L_i, L_q) = \mathrm{true}} \|v_i - x_q\|
+\end{equation}
+
+
+%\subsection{Predicate Types}
+%\label{ssec:predicates}
+
+%We consider three commonly used predicate forms:
+%\begin{itemize}
+  %  \item \textbf{Equality:} $P(L_i, L_q) = (L_i = L_q)$, requiring identical label sets.
+   % \item \textbf{Containment (AND):} $P(L_i, L_q) = (L_q \subseteq L_i)$, requiring the candidate to carry every query label.
+   % \item \textbf{Overlap (OR):} $P(L_i, L_q) = (L_q \cap L_i \neq \emptyset)$, requiring at least one shared label.
+%\end{itemize}
+
+\subsection{Evaluation Metrics}
+\label{ssec:metrics}
+
+We adopt the two metrics standard in the ANN literature~\cite{ANNBenchmarks2020}:
+\begin{equation}
+    \mathrm{recall}@k(q) = \frac{|R(q) \cap \mathrm{TopK}(q)|}{\min(k,\; |\mathrm{TopK}(q)|)}, \quad
+    \mathrm{QPS} = \frac{|Q|}{\sum_{q \in Q} t(q)}.
+\end{equation}
+$\mathrm{recall}@k$ measures the fraction of true top-$k$ retrieved by the algorithm; when fewer than $k$ candidates satisfy $P$, the denominator falls back to $|\mathrm{TopK}(q)|$ to avoid under-counting. $\mathrm{QPS}$ characterizes throughput as the test set size $|Q|$ divided by the total processing time, where $t(q)$ is the end-to-end latency of a single query.

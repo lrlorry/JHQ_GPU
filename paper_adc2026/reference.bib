@@ -1,0 +1,407 @@
+% =====================================================
+% References for CIKM 2026 Filtered ANN paper
+% Most entries reused from ANU thesis bibfile.bib for consistency
+% =====================================================
+
+% ----- Filtered ANN benchmark (closely related, used 2x in RW) -----
+@article{FilteredANNBenchmark2024,
+    title         = {Filtered Approximate Nearest Neighbor Search: A Unified Benchmark and Systematic Experimental Study},
+    author        = {Shi, Jiayang and Cai, Yuzheng and Zheng, Weiguo},
+    year          = {2025},
+    eprint        = {2509.07789},
+    archivePrefix = {arXiv},
+    primaryClass  = {cs.DB},
+    url           = {https://arxiv.org/abs/2509.07789}
+}
+
+% ----- Filter-then-search methods -----
+@article{UNG2024,
+    title         = {Navigating Labels and Vectors: A Unified Approach to Filtered Approximate Nearest Neighbor Search},
+    author        = {Cai, Yuzheng and Shi, Jiayang and Chen, Yizhuo and Zheng, Weiguo},
+    journal       = {Proceedings of the ACM on Management of Data},
+    year          = {2024},
+    volume        = {2},
+    number        = {6},
+    articleno     = {246},
+    numpages      = {27},
+    publisher     = {Association for Computing Machinery},
+    doi           = {10.1145/3698822}
+}
+
+% ----- Search-then-filter methods -----
+@article{HNSW2018,
+    title         = {Efficient and Robust Approximate Nearest Neighbor Search Using Hierarchical Navigable Small World Graphs},
+    author        = {Malkov, Yu. A. and Yashunin, D. A.},
+    journal       = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+    year          = {2018},
+    eprint        = {1603.09320},
+    archivePrefix = {arXiv}
+}
+
+@article{FaissGPUIVFPQ2019,
+    title     = {Billion-Scale Similarity Search with GPUs},
+    author    = {Johnson, Jeff and Douze, Matthijs and J{\'e}gou, Herv{\'e}},
+    journal   = {IEEE Transactions on Big Data},
+    year      = {2019},
+    volume    = {7},
+    number    = {3},
+    pages     = {535--547},
+    publisher = {IEEE}
+}
+
+% ----- Hybrid-search methods -----
+@article{HQANN2022,
+    title         = {HQANN: Efficient and Robust Similarity Search for Hybrid Queries with Structured and Unstructured Constraints},
+    author        = {Wu, Wei and He, Junlin and Qiao, Yu and Fu, Guoheng and Liu, Li and Yu, Jin},
+    year          = {2022},
+    eprint        = {2207.07940},
+    archivePrefix = {arXiv},
+    primaryClass  = {cs.DB},
+    url           = {https://arxiv.org/abs/2207.07940}
+}
+
+@inproceedings{FilteredStitchedVamana2023,
+    title     = {Filtered-DiskANN: Graph Algorithms for Approximate Nearest Neighbor Search with Filters},
+    author    = {Gollapudi, Siddharth and Karia, Neel and Sivashankar, Varun and Krishnaswamy, Ravishankar and Begwani, Nikit and Raz, Swapnil and Lin, Yiyong and Zhang, Yin and Mahapatro, Neelam and Srinivasan, Premkumar and Singh, Amit and Simhadri, Harsha Vardhan},
+    booktitle = {Proceedings of the ACM Web Conference 2023},
+    year      = {2023},
+    pages     = {3406--3416},
+    publisher = {Association for Computing Machinery},
+    doi       = {10.1145/3543507.3583552}
+}
+
+@article{ACORN2024,
+    title         = {ACORN: Performant and Predicate-Agnostic Search Over Vector Embeddings and Structured Data},
+    author        = {Patel, Liana and Kraft, Peter and Guestrin, Carlos and Zaharia, Matei},
+    year          = {2024},
+    eprint        = {2403.04871},
+    archivePrefix = {arXiv},
+    primaryClass  = {cs.IR},
+    url           = {https://arxiv.org/abs/2403.04871}
+}
+
+@inproceedings{SIEVE2025,
+    title     = {SIEVE: Effective Filtered Vector Search with Collection of Indexes},
+    author    = {Li, Zhaoheng and Huang, Silu and Ding, Wei and Park, Yongjoo and Chen, Jianjun},
+    booktitle = {Proceedings of the VLDB Endowment},
+    year      = {2025},
+    volume    = {18},
+    number    = {4}
+}
+
+@article{CAPS2023,
+    title         = {CAPS: A Practical Partition Index for Filtered Similarity Search},
+    author        = {Gupta, Gaurav and Yi, Jonah and Coleman, Benjamin and Luo, Chen and Lakshman, Vihan and Shrivastava, Anshumali},
+    year          = {2023},
+    eprint        = {2308.15014},
+    archivePrefix = {arXiv},
+    primaryClass  = {cs.IR},
+    url           = {https://arxiv.org/abs/2308.15014}
+}
+
+@inproceedings{NHQNPG2023,
+    title     = {An Efficient and Robust Framework for Approximate Nearest Neighbor Search with Attribute Constraint},
+    author    = {Wang, Mengzhao and Lv, Lingwei and Xu, Xiaoliang and Wang, Yuxiang and Yue, Qiang and Ni, Jiongkang},
+    booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+    year      = {2023},
+    volume    = {36},
+    pages     = {15738--15751}
+}
+
+% ----- Production vector databases -----
+@inproceedings{Milvus2021,
+    title     = {Milvus: A Purpose-Built Vector Data Management System},
+    author    = {Wang, Jianguo and Yi, Xiaomeng and Guo, Rentong and Jin, Hai and Xu, Peng and Li, Shengjun and Wang, Xiangyu and Guo, Xiangzhou and Li, Chengming and Xu, Xiaohai and Yu, Kun and Yuan, Yuxing and Zou, Yinghao and Long, Jiquan and Cai, Yudong and Li, Zhenxiang and Zhang, Zhifeng and Mo, Yihua and Gu, Jun and Jiang, Ruiyi and Wei, Yi and Xie, Charles},
+    booktitle = {Proceedings of the 2021 ACM SIGMOD International Conference on Management of Data},
+    year      = {2021},
+    pages     = {2614--2627},
+    publisher = {Association for Computing Machinery},
+    doi       = {10.1145/3448016.3457550}
+}
+
+@inproceedings{PASE2020,
+    title     = {PASE: PostgreSQL Ultra-High-Dimensional Approximate Nearest Neighbor Search Extension},
+    author    = {Yang, Wen and Li, Tao and Fang, Gai and Wei, Hong},
+    booktitle = {Proceedings of the 2020 ACM SIGMOD International Conference on Management of Data},
+    year      = {2020},
+    pages     = {2241--2253},
+    publisher = {Association for Computing Machinery},
+    doi       = {10.1145/3318464.3386131}
+}
+
+% ----- Algorithm selection (Section 5.2 background) -----
+@incollection{Rice1976,
+    title     = {The Algorithm Selection Problem},
+    author    = {Rice, John R.},
+    booktitle = {Advances in Computers},
+    year      = {1976},
+    volume    = {15},
+    pages     = {65--118},
+    publisher = {Elsevier},
+    doi       = {10.1016/S0065-2458(08)60520-3}
+}
+
+@article{SATzilla2008,
+    title     = {SATzilla: Portfolio-based Algorithm Selection for SAT},
+    author    = {Xu, Lin and Hutter, Frank and Hoos, Holger H. and Leyton-Brown, Kevin},
+    journal   = {Journal of Artificial Intelligence Research},
+    year      = {2008},
+    volume    = {32},
+    pages     = {565--606},
+    doi       = {10.1613/jair.2490}
+}
+
+% ----- Closely related: learning-based query planning (Gan & Wang) -----
+@article{LearningBasedQueryPlanning2026,
+    title     = {Efficient Filtered-ANN via Learning-based Query Planning},
+    author    = {Gan, Zhuocheng and Wang, Yifan},
+    journal   = {arXiv preprint arXiv:2602.17914},
+    year      = {2026},
+    note      = {University of Hawaii at Manoa}
+}
+
+% ----- Methodologically related: Iceberg (decision tree for unfiltered VSS) -----
+@inproceedings{Iceberg,
+    title     = {Reveal Hidden Pitfalls and Navigate Next Generation of Vector Similarity Search from Task-Centric Views},
+    author    = {Chen, Tingyang and Fu, Cong and Wu, Jiahua and Wu, Haotian and Fan, Hua and Ke, Xiangyu and Gao, Yunjun and Ni, Yabo and Zeng, Anxiang},
+    booktitle = {Proceedings of the ACM SIGMOD International Conference on Management of Data (SIGMOD'26)},
+    year      = {2026},
+    publisher = {Association for Computing Machinery},
+    eprint    = {2512.12980},
+    archivePrefix = {arXiv}
+}
+
+% ----- General ANN benchmarks -----
+@article{ANNBenchmarks2020,
+    title     = {ANN-Benchmarks: A Benchmarking Tool for Approximate Nearest Neighbor Algorithms},
+    author    = {Aum{\"u}ller, Martin and Bernhardsson, Erik and Faithfull, Alexander},
+    journal   = {Information Systems},
+    year      = {2020},
+    volume    = {87},
+    pages     = {101374},
+    publisher = {Elsevier},
+    doi       = {10.1016/j.is.2019.02.006}
+}
+
+@inproceedings{simhadri2022bigann,
+    title     = {Results of the {NeurIPS}'21 Challenge on Billion-Scale Approximate Nearest Neighbor Search},
+    author    = {Simhadri, Harsha Vardhan and Williams, George and Aum{\"u}ller, Martin and Douze, Matthijs and Babenko, Artem and Baranchuk, Dmitry and Chen, Qi and Hosseini, Lucas and Krishnaswamy, Ravishankar and Srinivasa, Gopal and Suhas Jayaram Subramanya and Wang, Jingdong},
+    booktitle = {Proceedings of the NeurIPS 2021 Competitions and Demonstrations Track},
+    year      = {2022},
+    publisher = {PMLR}
+}
+
+@inproceedings{DiskANN2019,
+    title     = {DiskANN: Fast Accurate Billion-point Nearest Neighbor Search on a Single Node},
+    author    = {Subramanya, Suhas Jayaram and Devvrit, Fnu and Simhadri, Harsha Vardhan and Krishnawamy, Ravishankar and Kadekodi, Rohan},
+    booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+    year      = {2019},
+    volume    = {32},
+    publisher = {Curran Associates, Inc.}
+}
+
+@misc{Pinecone2024,
+    title        = {Pinecone: Vector Database for Machine Learning},
+    author       = {{Pinecone Systems, Inc.}},
+    year         = {2024},
+    howpublished = {\url{https://www.pinecone.io}},
+    note         = {Accessed: 2025-01-15}
+}
+
+@misc{Weaviate2024,
+    title        = {Weaviate: Open-Source Vector Search Engine},
+    author       = {{Weaviate B.V.}},
+    year         = {2024},
+    howpublished = {\url{https://weaviate.io}},
+    note         = {Accessed: 2025-01-15}
+}
+
+@inproceedings{VBASE2023,
+    title     = {VBASE: Unifying Online Vector Similarity Search and Relational Queries via Relaxed Monotonicity},
+    author    = {Zhang, Qianxi and Xu, Shuotao and Chen, Qi and Sui, Guoxin and Xie, Jiadong and Cai, Zhizhen and Chen, Yaoqi and He, Yinxuan and Yang, Yuqing and Yang, Fan and Yang, Mao and Zhou, Lidong},
+    booktitle = {Proceedings of the 17th USENIX Symposium on Operating Systems Design and Implementation (OSDI 2023)},
+    year      = {2023},
+    pages     = {377--395},
+    publisher = {USENIX Association}
+}
+
+@article{AnalyticDB2020,
+    author    = {Wei, Chuangxian and Wu, Bin and Wang, Sheng and Lou, Renjie and Zhan, Chaoqun and Li, Feifei and Cai, Yuanzhe},
+    title     = {AnalyticDB-V: a hybrid analytical engine towards query fusion for structured and unstructured data},
+    year      = {2020},
+    publisher = {VLDB Endowment},
+    volume    = {13},
+    number    = {12},
+    journal   = {Proc. VLDB Endow.},
+    pages     = {3152--3165}
+}
+
+% ---------- Datasets ----------
+
+@article{Thomee2016YFCC100M,
+    author  = {Thomee, Bart and Shamma, David A. and Friedland, Gerald and Elizalde, Benjamin and Ni, Karl and Poland, Douglas and Borth, Damian and Li, Li-Jia},
+    title   = {{YFCC100M}: The New Data in Multimedia Research},
+    journal = {Communications of the {ACM}},
+    year    = {2016},
+    volume  = {59},
+    number  = {2},
+    pages   = {64--73}
+}
+
+@inproceedings{Schuhmann2022LAION5B,
+    author    = {Schuhmann, Christoph and Beaumont, Romain and Vencu, Richard and Gordon, Cade and Wightman, Ross and Cherti, Mehdi and Coombes, Theo and Katta, Aarush and Mullis, Clayton and Wortsman, Mitchell and Schramowski, Patrick and Kundurthy, Srivatsa and Crowson, Katherine and Schmidt, Ludwig and Kaczmarczyk, Robert and Jitsev, Jenia},
+    title     = {{LAION-5B}: An Open Large-Scale Dataset for Training Next Generation Image-Text Models},
+    booktitle = {Advances in Neural Information Processing Systems},
+    year      = {2022}
+}
+
+@inproceedings{Rekabsaz2021TripClick,
+    author    = {Rekabsaz, Navid and Lesota, Oleg and Schedl, Markus and Brassey, Jon and Eickhoff, Carsten},
+    title     = {{TripClick}: The Log Files of a Large Health Web Search Engine},
+    booktitle = {Proceedings of the 44th International {ACM} {SIGIR} Conference on Research and Development in Information Retrieval},
+    year      = {2021},
+    pages     = {2507--2513}
+}
+
+@article{AbuElHaija2016YouTube8M,
+    author  = {Abu-El-Haija, Sami and Kothari, Nisarg and Lee, Joonseok and Natsev, Paul and Toderici, George and Varadarajan, Balakrishnan and Vijayanarasimhan, Sudheendra},
+    title   = {{YouTube-8M}: A Large-Scale Video Classification Benchmark},
+    journal = {arXiv preprint arXiv:1609.08675},
+    year    = {2016}
+}
+
+@inproceedings{Zhang2015CharCNN,
+    author    = {Zhang, Xiang and Zhao, Junbo and LeCun, Yann},
+    title     = {Character-Level Convolutional Networks for Text Classification},
+    booktitle = {Advances in Neural Information Processing Systems},
+    year      = {2015},
+    pages     = {649--657}
+}
+
+@inproceedings{Amsaleg2015LID,
+    title     = {Estimating Local Intrinsic Dimensionality},
+    author    = {Amsaleg, Laurent and Chelly, Oussama and Furon, Teddy and Girard, St{\'e}phane and Houle, Michael E. and Kawarabayashi, Ken-ichi and Nett, Michael},
+    booktitle = {Proceedings of the 21st ACM SIGKDD International Conference on Knowledge Discovery and Data Mining},
+    pages     = {29--38},
+    year      = {2015},
+    publisher = {ACM},
+    doi       = {10.1145/2783258.2783405}
+}
+
+@article{iRangeGraph2024,
+    title         = {iRangeGraph: Improvising Range-dedicated Graphs for Range-filtering Nearest Neighbor Search},
+    author        = {Xu, Yuexuan and Gao, Jianyang and Gou, Yutong and Long, Cheng and Jensen, Christian S.},
+    journal       = {Proceedings of the ACM on Management of Data},
+    year          = {2024},
+    volume        = {2},
+    number        = {6},
+    articleno     = {239},
+    numpages      = {26},
+    publisher     = {Association for Computing Machinery},
+    doi           = {10.1145/3698814},
+    url           = {https://doi.org/10.1145/3698814}
+}
+
+@article{SeRF2024,
+    title         = {SeRF: Segment Graph for Range-Filtering Approximate Nearest Neighbor Search},
+    author        = {Zuo, Chaoji and Qiao, Miao and Zhou, Wenchao and Li, Feifei and Deng, Dong},
+    journal       = {Proceedings of the ACM on Management of Data},
+    year          = {2024},
+    volume        = {2},
+    number        = {1},
+    articleno     = {69},
+    numpages      = {26},
+    publisher     = {Association for Computing Machinery},
+    doi           = {10.1145/3639324},
+    url           = {https://doi.org/10.1145/3639324}
+}
+
+@article{ARKGraph2023,
+    title         = {ARKGraph: All-Range Approximate K-Nearest-Neighbor Graph},
+    author        = {Zuo, Chaoji and Deng, Dong},
+    journal       = {Proceedings of the VLDB Endowment},
+    year          = {2023},
+    volume        = {16},
+    number        = {10},
+    pages         = {2645--2658},
+    numpages      = {14},
+    publisher     = {VLDB Endowment},
+    doi           = {10.14778/3603581.3603601},
+    url           = {https://doi.org/10.14778/3603581.3603601}
+}
+
+@article{UNIFY2025,
+    title         = {UNIFY: Unified Index for Range Filtered Approximate Nearest Neighbors Search},
+    author        = {Liang, Anqi and Zhang, Pengcheng and Yao, Bin and Chen, Zhongpu and Song, Yitong and Cheng, Guangxu},
+    journal       = {Proceedings of the VLDB Endowment},
+    year          = {2025},
+    volume        = {18},
+    number        = {4},
+    pages         = {1118--1130},
+    publisher     = {VLDB Endowment},
+    doi           = {10.14778/3717755.3717770},
+    url           = {https://doi.org/10.14778/3717755.3717770}
+}
+
+@inproceedings{WindowFilters2024,
+    title     = {Approximate Nearest Neighbor Search with Window Filters},
+    author    = {Engels, Joshua and Landrum, Ben and Yu, Shangdi and Dhulipala, Laxman and Shun, Julian},
+    booktitle = {Proceedings of the 41st International Conference on Machine Learning (ICML)},
+    year      = {2024},
+    pages     = {12469--12490},
+    publisher = {PMLR},
+    url       = {https://proceedings.mlr.press/v235/engels24a.html}
+}
+
+@article{RangePQ2025,
+    title         = {Efficient Dynamic Indexing for Range Filtered Approximate Nearest Neighbor Search},
+    author        = {Zhang, Fangyuan and Jiang, Mengxu and Hou, Guanhao and Shi, Jieming and Fan, Hua and Zhou, Wenchao and Li, Feifei and Wang, Sibo},
+    journal       = {Proceedings of the ACM on Management of Data},
+    year          = {2025},
+    volume        = {3},
+    number        = {3},
+    articleno     = {152},
+    numpages      = {26},
+    publisher     = {Association for Computing Machinery},
+    doi           = {10.1145/3725401},
+    url           = {https://doi.org/10.1145/3725401}
+}
+
+@inproceedings{TimestampANN2025,
+    title     = {Timestamp Approximate Nearest Neighbor Search over High-Dimensional Vector Data},
+    author    = {Wang, Yuxiang and He, Ziyuan and Tong, Yongxin and Zhou, Zimu and Zhong, Yiman},
+    booktitle = {Proceedings of the 2025 IEEE 41st International Conference on Data Engineering (ICDE)},
+    year      = {2025},
+    pages     = {3043--3055},
+    publisher = {IEEE},
+    doi       = {10.1109/ICDE65448.2025.00228},
+    url       = {https://doi.org/10.1109/ICDE65448.2025.00228}
+}
+
+@article{Lin2025FANNSSurvey,
+    title         = {Survey of Filtered Approximate Nearest Neighbor Search over the Vector-Scalar Hybrid Data},
+    author        = {Lin, Yanjun and Zhang, Kai and He, Zhenying and Jing, Yinan and Wang, X. Sean},
+    year          = {2025},
+    eprint        = {2505.06501},
+    archivePrefix = {arXiv},
+    primaryClass  = {cs.DB}
+}
+
+@inproceedings{HeKumarChang2012RC,
+    title     = {On the Difficulty of Nearest Neighbor Search},
+    author    = {He, Junfeng and Kumar, Sanjiv and Chang, Shih-Fu},
+    booktitle = {Proceedings of the 29th International Conference on Machine Learning (ICML)},
+    year      = {2012},
+    pages     = {1127--1134}
+}
+
+@article{Bonneel2015SlicedWasserstein,
+    title   = {Sliced and Radon {W}asserstein Barycenters of Measures},
+    author  = {Bonneel, Nicolas and Rabin, Julien and Peyr{\'e}, Gabriel and Pfister, Hanspeter},
+    journal = {Journal of Mathematical Imaging and Vision},
+    volume  = {51},
+    number  = {1},
+    pages   = {22--45},
+    year    = {2015},
+    publisher = {Springer}
+}

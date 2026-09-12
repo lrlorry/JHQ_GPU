@@ -1,0 +1,44 @@
+\section{Related Work}
+\label{sec:relatedwork}
+
+%We position this work along three research dimensions
+
+This paper is related to three research topics: filtered ANN methods (Section~\ref{sec:rw-fanns}), adaptive query planning and method selection (Section~\ref{sec:rw-routing}), and related benchmarks (Section~\ref{sec:rw-bench}).
+
+\subsection{Filtered ANN Search}
+\label{sec:rw-fanns}
+
+Existing filtered ANN (FANNS) methods can be categorized into two types based on the filtered attribute type: \textit{categorical filter ANN} and \textit{range filtered ANN} methods.
+
+Categorical Filtered ANN methods can be further divided into three types based on the execution strategy ~\cite{FilteredANNBenchmark2024}.
+%Existing Filtered ANN Search (FANNS) methods over categorical labels can be categorized by execution strategy into three classes~\cite{FilteredANNBenchmark2024}.
+\textit{Filter-then-search} methods first apply the attribute constraint to obtain a candidate subset, then perform ANN search on this subset. Representative methods include Pre-filter, which performs a brute-force search on the filtered subset, and UNG~\cite{UNG2024}, which builds per-attribute sub-graph indexes connected by a label-navigating graph for cross-partition traversal. These methods perform well under high selectivity but degrade toward linear scan as selectivity drops.
+\textit{Search-then-filter} methods first perform ANN search on a global index, then apply the attribute constraint to the retrieved candidates. Representative methods include Post-filter HNSW~\cite{HNSW2018} and Post-filter IVFPQ~\cite{FaissGPUIVFPQ2019}. While they directly reuse mature ANN index structures, under strong selectivity few of the initial top-$k'$ candidates satisfy the constraint; maintaining recall therefore requires substantial candidate-set expansion at significant efficiency cost.
+\textit{Hybrid-search} methods embed attribute constraints directly into ANN index construction or search. HQANN~\cite{HQANN2022} introduces lightweight attribute-aware filtering on HNSW; Filtered-DiskANN and Stitched-DiskANN~\cite{FilteredStitchedVamana2023} apply label-aware neighbor selection on the Vamana graph; ACORN-1 and ACORN-$\gamma$~\cite{ACORN2024} extend HNSW with attribute-aware pruning and multi-hop neighbor expansion; SIEVE~\cite{SIEVE2025} leverages historical query workloads to offline-construct a heterogeneous collection of sub-indices targeting common filter patterns; CAPS~\cite{CAPS2023} and NHQ~\cite{NHQNPG2023} target fixed-length-label scenarios, with CAPS partitioning the attribute space via K-means and AFT, and NHQ fusing vector and attribute distances into a unified weighted distance. Although these methods generally achieve more balanced performance across filter scenarios, each retains a structural preference for particular filter types (containment, overlap, equality) and data distributions.
+
+Range filtered ANN methods filters 
+%Beyond the categorical-label setting, a parallel line of work targets \emph{range filters} 
+over numerical attributes such as timestamps and prices. %, where a query consists of a vector $v_q$ and a continuous interval $[\ell, r]$. 
+Representative methods include iRangeGraph~\cite{iRangeGraph2024} (range-dedicated graphs assembled from sub-graphs), SeRF~\cite{SeRF2024} (segment-graph augmentation of HNSW), ARKGraph~\cite{ARKGraph2023} (all-range $k$-NN graph), UNIFY~\cite{UNIFY2025} (unified index spanning the full range axis), WindowFilters~\cite{WindowFilters2024} (window-based precomputed indices), RangePQ~\cite{RangePQ2025} (efficient dynamic indexing for range queries), and TimestampANN~\cite{TimestampANN2025} (timestamp-specialized variant). As noted in the FANNS benchmark~\cite{FilteredANNBenchmark2024}, these methods are largely incompatible with the categorical-label algorithms discussed above and fall outside the scope of this paper.
+
+%In industry, vector databases such as Milvus~\cite{Milvus2021} and PASE~\cite{PASE2020} have integrated FANNS as a core query capability, but their internal execution still relies on a single fixed strategy (e.g., Pre-filter or Post-filter) and lacks adaptive cross-method selection.
+
+%A recent unified cross-method evaluation~\cite{FilteredANNBenchmark2024} on the categorical setting reveals that \emph{no single method dominates across all scenarios}: different methods alternately lead across (dataset, query scenario) combinations, exhibiting strong structural complementarity. This observation directly motivates our investigation of adaptive method selection.
+
+\subsection{Adaptive Query Planning and Method Selection}
+\label{sec:rw-routing}
+
+Our routing work instantiates the \emph{algorithm selection} problem~\cite{Rice1976} in the FANNS domain. This paradigm has mature portfolio-based solutions in adjacent fields such as SAT solving~\cite{SATzilla2008}, where the optimal solver is predicted from problem-instance features rather than chosen as a single universal method. Similar ideas have only recently begun to extend to vector retrieval.
+The most closely related work is the learning-based query planner of Gan and Wang~\cite{LearningBasedQueryPlanning2026}, which trains a per-dataset two-layer MLP classifier to select between Pre-filter and Post-filter on a per-query basis, using lightweight features (selectivity, dimensionality, dataset distribution). 
+%On ArXiv and Wolt, they 
+This work reports up to $4\times$ speedup over single-strategy baselines. However, its strategy space is restricted to these two basic methods, excluding hybrid-search approaches such as UNG, ACORN, and SIEVE. Moreover, as the planner is trained on each dataset, no empirical evidence of cross-dataset generalization is reported.
+
+A complementary line of work comes from unfiltered vector similarity search (VSS). Iceberg~\cite{Iceberg} addresses method selection for general VSS from a task-centric view, proposing the Information Loss Funnel model and deriving an interpretable decision tree over easy-to-compute meta-features such as the Davies--Bouldin index (DBI) for clustering tightness, vector-norm coefficient of variation (CV), relative angle (RA), and relative contrast (RC), to guide selection among methods such as HNSW, NSG, and RaBitQ. While Iceberg does not address attribute filtering, its methodology of \emph{constructing an interpretable decision tree from dataset meta-features} is structurally analogous to ours, validating meta-feature routing as a viable direction in the broader VSS area.
+
+Our work differs from the above in three notable ways: (1)~\emph{broader method coverage} --- the candidate pool spans all three FANNS execution paradigms (filter-then-search, search-then-filter, hybrid-search) rather than only Pre- vs.\ Post-filter; (2)~\emph{both rule-based and learned routers are provided} --- the former is derived directly from structural analysis via a three-feature decision tree (query scenario, label cardinality, LID), while the latter approximates the Oracle upper bound via per-method regression modeling; (3)~\emph{systematic evaluation of generalization} --- we evaluate on five mid-scale out-of-sample validation datasets (500K--800K vectors, including Yahoo and DBpedia real-text data), directly testing routing transferability beyond the training distribution.
+
+\subsection{Benchmarks for Filtered ANN}
+\label{sec:rw-bench}
+
+The most directly related benchmark is the unified FANNS benchmark of Shi et al.~\cite{FilteredANNBenchmark2024}, which systematically evaluates 10 FANNS algorithms (NHQ, Filtered-DiskANN, Stitched-DiskANN, ACORN-1, ACORN-$\gamma$, CAPS, UNG, Pre-filter Brute-Force, Post-filter HNSW, Post-filter IVFPQ) on 6 real-world datasets (including YFCC and YouTube) under five filter modes (containment, overlap, equality, fixed-equality, combined). It categorizes methods into the filter-then-search, search-then-filter, and hybrid-search paradigms, and emphasizes parameter fairness in evaluation. Our empirical foundation builds directly on this benchmark: on top of its method and dataset pool, we introduce dataset difficulty features (LID, RC, distribution factor) as routing signals, and independently construct five mid-scale validation datasets (including Yahoo and DBpedia real-text data) to assess routing generalization beyond the training set.
+General ANN benchmarks such as ANN-Benchmarks~\cite{ANNBenchmarks2020} and Big-ANN-Benchmarks~\cite{simhadri2022bigann} are mature in the unfiltered setting, but their evaluation protocols do not cover attribute-filtered scenarios. Iceberg~\cite{Iceberg} extends end-to-end task-centric evaluation in the general VSS setting but likewise does not address filter constraints. Our work complements this ecosystem by transitioning from benchmarking toward \emph{method selection grounded in structural observation} in the FANNS setting.
