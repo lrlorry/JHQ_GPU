@@ -13,10 +13,9 @@ JHQ's representation.
 
 \paragraph{GPU quantised search.}
 IVF-RaBitQ~\cite{ivfrabitq} is the closest execution design: a cheap filter
-feeding a refinement stage, grouped lookup tables and a GPU layout. Two-stage
-execution and grouped lookup are shared ideas; ours are their measured
-trade-off for JHQ's Cartesian codebook and the calibration of its residual
-budget. We do not report it as a baseline: the available implementation exposes
+feeding a refinement stage, grouped lookup tables and a GPU layout. We share its
+two-stage execution and grouped lookup; our contribution is measuring their
+trade-off for JHQ's Cartesian codebook and calibrating its residual budget. We do not report it as a baseline: the available implementation exposes
 search and refinement separately, and we did not validate an assembled
 two-stage pipeline against the published system. CAGRA~\cite{cagra} and cuVS
 IVF-PQ~\cite{cuvs} supply the GPU comparisons; GPU compressed-domain scanning
