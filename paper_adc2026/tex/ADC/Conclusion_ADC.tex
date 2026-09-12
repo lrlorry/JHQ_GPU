@@ -1,17 +1,17 @@
 \section{Conclusion}
 \label{sec:conclu}
 JHQ's Cartesian codebook makes its distance table exactly factorisable, and
-the measurements say where that pays. $G{=}2$ has the highest throughput in 23
-of 24 cells over six datasets, while $G{=}4$ and $G{=}8$ hold the same
-footprint but require different numbers of lookups --- so table size does not
-determine scan speed. Refinement accounts for $57\%$ and $70\%$ of measured
-work on Vogue and OpenAI-3072 at probe 32 and $\alpha=100$, motivating budget
-selection. These cross-dataset observations do not isolate a dimension effect.
+the measurements show where that pays. $G{=}2$ has the highest throughput in
+23 of 24 cells over six datasets, while the equal-footprint $G{=}4$ and
+$G{=}8$ comparison shows that lookup work also matters. Refinement accounts
+for $57\%$ and $70\%$ of measured work on Vogue and OpenAI-3072 at probe 32
+and $\alpha=100$, motivating workload-specific budget selection.
 
 Sampled output agreement yields mean selected-arm QPS of
-$1.05$--$2.77\times$ the fixed-$\alpha$ arm in ten of twelve held-out cells. On arxiv it selects
-larger budgets that improve mean recall but lower throughput relative to
-fixed $\alpha=100$. Throughput gains do not establish a quality guarantee:
-at $S=128$, the fraction of draws losing more than $10^{-3}$ recall ranges
-from zero to 40/64. The evidence covers one GPU, $k=10$ and stationary query
-pools; drift, other $k$ and other devices are untested.
+$1.05$--$2.77\times$ the fixed-$\alpha$ arm in ten of twelve held-out cells.
+On arxiv it selects larger budgets that improve mean recall but lower
+throughput relative to fixed $\alpha=100$. Throughput gains do not establish a
+quality guarantee: at $S=128$, the fraction of draws losing more than
+$10^{-3}$ recall ranges from zero to 40/64. The evidence covers one GPU,
+$k=10$ and stationary query pools; drift, other $k$ and other devices are
+untested.

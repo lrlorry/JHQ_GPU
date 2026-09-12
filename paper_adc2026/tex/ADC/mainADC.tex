@@ -26,7 +26,8 @@
 \begin{abstract}
 Hierarchical quantisation scores candidates with a compact primary code and
 refines a small survivor set. We study two GPU decisions for JHQ: how to
-execute its primary representation and how much refinement a workload needs.
+execute its primary representation efficiently and how refinement demand
+varies across workloads.
 Its Cartesian codebook permits exact decomposition of each 256-entry distance
 table into two 16-entry tables. We combine this factorisation with
 candidate-parallel scanning and packed access. Controlled comparisons show
