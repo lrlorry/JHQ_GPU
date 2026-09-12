@@ -68,12 +68,15 @@ Reducing approximate nearest-neighbor (ANN) query time requires efficient screen
 
 \begin{credits}
 \subsubsection{\ackname}
-A large language model assistant was used throughout this work: to write and
-run the measurement scripts, to derive the figures and tables from the logs
-they produce, and to draft and revise the text. The authors designed the
-study, chose what to measure, and are responsible for every claim in the
-paper. JHQ itself is prior work and is not a contribution of this paper or of
-the assistant.
+The authors used a large language model assistant in three parts of this
+work: implementing and running the measurement harness on the GPU, deriving
+the figures and tables in this paper from the logs that harness produces, and
+drafting and revising the manuscript. The experimental design, the choice of
+what to measure, the configurations compared, and the interpretation of every
+result are the authors' own, and the authors are responsible for all claims
+made in this paper. JHQ itself is prior work~\cite{jhq}; the contributions
+here are its GPU execution design and the calibration of its refinement
+budget.
 
 \subsubsection{\discintname}
 The authors have no competing interests to declare that are relevant to the
@@ -85,6 +88,7 @@ content of this article.
 %% and verified: bibtex regenerates the previous .bbl line for line.
 %% The path is spelled out so bibtex finds it without BIBINPUTS being set,
 %% which is what a hosted editor will do.
+\clearpage
 \bibliographystyle{splncs04}
 \bibliography{ADC/reference}
 \end{document}
