@@ -1,0 +1,50 @@
+\section{Preliminaries}
+\label{sec:preli}
+% For database vector $x$ and query $q$ in $\mathbb{R}^d$, JHQ\cite{jhq} applies a square orthogonal transform $Q$: $y=Qx$ and $q'=Qq$. It preserves Euclidean distance
+% without reducing dimension. The transformed vector is split into $M$ subspaces
+% of dimension $D_s$, with $d=MD_s$. Each $B$-bit primary code selects one of
+% $2^B$ codewords formed as Cartesian products of one-dimensional Lloyd--Max
+% levels. We use $B=D_s=8$: one bit per coordinate and one byte per subspace.
+
+% The residual is $r=y-\hat{y}_{\mathrm{primary}}$, measured against the primary
+% reconstruction, not an IVF centroid. With $B_r=8$ residual bits per dimension,
+% the logical representation stores one primary and eight residual bits per
+% dimension. IVF restricts the candidate set without changing this representation.
+
+% For every routed candidate, query-specific lookup tables evaluate the primary
+% score $D_P$; the query itself is not quantised into a database code. JHQ retains
+% $c_k$ primary survivors, evaluates their hierarchical score $D_H$, and returns
+% the top-$k$ under $D_H$. We write $c_k=\alpha k$; the implementation uses
+% $\max(k,\lceil\alpha k\rceil)$. Refinement cannot recover neighbours excluded
+% by routing or primary selection.
+
+
+
+
+\textbf{Approximate Nearest-Neighbor Search}
+Given a database $\mathcal{X}\subset\mathbb{R}^{d}$ of $N$ vectors and a query $\mathbf{q}$, nearest-neighbor search returns the $k$ vectors minimizing $D(\mathbf{q},\mathbf{x})=\|\mathbf{q}-\mathbf{x}\|_2^2$. Approximate nearest-neighbor (ANN) search reduces execution cost by allowing deviations from the exact result. For approximate and exact top-$k$ sets $\mathcal{R}(\mathbf{q})$ and $\mathcal{R}^{*}(\mathbf{q})$, quality is measured by
+\begin{equation}
+\operatorname{Recall@}k(\mathbf{q})=\frac{|\mathcal{R}(\mathbf{q})\cap\mathcal{R}^{*}(\mathbf{q})|}{k}.
+\end{equation}
+
+\textbf{JHQ Representation}
+JHQ~\cite{jhq} applies a square orthogonal transform $\mathbf{y}=\mathbf{Q}\mathbf{x}$ and $\mathbf{q}'=\mathbf{Q}\mathbf{q}$, where $\mathbf{Q}^{\top}\mathbf{Q}=\mathbf{I}$. This preserves Euclidean distances without reducing dimensionality. The transformed vector is partitioned into $M$ subspaces of dimension $D_s$, with $d=MD_s$. Each $B$-bit primary code $c_m(\mathbf{x})$ selects a codeword from $\mathcal{C}_m$, whose $2^B$ entries are Cartesian products of one-dimensional Lloyd--Max quantization levels.
+
+Concatenating the selected codewords gives the primary reconstruction $\widehat{\mathbf{y}}^{P}$. JHQ additionally quantizes the residual $\mathbf{r}=\mathbf{y}-\widehat{\mathbf{y}}^{P}$ using $B_r$ bits per dimension, yielding $\widehat{\mathbf{r}}$ and the hierarchical reconstruction
+$
+\widehat{\mathbf{y}}^{H}=\widehat{\mathbf{y}}^{P}+\widehat{\mathbf{r}}.
+$
+We use $B=D_s=8$ and $B_r=8$, giving one primary bit and eight residual bits per dimension, excluding index metadata. The residual is defined relative to the primary reconstruction, not an IVF centroid.
+
+\textbf{Hierarchical Query Execution}
+IVF routing selects inverted lists containing $n_c$ candidates. For each subspace, a query-specific table stores $T_m[c]=\|\mathbf{q}'_m-\mathcal{C}_m[c]\|_2^2$. Primary screening scores each candidate through
+$
+D_P(\mathbf{q},\mathbf{x})=\sum_{m=1}^{M}T_m[c_m(\mathbf{x})]
+$.
+The query is not quantized into a database code. Screening retains up to $c_k=\max\{k,\lceil\alpha k\rceil\}$ survivors, where $\alpha$ controls refinement effort. Only survivors access residual codes and receive the hierarchical score
+$
+D_H(\mathbf{q},\mathbf{x})=\left\|\mathbf{q}'-\left(\widehat{\mathbf{y}}^{P}+\widehat{\mathbf{r}}\right)\right\|_2^2.
+$
+The final result contains the top-$k$ survivors under $D_H$; refinement cannot recover neighbors excluded by routing or screening.
+
+Once tables are constructed, primary scoring requires $O(n_cM)$ work and residual scoring requires $O(c_kd)$ work for $c_k$ survivors, excluding routing and selection. These costs motivate our two optimization targets: efficient GPU primary scoring and workload-dependent refinement budgets.

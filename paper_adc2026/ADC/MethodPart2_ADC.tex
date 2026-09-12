@@ -1,0 +1,96 @@
+% \section{Adaptive Hierarchical Refinement}
+% \label{sec:method2}
+% \subsection{Output-stability criterion}
+% For a fixed index, routing configuration and $k$, we calibrate a workload-level
+% budget on $S$ sampled queries $Q_s$ and reuse it for subsequent batches. Let
+% $R_{\max}(q)$ and $R_\alpha(q)$ be top-$k$ ID sets at a generous reference
+% budget $\alpha_{\max}$ and a candidate $\alpha$. Define
+% \begin{equation}
+% D(\alpha)=\sum_{q\in Q_s}\bigl[k-|R_\alpha(q)\cap R_{\max}(q)|\bigr].
+% \label{eq:disagree}
+% \end{equation}
+% Acceptance requires $D(\alpha)\le\epsilon$, where $\epsilon$ is a non-negative integer
+% counting allowed disagreeing slots over the whole sample. It ignores ID order,
+% and fixed $\epsilon$ becomes stricter as $S$ grows. Agreement neither certifies
+% ground-truth recall nor detects improvements beyond $\alpha_{\max}$.
+
+% \subsection{Search rule and its assumptions}
+% \label{sec:mono}
+% For descending grid $A[0],\ldots,A[L-1]$ with $A[0]=\alpha_{\max}$, compute
+% the reference once and initialise $l=0$, $h=L-1$. While $l<h$, test
+% $j=\lceil(l+h)/2\rceil$. If $D(A[j])\le\epsilon$, set $l=j$; otherwise set
+% $h=j-1$. Return $A[l]$, an observed acceptable point, with $A[0]$ as fallback.
+% The held-out experiment uses $A=(200,100,64,32,16,8,4,2)$ and $\epsilon=1$.
+
+% \begin{proposition}[Monotonicity under exact primary selection]
+% \label{prop:mono}
+% With exact top-$c_k$ primary selection, non-decreasing $c_k$, fixed refined
+% scores and a deterministic total tie rule,
+% $D(\alpha_1)\ge D(\alpha_2)$ for $\alpha_1\le\alpha_2\le\alpha_{\max}$.
+% \end{proposition}
+% \begin{proof}
+% The survivor sets nest: $S_{\alpha_1}\subseteq S_{\alpha_2}\subseteq
+% S_{\alpha_{\max}}$. Any reference top-$k$ item present in $S_\alpha$ also
+% belongs to its refined top-$k$, because fewer than $k$ items of the larger set
+% precede it under the fixed ordering. Hence
+% $R_\alpha\cap R_{\max}=S_\alpha\cap R_{\max}$, whose size cannot decrease
+% as $\alpha$ increases. Summing proves the claim. \qed
+% \end{proof}
+
+% The production selector retains only $\texttt{K\_LOCAL}=4$ candidates per
+% thread before merging, so it need not satisfy the proposition's premise.
+% Bisection therefore does not guarantee the grid's smallest acceptable budget.
+% Section~\ref{sec:rq2} compares it directly with whole-grid enumeration.
+% Acceptance remains relative to the sampled criterion. Section~\ref{sec:related}
+% positions this label-free rule against existing ANN tuning methods.
+
+% \subsection{Calibration economics}
+% Let $T_{\mathrm{cal}}$ be calibration time and $T_{\mathrm{fixed}}$ and
+% $T_{\mathrm{rule}}$ be batch times with fixed and selected budgets. For $B$
+% subsequent batches, adaptive search costs
+% $T_{\mathrm{cal}}+BT_{\mathrm{rule}}$ against $BT_{\mathrm{fixed}}$, so
+% break-even is
+% $B^{*}=T_{\mathrm{cal}}/(T_{\mathrm{fixed}}-T_{\mathrm{rule}})$ and
+% calibration never repays once $T_{\mathrm{rule}}\ge T_{\mathrm{fixed}}$. Reuse assumes stable queries, index, routing and $k$. Recalibrating every
+% $H$ batches adds $T_{\mathrm{cal}}/H$ per batch; drift detection is outside the
+% measured scope.
+
+
+
+\section{Adaptive Hierarchical Refinement}
+\label{sec:adaptive_refinement}
+We balance refinement work and output stability by calibrating $\alpha$ on sampled queries and reusing it across batches.
+
+\subsection{Output-Stability Criterion}
+\label{sec:output_stability}
+For fixed index, routing, and $k$, let $\mathcal{R}_{\alpha}(\mathbf{q})$ and $\mathcal{R}_{\max}(\mathbf{q})$ be top-$k$ ID sets at budgets $\alpha$ and $\alpha_{\max}$. Over $S$ sampled queries $\mathcal{Q}_s$, define
+\begin{equation}
+D(\alpha)=\sum_{\mathbf{q}\in\mathcal{Q}_s}\left(k-|\mathcal{R}_{\alpha}(\mathbf{q})\cap\mathcal{R}_{\max}(\mathbf{q})|\right).
+\label{eq:output_disagreement}
+\end{equation}
+Acceptance requires $D(\alpha)\leq\epsilon$, where $\epsilon$ counts allowed disagreeing slots and ignores result order. Fixed $\epsilon$ becomes stricter as $S$ increases. This label-free criterion neither guarantees recall nor detects improvements beyond $\alpha_{\max}$; generalization is evaluated on held-out queries.
+
+\subsection{Budget Search and Its Conditions}
+\label{sec:budget_search}
+For descending grid $A[0],\ldots,A[L-1]$ with $A[0]=\alpha_{\max}$, compute the reference once and set $l=0$, $h=L-1$. While $l<h$, test $j=\lceil(l+h)/2\rceil$: set $l=j$ if $D(A[j])\leq\epsilon$, otherwise $h=j-1$. Return $A[l]$, an observed acceptable point with the reference as fallback. This requires at most $\lceil\log_2L\rceil$ additional tests.
+
+\begin{proposition}
+\label{prop:budget_monotonicity}
+With fixed routing, exact top-$c_k$ primary selection, nondecreasing $c_k$, fixed refined scores, and deterministic total tie orders, $D(\alpha_1)\geq D(\alpha_2)$ for $\alpha_1\leq\alpha_2\leq\alpha_{\max}$.
+\end{proposition}
+\begin{proof}
+Primary survivor sets nest: $\mathcal{S}_{\alpha_1}\subseteq\mathcal{S}_{\alpha_2}\subseteq\mathcal{S}_{\alpha_{\max}}$. A reference top-$k$ item present in $\mathcal{S}_{\alpha}$ remains in its refined top-$k$, since restricting the set cannot add preceding items. Thus $|\mathcal{R}_{\alpha}\cap\mathcal{R}_{\max}|=|\mathcal{S}_{\alpha}\cap\mathcal{R}_{\max}|$ cannot decrease with $\alpha$, proving the claim.
+\end{proof}
+
+Under these assumptions, bisection finds the smallest acceptable grid value. The production selector retains only \texttt{K\_LOCAL=4} candidates per thread before merging, so exact selection and monotonicity are not guaranteed. We therefore compare the rule with enumeration. Held-out experiments use: 
+
+$A=(200,100,64,32,16,8,4,2)$ and $\epsilon=1$.
+
+\subsection{Calibration Cost and Reuse}
+\label{sec:calibration_cost}
+For calibration cost $T_{\mathrm{cal}}$ and equal-sized batch times $T_{\mathrm{fixed}}$, $T_{\mathrm{rule}}$, adaptive execution costs $T_{\mathrm{cal}}+BT_{\mathrm{rule}}$ over $B$ batches, versus $BT_{\mathrm{fixed}}$. When $T_{\mathrm{rule}}<T_{\mathrm{fixed}}$, break-even occurs at
+\begin{equation}
+B^*=\frac{T_{\mathrm{cal}}}{T_{\mathrm{fixed}}-T_{\mathrm{rule}}}.
+\label{eq:calibration_break_even}
+\end{equation}
+Otherwise, calibration never repays through throughput. Reuse assumes stable queries, index, routing, and $k$; recalibration every $H$ batches adds $T_{\mathrm{cal}}/H$ per batch. Drift detection is untested. Measured calibration includes reference search and agreement checks but excludes sample gathering.

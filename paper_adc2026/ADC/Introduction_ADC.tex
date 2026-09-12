@@ -1,0 +1,55 @@
+% \section{Introduction}
+% \label{sec:intro}
+% Approximate nearest-neighbour (ANN) search with compressed vectors balances
+% quality, memory and execution cost. JHQ~\cite{jhq} uses a hierarchy: after inverted-file (IVF)
+% routing, a compact primary code scores $n_c$ candidates at cost $O(n_cM)$,
+% and residual codes refine $c_k$ survivors at cost $O(c_kd)$. Its refinement
+% factor $\alpha$ in $c_k=\alpha k$ is externally specified. We study two
+% decisions: how to execute the primary representation on a GPU, and how many
+% survivors to refine.
+
+% JHQ's Cartesian primary codebook permits exact decomposition of its distance
+% tables. Finer grouping reduces table storage but increases lookups per
+% candidate. We combine factorised tables with coalesced access and packed
+% loading, and compare grouping and access choices while holding the represented
+% distance fixed. The design builds on established small-table
+% ADC~\cite{fastscan,quickeradc}; table size alone does not determine scan speed.
+
+% For refinement, small budgets can discard useful candidates, while large
+% budgets may repeat work without changing the output. We calibrate $\alpha$
+% using sampled top-$k$ agreement with a generous reference budget. This requires
+% neither ground-truth labels nor a learned predictor. Held-out comparisons with
+% fixed budgets and an offline oracle measure selection quality, sampling risk
+% and calibration cost.
+
+% Our contributions are a GPU execution design for JHQ's Cartesian primary
+% representation and an output-stability policy for its residual budget, each
+% measured on six datasets. Two-group tables have the highest observed
+% throughput in 23 of 24 cells, despite using more storage than finer groupings.
+% Mean selected-arm QPS is $1.05$--$2.77\times$ that of fixed $\alpha=100$ in
+% ten of twelve held-out cells. On arxiv, larger selected budgets improve mean recall over
+% fixed $\alpha=100$ but reduce throughput. We report these speed--quality
+% trade-offs separately from sampling risk and calibration cost.
+
+
+
+\section{Introduction}
+\label{sec:introduction}
+Approximate nearest-neighbor (ANN) search reduces query execution time by avoiding exhaustive, full-precision distance evaluation. Graph indexes restrict candidate visits through proximity-based navigation, as in CAGRA~\cite{cagra}. Quantization instead compresses vectors and accelerates candidate scoring, often combined with inverted-file (IVF) routing. Product quantization (PQ)~\cite{pq} estimates distances through subvector lookup tables, while RaBitQ~\cite{rabitq} uses randomized quantization with theoretical error bounds. Both seek inexpensive distance evaluation while retaining sufficient information to recover accurate neighbors.
+
+JHQ~\cite{jhq} separates these requirements through hierarchical quantization. Following an orthogonal transform, compact primary codes screen routed candidates, and residual codes refine selected survivors. This avoids detailed scoring across the entire candidate pool while retaining a path to more accurate ranking. The benefit is particularly relevant to high-dimensional vectors, where residual processing is expensive, but depends on efficient screening and selective refinement.
+
+GPUs expose parallelism across candidates and queries. Faiss-GPU~\cite{faissgpu} provides optimized PQ search and top-$k$ selection, and develops quantization-specific search kernels on GPU. These systems demonstrate that acceleration requires matching the representation to GPU execution. For JHQ, this raises two connected challenges: reducing primary scoring cost and controlling the refinement work that follows.
+
+First, compact primary codes do not imply compact distance tables. A direct implementation uses 256 entries per subspace, potentially exceeding available shared memory. JHQ's Cartesian codebook permits exact decomposition into two 16-entry tables without changing the represented distance. However, further decomposition increases lookup work.
+
+Second, faster screening can leave refinement as the dominant cost. At $\alpha=100$ and $\mathrm{nprobe}=32$, refinement accounts for $57\%$ and $70\%$ of timed work on Vogue and OpenAI-3072, respectively. A large fixed budget may refine candidates that do not affect the output, whereas a small budget may discard useful neighbors. We therefore calibrate the budget through sampled top-$k$ agreement with a larger reference budget and reuse it across subsequent batches. This requires neither ground-truth labels nor a learned predictor, although agreement does not guarantee recall.
+
+We implement these designs in JHQ-GPU and evaluate six datasets. Two-group factorization achieves the highest observed throughput in 23 of 24 configurations. With 128 calibration queries, selected budgets yield $1.05$--$2.77\times$ the mean held-out throughput of fixed $\alpha=100$ in ten of twelve configurations; the remaining two improve mean recall at lower throughput. The evaluation separates scan acceleration from refinement-related quality trade-offs and calibration overhead.
+
+\textbf{Contributions}
+\begin{itemize}
+    \item \textbf{Representation-aware GPU execution.} We combine exact Cartesian distance-table factorization with candidate-parallel scanning and packed access, evaluating the trade-off between table footprint and lookup work.
+    \item \textbf{Workload-adaptive refinement.} We calibrate refinement budgets using unlabeled query outputs, analyze the criterion's monotonicity conditions and calibration amortization, and assess held-out quality.
+    \item \textbf{Experimental evaluation.} Across six datasets, we evaluate execution choices and budget policies alongside IVF-PQ and CAGRA, quantifying performance, quality, construction, and memory trade-offs.
+\end{itemize}
