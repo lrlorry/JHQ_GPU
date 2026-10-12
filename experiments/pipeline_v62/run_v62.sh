@@ -10,8 +10,9 @@
 #           candidate sits exactly at its side's ck-th distance and the two
 #           ck-th distances are equal, "NON-TIE" otherwise), primary distance
 #           error, final ids and distances, recall.
-# Phase 2b  compute-sanitizer memcheck (three datasets), racecheck and
-#           synccheck (two) on the group-scan and merge kernels, 64 queries.
+# Phase 2b  compute-sanitizer memcheck (three datasets) and synccheck (two)
+#           on the group-scan and merge kernels at 64 queries; racecheck (two)
+#           at 8 queries.
 #   gate    any NON-TIE difference or probe mismatch stops here: no performance
 #           numbers are produced for a pipeline that loses candidates.
 # Phase 3   5 plain rounds (paired, variant order rotated) and 1 nsys round per
@@ -80,16 +81,20 @@ NCMP=$(wc -l < $R/check/all_comparisons.txt)
 echo "comparisons: $NCMP lines; non-tie primary top-ck differences: $NONTIE; probe mismatches: $PROBEBAD"
 
 echo "### Phase 2b: compute-sanitizer $(date -u +%T)"
-san() {  # tool ds alpha
-  local tool=$1 ds=$2 a=$3 tag=${2}_${1}
-  h $ds $a $NS/san_$tag 0 1 64 8,64 compute-sanitizer --tool $tool --error-exitcode 99 \
+# racecheck instruments every shared-memory access of the scan -- every LUT
+# lookup -- and ran for over 10 minutes on vogue at 64 queries without
+# finishing, so it gets 8 queries at batch 8: every G still runs, the batch size
+# only changes the grid's x extent, and the kernels' code paths are the same.
+san() {  # tool ds alpha nq batches
+  local tool=$1 ds=$2 a=$3 nq=$4 bs=$5 tag=${2}_${1}
+  h $ds $a $NS/san_$tag 0 1 $nq $bs compute-sanitizer --tool $tool --error-exitcode 99 \
       --print-limit 50 --kernel-name kns=scan_ivf_group --kernel-name kns=merge_group_topk \
       > $R/sanitizer/$tag.txt 2>&1
   echo "san $tag rc=$? $(grep -m1 -E 'ERROR SUMMARY|RACECHECK SUMMARY' $R/sanitizer/$tag.txt)"
 }
-san memcheck arxiv-768 200; san memcheck vogue-768 64; san memcheck openai3-3072 4
-san racecheck vogue-768 64; san synccheck vogue-768 64
-san racecheck openai3-3072 4; san synccheck openai3-3072 4
+san memcheck arxiv-768 200 64 8,64; san memcheck vogue-768 64 64 8,64; san memcheck openai3-3072 4 64 8,64
+san racecheck vogue-768 64 8 8; san synccheck vogue-768 64 64 8,64
+san racecheck openai3-3072 4 8 8; san synccheck openai3-3072 4 64 8,64
 
 if [ "$NONTIE" -ne 0 ] || [ "$PROBEBAD" -ne 0 ] || [ "$NCMP" -eq 0 ]; then
   echo "=== V62""_DONE correctness gate FAILED: no performance run ==="; exit 1
