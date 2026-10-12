@@ -1,0 +1,11 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 16.5 ms
+add 286.5 ms
+v65: 128 queries (seed 20261013), ck=640, scheduled G=4
+export 468.4 ms: N=932328 d=768 M=96 Ds=8 K=256 Kr=256 Br=8 bpv=768 L=2
+audit: separability mismatches 0; level mismatches 0 of 196608; unsorted residual pairs 0; corr vs 2<y,r> max abs 1.280e-07, rel to sum|y r| 2.018e-07
+envelope: 190.8 ms over 932328 vectors, 24576 floats (96.0 KB), unseen half-code states 0 of 3072; mean width conditioned 0.127 vs global 0.2266
+queries: 6081768 candidates in 1946.8 ms; violations cond 0 (max LB-D_H -2.813e-05), glob 0 (max -2.814e-05); NaN bounds 0
+relation: max |comp_fp64 - D_H - ||q'||^2| / ||q'||^2 = 1.280e-07; v65 returned vs D_H+||q'||^2 max rel 2.660e-07; v65 primary (fp32 table) vs FP64 max rel 6.555e-07
+wrote /root/autodl-tmp/rb_pilot/vogue-768_np128_a64/rb_summary.json
+=== RB_OK ===

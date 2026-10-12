@@ -1,0 +1,1 @@
+tags: arxiv-768_np128_a100, arxiv-768_np128_a200, arxiv-768_np512_a100, openai3-3072_np128_a4, openai3-3072_np512_a4, vogue-768_np128_a64, vogue-768_np512_a64 | queries: 896
