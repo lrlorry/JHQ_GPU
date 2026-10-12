@@ -2131,6 +2131,22 @@ target_compile_definitions(demo_jhq_v61_batch PRIVATE
     JHQ_INDEX_HEADER="${V61}/jhq_gpu_index.cuh" ${V61_DEFS})
 target_link_libraries(demo_jhq_v61_batch PRIVATE jhq_v61_exp)
 
+# v62: v61 with the primary screening selectable between v61's query-centric
+# scan (G = 0, the default -- the default binary searches exactly as v61) and
+# list-group screening: G = 1, 2, 4, 8 blocks per query, each keeping its
+# share's exact local top-ck, merged on the GPU into the query's exact global
+# top-ck (scan_ivf_group_kernel, merge_group_topk_kernel). jhq_gpu::
+# set_primary_groups() switches it between searches; JHQ_PRIMARY_GROUPS sets
+# the start. Refinement is v61's, unchanged. demo_jhq_v62_batch measures every
+# G on one index and checks each against G = 0 query by query; driven by
+# experiments/pipeline_v62/run_v62.sh.
+set(V62 jhq_v62_listgroup)
+add_jhq_variant(v62_exp ${V62} ${V61_DEFS})
+add_executable(demo_jhq_v62_batch examples/demo_jhq_batch_pipeline.cu)
+target_compile_definitions(demo_jhq_v62_batch PRIVATE
+    JHQ_INDEX_HEADER="${V62}/jhq_gpu_index.cuh" JHQ_PIPELINE_V62=1 ${V61_DEFS})
+target_link_libraries(demo_jhq_v62_batch PRIVATE jhq_v62_exp)
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
 # Pure C++ (common/recall.cuh has no CUDA in it), so no CUDA toolchain needed
 # to run these.  ctest, or: ./build/test_recall

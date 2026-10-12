@@ -27,6 +27,7 @@
 // Rounds (JHQ_BP_ROUNDS, default 5) rotate the variant order; each round is
 // one NVTX range per (alpha, b, variant): "a<alpha>|b<b>|G<G>|r<round>".
 //
+// JHQ_BP_ROUNDS=0 skips the timing: a results-and-checks-only run.
 // Environment: JHQ_BP_ALPHAS (default: the alpha argument), JHQ_BP_BATCHES
 // (8,32,256,1000), JHQ_BP_GROUPS (v62; 0,1,2,4,8), JHQ_BP_LANES (16),
 // JHQ_BP_ROUNDS (5), JHQ_BP_MIN_BATCHES (24), JHQ_BP_CHECK (1), JHQ_BP_NQ.
@@ -300,10 +301,12 @@ int main(int argc, char** argv) {
             printf("  %-4s %8s %10s %10s %11s %11s %11s %9s\n", "G", "recall", "lat med", "lat p95",
                    "QPS med", "QPS min", "QPS max", "used MiB");
             for (int vi = 0; vi < nV; ++vi) {
+                // JHQ_BP_ROUNDS=0 is a results-only run: no timing to print
+                const double qmin = qps[vi].empty() ? 0.0 : *std::min_element(qps[vi].begin(), qps[vi].end());
+                const double qmax = qps[vi].empty() ? 0.0 : *std::max_element(qps[vi].begin(), qps[vi].end());
                 printf("  %-4d %8.4f %8.3f ms %8.3f ms %11.0f %11.0f %11.0f %9.0f\n", groups[vi], rec[vi],
                        quantile(lat_med[vi], 0.5), quantile(lat_p95[vi], 0.5), quantile(qps[vi], 0.5),
-                       *std::min_element(qps[vi].begin(), qps[vi].end()),
-                       *std::max_element(qps[vi].begin(), qps[vi].end()), used_mb[vi]);
+                       qmin, qmax, used_mb[vi]);
                 std::fprintf(js, "%s{\"G\":%d,\"recall\":%.6f,\"used_mib\":%.1f", vi ? "," : "", groups[vi], rec[vi], used_mb[vi]);
 #ifdef JHQ_PIPELINE_V62
                 std::fprintf(js, ",\"group_scratch_mib\":%.2f", scratch_mb[vi]);
