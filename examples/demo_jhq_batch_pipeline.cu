@@ -32,6 +32,14 @@
 // (8,32,256,1000), JHQ_BP_GROUPS (v62; 0,1,2,4,8), JHQ_BP_LANES (16),
 // JHQ_BP_ROUNDS (5), JHQ_BP_MIN_BATCHES (24), JHQ_BP_CHECK (1), JHQ_BP_NQ.
 // Usage is demo_jhq_v36's with out_prefix required; writes <prefix>.json.
+//
+// JHQ_BP_DUMP=1 (v62, with checks on, G = 1 among the variants) also writes,
+// for the first batch size of each alpha, <prefix>_a<alpha>.dump: the G = 1
+// probe ids and exact primary top-ck (positions, distances, in key order) of
+// every used query, and the IVF list sizes -- what an offline study needs to
+// place each top-ck candidate in its group for any G. Layout, all int32 except
+// the distances (float32): nused, nprobe, ck, nlist; sizes[nlist];
+// probes[nused][nprobe]; pos[nused][ck]; val[nused][ck].
 
 #ifndef JHQ_INDEX_HEADER
 #define JHQ_INDEX_HEADER "jhq_v61_warp_refine/jhq_gpu_index.cuh"
@@ -148,6 +156,14 @@ int main(int argc, char** argv) {
     for (double g : parse_list(std::getenv("JHQ_BP_GROUPS"), "0,1,2,4,8")) groups.push_back((int)g);
     if (groups[0] != 0) { fprintf(stderr, "JHQ_BP_GROUPS must start with 0, the v61 reference\n"); return 1; }
     auto set_variant = [&](int g) { jhq_gpu::set_primary_groups(g); };
+    // IVF list sizes for JHQ_BP_DUMP, from the id -> list map the index builds on demand
+    const bool dump = env_int("JHQ_BP_DUMP", 0) != 0;
+    std::vector<int> list_sizes;
+    if (dump) {
+        std::vector<int> vl; idx.vector_lists(vl);
+        list_sizes.assign((size_t)nlist, 0);
+        for (int l : vl) if (l >= 0 && l < nlist) ++list_sizes[l];
+    }
 #else
     std::vector<int> groups = {-1};       // the library's only primary execution
     auto set_variant = [&](int) {};
@@ -170,6 +186,9 @@ int main(int argc, char** argv) {
     for (double a : alphas) {
         idx.set_alpha((float)a);
         const int ck = std::max(k, (int)std::ceil((float)a * (float)k));
+#ifdef JHQ_PIPELINE_V62
+        bool dumped = false;
+#endif
         for (double bd : batches) {
             const int b = (int)bd;
             if (b > batch_size) { printf("skip b=%d > batch_size %d\n", b, batch_size); continue; }
@@ -271,6 +290,22 @@ int main(int argc, char** argv) {
                            "max |dprimary| %.2e  final order/set/bits %d/%d/%d  max rel %.2e\n",
                            groups[vi], probe_same, nused, top_same, top_tie_only, top_nontie, prim_abs,
                            ord, set, bits, fin_rel);
+                }
+                const int v1 = (int)(std::find(groups.begin(), groups.end(), 1) - groups.begin());
+                if (dump && !dumped && v1 < nV) {
+                    char dp[512];
+                    std::snprintf(dp, sizeof(dp), "%s_a%g.dump", out_prefix, a);
+                    if (FILE* f = std::fopen(dp, "wb")) {
+                        const int hdr[4] = {nused, nprobe, ck, nlist};
+                        std::fwrite(hdr, sizeof(int), 4, f);
+                        std::fwrite(list_sizes.data(), sizeof(int), list_sizes.size(), f);
+                        std::fwrite(rprobe[v1].data(), sizeof(int), (size_t)nused * nprobe, f);
+                        std::fwrite(rtpos[v1].data(), sizeof(int), (size_t)nused * ck, f);
+                        std::fwrite(rtval[v1].data(), sizeof(float), (size_t)nused * ck, f);
+                        std::fclose(f);
+                        printf("  dumped G=1 probes and top-ck to %s\n", dp);
+                    }
+                    dumped = true;
                 }
             }
 #endif

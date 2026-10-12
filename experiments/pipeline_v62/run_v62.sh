@@ -108,7 +108,10 @@ for c in $CONFIGS; do
   h $ds $al $NS/$ds 1 0 "" 8,32,256,1000 nsys profile -t cuda,nvtx --cuda-graph-trace=node \
       --sample=none --cpuctxsw=none --force-overwrite true -o $NS/$ds > $R/perf/${ds}_nsys.txt 2>&1
   rc=$?
-  nsys stats -q -r cuda_gpu_trace:nvtx-name -f csv -o $R/perf/${ds}_trace $NS/$ds.nsys-rep > /dev/null 2>&1
+  # --force-export: Phase 0 left <name>.sqlite beside these reports, and nsys stats
+  # will not read a report whose export is older than it (the first Phase 3
+  # run lost its stage table that way; the reports were re-exported).
+  nsys stats -q --force-export=true -r cuda_gpu_trace:nvtx-name -f csv -o $R/perf/${ds}_trace $NS/$ds.nsys-rep > /dev/null 2>&1
   echo "nsys $ds rc=$rc $(ls $R/perf/${ds}_trace*.csv 2>/dev/null | wc -l) csv"
 done
 python3 experiments/pipeline_v62/stage_times.py $R/perf --md $R/perf/stages.md > /dev/null
