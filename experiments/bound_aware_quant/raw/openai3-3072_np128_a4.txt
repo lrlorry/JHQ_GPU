@@ -1,0 +1,7 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+index: N=999000 d=3072 M=384 ck=40, 128 queries (seed 20261013)
+coarse b=2: k-means 1791 ms (sample 65536, 10 iters), labels+envelopes over all 999000 vectors 13561 ms, empty groups 0 of 3072
+coarse b=4: k-means 2677 ms (sample 65536, 10 iters), labels+envelopes over all 999000 vectors 49051 ms, empty groups 0 of 12288
+coarse b=8: k-means 24135 ms (sample 65536, 10 iters), labels+envelopes over all 999000 vectors 69871 ms, empty groups 0 of 196608
+queries: 112131 ms; violations: A_p0=0 A_p1=0 A_p2=0 A_p4=0 A_p6=0 A_p8=0 Ac_p0=0 Ac_p1=0 Ac_p2=0 Ac_p4=0 Ac_p6=0 B_b2_box=0 B_b2_ball=0 B_b2_max=0 B_b2_maxcond=0 B_b4_box=0 B_b4_ball=0 B_b4_max=0 B_b4_maxcond=0 B_b8_box=0 B_b8_ball=0 B_b8_max=0 B_b8_maxcond=0; monotonicity breaks A 0, Ac 0
+=== BQ_OK ===

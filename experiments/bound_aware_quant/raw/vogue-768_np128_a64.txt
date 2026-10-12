@@ -1,0 +1,7 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+index: N=932328 d=768 M=96 ck=640, 128 queries (seed 20261013)
+coarse b=2: k-means 853 ms (sample 65536, 10 iters), labels+envelopes over all 932328 vectors 3851 ms, empty groups 0 of 768
+coarse b=4: k-means 888 ms (sample 65536, 10 iters), labels+envelopes over all 932328 vectors 1817 ms, empty groups 0 of 3072
+coarse b=8: k-means 5443 ms (sample 65536, 10 iters), labels+envelopes over all 932328 vectors 7221 ms, empty groups 0 of 49152
+queries: 28921 ms; violations: A_p0=0 A_p1=0 A_p2=0 A_p4=0 A_p6=0 A_p8=0 Ac_p0=0 Ac_p1=0 Ac_p2=0 Ac_p4=0 Ac_p6=0 B_b2_box=0 B_b2_ball=0 B_b2_max=0 B_b2_maxcond=0 B_b4_box=0 B_b4_ball=0 B_b4_max=0 B_b4_maxcond=0 B_b8_box=0 B_b8_ball=0 B_b8_max=0 B_b8_maxcond=0; monotonicity breaks A 0, Ac 0
+=== BQ_OK ===

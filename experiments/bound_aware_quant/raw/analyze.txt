@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/root/autodl-tmp/jhq_pipeline_wt/experiments/bound_aware_quant/analyze.py", line 194, in <module>
+    main()
+  File "/root/autodl-tmp/jhq_pipeline_wt/experiments/bound_aware_quant/analyze.py", line 109, in main
+    figures(R, data, IO)
+  File "/root/autodl-tmp/jhq_pipeline_wt/experiments/bound_aware_quant/analyze.py", line 175, in figures
+    ax2.plot(xx, [x["derived_us_b1000_new"] / 10 for x in xs], sty.replace("-", ":"), color=col, ms=3, lw=0.9, alpha=0.6)
+  File "/root/miniconda3/lib/python3.12/site-packages/matplotlib/axes/_axes.py", line 1792, in plot
+    lines = [*self._get_lines(self, *args, data=data, **kwargs)]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/lib/python3.12/site-packages/matplotlib/axes/_base.py", line 331, in __call__
+    yield from self._plot_args(
+               ^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/lib/python3.12/site-packages/matplotlib/axes/_base.py", line 459, in _plot_args
+    linestyle, marker, color = _process_plot_format(
+                               ^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/lib/python3.12/site-packages/matplotlib/axes/_base.py", line 168, in _process_plot_format
+    raise ValueError(errfmt.format(fmt, "two linestyle symbols"))
+ValueError: 's::' is not a valid format string (two linestyle symbols)

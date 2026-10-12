@@ -154,7 +154,7 @@ def figures(R, data, IO):
             lab, sty, col = fam_style[key]
             xx = [x["extra_bits_per_dim"] for x in xs]
             ax.plot(xx, [x["oracle_survivors_over_ck_median"] for x in xs], sty, color=col, ms=4, lw=1.2, label=lab + ", oracle τ")
-            ax.plot(xx, [x["progressive_refined_over_ck_median"] for x in xs], sty.replace("-", ":").replace("::", ":"), color=col, ms=3, lw=0.9, alpha=0.7,
+            ax.plot(xx, [x["progressive_refined_over_ck_median"] for x in xs], sty[0] + ":", color=col, ms=3, lw=0.9, alpha=0.7,
                     label=lab + ", progressive (seeds)")
         ax.axhline(1.0, color="r", lw=1, label="= ck (what v65 refines)")
         ax.set_xscale("symlog", linthresh=0.5); ax.set_xticks([0, 0.5, 1, 2, 4, 6, 8]); ax.set_xticklabels(["0", "0.5", "1", "2", "4", "6", "8"])
@@ -172,17 +172,19 @@ def figures(R, data, IO):
             xx = [x["extra_bits_per_dim"] for x in xs]
             ax.plot(xx, [x["bytes_per_query_new_median"] / 1e6 for x in xs], sty, color=col, ms=4, lw=1.2, label=lab)
             ax2.plot(xx, [x["derived_us_b8_new"] for x in xs], sty, color=col, ms=4, lw=1.2, label=lab + ", b=8")
-            ax2.plot(xx, [x["derived_us_b1000_new"] / 10 for x in xs], sty.replace("-", ":"), color=col, ms=3, lw=0.9, alpha=0.6)
+            ax2.plot(xx, [x["derived_us_b1000_new"] / 10 for x in xs], sty[0] + ":", color=col, ms=3, lw=0.9, alpha=0.6)
         v65b = D["bounds"][0]["bytes_per_query_v65_median"] / 1e6
         ax.axhline(v65b, color="k", lw=1.2, label="v65 (primary scan + αk refinement)")
         be = IO[tag]["breakeven_extra_bytes"] * 8 / D["d"]
         ax.axvline(be, color="r", ls="--", lw=1, label="break-even extra = d·ck/n_cand (%.2f bits/dim)" % be)
-        ax.set_xscale("symlog", linthresh=0.05); ax.set_yscale("log")
+        ax.set_xscale("symlog", linthresh=0.05); ax.set_yscale("log"); ax.set_xlim(0, 9)
+        ax.set_xticks([0, 0.05, 0.2, 0.5, 1, 2, 4, 8]); ax.set_xticklabels(["0", "0.05", "0.2", "0.5", "1", "2", "4", "8"], fontsize=7)
         ax.set_xlabel("extra bits per dimension"); ax.set_ylabel("MB read per query (median)")
         ax.set_title(tag.replace("_np", " np").replace("_a", " α=") + ": bytes", fontsize=10)
         ax2.axhline(IO[tag]["v65_us_b8"], color="k", lw=1.2, label="v65 measured, b=8")
         ax2.axhline(IO[tag]["v65_us_b1000"] / 10, color="k", ls=":", lw=1, label="v65 measured, b=1000 (÷10)")
-        ax2.set_xscale("symlog", linthresh=0.5); ax2.set_yscale("log")
+        ax2.set_xscale("symlog", linthresh=0.5); ax2.set_yscale("log"); ax2.set_xlim(0, 9)
+        ax2.set_xticks([0, 0.5, 1, 2, 4, 8]); ax2.set_xticklabels(["0", "0.5", "1", "2", "4", "8"])
         ax2.set_xlabel("extra bits per dimension"); ax2.set_ylabel("µs per batch [derived]")
         ax2.set_title("derived time (solid b=8, dotted b=1000 ÷10)", fontsize=9)
         if col_i == 0:
