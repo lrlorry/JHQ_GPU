@@ -1,0 +1,22 @@
+  [mmap loader] reusing cached /root/autodl-tmp/arxiv-abstracts-768/base.fvecs.raw_f32
+base=2253000 x 768  query=1000 (using 1000)  gt width 100
+M=96 B=8 Br=8 alpha=100.0 k=10 nlist=8192 nprobe=128 ivf_iters=8 batch=1024 kmeans_iters=3
+  train: 22.4 ms
+  add:   550.4 ms
+
+=== alpha=100  nprobe=128  (ck=1000) ===
+lanes    recall    QPS med    QPS min    QPS max     x med     x min     x max   order     set   bits max relerr
+0        0.9766     122854     122854     122854     1.000     1.000     1.000    1000    1000   1000   0.00e+00
+1        0.9766     169911     169911     169911     1.383     1.383     1.383    1000    1000   1000   0.00e+00
+8        0.9766     213048     213048     213048     1.734     1.734     1.734    1000    1000      0   8.81e-07
+16       0.9766     220040     220040     220040     1.791     1.791     1.791    1000    1000      0   7.88e-07
+32       0.9766     218063     218063     218063     1.775     1.775     1.775    1000    1000      0   8.81e-07
+(order/set/bits: queries of 1000 whose ordered ids / id set / ids and distance bits equal lanes 0's)
+
+wrote /root/autodl-tmp/warp_refine_nsys/arxiv-768_np128_a100.json
+=== AB_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-5fd2.qdstrm'
+[1/1] [0%                          ] arxiv-768_np128_a100.nsys-rep[1/1] [0%                          ] arxiv-768_np128_a100.nsys-rep[1/1] [6%                          ] arxiv-768_np128_a100.nsys-rep[1/1] [13%                         ] arxiv-768_np128_a100.nsys-rep[1/1] [14%                         ] arxiv-768_np128_a100.nsys-rep[1/1] [=15%                        ] arxiv-768_np128_a100.nsys-rep[1/1] [=====================87%    ] arxiv-768_np128_a100.nsys-rep[1/1] [========================100%] arxiv-768_np128_a100.nsys-rep[1/1] [========================100%] arxiv-768_np128_a100.nsys-rep
+Generated:
+	/root/autodl-tmp/warp_refine_nsys/arxiv-768_np128_a100.nsys-rep

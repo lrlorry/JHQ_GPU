@@ -135,9 +135,24 @@ def main():
             c["dataset"], c["nprobe"], c["alpha"], us(0), us(1), us(8), us(16), us(32), vec, mp,
             "%.1f" % (K["scan"] / 1e3) if K["scan"] else "NA",
             "%.1f" % (K["topk"] / 1e3) if K["topk"] else "NA", share))
+    lines += ["", "## One L for every configuration?", "",
+              "End to end: the best of L8/L16/L32 by median QPS against L16. Kernel: nsys median "
+              "per launch, the fastest L against L16.", "",
+              "| dataset | np | alpha | best e2e | L16 e2e | L16 / best e2e | fastest kernel | L16 kernel / fastest |",
+              "|---|---:|---:|---|---:|---:|---|---:|"]
+    for c in summary["configs"]:
+        b = c["best_warp"]; rf = c["kernel_ns"]["refine"]
+        fk = min((L for L in (8, 16, 32) if L in rf), key=lambda L: rf[L], default=None)
+        lines.append("| %s | %d | %g | L%d x%.3f | x%.3f | %.3f | %s | %s |" % (
+            c["dataset"], c["nprobe"], c["alpha"], b, L_(c, b)["sp_med"], L_(c, 16)["sp_med"],
+            L_(c, 16)["qps_med"] / L_(c, b)["qps_med"],
+            "L%d %.1f us" % (fk, rf[fk] / 1e3) if fk else "NA",
+            "%.3f" % (rf[16] / rf[fk]) if fk and 16 in rf else "NA"))
     lines += ["", "## Memory safety (compute-sanitizer on the refine and top-k kernels, 64 queries)", ""]
     for f in sorted(glob.glob(os.path.join(R, "sanitizer", "*.txt"))):
-        es = [l.strip() for l in open(f, errors="ignore") if "ERROR SUMMARY" in l]
+        # memcheck and synccheck end on "ERROR SUMMARY", racecheck on "RACECHECK SUMMARY"
+        es = [l.strip() for l in open(f, errors="ignore")
+              if "ERROR SUMMARY" in l or "RACECHECK SUMMARY" in l]
         lines.append("- %s: %s" % (os.path.basename(f)[:-4], es[-1] if es else "NO ERROR SUMMARY (run did not finish?)"))
     lines += ["", "## Degradations and anomalies (all of them, none filtered)", ""]
     lines += ["- " + d for d in degr] if degr else ["- none"]

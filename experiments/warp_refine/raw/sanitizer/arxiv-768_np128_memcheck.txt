@@ -1,0 +1,19 @@
+========= COMPUTE-SANITIZER
+  [mmap loader] reusing cached /root/autodl-tmp/arxiv-abstracts-768/base.fvecs.raw_f32
+base=2253000 x 768  query=1000 (using 64)  gt width 100
+M=96 B=8 Br=8 alpha=200.0 k=10 nlist=8192 nprobe=128 ivf_iters=8 batch=1024 kmeans_iters=3
+  train: 24.9 ms
+  add:   12584.0 ms
+
+=== alpha=200  nprobe=128  (ck=2000) ===
+lanes    recall    QPS med    QPS min    QPS max     x med     x min     x max   order     set   bits max relerr
+0        0.9938        612        612        612     1.000     1.000     1.000      64      64     64   0.00e+00
+1        0.9938        707        707        707     1.154     1.154     1.154      64      64     64   0.00e+00
+8        0.9938        706        706        706     1.154     1.154     1.154      64      64      0   6.65e-07
+16       0.9938        704        704        704     1.149     1.149     1.149      64      64      0   7.46e-07
+32       0.9938        698        698        698     1.141     1.141     1.141      64      64      0   7.46e-07
+(order/set/bits: queries of 64 whose ordered ids / id set / ids and distance bits equal lanes 0's)
+
+wrote /root/autodl-tmp/warp_refine_nsys/san_arxiv-768_np128_memcheck.json
+=== AB_OK ===
+========= ERROR SUMMARY: 0 errors

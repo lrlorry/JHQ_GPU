@@ -1,0 +1,22 @@
+  [mmap loader] reusing cached /root/autodl-tmp/bge-m3/base.fvecs.raw_f32
+base=10091524 x 1024  query=1000 (using 1000)  gt width 20
+M=128 B=8 Br=8 alpha=32.0 k=10 nlist=32768 nprobe=128 ivf_iters=8 batch=1024 kmeans_iters=3
+  train: 118.2 ms
+  add:   3623.9 ms
+
+=== alpha=32  nprobe=128  (ck=320) ===
+lanes    recall    QPS med    QPS min    QPS max     x med     x min     x max   order     set   bits max relerr
+0        0.9173     125662     125662     125662     1.000     1.000     1.000    1000    1000   1000   0.00e+00
+1        0.9173     138044     138044     138044     1.099     1.099     1.099    1000    1000   1000   0.00e+00
+8        0.9173     142823     142823     142823     1.137     1.137     1.137    1000    1000      0   8.52e-07
+16       0.9173     144032     144032     144032     1.146     1.146     1.146    1000    1000      0   8.90e-07
+32       0.9173     137020     137020     137020     1.090     1.090     1.090    1000    1000      0   8.90e-07
+(order/set/bits: queries of 1000 whose ordered ids / id set / ids and distance bits equal lanes 0's)
+
+wrote /root/autodl-tmp/warp_refine_nsys/bge-m3_np128_a32.json
+=== AB_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-a850.qdstrm'
+[1/1] [0%                          ] bge-m3_np128_a32.nsys-rep[1/1] [0%                          ] bge-m3_np128_a32.nsys-rep[1/1] [6%                          ] bge-m3_np128_a32.nsys-rep[1/1] [7%                          ] bge-m3_np128_a32.nsys-rep[1/1] [====================83%     ] bge-m3_np128_a32.nsys-rep[1/1] [========================100%] bge-m3_np128_a32.nsys-rep[1/1] [========================100%] bge-m3_np128_a32.nsys-rep
+Generated:
+	/root/autodl-tmp/warp_refine_nsys/bge-m3_np128_a32.nsys-rep

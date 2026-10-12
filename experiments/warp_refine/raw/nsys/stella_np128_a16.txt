@@ -1,0 +1,23 @@
+  [mmap loader] reusing cached /root/autodl-tmp/stella-trec24/base.fvecs.raw_f32
+base=17776615 x 1024  query=999 (using 999)  gt width 20
+M=128 B=8 Br=8 alpha=16.0 k=10 nlist=32768 nprobe=128 ivf_iters=8 batch=1024 kmeans_iters=3
+  train: 124.7 ms
+  [add] two-pass build: single-pass peak 41.6 GB, 30.5 GB free at the tail
+  add:   7493.5 ms
+
+=== alpha=16  nprobe=128  (ck=160) ===
+lanes    recall    QPS med    QPS min    QPS max     x med     x min     x max   order     set   bits max relerr
+0        0.9892     112116     112116     112116     1.000     1.000     1.000     999     999    999   0.00e+00
+1        0.9892     114463     114463     114463     1.021     1.021     1.021     999     999    999   0.00e+00
+8        0.9892     116695     116695     116695     1.041     1.041     1.041     998     999      0   9.15e-07
+16       0.9892     116632     116632     116632     1.040     1.040     1.040     998     999      0   9.98e-07
+32       0.9892     114336     114336     114336     1.020     1.020     1.020     998     999      0   9.98e-07
+(order/set/bits: queries of 999 whose ordered ids / id set / ids and distance bits equal lanes 0's)
+
+wrote /root/autodl-tmp/warp_refine_nsys/stella_np128_a16.json
+=== AB_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-9959.qdstrm'
+[1/1] [0%                          ] stella_np128_a16.nsys-rep[1/1] [0%                          ] stella_np128_a16.nsys-rep[1/1] [================70%         ] stella_np128_a16.nsys-rep[1/1] [===================81%      ] stella_np128_a16.nsys-rep[1/1] [========================100%] stella_np128_a16.nsys-rep[1/1] [========================100%] stella_np128_a16.nsys-rep
+Generated:
+	/root/autodl-tmp/warp_refine_nsys/stella_np128_a16.nsys-rep

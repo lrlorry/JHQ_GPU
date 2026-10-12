@@ -1,0 +1,17 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-1536/base.fvecs.raw_f32
+base=999000 x 1536  query=1000 (using 1000)  gt width 20
+M=192 B=8 Br=8 alpha=8.0 k=10 nlist=8192 nprobe=128 ivf_iters=8 batch=1024 kmeans_iters=3
+  train: 61.9 ms
+  add:   446.5 ms
+
+=== alpha=8  nprobe=128  (ck=80) ===
+lanes    recall    QPS med    QPS min    QPS max     x med     x min     x max   order     set   bits max relerr
+0        0.9312     269605     268987     271212     1.000     1.000     1.000    1000    1000   1000   0.00e+00
+1        0.9312     284825     283467     285990     1.055     1.053     1.056    1000    1000   1000   0.00e+00
+8        0.9312     307329     305684     307867     1.137     1.134     1.143     999    1000      0   1.19e-06
+16       0.9312     308663     307012     309767     1.145     1.139     1.146     999    1000      0   1.19e-06
+32       0.9312     299015     298065     299643     1.106     1.102     1.114     999    1000      0   1.19e-06
+(order/set/bits: queries of 1000 whose ordered ids / id set / ids and distance bits equal lanes 0's)
+
+wrote results/warp_refine/ab/openai3-1536_np128.json
+=== AB_OK ===

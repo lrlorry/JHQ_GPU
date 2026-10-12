@@ -1,0 +1,19 @@
+========= COMPUTE-SANITIZER
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+base=932328 x 768  query=1000 (using 64)  gt width 100
+M=96 B=8 Br=8 alpha=64.0 k=10 nlist=4096 nprobe=128 ivf_iters=8 batch=1024 kmeans_iters=3
+  train: 13.0 ms
+  add:   530.4 ms
+
+=== alpha=64  nprobe=128  (ck=640) ===
+lanes    recall    QPS med    QPS min    QPS max     x med     x min     x max   order     set   bits max relerr
+0        0.9531       8806       8806       8806     1.000     1.000     1.000      64      64     64   0.00e+00
+1        0.9531       8950       8950       8950     1.016     1.016     1.016      64      64     64   0.00e+00
+8        0.9531       9016       9016       9016     1.024     1.024     1.024      63      64      0   5.67e-07
+16       0.9531       9006       9006       9006     1.023     1.023     1.023      64      64      0   5.66e-07
+32       0.9531       9025       9025       9025     1.025     1.025     1.025      64      64      0   5.66e-07
+(order/set/bits: queries of 64 whose ordered ids / id set / ids and distance bits equal lanes 0's)
+
+wrote /root/autodl-tmp/warp_refine_nsys/san_vogue-768_np128_synccheck.json
+=== AB_OK ===
+========= ERROR SUMMARY: 0 errors

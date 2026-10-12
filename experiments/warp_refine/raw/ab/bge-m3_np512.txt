@@ -1,0 +1,17 @@
+  [mmap loader] reusing cached /root/autodl-tmp/bge-m3/base.fvecs.raw_f32
+base=10091524 x 1024  query=1000 (using 1000)  gt width 20
+M=128 B=8 Br=8 alpha=64.0 k=10 nlist=32768 nprobe=512 ivf_iters=8 batch=1024 kmeans_iters=3
+  train: 119.7 ms
+  add:   3603.4 ms
+
+=== alpha=64  nprobe=512  (ck=640) ===
+lanes    recall    QPS med    QPS min    QPS max     x med     x min     x max   order     set   bits max relerr
+0        0.9660      42600      42178      42657     1.000     1.000     1.000    1000    1000   1000   0.00e+00
+1        0.9660      43367      42977      43618     1.022     1.014     1.026    1000    1000   1000   0.00e+00
+8        0.9660      44298      44223      44689     1.048     1.037     1.050    1000    1000      0   8.52e-07
+16       0.9660      44344      44097      44424     1.042     1.035     1.051    1000    1000      0   8.41e-07
+32       0.9660      43030      42791      43304     1.015     1.008     1.017    1000    1000      0   8.49e-07
+(order/set/bits: queries of 1000 whose ordered ids / id set / ids and distance bits equal lanes 0's)
+
+wrote results/warp_refine/ab/bge-m3_np512.json
+=== AB_OK ===

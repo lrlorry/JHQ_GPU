@@ -1,0 +1,22 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-1536/base.fvecs.raw_f32
+base=999000 x 1536  query=1000 (using 1000)  gt width 20
+M=192 B=8 Br=8 alpha=8.0 k=10 nlist=8192 nprobe=512 ivf_iters=8 batch=1024 kmeans_iters=3
+  train: 46.2 ms
+  add:   456.4 ms
+
+=== alpha=8  nprobe=512  (ck=80) ===
+lanes    recall    QPS med    QPS min    QPS max     x med     x min     x max   order     set   bits max relerr
+0        0.9746     104760     104760     104760     1.000     1.000     1.000    1000    1000   1000   0.00e+00
+1        0.9746     106658     106658     106658     1.018     1.018     1.018    1000    1000   1000   0.00e+00
+8        0.9746     109706     109706     109706     1.047     1.047     1.047     999    1000      0   1.19e-06
+16       0.9746     109953     109953     109953     1.050     1.050     1.050     999    1000      0   1.19e-06
+32       0.9746     108281     108281     108281     1.034     1.034     1.034     999    1000      0   1.19e-06
+(order/set/bits: queries of 1000 whose ordered ids / id set / ids and distance bits equal lanes 0's)
+
+wrote /root/autodl-tmp/warp_refine_nsys/openai3-1536_np512_a8.json
+=== AB_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-7f92.qdstrm'
+[1/1] [0%                          ] openai3-1536_np512_a8.nsys-rep[1/1] [0%                          ] openai3-1536_np512_a8.nsys-rep[1/1] [8%                          ] openai3-1536_np512_a8.nsys-rep[1/1] [=15%                        ] openai3-1536_np512_a8.nsys-rep[1/1] [=16%                        ] openai3-1536_np512_a8.nsys-rep[1/1] [=17%                        ] openai3-1536_np512_a8.nsys-rep[1/1] [==18%                       ] openai3-1536_np512_a8.nsys-rep[1/1] [=====================87%    ] openai3-1536_np512_a8.nsys-rep[1/1] [========================100%] openai3-1536_np512_a8.nsys-rep[1/1] [========================100%] openai3-1536_np512_a8.nsys-rep
+Generated:
+	/root/autodl-tmp/warp_refine_nsys/openai3-1536_np512_a8.nsys-rep

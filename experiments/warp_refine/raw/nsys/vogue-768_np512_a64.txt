@@ -1,0 +1,22 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+base=932328 x 768  query=1000 (using 1000)  gt width 100
+M=96 B=8 Br=8 alpha=64.0 k=10 nlist=4096 nprobe=512 ivf_iters=8 batch=1024 kmeans_iters=3
+  train: 18.1 ms
+  add:   278.9 ms
+
+=== alpha=64  nprobe=512  (ck=640) ===
+lanes    recall    QPS med    QPS min    QPS max     x med     x min     x max   order     set   bits max relerr
+0        0.9903      83642      83642      83642     1.000     1.000     1.000    1000    1000   1000   0.00e+00
+1        0.9903      93476      93476      93476     1.118     1.118     1.118    1000    1000   1000   0.00e+00
+8        0.9904      94888      94888      94888     1.134     1.134     1.134     997     999      0   7.11e-07
+16       0.9904      96190      96190      96190     1.150     1.150     1.150     998     999      0   7.11e-07
+32       0.9904      95056      95056      95056     1.136     1.136     1.136     998     999      0   7.11e-07
+(order/set/bits: queries of 1000 whose ordered ids / id set / ids and distance bits equal lanes 0's)
+
+wrote /root/autodl-tmp/warp_refine_nsys/vogue-768_np512_a64.json
+=== AB_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-2a22.qdstrm'
+[1/1] [0%                          ] vogue-768_np512_a64.nsys-rep[1/1] [0%                          ] vogue-768_np512_a64.nsys-rep[1/1] [8%                          ] vogue-768_np512_a64.nsys-rep[1/1] [14%                         ] vogue-768_np512_a64.nsys-rep[1/1] [=15%                        ] vogue-768_np512_a64.nsys-rep[1/1] [=16%                        ] vogue-768_np512_a64.nsys-rep[1/1] [=17%                        ] vogue-768_np512_a64.nsys-rep[1/1] [=====================87%    ] vogue-768_np512_a64.nsys-rep[1/1] [=====================88%    ] vogue-768_np512_a64.nsys-rep[1/1] [========================100%] vogue-768_np512_a64.nsys-rep[1/1] [========================100%] vogue-768_np512_a64.nsys-rep
+Generated:
+	/root/autodl-tmp/warp_refine_nsys/vogue-768_np512_a64.nsys-rep

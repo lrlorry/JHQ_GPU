@@ -1,0 +1,17 @@
+  [mmap loader] reusing cached /root/autodl-tmp/arxiv-abstracts-768/base.fvecs.raw_f32
+base=2253000 x 768  query=1000 (using 1000)  gt width 100
+M=96 B=8 Br=8 alpha=200.0 k=10 nlist=8192 nprobe=512 ivf_iters=8 batch=1024 kmeans_iters=3
+  train: 25.9 ms
+  add:   556.1 ms
+
+=== alpha=200  nprobe=512  (ck=2000) ===
+lanes    recall    QPS med    QPS min    QPS max     x med     x min     x max   order     set   bits max relerr
+0        0.9899      45590      45546      45902     1.000     1.000     1.000    1000    1000   1000   0.00e+00
+1        0.9899      58899      58736      59065     1.289     1.287     1.293    1000    1000   1000   0.00e+00
+8        0.9899      72031      71810      72260     1.578     1.569     1.585    1000    1000      0   8.81e-07
+16       0.9899      73451      73283      73652     1.610     1.597     1.616    1000    1000      0   7.83e-07
+32       0.9899      72598      72567      72816     1.592     1.581     1.597    1000    1000      0   8.81e-07
+(order/set/bits: queries of 1000 whose ordered ids / id set / ids and distance bits equal lanes 0's)
+
+wrote results/warp_refine/ab/arxiv-768_np512.json
+=== AB_OK ===

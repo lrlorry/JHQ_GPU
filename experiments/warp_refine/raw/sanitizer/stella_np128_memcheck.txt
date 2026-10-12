@@ -1,0 +1,20 @@
+========= COMPUTE-SANITIZER
+  [mmap loader] reusing cached /root/autodl-tmp/stella-trec24/base.fvecs.raw_f32
+base=17776615 x 1024  query=999 (using 64)  gt width 20
+M=128 B=8 Br=8 alpha=16.0 k=10 nlist=32768 nprobe=128 ivf_iters=8 batch=1024 kmeans_iters=3
+  train: 120.4 ms
+  [add] two-pass build: single-pass peak 41.6 GB, 30.3 GB free at the tail
+  add:   217226.0 ms
+
+=== alpha=16  nprobe=128  (ck=160) ===
+lanes    recall    QPS med    QPS min    QPS max     x med     x min     x max   order     set   bits max relerr
+0        0.9953        502        502        502     1.000     1.000     1.000      64      64     64   0.00e+00
+1        0.9953        508        508        508     1.011     1.011     1.011      64      64     64   0.00e+00
+8        0.9953        510        510        510     1.014     1.014     1.014      64      64      0   7.95e-07
+16       0.9953        510        510        510     1.015     1.015     1.015      63      64      0   6.96e-07
+32       0.9953        510        510        510     1.015     1.015     1.015      64      64      0   7.00e-07
+(order/set/bits: queries of 64 whose ordered ids / id set / ids and distance bits equal lanes 0's)
+
+wrote /root/autodl-tmp/warp_refine_nsys/san_stella_np128_memcheck.json
+=== AB_OK ===
+========= ERROR SUMMARY: 0 errors

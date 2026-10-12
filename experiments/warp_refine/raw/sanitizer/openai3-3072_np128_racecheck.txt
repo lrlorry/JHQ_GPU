@@ -1,0 +1,19 @@
+========= COMPUTE-SANITIZER
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+base=999000 x 3072  query=1000 (using 64)  gt width 20
+M=384 B=8 Br=8 alpha=4.0 k=10 nlist=8192 nprobe=128 ivf_iters=8 batch=1024 kmeans_iters=3
+  train: 103.0 ms
+  add:   27024.9 ms
+
+=== alpha=4  nprobe=128  (ck=40) ===
+lanes    recall    QPS med    QPS min    QPS max     x med     x min     x max   order     set   bits max relerr
+0        0.9219         24         24         24     1.000     1.000     1.000      64      64     64   0.00e+00
+1        0.9219         25         25         25     1.083     1.083     1.083      64      64     64   0.00e+00
+8        0.9219         24         24         24     1.039     1.039     1.039      64      64      0   1.25e-06
+16       0.9219         24         24         24     1.008     1.008     1.008      64      64      0   1.31e-06
+32       0.9219         24         24         24     1.009     1.009     1.009      64      64      0   1.25e-06
+(order/set/bits: queries of 64 whose ordered ids / id set / ids and distance bits equal lanes 0's)
+
+wrote /root/autodl-tmp/warp_refine_nsys/san_openai3-3072_np128_racecheck.json
+=== AB_OK ===
+========= RACECHECK SUMMARY: 0 hazards displayed (0 errors, 0 warnings)

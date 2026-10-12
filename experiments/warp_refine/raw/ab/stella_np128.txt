@@ -1,0 +1,18 @@
+  [mmap loader] reusing cached /root/autodl-tmp/stella-trec24/base.fvecs.raw_f32
+base=17776615 x 1024  query=999 (using 999)  gt width 20
+M=128 B=8 Br=8 alpha=16.0 k=10 nlist=32768 nprobe=128 ivf_iters=8 batch=1024 kmeans_iters=3
+  train: 150.8 ms
+  [add] two-pass build: single-pass peak 41.6 GB, 30.6 GB free at the tail
+  add:   7309.3 ms
+
+=== alpha=16  nprobe=128  (ck=160) ===
+lanes    recall    QPS med    QPS min    QPS max     x med     x min     x max   order     set   bits max relerr
+0        0.9892     110967     107796     111581     1.000     1.000     1.000     999     999    999   0.00e+00
+1        0.9892     114227     113804     114381     1.030     1.023     1.061     999     999    999   0.00e+00
+8        0.9892     116754     116743     117614     1.052     1.046     1.086     998     999      0   9.15e-07
+16       0.9892     116676     116218     117242     1.053     1.046     1.079     998     999      0   9.98e-07
+32       0.9892     114806     109635     114916     1.032     1.009     1.065     998     999      0   9.98e-07
+(order/set/bits: queries of 999 whose ordered ids / id set / ids and distance bits equal lanes 0's)
+
+wrote results/warp_refine/ab/stella_np128.json
+=== AB_OK ===

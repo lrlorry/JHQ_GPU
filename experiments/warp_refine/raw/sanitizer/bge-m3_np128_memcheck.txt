@@ -1,0 +1,19 @@
+========= COMPUTE-SANITIZER
+  [mmap loader] reusing cached /root/autodl-tmp/bge-m3/base.fvecs.raw_f32
+base=10091524 x 1024  query=1000 (using 64)  gt width 20
+M=128 B=8 Br=8 alpha=32.0 k=10 nlist=32768 nprobe=128 ivf_iters=8 batch=1024 kmeans_iters=3
+  train: 123.6 ms
+  add:   128133.4 ms
+
+=== alpha=32  nprobe=128  (ck=320) ===
+lanes    recall    QPS med    QPS min    QPS max     x med     x min     x max   order     set   bits max relerr
+0        0.9062        620        620        620     1.000     1.000     1.000      64      64     64   0.00e+00
+1        0.9062        637        637        637     1.027     1.027     1.027      64      64     64   0.00e+00
+8        0.9062        638        638        638     1.029     1.029     1.029      64      64      0   6.88e-07
+16       0.9062        639        639        639     1.030     1.030     1.030      64      64      0   6.88e-07
+32       0.9062        639        639        639     1.030     1.030     1.030      64      64      0   6.88e-07
+(order/set/bits: queries of 64 whose ordered ids / id set / ids and distance bits equal lanes 0's)
+
+wrote /root/autodl-tmp/warp_refine_nsys/san_bge-m3_np128_memcheck.json
+=== AB_OK ===
+========= ERROR SUMMARY: 0 errors
