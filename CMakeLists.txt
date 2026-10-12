@@ -2147,6 +2147,22 @@ target_compile_definitions(demo_jhq_v62_batch PRIVATE
     JHQ_INDEX_HEADER="${V62}/jhq_gpu_index.cuh" JHQ_PIPELINE_V62=1 ${V61_DEFS})
 target_link_libraries(demo_jhq_v62_batch PRIVATE jhq_v62_exp)
 
+# v63: v62 with a shared bound between a query's groups (G > 1): each group
+# publishes its ck-th (distance, position) key with atomicMin after every
+# compaction, admits only candidates at or before the query's bound, and
+# writes only the prefix of its sorted result at or before it. Any group's
+# ck-th key bounds the query's global ck-th key, so the result is v62's
+# exactly; what changes is how much each group keeps and the merge reads.
+# jhq_gpu::set_shared_bound() / JHQ_SHARED_BOUND (default on); off is v62.
+# demo_jhq_v63_batch measures both on one index (variant g >= 100 = shared);
+# driven by experiments/pipeline_campaign/exp2_v63.sh.
+set(V63 jhq_v63_sharedbound)
+add_jhq_variant(v63_exp ${V63} ${V61_DEFS})
+add_executable(demo_jhq_v63_batch examples/demo_jhq_batch_pipeline.cu)
+target_compile_definitions(demo_jhq_v63_batch PRIVATE
+    JHQ_INDEX_HEADER="${V63}/jhq_gpu_index.cuh" JHQ_PIPELINE_V62=1 JHQ_PIPELINE_V63=1 ${V61_DEFS})
+target_link_libraries(demo_jhq_v63_batch PRIVATE jhq_v63_exp)
+
 # v64: v61 with the IVF centroid scoring selectable (jhq_gpu::set_route_mode,
 # JHQ_ROUTE_MODE): 0 = v61's, rotate then score against c; 1 = score the query
 # as given against Pi^T c (precomputed once per index -- the same products,

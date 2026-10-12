@@ -11,6 +11,11 @@
 //                       serial, Pi^T c overlapped) and checks every mode
 //                       against 0: probe ids, centroid dot products, primary
 //                       top-ck, final ids and distances, recall.
+//   demo_jhq_v63_batch  v63 (JHQ_PIPELINE_V62 and _V63): as v62's, where a
+//                       variant g >= 100 is G = g - 100 with the shared bound
+//                       and g < 100 v62's independent groups, and each g >= 100
+//                       is also checked for identical top-ck and final results
+//                       against g - 100.
 //   demo_jhq_v62_batch  v62 (JHQ_PIPELINE_V62): also sweeps the primary
 //                       execution, G = 0 (v61's query-centric scan, unchanged)
 //                       and G = 1, 2, 4, 8 list groups per query, and checks
@@ -164,7 +169,11 @@ int main(int argc, char** argv) {
     std::vector<int> groups;
     for (double g : parse_list(std::getenv("JHQ_BP_GROUPS"), "0,1,2,4,8")) groups.push_back((int)g);
     if (groups[0] != 0) { fprintf(stderr, "JHQ_BP_GROUPS must start with 0, the v61 reference\n"); return 1; }
+#ifdef JHQ_PIPELINE_V63
+    auto set_variant = [&](int g) { jhq_gpu::set_primary_groups(g % 100); jhq_gpu::set_shared_bound(g >= 100); };
+#else
     auto set_variant = [&](int g) { jhq_gpu::set_primary_groups(g); };
+#endif
     // IVF list sizes for JHQ_BP_DUMP, from the id -> list map the index builds on demand
     const bool dump = env_int("JHQ_BP_DUMP", 0) != 0;
     std::vector<int> list_sizes;
@@ -349,6 +358,32 @@ int main(int argc, char** argv) {
                            "NON-TIE among queries with identical probes %d\n", groups[vi], dist_abs, dot_rel, nontie_psame);
 #endif
                 }
+#ifdef JHQ_PIPELINE_V63
+                // the shared bound must not change the result: same top-ck, in the same
+                // order, with the same distances, and the same final answer as v62's G
+                for (int vi = 1; vi < nV; ++vi) {
+                    if (groups[vi] < 100) continue;
+                    const int pj = (int)(std::find(groups.begin(), groups.end(), groups[vi] - 100) - groups.begin());
+                    if (pj >= nV) continue;
+                    int same_topck = 0, same_final = 0;
+                    for (int q = 0; q < nused; ++q) {
+                        same_topck += std::equal(rtpos[vi].begin() + (size_t)q * ck, rtpos[vi].begin() + (size_t)(q + 1) * ck,
+                                                 rtpos[pj].begin() + (size_t)q * ck) &&
+                                      !std::memcmp(rtval[vi].data() + (size_t)q * ck, rtval[pj].data() + (size_t)q * ck,
+                                                   (size_t)ck * sizeof(float));
+                        same_final += std::equal(rid[vi].begin() + (size_t)q * k, rid[vi].begin() + (size_t)(q + 1) * k,
+                                                 rid[pj].begin() + (size_t)q * k) &&
+                                      !std::memcmp(rdist[vi].data() + (size_t)q * k, rdist[pj].data() + (size_t)q * k,
+                                                   (size_t)k * sizeof(float));
+                    }
+                    char b3[192];
+                    std::snprintf(b3, sizeof(b3), ",\"vs_independent_topck_identical\":%d,\"vs_independent_final_identical\":%d",
+                                  same_topck, same_final);
+                    cmpjson[vi] += b3;
+                    printf("  G=%d shared bound vs independent: top-ck identical %d/%d, final identical %d/%d\n",
+                           groups[vi] - 100, same_topck, nused, same_final, nused);
+                }
+#endif
 #ifdef JHQ_PIPELINE_V62
                 const int v1 = (int)(std::find(groups.begin(), groups.end(), 1) - groups.begin());
                 if (dump && !dumped && v1 < nV) {
