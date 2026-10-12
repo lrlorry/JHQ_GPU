@@ -1,0 +1,11 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+train 110.0 ms
+add 702.3 ms
+v65: 1000 queries (seed 20261013), ck=40, scheduled G=0
+export 1804.6 ms: N=999000 d=3072 M=384 Ds=8 K=256 Kr=256 Br=8 bpv=3072 L=2
+audit: separability mismatches 0; level mismatches 0 of 786432; unsorted residual pairs 0; corr vs 2<y,r> max abs 2.653e-07, rel to sum|y r| 4.129e-07
+envelope: 534.8 ms over 999000 vectors, 98304 floats (384.0 KB), unseen half-code states 0 of 12288; mean width conditioned 0.07099 vs global 0.1225
+queries: 18316479 candidates in 10373.4 ms; violations cond 0 (max LB-D_H -6.782e-02), glob 0 (max -7.139e-02); NaN bounds 0
+relation: max |comp_fp64 - D_H - ||q'||^2| / ||q'||^2 = 2.653e-07; v65 returned vs D_H+||q'||^2 max rel 1.299e-04; v65 primary (fp32 table) vs FP64 max rel 1.473e-04
+wrote /root/autodl-tmp/lf_pilot/openai3-3072_np128_a4/rb_summary.json
+=== RB_OK ===

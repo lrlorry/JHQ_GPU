@@ -1,0 +1,11 @@
+  [mmap loader] reusing cached /root/autodl-tmp/arxiv-abstracts-768/base.fvecs.raw_f32
+train 22.9 ms
+add 494.3 ms
+v65: 1000 queries (seed 20261013), ck=1000, scheduled G=0
+export 1043.6 ms: N=2253000 d=768 M=96 Ds=8 K=256 Kr=256 Br=8 bpv=768 L=2
+audit: separability mismatches 0; level mismatches 0 of 196608; unsorted residual pairs 0; corr vs 2<y,r> max abs 1.233e-07, rel to sum|y r| 1.993e-07
+envelope: 317.2 ms over 2253000 vectors, 24576 floats (96.0 KB), unseen half-code states 54 of 3072; mean width conditioned 0.07975 vs global 0.1774
+queries: 47143349 candidates in 8603.4 ms; violations cond 0 (max LB-D_H -3.901e-05), glob 0 (max -3.901e-05); NaN bounds 0
+relation: max |comp_fp64 - D_H - ||q'||^2| / ||q'||^2 = 1.233e-07; v65 returned vs D_H+||q'||^2 max rel 3.152e-07; v65 primary (fp32 table) vs FP64 max rel 6.876e-07
+wrote /root/autodl-tmp/lf_pilot/arxiv-768_np128_a100/rb_summary.json
+=== RB_OK ===

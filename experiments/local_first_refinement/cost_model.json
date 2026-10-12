@@ -1,0 +1,131 @@
+{
+ "arxiv-768_np128_a100": {
+  "ck": 1000,
+  "rows": {
+   "v65 (measured)": {
+    "T": 1000,
+    "measured_us": 480.13,
+    "front_us": 77.471,
+    "scan_us": 237.439,
+    "merge_us": 11.904,
+    "refine_us": 110.56,
+    "topk_us": 22.656,
+    "host_us": 20.100000000000023
+   },
+   "global top-T* (alpha lowered)": {
+    "T": 750,
+    "per_group_buffer": 750,
+    "merge_us": 10.42063611932386,
+    "est_us_one_block_refine": 430.93913790572344,
+    "est_us_group_parallel_refine": 358.38413790572343,
+    "speedup_vs_v65_measured": 1.1141480496139993,
+    "speedup_vs_v65_parallel": 1.3397077303859442
+   },
+   "local probe (T*)": {
+    "T": 1000,
+    "per_group_buffer": 367.0,
+    "merge_us": 0.0,
+    "est_us_one_block_refine": 418.03875034401017,
+    "est_us_group_parallel_refine": 348.05427034401015,
+    "speedup_vs_v65_measured": 1.1485298901235688,
+    "speedup_vs_v65_parallel": 1.3794687809043364
+   },
+   "local calib (T*)": {
+    "T": 1250,
+    "per_group_buffer": 598.0,
+    "merge_us": 0.0,
+    "est_us_one_block_refine": 475.78711044601386,
+    "est_us_group_parallel_refine": 403.7019904460138,
+    "speedup_vs_v65_measured": 1.0091277999311814,
+    "speedup_vs_v65_parallel": 1.1893178913226259
+   }
+  },
+  "bounds": {
+   "merge_share": 0.024793285151938016,
+   "full_overlap_share": 0.23027096827942434,
+   "refine_share": 0.23027096827942434
+  }
+ },
+ "vogue-768_np128_a64": {
+  "ck": 640,
+  "rows": {
+   "v65 (measured)": {
+    "T": 640,
+    "measured_us": 421.60999999999996,
+    "front_us": 67.93599999999999,
+    "scan_us": 225.951,
+    "merge_us": 8.064,
+    "refine_us": 72.191,
+    "topk_us": 21.504,
+    "host_us": 25.963999999999942
+   },
+   "global top-T* (alpha lowered)": {
+    "T": 640,
+    "per_group_buffer": 640,
+    "merge_us": 8.064,
+    "est_us_one_block_refine": 421.61,
+    "est_us_group_parallel_refine": 358.44287499999996,
+    "speedup_vs_v65_measured": 0.9999999999999999,
+    "speedup_vs_v65_parallel": 1.1762264768130766
+   },
+   "local probe (T*)": {
+    "T": 800,
+    "per_group_buffer": 294.0,
+    "merge_us": 0.0,
+    "est_us_one_block_refine": 414.12813310549325,
+    "est_us_group_parallel_refine": 357.05212373049324,
+    "speedup_vs_v65_measured": 1.018066550655231,
+    "speedup_vs_v65_parallel": 1.1808079884667924
+   },
+   "local calib (T*)": {
+    "T": 800,
+    "per_group_buffer": 493.0,
+    "merge_us": 0.0,
+    "est_us_one_block_refine": 430.1306947545235,
+    "est_us_group_parallel_refine": 395.5015744420235,
+    "speedup_vs_v65_measured": 0.980190451743077,
+    "speedup_vs_v65_parallel": 1.0660134554326626
+   }
+  },
+  "bounds": {
+   "merge_share": 0.019126681055952187,
+   "full_overlap_share": 0.17122696330732196,
+   "refine_share": 0.17122696330732196
+  }
+ },
+ "openai3-3072_np128_a4": {
+  "ck": 40,
+  "rows": {
+   "v65 (measured)": {
+    "T": 40,
+    "measured_us": 433.01,
+    "front_us": 177.792,
+    "scan_us": 177.247,
+    "merge_us": 3.456,
+    "refine_us": 24.48,
+    "topk_us": 16.192,
+    "host_us": 33.84299999999996
+   },
+   "global top-T* (alpha lowered)": {
+    "T": 30,
+    "per_group_buffer": 30,
+    "merge_us": 3.331272208912375,
+    "est_us_one_block_refine": 422.7025084197001,
+    "est_us_group_parallel_refine": 406.6375084197001,
+    "speedup_vs_v65_measured": 1.0243847419283956,
+    "speedup_vs_v65_parallel": 1.0648550392775873
+   },
+   "local probe": {
+    "note": "does not reach v65 recall within T <= 1.5 ck at G = 8"
+   },
+   "local calib": {
+    "note": "does not reach v65 recall within T <= 1.5 ck at G = 8"
+   }
+  },
+  "bounds": {
+   "merge_share": 0.007981339922865522,
+   "full_overlap_share": 0.05653449112029745,
+   "refine_share": 0.05653449112029745
+  }
+ }
+}
