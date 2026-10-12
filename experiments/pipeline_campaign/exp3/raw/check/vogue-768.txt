@@ -1,0 +1,47 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 14.8 ms
+add 268.1 ms
+rotation: max |Pi^T Pi - I| = 5.960e-07; max rel | ||Pi^T c||^2 - ||c||^2 | = 1.982e-07
+
+=== alpha=64 ck=640  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G=1 vs G=0: probes 990/1000  primary top-ck same 993, tie-only 7, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  route 1 vs 0: max |d routing distance| 4.768e-07, max |d dot| / max |dot| 3.785e-07; NON-TIE among queries with identical probes 0
+  G=2 vs G=0: probes 990/1000  primary top-ck same 998, tie-only 2, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  route 2 vs 0: max |d routing distance| 4.768e-07, max |d dot| / max |dot| 3.785e-07; NON-TIE among queries with identical probes 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    0.000 ms    0.000 ms           0           0           0      1419
+  1      0.9644    0.000 ms    0.000 ms           0           0           0      1419
+  2      0.9644    0.000 ms    0.000 ms           0           0           0      1427
+
+=== alpha=64 ck=640  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G=1 vs G=0: probes 979/992  primary top-ck same 986, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  route 1 vs 0: max |d routing distance| 5.960e-07, max |d dot| / max |dot| 4.650e-07; NON-TIE among queries with identical probes 0
+  G=2 vs G=0: probes 979/992  primary top-ck same 986, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  route 2 vs 0: max |d routing distance| 5.960e-07, max |d dot| / max |dot| 4.650e-07; NON-TIE among queries with identical probes 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    0.000 ms    0.000 ms           0           0           0      1427
+  1      0.9644    0.000 ms    0.000 ms           0           0           0      1427
+  2      0.9644    0.000 ms    0.000 ms           0           0           0      1427
+
+=== alpha=64 ck=640  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G=1 vs G=0: probes 762/768  primary top-ck same 764, tie-only 4, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  route 1 vs 0: max |d routing distance| 7.153e-07, max |d dot| / max |dot| 5.277e-07; NON-TIE among queries with identical probes 0
+  G=2 vs G=0: probes 762/768  primary top-ck same 762, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  route 2 vs 0: max |d routing distance| 7.153e-07, max |d dot| / max |dot| 5.277e-07; NON-TIE among queries with identical probes 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9664    0.000 ms    0.000 ms           0           0           0      1427
+  1      0.9664    0.000 ms    0.000 ms           0           0           0      1427
+  2      0.9664    0.000 ms    0.000 ms           0           0           0      1427
+
+=== alpha=64 ck=640  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G=1 vs G=0: probes 959/1000  primary top-ck same 993, tie-only 7, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  route 1 vs 0: max |d routing distance| 3.576e-06, max |d dot| / max |dot| 2.437e-06; NON-TIE among queries with identical probes 0
+  G=2 vs G=0: probes 959/1000  primary top-ck same 994, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  route 2 vs 0: max |d routing distance| 3.576e-06, max |d dot| / max |dot| 2.437e-06; NON-TIE among queries with identical probes 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    0.000 ms    0.000 ms           0           0           0      1427
+  1      0.9644    0.000 ms    0.000 ms           0           0           0      1427
+  2      0.9644    0.000 ms    0.000 ms           0           0           0      1427
+
+wrote results/pipeline_campaign/exp3/check/vogue-768.json
+=== BP_OK ===

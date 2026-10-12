@@ -1,0 +1,32 @@
+========= COMPUTE-SANITIZER
+  [mmap loader] reusing cached /root/autodl-tmp/arxiv-abstracts-768/base.fvecs.raw_f32
+train 25.5 ms
+add 12513.5 ms
+
+=== alpha=200 ck=2000  b=8: 8 batches x 3 reps = 192 queries per measurement ===
+  G=1 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=2 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=4 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=8 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9938    0.000 ms    0.000 ms           0           0           0      2811
+  1      0.9938    0.000 ms    0.000 ms           0           0           0      2811
+  2      0.9938    0.000 ms    0.000 ms           0           0           0      2859
+  4      0.9938    0.000 ms    0.000 ms           0           0           0      2907
+  8      0.9938    0.000 ms    0.000 ms           0           0           0      3003
+
+=== alpha=200 ck=2000  b=64: 1 batches x 24 reps = 1536 queries per measurement ===
+  G=1 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=2 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=4 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=8 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9938    0.000 ms    0.000 ms           0           0           0      3003
+  1      0.9938    0.000 ms    0.000 ms           0           0           0      3003
+  2      0.9938    0.000 ms    0.000 ms           0           0           0      3003
+  4      0.9938    0.000 ms    0.000 ms           0           0           0      3003
+  8      0.9938    0.000 ms    0.000 ms           0           0           0      3003
+
+wrote /root/autodl-tmp/pipeline_v62_nsys/san_arxiv-768_memcheck.json
+=== BP_OK ===
+========= ERROR SUMMARY: 0 errors

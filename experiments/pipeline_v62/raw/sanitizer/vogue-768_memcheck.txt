@@ -1,0 +1,32 @@
+========= COMPUTE-SANITIZER
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 16.3 ms
+add 3415.5 ms
+
+=== alpha=64 ck=640  b=8: 8 batches x 3 reps = 192 queries per measurement ===
+  G=1 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=2 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=4 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=8 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9531    0.000 ms    0.000 ms           0           0           0      1661
+  1      0.9531    0.000 ms    0.000 ms           0           0           0      1661
+  2      0.9531    0.000 ms    0.000 ms           0           0           0      1681
+  4      0.9531    0.000 ms    0.000 ms           0           0           0      1693
+  8      0.9531    0.000 ms    0.000 ms           0           0           0      1721
+
+=== alpha=64 ck=640  b=64: 1 batches x 24 reps = 1536 queries per measurement ===
+  G=1 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=2 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=4 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=8 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9531    0.000 ms    0.000 ms           0           0           0      1721
+  1      0.9531    0.000 ms    0.000 ms           0           0           0      1721
+  2      0.9531    0.000 ms    0.000 ms           0           0           0      1721
+  4      0.9531    0.000 ms    0.000 ms           0           0           0      1721
+  8      0.9531    0.000 ms    0.000 ms           0           0           0      1721
+
+wrote /root/autodl-tmp/pipeline_v62_nsys/san_vogue-768_memcheck.json
+=== BP_OK ===
+========= ERROR SUMMARY: 0 errors

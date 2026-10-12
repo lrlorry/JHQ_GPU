@@ -1,0 +1,46 @@
+========= COMPUTE-SANITIZER
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 15.6 ms
+add 3383.8 ms
+
+=== alpha=64 ck=640  b=8: 8 batches x 3 reps = 192 queries per measurement ===
+  G=2 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=102 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=4 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=104 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=8 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=108 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=2 shared bound vs independent: top-ck identical 64/64, final identical 64/64
+  G=4 shared bound vs independent: top-ck identical 64/64, final identical 64/64
+  G=8 shared bound vs independent: top-ck identical 64/64, final identical 64/64
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9531    0.000 ms    0.000 ms           0           0           0      1661
+  2      0.9531    0.000 ms    0.000 ms           0           0           0      1681
+  102    0.9531    0.000 ms    0.000 ms           0           0           0      1681
+  4      0.9531    0.000 ms    0.000 ms           0           0           0      1693
+  104    0.9531    0.000 ms    0.000 ms           0           0           0      1693
+  8      0.9531    0.000 ms    0.000 ms           0           0           0      1721
+  108    0.9531    0.000 ms    0.000 ms           0           0           0      1721
+
+=== alpha=64 ck=640  b=64: 1 batches x 24 reps = 1536 queries per measurement ===
+  G=2 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=102 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=4 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=104 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=8 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=108 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  G=2 shared bound vs independent: top-ck identical 64/64, final identical 64/64
+  G=4 shared bound vs independent: top-ck identical 64/64, final identical 64/64
+  G=8 shared bound vs independent: top-ck identical 64/64, final identical 64/64
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9531    0.000 ms    0.000 ms           0           0           0      1721
+  2      0.9531    0.000 ms    0.000 ms           0           0           0      1721
+  102    0.9531    0.000 ms    0.000 ms           0           0           0      1721
+  4      0.9531    0.000 ms    0.000 ms           0           0           0      1721
+  104    0.9531    0.000 ms    0.000 ms           0           0           0      1721
+  8      0.9531    0.000 ms    0.000 ms           0           0           0      1721
+  108    0.9531    0.000 ms    0.000 ms           0           0           0      1721
+
+wrote /root/autodl-tmp/campaign_exp2_v63/san_memcheck.json
+=== BP_OK ===
+========= ERROR SUMMARY: 0 errors

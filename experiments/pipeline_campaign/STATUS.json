@@ -1,0 +1,150 @@
+{
+ "campaign": "JHQ-GPU autonomous GPU-native pipeline campaign",
+ "branch": "exp/pipeline-campaign",
+ "gpu": "NVIDIA GeForce RTX 5090 (170 SMs), driver 595.71.05, CUDA 13.0",
+ "build": "Release, CMAKE_CUDA_ARCHITECTURES=80 (compute_80 PTX, JIT) unless stated",
+ "gpu_window_utc": [
+  "2026-10-12T16:44Z",
+  "2026-10-12T22:02Z"
+ ],
+ "budget_hours": 6,
+ "baseline": "v61 + JHQ_REFINE_LANES=16",
+ "best_pipeline": {
+  "version": "v65",
+  "dir": "jhq_v65_schedule",
+  "settings": "JHQ_PRIMARY_GROUPS=-1 JHQ_SHARED_BOUND=1 JHQ_REFINE_LANES=16; calibrate_schedule once per index",
+  "e2e_geomean_over_v61_L16": {
+   "b8": 2.727,
+   "b32": 2.356,
+   "b256": 1.057,
+   "b1000": 1.015
+  },
+  "min_row_speedup": 0.992,
+  "recall": "identical (0 non-tie differences; final id sets identical in 234320 query comparisons)"
+ },
+ "experiments": [
+  {
+   "id": 0,
+   "name": "baseline audit and profiling; native sm_120",
+   "status": "DONE",
+   "decision": "primary screening is the bottleneck (61-85% of latency); small batch lacks parallelism; sm_120 reported separately, not adopted",
+   "commits": [
+    "d4cd5d2",
+    "b3b3432",
+    "7723059",
+    "a8edba7"
+   ],
+   "paths": [
+    "experiments/pipeline_v62/raw/phase0",
+    "experiments/pipeline_campaign/exp0"
+   ]
+  },
+  {
+   "id": 1,
+   "name": "v62 list-parallel primary screening",
+   "version": "v62",
+   "status": "DONE",
+   "decision": "GO",
+   "correctness": "64/64 comparisons NON-TIE 0, final bit-identical, sanitizers clean",
+   "best_e2e": "x2.76 (vogue b=8); x2.06-2.76 at b=8; x1.63-2.30 at b=32",
+   "regression": "x0.46-0.96 at b>=256",
+   "commits": [
+    "862543a",
+    "e0d0518"
+   ],
+   "report": "experiments/pipeline_v62/PIPELINE_V62_REPORT.md"
+  },
+  {
+   "id": 2,
+   "name": "budget-aware selection: quota pilot",
+   "status": "DONE",
+   "decision": "NO-GO (pilot, not implemented)",
+   "evidence": "group 0 holds 46-81% of the global top-ck at G=8; equal quotas certify 0-67%; calibrated quotas >=99% but critical-path group cannot shrink; bound <= ~4% e2e at b=8",
+   "commits": [
+    "41f6522"
+   ],
+   "paths": [
+    "experiments/pipeline_campaign/exp2/raw"
+   ]
+  },
+  {
+   "id": 2,
+   "name": "budget-aware selection: v63 exact shared bound",
+   "version": "v63",
+   "status": "DONE",
+   "decision": "GO",
+   "correctness": "48/48 identical to v62 (top-ck and final), NON-TIE 0 vs v61, memcheck/racecheck/synccheck clean",
+   "best_e2e_over_v62": {
+    "b8": "x1.03-1.07",
+    "b32": "x1.04-1.14",
+    "b256": "x1.06-1.43",
+    "b1000": "x1.02-1.56"
+   },
+   "commits": [
+    "e2ed15b"
+   ],
+   "paths": [
+    "experiments/pipeline_campaign/exp2/v63_raw"
+   ]
+  },
+  {
+   "id": 3,
+   "name": "v64 routing by Pi^T c",
+   "version": "v64",
+   "status": "DONE",
+   "decision": "NO-GO",
+   "correctness": "NON-TIE 0 on same-probe queries; final top-k and recall identical; probe sets differ for 1-8% (768-d) and 40% (openai3) of queries",
+   "best_e2e": "x1.003-1.017 at b<=32; x1.045 openai3 b=256",
+   "commits": [
+    "eac8ff8"
+   ],
+   "paths": [
+    "experiments/pipeline_campaign/exp3/raw"
+   ]
+  },
+  {
+   "id": 4,
+   "name": "v65 adaptive execution schedule",
+   "version": "v65",
+   "status": "DONE",
+   "decision": "GO",
+   "rule": "G=max(fill, skew); fill: largest G with B*G*BLOCK <= 0.6*SMs*maxThreadsPerSM; skew: 4 if per-query candidate CV >= 0.3 (512 base-vector pseudo-queries) else 1; G=1 -> v61 scan",
+   "worst_regret_vs_oracle": {
+    "b8": 1.034,
+    "b32": 1.004,
+    "b256": 1.217,
+    "b1000": 1.01
+   },
+   "commits": [
+    "d425ab8"
+   ],
+   "paths": [
+    "experiments/pipeline_campaign/exp47"
+   ]
+  },
+  {
+   "id": 5,
+   "name": "v66 stage-aware data layout",
+   "status": "SKIPPED",
+   "reason": "no layout bottleneck: large-batch scan streams codes at 1.34-1.64 TB/s no-reuse demand vs 1.79 TB/s peak with coalesced word layout; small batch is parallelism-bound; counters unavailable (ERR_NVGPUCTRPERM)"
+  },
+  {
+   "id": 6,
+   "name": "v67 selective kernel fusion",
+   "status": "SKIPPED",
+   "reason": "GPU idle inside the graph 0.4-3.4 us per search; kernel boundary gaps 0.06-0.13 us; intermediate traffic ck floats per query"
+  },
+  {
+   "id": 7,
+   "name": "final integration and full benchmark",
+   "version": "v65",
+   "status": "DONE",
+   "decision": "final pipeline = v65 (no separate v68)",
+   "configs": "6 datasets x np 128/512 at sampled-rule alpha (+arxiv/128 alpha 200), b 8/32/256/1000, 5 paired rounds; frontier alpha x1/2 and x2",
+   "commits": [
+    "d425ab8"
+   ],
+   "report": "experiments/pipeline_campaign/MASTER_REPORT.md"
+  }
+ ]
+}

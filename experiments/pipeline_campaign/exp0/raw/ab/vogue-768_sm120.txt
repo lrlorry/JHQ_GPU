@@ -1,0 +1,14 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+base=932328 x 768  query=1000 (using 1000)  gt width 100
+M=96 B=8 Br=8 alpha=64.0 k=10 nlist=4096 nprobe=128 ivf_iters=8 batch=1024 kmeans_iters=3
+  train: 15.7 ms
+  add:   295.0 ms
+
+=== alpha=64  nprobe=128  (ck=640) ===
+lanes    recall    QPS med    QPS min    QPS max     x med     x min     x max   order     set   bits max relerr
+0        0.9644     188181     187572     192546     1.000     1.000     1.000    1000    1000   1000   0.00e+00
+16       0.9644     232846     224939     240082     1.238     1.190     1.267     998    1000      0   7.48e-07
+(order/set/bits: queries of 1000 whose ordered ids / id set / ids and distance bits equal lanes 0's)
+
+wrote results/pipeline_campaign/exp0/ab/vogue-768_sm120.json
+=== AB_OK ===

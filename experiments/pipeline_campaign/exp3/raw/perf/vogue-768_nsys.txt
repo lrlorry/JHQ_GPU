@@ -1,0 +1,36 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 15.7 ms
+add 294.2 ms
+rotation: max |Pi^T Pi - I| = 5.960e-07; max rel | ||Pi^T c||^2 - ||c||^2 | = 1.982e-07
+
+=== alpha=64 ck=640  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    1.267 ms    1.349 ms        6683        6683        6683      1431
+  1      0.9644    1.261 ms    1.351 ms        6698        6698        6698      1431
+  2      0.9644    1.249 ms    1.336 ms        6779        6779        6779      1439
+
+=== alpha=64 ck=640  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    1.366 ms    1.470 ms       23252       23252       23252      1439
+  1      0.9644    1.363 ms    1.470 ms       23257       23257       23257      1439
+  2      0.9644    1.354 ms    1.461 ms       23419       23419       23419      1439
+
+=== alpha=64 ck=640  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9665    2.166 ms    2.232 ms      117788      117788      117788      1439
+  1      0.9665    2.165 ms    2.236 ms      117692      117692      117692      1439
+  2      0.9665    2.155 ms    2.230 ms      118186      118186      118186      1439
+
+=== alpha=64 ck=640  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9643    4.597 ms    4.699 ms      217986      217986      217986      1439
+  1      0.9643    4.613 ms    4.696 ms      217796      217796      217796      1439
+  2      0.9643    4.609 ms    4.707 ms      218630      218630      218630      1439
+
+wrote /root/autodl-tmp/campaign_exp3/vogue-768.json
+=== BP_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-6db3.qdstrm'
+[1/1] [0%                          ] vogue-768.nsys-rep[1/1] [0%                          ] vogue-768.nsys-rep[1/1] [===========53%              ] vogue-768.nsys-rep[1/1] [================68%         ] vogue-768.nsys-rep[1/1] [================69%         ] vogue-768.nsys-rep[1/1] [========================100%] vogue-768.nsys-rep[1/1] [========================100%] vogue-768.nsys-rep
+Generated:
+	/root/autodl-tmp/campaign_exp3/vogue-768.nsys-rep

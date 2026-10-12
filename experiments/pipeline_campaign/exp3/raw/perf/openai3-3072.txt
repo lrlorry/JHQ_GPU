@@ -1,0 +1,31 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+train 135.0 ms
+add 798.9 ms
+rotation: max |Pi^T Pi - I| = 6.515e-05; max rel | ||Pi^T c||^2 - ||c||^2 | = 6.442e-05
+
+=== alpha=4 ck=40  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9267    0.974 ms    1.048 ms        8089        8026        8161      4265
+  1      0.9267    0.974 ms    1.046 ms        8148        8063        8205      4265
+  2      0.9267    0.960 ms    1.029 ms        8226        8050        8276      4273
+
+=== alpha=4 ck=40  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9273    1.022 ms    1.079 ms       31139       29513       31178      4273
+  1      0.9273    1.024 ms    1.076 ms       31098       31083       31116      4273
+  2      0.9273    1.010 ms    1.082 ms       31086       28958       31798      4273
+
+=== alpha=4 ck=40  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9272    2.181 ms    2.194 ms      117728      116597      117859      4273
+  1      0.9272    2.181 ms    2.194 ms      117807      117664      117904      4273
+  2      0.9272    2.086 ms    2.101 ms      123062      118261      123145      4273
+
+=== alpha=4 ck=40  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9267    6.912 ms    6.921 ms      144685      142522      144980      4273
+  1      0.9267    6.915 ms    6.926 ms      144637      144568      144658      4273
+  2      0.9267    6.702 ms    6.711 ms      149184      149147      149250      4273
+
+wrote results/pipeline_campaign/exp3/perf/openai3-3072.json
+=== BP_OK ===

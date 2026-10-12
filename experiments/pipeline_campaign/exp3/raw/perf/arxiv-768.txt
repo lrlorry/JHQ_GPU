@@ -1,0 +1,55 @@
+  [mmap loader] reusing cached /root/autodl-tmp/arxiv-abstracts-768/base.fvecs.raw_f32
+train 24.6 ms
+add 538.1 ms
+rotation: max |Pi^T Pi - I| = 5.960e-07; max rel | ||Pi^T c||^2 - ||c||^2 | = 1.664e-07
+
+=== alpha=100 ck=1000  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9766    1.082 ms    1.168 ms        7375        7355        7376      2569
+  1      0.9766    1.082 ms    1.168 ms        7375        7370        7378      2569
+  2      0.9766    1.075 ms    1.159 ms        7412        7408        7414      2577
+
+=== alpha=100 ck=1000  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9764    1.159 ms    1.223 ms       27518       27098       27541      2577
+  1      0.9764    1.161 ms    1.219 ms       27509       27499       27534      2577
+  2      0.9764    1.163 ms    1.232 ms       27380       26778       27482      2577
+
+=== alpha=100 ck=1000  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9771    1.715 ms    1.720 ms      149537      149362      149964      2577
+  1      0.9771    1.714 ms    1.724 ms      149492      148242      149649      2577
+  2      0.9771    1.690 ms    1.701 ms      151436      147664      151630      2577
+
+=== alpha=100 ck=1000  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9766    4.522 ms    4.574 ms      221115      220458      221476      2577
+  1      0.9766    4.520 ms    4.572 ms      221299      215221      221779      2577
+  2      0.9766    4.480 ms    4.523 ms      223076      221675      223702      2577
+
+=== alpha=200 ck=2000  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9777    1.274 ms    1.371 ms        6256        6245        6258      2589
+  1      0.9777    1.275 ms    1.372 ms        6241        6228        6255      2589
+  2      0.9777    1.274 ms    1.362 ms        6276        6275        6279      2589
+
+=== alpha=200 ck=2000  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9775    1.353 ms    1.409 ms       23671       23671       23694      2589
+  1      0.9775    1.352 ms    1.409 ms       23661       23632       23669      2589
+  2      0.9775    1.343 ms    1.407 ms       23725       23448       23780      2589
+
+=== alpha=200 ck=2000  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9783    2.067 ms    2.080 ms      123829      123802      123870      2589
+  1      0.9783    2.065 ms    2.080 ms      123811      123685      123905      2589
+  2      0.9783    2.045 ms    2.057 ms      125112      125027      125171      2589
+
+=== alpha=200 ck=2000  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9777    5.761 ms    5.813 ms      173455      173243      174250      2589
+  1      0.9777    5.765 ms    5.847 ms      173196      171995      174013      2589
+  2      0.9777    5.734 ms    5.799 ms      174371      173502      174658      2589
+
+wrote results/pipeline_campaign/exp3/perf/arxiv-768.json
+=== BP_OK ===

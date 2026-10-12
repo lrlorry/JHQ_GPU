@@ -1,0 +1,29 @@
+========= COMPUTE-SANITIZER
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 13.5 ms
+add 3568.1 ms
+rotation: max |Pi^T Pi - I| = 5.960e-07; max rel | ||Pi^T c||^2 - ||c||^2 | = 1.982e-07
+
+=== alpha=64 ck=640  b=8: 8 batches x 3 reps = 192 queries per measurement ===
+  G=1 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  route 1 vs 0: max |d routing distance| 3.576e-07, max |d dot| / max |dot| 3.169e-07; NON-TIE among queries with identical probes 0
+  G=2 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  route 2 vs 0: max |d routing distance| 3.576e-07, max |d dot| / max |dot| 3.169e-07; NON-TIE among queries with identical probes 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9531    0.000 ms    0.000 ms           0           0           0      1673
+  1      0.9531    0.000 ms    0.000 ms           0           0           0      1673
+  2      0.9531    0.000 ms    0.000 ms           0           0           0      1681
+
+=== alpha=64 ck=640  b=64: 1 batches x 24 reps = 1536 queries per measurement ===
+  G=1 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  route 1 vs 0: max |d routing distance| 5.960e-07, max |d dot| / max |dot| 4.618e-07; NON-TIE among queries with identical probes 0
+  G=2 vs G=0: probes 64/64  primary top-ck same 64, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 64/64/64  max rel 0.00e+00
+  route 2 vs 0: max |d routing distance| 5.960e-07, max |d dot| / max |dot| 4.618e-07; NON-TIE among queries with identical probes 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9531    0.000 ms    0.000 ms           0           0           0      1681
+  1      0.9531    0.000 ms    0.000 ms           0           0           0      1681
+  2      0.9531    0.000 ms    0.000 ms           0           0           0      1681
+
+wrote /root/autodl-tmp/campaign_exp3/san_vogue.json
+=== BP_OK ===
+========= ERROR SUMMARY: 0 errors

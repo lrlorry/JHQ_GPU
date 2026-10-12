@@ -1,0 +1,54 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 16.2 ms
+add 284.1 ms
+
+=== alpha=64 ck=640  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G=1 vs G=0: probes 1000/1000  primary top-ck same 994, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=2 vs G=0: probes 1000/1000  primary top-ck same 994, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=4 vs G=0: probes 1000/1000  primary top-ck same 994, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=8 vs G=0: probes 1000/1000  primary top-ck same 994, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    1.313 ms    1.491 ms        6264        6252        6284      1407
+  1      0.9644    1.338 ms    1.513 ms        6151        6100        6167      1407
+  2      0.9644    0.857 ms    0.941 ms        9535        9521        9581      1427
+  4      0.9644    0.602 ms    0.663 ms       13319       13244       13445      1439
+  8      0.9644    0.465 ms    0.501 ms       17403       17358       17406      1467
+
+=== alpha=64 ck=640  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G=1 vs G=0: probes 992/992  primary top-ck same 984, tie-only 8, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=2 vs G=0: probes 992/992  primary top-ck same 984, tie-only 8, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=4 vs G=0: probes 992/992  primary top-ck same 984, tie-only 8, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=8 vs G=0: probes 992/992  primary top-ck same 984, tie-only 8, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    1.458 ms    1.723 ms       21547       21366       21608      1467
+  1      0.9644    1.477 ms    1.742 ms       21265       21187       21289      1467
+  2      0.9644    0.949 ms    1.048 ms       33505       32195       33570      1467
+  4      0.9644    0.667 ms    0.717 ms       47656       45463       47675      1467
+  8      0.9644    0.608 ms    0.637 ms       52693       52673       52734      1467
+
+=== alpha=64 ck=640  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G=1 vs G=0: probes 768/768  primary top-ck same 761, tie-only 7, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G=2 vs G=0: probes 768/768  primary top-ck same 761, tie-only 7, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G=4 vs G=0: probes 768/768  primary top-ck same 761, tie-only 7, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G=8 vs G=0: probes 768/768  primary top-ck same 761, tie-only 7, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9665    1.949 ms    2.023 ms      130304      128996      130503      1467
+  1      0.9665    2.015 ms    2.087 ms      125938      125775      126272      1467
+  2      0.9665    1.717 ms    1.901 ms      143692      139739      150418      1467
+  4      0.9665    1.745 ms    1.813 ms      146573      146015      147567      1467
+  8      0.9665    1.940 ms    1.989 ms      131808      126459      131959      1467
+
+=== alpha=64 ck=640  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G=1 vs G=0: probes 1000/1000  primary top-ck same 991, tie-only 9, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=2 vs G=0: probes 1000/1000  primary top-ck same 991, tie-only 9, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=4 vs G=0: probes 1000/1000  primary top-ck same 991, tie-only 9, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=8 vs G=0: probes 1000/1000  primary top-ck same 991, tie-only 9, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    4.229 ms    4.394 ms      237000      228155      239451      1467
+  1      0.9644    4.316 ms    4.459 ms      231897      227623      232582      1467
+  2      0.9644    4.418 ms    4.547 ms      225116      216679      226845      1467
+  4      0.9644    5.042 ms    5.124 ms      194307      193066      198984      1467
+  8      0.9644    6.148 ms    6.359 ms      161360      158949      162470      1467
+
+wrote results/pipeline_campaign/exp0/batch/vogue-768_sm120.json
+=== BP_OK ===

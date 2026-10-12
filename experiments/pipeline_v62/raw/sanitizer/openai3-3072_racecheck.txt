@@ -1,0 +1,20 @@
+========= COMPUTE-SANITIZER
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+train 114.8 ms
+add 27056.1 ms
+
+=== alpha=4 ck=40  b=8: 1 batches x 24 reps = 192 queries per measurement ===
+  G=1 vs G=0: probes 8/8  primary top-ck same 8, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 8/8/8  max rel 0.00e+00
+  G=2 vs G=0: probes 8/8  primary top-ck same 8, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 8/8/8  max rel 0.00e+00
+  G=4 vs G=0: probes 8/8  primary top-ck same 8, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 8/8/8  max rel 0.00e+00
+  G=8 vs G=0: probes 8/8  primary top-ck same 8, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 8/8/8  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9500    0.000 ms    0.000 ms           0           0           0      4271
+  1      0.9500    0.000 ms    0.000 ms           0           0           0      4271
+  2      0.9500    0.000 ms    0.000 ms           0           0           0      4271
+  4      0.9500    0.000 ms    0.000 ms           0           0           0      4273
+  8      0.9500    0.000 ms    0.000 ms           0           0           0      4275
+
+wrote /root/autodl-tmp/pipeline_v62_nsys/san_openai3-3072_racecheck.json
+=== BP_OK ===
+========= RACECHECK SUMMARY: 0 hazards displayed (0 errors, 0 warnings)

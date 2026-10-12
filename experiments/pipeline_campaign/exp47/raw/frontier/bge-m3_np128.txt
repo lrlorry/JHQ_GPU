@@ -1,0 +1,31 @@
+  [mmap loader] reusing cached /root/autodl-tmp/bge-m3/base.fvecs.raw_f32
+train 120.2 ms
+add 3611.0 ms
+schedule: per-query candidate count CV 0.135 on 512 pseudo-queries
+
+=== alpha=16 ck=160  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  scheduled G for b=8: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9144    1.435 ms    1.627 ms        5416        5384        5573     12105
+  -1     0.9144    0.523 ms    0.554 ms       15316       13768       15316     12125
+
+=== alpha=16 ck=160  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9144    6.705 ms    6.830 ms      148776      148192      149168     12125
+  -1     0.9144    6.722 ms    7.019 ms      147397      144967      149011     12125
+
+=== alpha=64 ck=640  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  scheduled G for b=8: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9178    1.584 ms    1.745 ms        4995        4991        5006     12135
+  -1     0.9178    0.667 ms    0.723 ms       11546       11376       12014     12175
+
+=== alpha=64 ck=640  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9178    7.425 ms    7.654 ms      133328      131057      134016     12175
+  -1     0.9178    7.418 ms    7.631 ms      133901      132645      134939     12175
+
+wrote results/pipeline_campaign/exp47/frontier/bge-m3_np128.json
+=== BP_OK ===

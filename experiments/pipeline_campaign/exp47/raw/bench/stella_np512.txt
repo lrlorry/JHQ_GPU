@@ -1,0 +1,54 @@
+  [mmap loader] reusing cached /root/autodl-tmp/stella-trec24/base.fvecs.raw_f32
+train 119.4 ms
+  [add] two-pass build: single-pass peak 41.6 GB, 30.6 GB free at the tail
+add 7476.6 ms
+schedule: per-query candidate count CV 0.053 on 512 pseudo-queries
+
+=== alpha=16 ck=160  b=8: 124 batches x 1 reps = 992 queries per measurement ===
+  scheduled G for b=8: 8
+  G=1000 vs G=0: probes 992/992  primary top-ck same 991, tie-only 1, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 991/992/0  max rel 8.53e-07
+  G=102 vs G=0: probes 992/992  primary top-ck same 992, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=104 vs G=0: probes 992/992  primary top-ck same 992, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=108 vs G=0: probes 992/992  primary top-ck same 992, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=-1 vs G=0: probes 992/992  primary top-ck same 992, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9949    6.916 ms    7.170 ms        1157        1156        1158     20833
+  1000   0.9949    6.989 ms    7.258 ms        1144        1144        1145     20833
+  102    0.9949    5.278 ms    5.475 ms        1516        1515        1516     20837
+  104    0.9949    3.226 ms    3.320 ms        2481        2476        2483     20843
+  108    0.9949    2.225 ms    2.277 ms        3593        3586        3598     20853
+  -1     0.9949    2.225 ms    2.276 ms        3592        3588        3596     20853
+
+=== alpha=16 ck=160  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  scheduled G for b=32: 8
+  G=1000 vs G=0: probes 992/992  primary top-ck same 992, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 991/992/0  max rel 9.98e-07
+  G=102 vs G=0: probes 992/992  primary top-ck same 991, tie-only 1, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=104 vs G=0: probes 992/992  primary top-ck same 991, tie-only 1, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=108 vs G=0: probes 992/992  primary top-ck same 991, tie-only 1, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=-1 vs G=0: probes 992/992  primary top-ck same 991, tie-only 1, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9949    6.974 ms    7.232 ms        4580        4579        4586     20853
+  1000   0.9949    7.050 ms    7.306 ms        4532        4523        4534     20853
+  102    0.9949    5.280 ms    5.534 ms        6045        6010        6057     20853
+  104    0.9949    3.299 ms    3.392 ms        9675        9547        9683     20853
+  108    0.9949    2.431 ms    2.481 ms       13135       13010       13144     20853
+  -1     0.9949    2.430 ms    2.481 ms       13133       12981       13143     20853
+
+=== alpha=16 ck=160  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  scheduled G for b=256: 0
+  G=1000 vs G=0: probes 768/768  primary top-ck same 767, tie-only 1, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 767/768/0  max rel 9.98e-07
+  G=102 vs G=0: probes 768/768  primary top-ck same 768, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G=104 vs G=0: probes 768/768  primary top-ck same 768, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G=108 vs G=0: probes 768/768  primary top-ck same 768, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G=-1 vs G=0: probes 768/768  primary top-ck same 768, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9952    9.970 ms   10.149 ms       25577       25517       25654     20853
+  1000   0.9952   10.137 ms   10.310 ms       25164       25075       25193     20853
+  102    0.9952   11.575 ms   11.792 ms       22211       22187       22238     20853
+  104    0.9952    9.862 ms    9.967 ms       25932       25909       25947     20853
+  108    0.9952    9.022 ms    9.126 ms       28350       28259       28391     20853
+  -1     0.9952    9.970 ms   10.145 ms       25580       25356       25589     20853
+skip b=1000 > 999 queries
+
+wrote results/pipeline_campaign/exp47/bench/stella_np512.json
+=== BP_OK ===

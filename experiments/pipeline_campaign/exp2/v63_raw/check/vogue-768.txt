@@ -1,0 +1,82 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 15.9 ms
+add 270.0 ms
+
+=== alpha=64 ck=640  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G=2 vs G=0: probes 1000/1000  primary top-ck same 992, tie-only 8, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=102 vs G=0: probes 1000/1000  primary top-ck same 992, tie-only 8, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=4 vs G=0: probes 1000/1000  primary top-ck same 992, tie-only 8, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=104 vs G=0: probes 1000/1000  primary top-ck same 992, tie-only 8, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=8 vs G=0: probes 1000/1000  primary top-ck same 992, tie-only 8, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=108 vs G=0: probes 1000/1000  primary top-ck same 992, tie-only 8, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=2 shared bound vs independent: top-ck identical 1000/1000, final identical 1000/1000
+  G=4 shared bound vs independent: top-ck identical 1000/1000, final identical 1000/1000
+  G=8 shared bound vs independent: top-ck identical 1000/1000, final identical 1000/1000
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    0.000 ms    0.000 ms           0           0           0      1407
+  2      0.9644    0.000 ms    0.000 ms           0           0           0      1427
+  102    0.9644    0.000 ms    0.000 ms           0           0           0      1427
+  4      0.9644    0.000 ms    0.000 ms           0           0           0      1439
+  104    0.9644    0.000 ms    0.000 ms           0           0           0      1439
+  8      0.9644    0.000 ms    0.000 ms           0           0           0      1467
+  108    0.9644    0.000 ms    0.000 ms           0           0           0      1467
+
+=== alpha=64 ck=640  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G=2 vs G=0: probes 992/992  primary top-ck same 986, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=102 vs G=0: probes 992/992  primary top-ck same 986, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=4 vs G=0: probes 992/992  primary top-ck same 986, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=104 vs G=0: probes 992/992  primary top-ck same 986, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=8 vs G=0: probes 992/992  primary top-ck same 986, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=108 vs G=0: probes 992/992  primary top-ck same 986, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=2 shared bound vs independent: top-ck identical 992/992, final identical 992/992
+  G=4 shared bound vs independent: top-ck identical 992/992, final identical 992/992
+  G=8 shared bound vs independent: top-ck identical 992/992, final identical 992/992
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    0.000 ms    0.000 ms           0           0           0      1467
+  2      0.9644    0.000 ms    0.000 ms           0           0           0      1467
+  102    0.9644    0.000 ms    0.000 ms           0           0           0      1467
+  4      0.9644    0.000 ms    0.000 ms           0           0           0      1467
+  104    0.9644    0.000 ms    0.000 ms           0           0           0      1467
+  8      0.9644    0.000 ms    0.000 ms           0           0           0      1467
+  108    0.9644    0.000 ms    0.000 ms           0           0           0      1467
+
+=== alpha=64 ck=640  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G=2 vs G=0: probes 768/768  primary top-ck same 762, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G=102 vs G=0: probes 768/768  primary top-ck same 762, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G=4 vs G=0: probes 768/768  primary top-ck same 762, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G=104 vs G=0: probes 768/768  primary top-ck same 762, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G=8 vs G=0: probes 768/768  primary top-ck same 762, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G=108 vs G=0: probes 768/768  primary top-ck same 762, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G=2 shared bound vs independent: top-ck identical 768/768, final identical 768/768
+  G=4 shared bound vs independent: top-ck identical 768/768, final identical 768/768
+  G=8 shared bound vs independent: top-ck identical 768/768, final identical 768/768
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9665    0.000 ms    0.000 ms           0           0           0      1467
+  2      0.9665    0.000 ms    0.000 ms           0           0           0      1467
+  102    0.9665    0.000 ms    0.000 ms           0           0           0      1467
+  4      0.9665    0.000 ms    0.000 ms           0           0           0      1467
+  104    0.9665    0.000 ms    0.000 ms           0           0           0      1467
+  8      0.9665    0.000 ms    0.000 ms           0           0           0      1467
+  108    0.9665    0.000 ms    0.000 ms           0           0           0      1467
+
+=== alpha=64 ck=640  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G=2 vs G=0: probes 1000/1000  primary top-ck same 993, tie-only 7, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=102 vs G=0: probes 1000/1000  primary top-ck same 993, tie-only 7, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=4 vs G=0: probes 1000/1000  primary top-ck same 993, tie-only 7, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=104 vs G=0: probes 1000/1000  primary top-ck same 993, tie-only 7, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=8 vs G=0: probes 1000/1000  primary top-ck same 993, tie-only 7, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=108 vs G=0: probes 1000/1000  primary top-ck same 993, tie-only 7, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=2 shared bound vs independent: top-ck identical 1000/1000, final identical 1000/1000
+  G=4 shared bound vs independent: top-ck identical 1000/1000, final identical 1000/1000
+  G=8 shared bound vs independent: top-ck identical 1000/1000, final identical 1000/1000
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    0.000 ms    0.000 ms           0           0           0      1467
+  2      0.9644    0.000 ms    0.000 ms           0           0           0      1467
+  102    0.9644    0.000 ms    0.000 ms           0           0           0      1467
+  4      0.9644    0.000 ms    0.000 ms           0           0           0      1467
+  104    0.9644    0.000 ms    0.000 ms           0           0           0      1467
+  8      0.9644    0.000 ms    0.000 ms           0           0           0      1467
+  108    0.9644    0.000 ms    0.000 ms           0           0           0      1467
+
+wrote results/pipeline_campaign/exp2_v63/check/vogue-768.json
+=== BP_OK ===

@@ -1,0 +1,67 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-1536/base.fvecs.raw_f32
+train 49.6 ms
+add 401.5 ms
+schedule: per-query candidate count CV 0.042 on 512 pseudo-queries
+
+=== alpha=8 ck=80  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  scheduled G for b=8: 8
+  G=1000 vs G=0: probes 1000/1000  primary top-ck same 1000, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 999/1000/0  max rel 1.08e-06
+  G=102 vs G=0: probes 1000/1000  primary top-ck same 1000, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=104 vs G=0: probes 1000/1000  primary top-ck same 1000, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=108 vs G=0: probes 1000/1000  primary top-ck same 1000, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=-1 vs G=0: probes 1000/1000  primary top-ck same 1000, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9746    2.274 ms    2.370 ms        3510        3459        3517      2379
+  1000   0.9746    2.381 ms    2.470 ms        3366        3334        3367      2379
+  102    0.9746    1.795 ms    1.856 ms        4463        4424        4471      2381
+  104    0.9746    1.102 ms    1.137 ms        7239        7097        7256      2383
+  108    0.9746    0.774 ms    0.779 ms       10416       10398       10424      2391
+  -1     0.9746    0.774 ms    0.778 ms       10420       10406       10423      2391
+
+=== alpha=8 ck=80  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  scheduled G for b=32: 8
+  G=1000 vs G=0: probes 992/992  primary top-ck same 992, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 991/992/0  max rel 1.08e-06
+  G=102 vs G=0: probes 992/992  primary top-ck same 992, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=104 vs G=0: probes 992/992  primary top-ck same 992, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=108 vs G=0: probes 992/992  primary top-ck same 992, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G=-1 vs G=0: probes 992/992  primary top-ck same 992, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9747    2.261 ms    2.320 ms       14152       14146       14158      2391
+  1000   0.9747    2.362 ms    2.426 ms       13527       13474       13558      2391
+  102    0.9747    1.770 ms    1.817 ms       18033       17920       18132      2391
+  104    0.9747    1.113 ms    1.148 ms       28661       27737       28685      2391
+  108    0.9747    0.839 ms    0.853 ms       38068       38042       38082      2391
+  -1     0.9747    0.839 ms    0.852 ms       38062       38009       38076      2391
+
+=== alpha=8 ck=80  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  scheduled G for b=256: 0
+  G=1000 vs G=0: probes 768/768  primary top-ck same 768, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 767/768/0  max rel 9.85e-07
+  G=102 vs G=0: probes 768/768  primary top-ck same 768, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G=104 vs G=0: probes 768/768  primary top-ck same 768, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G=108 vs G=0: probes 768/768  primary top-ck same 768, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G=-1 vs G=0: probes 768/768  primary top-ck same 768, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9754    3.300 ms    3.464 ms       76349       74374       77885      2391
+  1000   0.9754    3.482 ms    3.791 ms       72667       72121       73727      2391
+  102    0.9754    3.527 ms    3.584 ms       72572       71054       72730      2391
+  104    0.9754    3.009 ms    3.047 ms       85039       83565       85143      2391
+  108    0.9754    2.820 ms    2.851 ms       90710       86556       90750      2391
+  -1     0.9754    3.303 ms    3.334 ms       77633       76461       77670      2391
+
+=== alpha=8 ck=80  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 0
+  G=1000 vs G=0: probes 1000/1000  primary top-ck same 1000, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 999/1000/0  max rel 1.19e-06
+  G=102 vs G=0: probes 1000/1000  primary top-ck same 1000, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=104 vs G=0: probes 1000/1000  primary top-ck same 1000, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=108 vs G=0: probes 1000/1000  primary top-ck same 1000, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G=-1 vs G=0: probes 1000/1000  primary top-ck same 1000, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9746    9.275 ms    9.313 ms      107885      107741      108629      2391
+  1000   0.9746    9.682 ms    9.759 ms      103178      102767      103401      2391
+  102    0.9746    9.510 ms    9.555 ms      105064      104690      105294      2391
+  104    0.9746    9.426 ms    9.473 ms      106095      105811      106205      2391
+  108    0.9746    9.596 ms    9.621 ms      104172      103588      104324      2391
+  -1     0.9746    9.303 ms    9.378 ms      107424      107320      107553      2391
+
+wrote results/pipeline_campaign/exp47/bench/openai3-1536_np512.json
+=== BP_OK ===

@@ -1,0 +1,51 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+train 135.5 ms
+add 651.3 ms
+
+=== alpha=4 ck=40  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9267    0.992 ms    1.063 ms        8075        8075        8075      4181
+  2      0.9267    0.747 ms    0.786 ms       10850       10850       10850      4181
+  102    0.9267    0.743 ms    0.794 ms       10759       10759       10759      4181
+  4      0.9267    0.555 ms    0.569 ms       14679       14679       14679      4183
+  104    0.9267    0.555 ms    0.581 ms       14324       14324       14324      4183
+  8      0.9267    0.449 ms    0.458 ms       17769       17769       17769      4185
+  108    0.9267    0.448 ms    0.451 ms       17888       17888       17888      4185
+
+=== alpha=4 ck=40  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9273    1.031 ms    1.083 ms       30969       30969       30969      4185
+  2      0.9273    0.777 ms    0.818 ms       40760       40760       40760      4185
+  102    0.9273    0.780 ms    0.997 ms       38453       38453       38453      4185
+  4      0.9273    0.594 ms    0.603 ms       53776       53776       53776      4185
+  104    0.9273    0.598 ms    0.602 ms       53433       53433       53433      4185
+  8      0.9273    0.654 ms    0.658 ms       48877       48877       48877      4185
+  108    0.9273    0.623 ms    0.628 ms       51239       51239       51239      4185
+
+=== alpha=4 ck=40  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9272    2.196 ms    2.210 ms      116758      116758      116758      4185
+  2      0.9272    2.436 ms    2.498 ms      103715      103715      103715      4185
+  102    0.9272    2.376 ms    2.398 ms      107834      107834      107834      4185
+  4      0.9272    2.511 ms    2.521 ms      102044      102044      102044      4185
+  104    0.9272    2.373 ms    2.383 ms      107886      107886      107886      4185
+  8      0.9272    2.976 ms    3.424 ms       83966       83966       83966      4185
+  108    0.9272    2.648 ms    2.661 ms       95742       95742       95742      4185
+
+=== alpha=4 ck=40  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9267    6.951 ms    6.970 ms      143379      143379      143379      4185
+  2      0.9267    8.075 ms    8.095 ms      123749      123749      123749      4185
+  102    0.9267    7.923 ms    7.939 ms      126116      126116      126116      4185
+  4      0.9267    8.893 ms    9.061 ms      111618      111618      111618      4185
+  104    0.9267    8.420 ms    8.725 ms      117806      117806      117806      4185
+  8      0.9267   10.853 ms   13.221 ms       89744       89744       89744      4185
+  108    0.9267    9.688 ms    9.854 ms      102910      102910      102910      4185
+
+wrote /root/autodl-tmp/campaign_exp2_v63/openai3-3072.json
+=== BP_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-2325.qdstrm'
+[1/1] [0%                          ] openai3-3072.nsys-rep[1/1] [0%                          ] openai3-3072.nsys-rep[1/1] [===23%                      ] openai3-3072.nsys-rep[1/1] [=========43%                ] openai3-3072.nsys-rep[1/1] [==============63%           ] openai3-3072.nsys-rep[1/1] [===============65%          ] openai3-3072.nsys-rep[1/1] [========================100%] openai3-3072.nsys-rep[1/1] [========================100%] openai3-3072.nsys-rep
+Generated:
+	/root/autodl-tmp/campaign_exp2_v63/openai3-3072.nsys-rep

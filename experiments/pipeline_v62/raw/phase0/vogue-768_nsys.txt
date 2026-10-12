@@ -1,0 +1,27 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 15.5 ms
+add 306.2 ms
+
+=== alpha=64 ck=640  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  -1     0.9643    1.263 ms    1.353 ms        6601        6601        6601      1419
+
+=== alpha=64 ck=640  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  -1     0.9643    1.364 ms    1.475 ms       23215       23215       23215      1419
+
+=== alpha=64 ck=640  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  -1     0.9664    2.156 ms    2.230 ms      118118      118118      118118      1419
+
+=== alpha=64 ck=640  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  -1     0.9643    4.580 ms    4.782 ms      217589      217589      217589      1419
+
+wrote /root/autodl-tmp/pipeline_v62_nsys/vogue-768.json
+=== BP_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-c13c.qdstrm'
+[1/1] [0%                          ] vogue-768.nsys-rep[1/1] [0%                          ] vogue-768.nsys-rep[1/1] [6%                          ] vogue-768.nsys-rep[1/1] [7%                          ] vogue-768.nsys-rep[1/1] [8%                          ] vogue-768.nsys-rep[1/1] [=================73%        ] vogue-768.nsys-rep[1/1] [========================100%] vogue-768.nsys-rep[1/1] [========================100%] vogue-768.nsys-rep
+Generated:
+	/root/autodl-tmp/pipeline_v62_nsys/vogue-768.nsys-rep

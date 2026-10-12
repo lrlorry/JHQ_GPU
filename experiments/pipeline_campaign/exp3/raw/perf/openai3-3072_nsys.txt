@@ -1,0 +1,36 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+train 134.9 ms
+add 714.4 ms
+rotation: max |Pi^T Pi - I| = 6.515e-05; max rel | ||Pi^T c||^2 - ||c||^2 | = 6.442e-05
+
+=== alpha=4 ck=40  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9267    0.995 ms    1.061 ms        8071        8071        8071      4277
+  1      0.9267    0.998 ms    1.069 ms        8005        8005        8005      4277
+  2      0.9267    0.968 ms    1.037 ms        8275        8275        8275      4285
+
+=== alpha=4 ck=40  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9273    1.032 ms    1.077 ms       30995       30995       30995      4285
+  1      0.9273    1.027 ms    1.089 ms       30992       30992       30992      4285
+  2      0.9273    1.006 ms    1.063 ms       31546       31546       31546      4285
+
+=== alpha=4 ck=40  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9272    2.194 ms    2.534 ms      115346      115346      115346      4285
+  1      0.9272    2.192 ms    2.201 ms      117178      117178      117178      4285
+  2      0.9272    2.166 ms    2.182 ms      118435      118435      118435      4285
+
+=== alpha=4 ck=40  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9267    6.918 ms    6.937 ms      144424      144424      144424      4285
+  1      0.9267    6.923 ms    6.945 ms      144417      144417      144417      4285
+  2      0.9267    6.766 ms    6.891 ms      145939      145939      145939      4285
+
+wrote /root/autodl-tmp/campaign_exp3/openai3-3072.json
+=== BP_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-7b0a.qdstrm'
+[1/1] [0%                          ] openai3-3072.nsys-rep[1/1] [0%                          ] openai3-3072.nsys-rep[1/1] [===========51%              ] openai3-3072.nsys-rep[1/1] [================68%         ] openai3-3072.nsys-rep[1/1] [========================100%] openai3-3072.nsys-rep[1/1] [========================100%] openai3-3072.nsys-rep
+Generated:
+	/root/autodl-tmp/campaign_exp3/openai3-3072.nsys-rep

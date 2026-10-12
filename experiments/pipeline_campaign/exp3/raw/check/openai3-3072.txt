@@ -1,0 +1,47 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+train 106.7 ms
+add 614.7 ms
+rotation: max |Pi^T Pi - I| = 6.515e-05; max rel | ||Pi^T c||^2 - ||c||^2 | = 6.442e-05
+
+=== alpha=4 ck=40  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G=1 vs G=0: probes 600/1000  primary top-ck same 999, tie-only 0, NON-TIE 1, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  route 1 vs 0: max |d routing distance| 4.911e-05, max |d dot| / max |dot| 7.975e-05; NON-TIE among queries with identical probes 0
+  G=2 vs G=0: probes 600/1000  primary top-ck same 999, tie-only 0, NON-TIE 1, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  route 2 vs 0: max |d routing distance| 4.911e-05, max |d dot| / max |dot| 7.975e-05; NON-TIE among queries with identical probes 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9267    0.000 ms    0.000 ms           0           0           0      4265
+  1      0.9267    0.000 ms    0.000 ms           0           0           0      4265
+  2      0.9267    0.000 ms    0.000 ms           0           0           0      4273
+
+=== alpha=4 ck=40  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G=1 vs G=0: probes 593/992  primary top-ck same 991, tie-only 0, NON-TIE 1, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  route 1 vs 0: max |d routing distance| 5.341e-05, max |d dot| / max |dot| 7.939e-05; NON-TIE among queries with identical probes 0
+  G=2 vs G=0: probes 593/992  primary top-ck same 991, tie-only 0, NON-TIE 1, max |dprimary| 0.00e+00  final order/set/bits 992/992/992  max rel 0.00e+00
+  route 2 vs 0: max |d routing distance| 5.341e-05, max |d dot| / max |dot| 7.939e-05; NON-TIE among queries with identical probes 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9273    0.000 ms    0.000 ms           0           0           0      4273
+  1      0.9273    0.000 ms    0.000 ms           0           0           0      4273
+  2      0.9273    0.000 ms    0.000 ms           0           0           0      4273
+
+=== alpha=4 ck=40  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G=1 vs G=0: probes 451/768  primary top-ck same 767, tie-only 0, NON-TIE 1, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  route 1 vs 0: max |d routing distance| 4.447e-05, max |d dot| / max |dot| 7.716e-05; NON-TIE among queries with identical probes 0
+  G=2 vs G=0: probes 451/768  primary top-ck same 767, tie-only 0, NON-TIE 1, max |dprimary| 0.00e+00  final order/set/bits 768/768/768  max rel 0.00e+00
+  route 2 vs 0: max |d routing distance| 4.447e-05, max |d dot| / max |dot| 7.716e-05; NON-TIE among queries with identical probes 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9272    0.000 ms    0.000 ms           0           0           0      4273
+  1      0.9272    0.000 ms    0.000 ms           0           0           0      4273
+  2      0.9272    0.000 ms    0.000 ms           0           0           0      4273
+
+=== alpha=4 ck=40  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G=1 vs G=0: probes 588/1000  primary top-ck same 999, tie-only 0, NON-TIE 1, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  route 1 vs 0: max |d routing distance| 4.447e-05, max |d dot| / max |dot| 7.716e-05; NON-TIE among queries with identical probes 0
+  G=2 vs G=0: probes 588/1000  primary top-ck same 999, tie-only 0, NON-TIE 1, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  route 2 vs 0: max |d routing distance| 4.447e-05, max |d dot| / max |dot| 7.716e-05; NON-TIE among queries with identical probes 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9267    0.000 ms    0.000 ms           0           0           0      4273
+  1      0.9267    0.000 ms    0.000 ms           0           0           0      4273
+  2      0.9267    0.000 ms    0.000 ms           0           0           0      4273
+
+wrote results/pipeline_campaign/exp3/check/openai3-3072.json
+=== BP_OK ===

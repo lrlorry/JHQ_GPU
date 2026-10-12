@@ -1,0 +1,43 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 15.8 ms
+add 307.9 ms
+
+=== alpha=64 ck=640  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    1.266 ms    1.350 ms        6680        6680        6680      1419
+  1      0.9644    1.279 ms    1.371 ms        6600        6600        6600      1419
+  2      0.9644    0.824 ms    0.870 ms       10124       10124       10124      1439
+  4      0.9644    0.579 ms    0.624 ms       14155       14155       14155      1451
+  8      0.9644    0.454 ms    0.478 ms       18012       18012       18012      1479
+
+=== alpha=64 ck=640  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    1.376 ms    1.480 ms       23099       23099       23099      1479
+  1      0.9644    1.383 ms    1.497 ms       22866       22866       22866      1479
+  2      0.9644    0.900 ms    0.938 ms       35596       35596       35596      1479
+  4      0.9644    0.636 ms    0.655 ms       50185       50185       50185      1479
+  8      0.9644    0.621 ms    0.656 ms       51568       51568       51568      1479
+
+=== alpha=64 ck=640  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9665    2.175 ms    2.252 ms      116398      116398      116398      1479
+  1      0.9665    2.208 ms    2.278 ms      115151      115151      115151      1479
+  2      0.9665    1.828 ms    1.873 ms      141975      141975      141975      1479
+  4      0.9665    1.777 ms    1.840 ms      143679      143679      143679      1479
+  8      0.9665    1.939 ms    2.009 ms      131608      131608      131608      1479
+
+=== alpha=64 ck=640  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    4.635 ms    4.856 ms      216224      216224      216224      1479
+  1      0.9644    4.780 ms    5.004 ms      210224      210224      210224      1479
+  2      0.9644    4.626 ms    4.716 ms      216109      216109      216109      1479
+  4      0.9644    5.134 ms    5.211 ms      194536      194536      194536      1479
+  8      0.9644    6.193 ms    6.236 ms      161287      161287      161287      1479
+
+wrote /root/autodl-tmp/pipeline_v62_nsys/vogue-768.json
+=== BP_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-4490.qdstrm'
+[1/1] [0%                          ] vogue-768.nsys-rep[1/1] [0%                          ] vogue-768.nsys-rep[1/1] [======33%                   ] vogue-768.nsys-rep[1/1] [==============62%           ] vogue-768.nsys-rep[1/1] [===============67%          ] vogue-768.nsys-rep[1/1] [========================100%] vogue-768.nsys-rep[1/1] [========================100%] vogue-768.nsys-rep
+Generated:
+	/root/autodl-tmp/pipeline_v62_nsys/vogue-768.nsys-rep

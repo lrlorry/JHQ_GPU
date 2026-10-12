@@ -1,0 +1,27 @@
+========= COMPUTE-SANITIZER
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 12.4 ms
+add 3678.0 ms
+
+=== alpha=64 ck=640  b=8: 1 batches x 24 reps = 192 queries per measurement ===
+  G=2 vs G=0: probes 8/8  primary top-ck same 8, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 8/8/8  max rel 0.00e+00
+  G=102 vs G=0: probes 8/8  primary top-ck same 8, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 8/8/8  max rel 0.00e+00
+  G=4 vs G=0: probes 8/8  primary top-ck same 8, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 8/8/8  max rel 0.00e+00
+  G=104 vs G=0: probes 8/8  primary top-ck same 8, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 8/8/8  max rel 0.00e+00
+  G=8 vs G=0: probes 8/8  primary top-ck same 8, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 8/8/8  max rel 0.00e+00
+  G=108 vs G=0: probes 8/8  primary top-ck same 8, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 8/8/8  max rel 0.00e+00
+  G=2 shared bound vs independent: top-ck identical 8/8, final identical 8/8
+  G=4 shared bound vs independent: top-ck identical 8/8, final identical 8/8
+  G=8 shared bound vs independent: top-ck identical 8/8, final identical 8/8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9875    0.000 ms    0.000 ms           0           0           0      1509
+  2      0.9875    0.000 ms    0.000 ms           0           0           0      1529
+  102    0.9875    0.000 ms    0.000 ms           0           0           0      1529
+  4      0.9875    0.000 ms    0.000 ms           0           0           0      1541
+  104    0.9875    0.000 ms    0.000 ms           0           0           0      1541
+  8      0.9875    0.000 ms    0.000 ms           0           0           0      1569
+  108    0.9875    0.000 ms    0.000 ms           0           0           0      1569
+
+wrote /root/autodl-tmp/campaign_exp2_v63/san_racecheck.json
+=== BP_OK ===
+========= RACECHECK SUMMARY: 0 hazards displayed (0 errors, 0 warnings)

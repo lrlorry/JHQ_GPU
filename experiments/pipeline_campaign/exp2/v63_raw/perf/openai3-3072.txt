@@ -1,0 +1,46 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+train 109.6 ms
+add 724.0 ms
+
+=== alpha=4 ck=40  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9267    0.980 ms    1.049 ms        8191        8182        8239      4169
+  2      0.9267    0.730 ms    0.770 ms       11124       11086       11196      4169
+  102    0.9267    0.728 ms    0.774 ms       11152       11013       11158      4169
+  4      0.9267    0.535 ms    0.545 ms       15224       15165       15252      4171
+  104    0.9267    0.543 ms    0.545 ms       15169       14935       15182      4171
+  8      0.9267    0.433 ms    0.434 ms       18510       18203       18521      4173
+  108    0.9267    0.433 ms    0.434 ms       18465       18206       18474      4173
+
+=== alpha=4 ck=40  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9273    1.028 ms    1.078 ms       31108       30924       31126      4173
+  2      0.9273    0.772 ms    0.809 ms       41089       36861       41130      4173
+  102    0.9273    0.770 ms    0.813 ms       40995       40318       41059      4173
+  4      0.9273    0.588 ms    0.591 ms       54329       53623       54396      4173
+  104    0.9273    0.592 ms    0.595 ms       53986       52791       54044      4173
+  8      0.9273    0.648 ms    0.650 ms       49355       49275       49413      4173
+  108    0.9273    0.617 ms    0.622 ms       51756       51682       51791      4173
+
+=== alpha=4 ck=40  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9272    2.200 ms    2.210 ms      116740      111703      116885      4173
+  2      0.9272    2.431 ms    2.461 ms      105486      101438      105569      4173
+  102    0.9272    2.375 ms    2.393 ms      107958      102742      108060      4173
+  4      0.9272    2.511 ms    2.525 ms      100381       97579      102054      4173
+  104    0.9272    2.370 ms    2.380 ms      107952      103182      108057      4173
+  8      0.9272    2.974 ms    2.983 ms       86191       83921       86231      4173
+  108    0.9272    2.644 ms    2.654 ms       94765       92600       96938      4173
+
+=== alpha=4 ck=40  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9267    6.982 ms    7.070 ms      142321      140924      142904      4173
+  2      0.9267    8.112 ms    8.141 ms      123197      122463      123499      4173
+  102    0.9267    7.955 ms    8.029 ms      125413      123775      125803      4173
+  4      0.9267    8.913 ms    8.990 ms      111576      110824      112135      4173
+  104    0.9267    8.437 ms    8.510 ms      118334      117254      118413      4173
+  8      0.9267   10.870 ms   10.956 ms       91863       91685       91907      4173
+  108    0.9267    9.711 ms    9.788 ms      102634      101059      102848      4173
+
+wrote results/pipeline_campaign/exp2_v63/perf/openai3-3072.json
+=== BP_OK ===

@@ -1,0 +1,171 @@
+  [mmap loader] reusing cached /root/autodl-tmp/arxiv-abstracts-768/base.fvecs.raw_f32
+train 26.2 ms
+add 518.2 ms
+
+=== alpha=200 ck=2000  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9777    1.288 ms    1.384 ms        6173        6173        6173      2569
+  1      0.9777    1.334 ms    1.431 ms        5994        5994        5994      2569
+  2      0.9777    0.995 ms    1.065 ms        7981        7981        7981      2617
+  4      0.9777    0.796 ms    0.823 ms       10219       10219       10219      2665
+  8      0.9777    0.617 ms    0.687 ms       12526       12526       12526      2761
+
+=== alpha=200 ck=2000  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9775    1.357 ms    1.414 ms       23559       23559       23559      2761
+  1      0.9775    1.394 ms    1.463 ms       22874       22874       22874      2761
+  2      0.9775    1.064 ms    1.094 ms       30086       30086       30086      2761
+  4      0.9775    0.843 ms    0.861 ms       37915       37915       37915      2761
+  8      0.9775    0.851 ms    0.869 ms       38056       38056       38056      2761
+
+=== alpha=200 ck=2000  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9783    2.061 ms    2.079 ms      124087      124087      124087      2761
+  1      0.9783    2.239 ms    2.268 ms      114886      114886      114886      2761
+  2      0.9783    2.331 ms    2.478 ms      109188      109188      109188      2761
+  4      0.9783    2.637 ms    2.676 ms       97039       97039       97039      2761
+  8      0.9783    3.021 ms    3.071 ms       84546       84546       84546      2761
+
+=== alpha=200 ck=2000  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9777    5.757 ms    5.804 ms      173692      173692      173692      2761
+  1      0.9777    6.016 ms    6.085 ms      166212      166212      166212      2761
+  2      0.9777    7.108 ms    7.132 ms      140744      140744      140744      2761
+  4      0.9777    8.774 ms    8.814 ms      113921      113921      113921      2761
+  8      0.9777   12.485 ms   12.533 ms       80060       80060       80060      2761
+
+=== alpha=100 ck=1000  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9766    1.093 ms    1.176 ms        7296        7296        7296      2761
+  1      0.9766    1.117 ms    1.205 ms        7128        7128        7128      2761
+  2      0.9766    0.808 ms    0.846 ms        9930        9930        9930      2761
+  4      0.9766    0.611 ms    0.627 ms       13197       13197       13197      2761
+  8      0.9766    0.476 ms    0.508 ms       16629       16629       16629      2761
+
+=== alpha=100 ck=1000  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9764    1.161 ms    1.227 ms       27448       27448       27448      2761
+  1      0.9764    1.188 ms    1.252 ms       26830       26830       26830      2761
+  2      0.9764    0.853 ms    0.884 ms       37465       37465       37465      2761
+  4      0.9764    0.655 ms    0.665 ms       49024       49024       49024      2761
+  8      0.9764    0.644 ms    0.659 ms       49764       49764       49764      2761
+
+=== alpha=100 ck=1000  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9771    1.711 ms    1.722 ms      149675      149675      149675      2761
+  1      0.9771    1.790 ms    1.801 ms      143006      143006      143006      2761
+  2      0.9771    1.888 ms    1.913 ms      137804      137804      137804      2761
+  4      0.9771    1.974 ms    2.010 ms      129615      129615      129615      2761
+  8      0.9771    2.294 ms    2.320 ms      111540      111540      111540      2761
+
+=== alpha=100 ck=1000  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9766    4.503 ms    4.541 ms      222013      222013      222013      2761
+  1      0.9766    4.692 ms    4.769 ms      212873      212873      212873      2761
+  2      0.9766    5.287 ms    5.342 ms      189013      189013      189013      2761
+  4      0.9766    6.390 ms    6.406 ms      156539      156539      156539      2761
+  8      0.9766    7.904 ms    7.919 ms      126522      126522      126522      2761
+
+=== alpha=50 ck=500  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9726    1.347 ms    1.492 ms        5952        5952        5952      2761
+  1      0.9726    1.436 ms    1.595 ms        5582        5582        5582      2761
+  2      0.9726    1.104 ms    1.190 ms        7219        7219        7219      2761
+  4      0.9726    0.737 ms    0.784 ms       10809       10809       10809      2761
+  8      0.9726    0.489 ms    0.514 ms       16383       16383       16383      2761
+
+=== alpha=50 ck=500  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9724    1.456 ms    1.513 ms       22089       22089       22089      2761
+  1      0.9724    1.542 ms    1.617 ms       20681       20681       20681      2761
+  2      0.9724    1.187 ms    1.242 ms       26935       26935       26935      2761
+  4      0.9724    0.804 ms    0.830 ms       39678       39678       39678      2761
+  8      0.9724    0.684 ms    0.713 ms       46782       46782       46782      2761
+
+=== alpha=50 ck=500  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9727    2.051 ms    2.110 ms      124248      124248      124248      2761
+  1      0.9727    2.301 ms    2.424 ms      109628      109628      109628      2761
+  2      0.9727    2.391 ms    2.431 ms      106933      106933      106933      2761
+  4      0.9727    2.586 ms    2.635 ms       98891       98891       98891      2761
+  8      0.9727    2.622 ms    2.649 ms       97726       97726       97726      2761
+
+=== alpha=50 ck=500  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9726    5.092 ms    5.220 ms      195952      195952      195952      2761
+  1      0.9726    5.706 ms    5.881 ms      172786      172786      172786      2761
+  2      0.9726    7.170 ms    7.231 ms      139504      139504      139504      2761
+  4      0.9726    8.474 ms    8.533 ms      117861      117861      117861      2761
+  8      0.9726    9.074 ms    9.147 ms      109297      109297      109297      2761
+
+=== alpha=25 ck=250  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9590    0.907 ms    0.989 ms        8644        8644        8644      2761
+  1      0.9590    0.917 ms    0.990 ms        8712        8712        8712      2761
+  2      0.9590    0.597 ms    0.637 ms       13392       13392       13392      2761
+  4      0.9590    0.421 ms    0.436 ms       19046       19046       19046      2761
+  8      0.9590    0.317 ms    0.332 ms       25061       25061       25061      2761
+
+=== alpha=25 ck=250  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9589    0.974 ms    1.030 ms       32845       32845       32845      2761
+  1      0.9589    0.978 ms    1.033 ms       32596       32596       32596      2761
+  2      0.9589    0.644 ms    0.671 ms       49762       49762       49762      2761
+  4      0.9589    0.461 ms    0.476 ms       69274       69274       69274      2761
+  8      0.9589    0.422 ms    0.440 ms       75873       75873       75873      2761
+
+=== alpha=25 ck=250  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9595    1.396 ms    1.582 ms      176966      176966      176966      2761
+  1      0.9595    1.416 ms    1.436 ms      180581      180581      180581      2761
+  2      0.9595    1.355 ms    1.381 ms      190547      190547      190547      2761
+  4      0.9595    1.319 ms    1.335 ms      193881      193881      193881      2761
+  8      0.9595    1.453 ms    1.466 ms      176232      176232      176232      2761
+
+=== alpha=25 ck=250  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9590    3.670 ms    3.710 ms      267702      267702      267702      2761
+  1      0.9590    3.701 ms    3.752 ms      270075      270075      270075      2761
+  2      0.9590    3.810 ms    4.210 ms      253263      253263      253263      2761
+  4      0.9590    4.164 ms    4.183 ms      240030      240030      240030      2761
+  8      0.9590    4.887 ms    4.977 ms      202710      202710      202710      2761
+
+=== alpha=12.5 ck=125  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9302    0.871 ms    0.953 ms        9095        9095        9095      2761
+  1      0.9302    0.881 ms    0.965 ms        9042        9042        9042      2761
+  2      0.9302    0.551 ms    0.587 ms       14460       14460       14460      2761
+  4      0.9302    0.378 ms    0.410 ms       20934       20934       20934      2761
+  8      0.9302    0.292 ms    0.298 ms       25584       25584       25584      2761
+
+=== alpha=12.5 ck=125  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9301    0.929 ms    0.984 ms       34139       34139       34139      2761
+  1      0.9301    0.952 ms    1.130 ms       32775       32775       32775      2761
+  2      0.9301    0.599 ms    0.633 ms       53058       53058       53058      2761
+  4      0.9301    0.417 ms    0.435 ms       76105       76105       76105      2761
+  8      0.9301    0.385 ms    0.389 ms       83802       83802       83802      2761
+
+=== alpha=12.5 ck=125  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9319    1.336 ms    1.359 ms      191111      191111      191111      2761
+  1      0.9319    1.354 ms    1.379 ms      188664      188664      188664      2761
+  2      0.9319    1.273 ms    1.283 ms      203799      203799      203799      2761
+  4      0.9319    1.204 ms    1.317 ms      209092      209092      209092      2761
+  8      0.9319    1.307 ms    1.319 ms      196009      196009      196009      2761
+
+=== alpha=12.5 ck=125  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9302    3.509 ms    3.578 ms      283803      283803      283803      2761
+  1      0.9302    3.560 ms    3.617 ms      280661      280661      280661      2761
+  2      0.9302    3.573 ms    4.326 ms      272365      272365      272365      2761
+  4      0.9302    3.793 ms    3.807 ms      263549      263549      263549      2761
+  8      0.9302    4.359 ms    4.514 ms      226996      226996      226996      2761
+
+wrote /root/autodl-tmp/campaign_exp2/a_arxiv-768.json
+=== BP_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-4fc4.qdstrm'
+[1/1] [0%                          ] a_arxiv-768.nsys-rep[1/1] [0%                          ] a_arxiv-768.nsys-rep[1/1] [==19%                       ] a_arxiv-768.nsys-rep[1/1] [=15%                        ] a_arxiv-768.nsys-rep[1/1] [12%                         ] a_arxiv-768.nsys-rep[1/1] [11%                         ] a_arxiv-768.nsys-rep[1/1] [9%                          ] a_arxiv-768.nsys-rep[1/1] [=17%                        ] a_arxiv-768.nsys-rep[1/1] [=15%                        ] a_arxiv-768.nsys-rep[1/1] [14%                         ] a_arxiv-768.nsys-rep[1/1] [13%                         ] a_arxiv-768.nsys-rep[1/1] [==19%                       ] a_arxiv-768.nsys-rep[1/1] [====26%                     ] a_arxiv-768.nsys-rep[1/1] [=====32%                    ] a_arxiv-768.nsys-rep[1/1] [=======39%                  ] a_arxiv-768.nsys-rep[1/1] [=========45%                ] a_arxiv-768.nsys-rep[1/1] [===========51%              ] a_arxiv-768.nsys-rep[1/1] [============57%             ] a_arxiv-768.nsys-rep[1/1] [==============63%           ] a_arxiv-768.nsys-rep[1/1] [===============65%          ] a_arxiv-768.nsys-rep[1/1] [========================100%] a_arxiv-768.nsys-rep[1/1] [========================100%] a_arxiv-768.nsys-rep
+Generated:
+	/root/autodl-tmp/campaign_exp2/a_arxiv-768.nsys-rep

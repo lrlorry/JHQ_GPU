@@ -1,0 +1,46 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 16.1 ms
+add 267.2 ms
+
+=== alpha=64 ck=640  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    1.250 ms    1.337 ms        6770        6678        6773      1407
+  2      0.9644    0.859 ms    0.932 ms        9545        9522        9547      1427
+  102    0.9644    0.837 ms    0.915 ms        9833        9832        9836      1427
+  4      0.9644    0.598 ms    0.648 ms       13636       13567       13643      1439
+  104    0.9644    0.559 ms    0.612 ms       14551       14470       14557      1439
+  8      0.9644    0.453 ms    0.488 ms       17876       17865       17889      1467
+  108    0.9644    0.422 ms    0.454 ms       19157       19138       19163      1467
+
+=== alpha=64 ck=640  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    1.358 ms    1.472 ms       23298       22685       23390      1467
+  2      0.9644    0.950 ms    1.048 ms       33339       32920       33361      1467
+  102    0.9644    0.925 ms    1.038 ms       34357       34343       34405      1467
+  4      0.9644    0.659 ms    0.708 ms       48202       47463       48208      1467
+  104    0.9644    0.631 ms    0.692 ms       50319       48663       50347      1467
+  8      0.9644    0.616 ms    0.642 ms       52196       52079       52258      1467
+  108    0.9644    0.544 ms    0.556 ms       59386       59316       59439      1467
+
+=== alpha=64 ck=640  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9665    2.177 ms    2.250 ms      117086      114615      117149      1467
+  2      0.9665    1.845 ms    1.892 ms      140720      137740      140938      1467
+  102    0.9665    1.743 ms    1.771 ms      148949      144615      149417      1467
+  4      0.9665    1.791 ms    1.870 ms      142434      140398      144322      1467
+  104    0.9665    1.530 ms    1.614 ms      165979      163915      167752      1467
+  8      0.9665    1.967 ms    2.041 ms      129240      126219      130193      1467
+  108    0.9665    1.530 ms    1.559 ms      167497      166855      167651      1467
+
+=== alpha=64 ck=640  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    4.611 ms    4.761 ms      217380      214650      217612      1467
+  2      0.9644    4.663 ms    4.790 ms      214492      213753      215090      1467
+  102    0.9644    4.236 ms    4.356 ms      234626      229458      236850      1467
+  4      0.9644    5.189 ms    5.272 ms      192565      190374      192867      1467
+  104    0.9644    4.243 ms    4.293 ms      235387      234166      235924      1467
+  8      0.9644    6.269 ms    6.305 ms      159545      159133      160155      1467
+  108    0.9644    4.647 ms    4.694 ms      215036      214034      215251      1467
+
+wrote results/pipeline_campaign/exp2_v63/perf/vogue-768.json
+=== BP_OK ===

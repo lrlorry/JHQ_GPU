@@ -1,0 +1,43 @@
+  [mmap loader] reusing cached /root/autodl-tmp/arxiv-abstracts-768/base.fvecs.raw_f32
+train 21.4 ms
+add 528.0 ms
+
+=== alpha=100 ck=1000  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  -1     0.9766    1.094 ms    1.180 ms        7286        7286        7286      2557
+
+=== alpha=100 ck=1000  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  -1     0.9764    1.159 ms    1.225 ms       27464       27464       27464      2557
+
+=== alpha=100 ck=1000  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  -1     0.9771    1.712 ms    1.730 ms      149572      149572      149572      2557
+
+=== alpha=100 ck=1000  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  -1     0.9766    4.504 ms    4.541 ms      221712      221712      221712      2557
+
+=== alpha=200 ck=2000  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  -1     0.9777    1.287 ms    1.384 ms        6180        6180        6180      2569
+
+=== alpha=200 ck=2000  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  -1     0.9775    1.355 ms    1.412 ms       23581       23581       23581      2569
+
+=== alpha=200 ck=2000  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  -1     0.9783    2.059 ms    2.073 ms      124220      124220      124220      2569
+
+=== alpha=200 ck=2000  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  -1     0.9777    5.732 ms    5.782 ms      174539      174539      174539      2569
+
+wrote /root/autodl-tmp/pipeline_v62_nsys/arxiv-768.json
+=== BP_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-a776.qdstrm'
+[1/1] [0%                          ] arxiv-768.nsys-rep[1/1] [0%                          ] arxiv-768.nsys-rep[1/1] [================69%         ] arxiv-768.nsys-rep[1/1] [========================100%] arxiv-768.nsys-rep[1/1] [========================100%] arxiv-768.nsys-rep
+Generated:
+	/root/autodl-tmp/pipeline_v62_nsys/arxiv-768.nsys-rep
