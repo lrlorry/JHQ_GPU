@@ -2147,6 +2147,21 @@ target_compile_definitions(demo_jhq_v62_batch PRIVATE
     JHQ_INDEX_HEADER="${V62}/jhq_gpu_index.cuh" JHQ_PIPELINE_V62=1 ${V61_DEFS})
 target_link_libraries(demo_jhq_v62_batch PRIVATE jhq_v62_exp)
 
+# v64: v61 with the IVF centroid scoring selectable (jhq_gpu::set_route_mode,
+# JHQ_ROUTE_MODE): 0 = v61's, rotate then score against c; 1 = score the query
+# as given against Pi^T c (precomputed once per index -- the same products,
+# <Pi q, c> = <q, Pi^T c>), still serial; 2 = as 1 with the graph forked, the
+# routing branch (centroid GEMM, probe selection) on a second stream beside
+# the rotation and table. Everything else is v61's. demo_jhq_v64_batch measures
+# the three on one index and checks 1 and 2 against 0 query by query; driven by
+# experiments/pipeline_campaign/exp3_v64.sh.
+set(V64 jhq_v64_orthoroute)
+add_jhq_variant(v64_exp ${V64} ${V61_DEFS})
+add_executable(demo_jhq_v64_batch examples/demo_jhq_batch_pipeline.cu)
+target_compile_definitions(demo_jhq_v64_batch PRIVATE
+    JHQ_INDEX_HEADER="${V64}/jhq_gpu_index.cuh" JHQ_PIPELINE_V64=1 ${V61_DEFS})
+target_link_libraries(demo_jhq_v64_batch PRIVATE jhq_v64_exp)
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
 # Pure C++ (common/recall.cuh has no CUDA in it), so no CUDA toolchain needed
 # to run these.  ctest, or: ./build/test_recall

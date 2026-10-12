@@ -6,6 +6,11 @@
 // Built twice from this file:
 //   demo_jhq_v61_batch  v61, refinement lanes 16. The Phase 0 baseline of
 //                       experiments/pipeline_v62.
+//   demo_jhq_v64_batch  v64 (JHQ_PIPELINE_V64): sweeps the routing mode
+//                       instead (JHQ_BP_ROUTES, default 0,1,2: v61's, Pi^T c
+//                       serial, Pi^T c overlapped) and checks every mode
+//                       against 0: probe ids, centroid dot products, primary
+//                       top-ck, final ids and distances, recall.
 //   demo_jhq_v62_batch  v62 (JHQ_PIPELINE_V62): also sweeps the primary
 //                       execution, G = 0 (v61's query-centric scan, unchanged)
 //                       and G = 1, 2, 4, 8 list groups per query, and checks
@@ -59,6 +64,10 @@
 #include <algorithm>
 #include <string>
 #include <map>
+
+#if defined(JHQ_PIPELINE_V62) || defined(JHQ_PIPELINE_V64)
+#define JHQ_BP_CHECKS 1          // a reference variant 0 and per-query checks against it
+#endif
 
 using Clock = std::chrono::high_resolution_clock;
 using Ms    = std::chrono::duration<double, std::milli>;
@@ -164,6 +173,14 @@ int main(int argc, char** argv) {
         list_sizes.assign((size_t)nlist, 0);
         for (int l : vl) if (l >= 0 && l < nlist) ++list_sizes[l];
     }
+#elif defined(JHQ_PIPELINE_V64)
+    std::vector<int> groups;                // here: the routing modes
+    for (double g : parse_list(std::getenv("JHQ_BP_ROUTES"), "0,1,2")) groups.push_back((int)g);
+    if (groups[0] != 0) { fprintf(stderr, "JHQ_BP_ROUTES must start with 0, v61's routing\n"); return 1; }
+    auto set_variant = [&](int g) { jhq_gpu::set_route_mode(g); };
+    double orth = 0.0, nrel = 0.0;
+    idx.route_check(orth, nrel);
+    printf("rotation: max |Pi^T Pi - I| = %.3e; max rel | ||Pi^T c||^2 - ||c||^2 | = %.3e\n", orth, nrel);
 #else
     std::vector<int> groups = {-1};       // the library's only primary execution
     auto set_variant = [&](int) {};
@@ -178,9 +195,13 @@ int main(int argc, char** argv) {
     FILE* js = std::fopen(jpath.c_str(), "w");
     if (!js) { fprintf(stderr, "cannot write %s\n", jpath.c_str()); return 1; }
     std::fprintf(js, "{\"gpu\":\"%s\",\"sms\":%d,\"base\":\"%s\",\"n\":%d,\"d\":%d,\"nq\":%d,\"k\":%d,\"M\":%d,"
-                 "\"nlist\":%d,\"nprobe\":%d,\"batch_cap\":%d,\"lanes\":%d,\"rounds\":%d,\"runs\":[",
+                 "\"nlist\":%d,\"nprobe\":%d,\"batch_cap\":%d,\"lanes\":%d,\"rounds\":%d,",
                  prop.name, prop.multiProcessorCount, base_path, nb, d, nq, k, M, nlist, nprobe,
                  batch_size, lanes, rounds);
+#ifdef JHQ_PIPELINE_V64
+    std::fprintf(js, "\"orth_max_abs\":%.6e,\"norm_max_rel\":%.6e,", orth, nrel);
+#endif
+    std::fprintf(js, "\"runs\":[");
     bool first_run = true;
 
     for (double a : alphas) {
@@ -204,10 +225,15 @@ int main(int argc, char** argv) {
             std::vector<std::vector<int>>   rid(nV, std::vector<int>((size_t)nused * k));
             std::vector<std::vector<float>> rdist(nV, std::vector<float>((size_t)nused * k));
             std::vector<double> rec(nV, 0.0);
-#ifdef JHQ_PIPELINE_V62
+#ifdef JHQ_BP_CHECKS
             std::vector<std::vector<int>>   rprobe(nV), rtpos(nV);
             std::vector<std::vector<float>> rtval(nV);
+#endif
+#ifdef JHQ_PIPELINE_V62
             std::vector<double> scratch_mb(nV, 0.0);
+#endif
+#ifdef JHQ_PIPELINE_V64
+            std::vector<std::vector<float>> rdots(nV);
 #endif
             std::vector<double> used_mb(nV, 0.0);
             for (int vi = 0; vi < nV; ++vi) {
@@ -224,6 +250,15 @@ int main(int argc, char** argv) {
                         rtpos[vi].insert(rtpos[vi].end(), tp.begin(), tp.end());
                         rtval[vi].insert(rtval[vi].end(), tv.begin(), tv.end());
                     }
+#elif defined(JHQ_PIPELINE_V64)
+                    if (check) {
+                        std::vector<int> pr, tp; std::vector<float> tv, dt; int lB, lnp, lck, lnl;
+                        idx.debug_last_batch(pr, tp, tv, dt, lB, lnp, lck, lnl);
+                        rprobe[vi].insert(rprobe[vi].end(), pr.begin(), pr.end());
+                        rtpos[vi].insert(rtpos[vi].end(), tp.begin(), tp.end());
+                        rtval[vi].insert(rtval[vi].end(), tv.begin(), tv.end());
+                        rdots[vi].insert(rdots[vi].end(), dt.begin(), dt.end());
+                    }
 #endif
                 }
                 rec[vi] = evaluate_recall(rid[vi].data(), gt.data(), nused, k, d_gt).recall;
@@ -239,15 +274,17 @@ int main(int argc, char** argv) {
                          first_run ? "" : ",", a, ck, b, nbatch, reps, nused);
             first_run = false;
             std::vector<std::string> cmpjson(nV, "");
-#ifdef JHQ_PIPELINE_V62
+#ifdef JHQ_BP_CHECKS
             if (check) {
                 for (int vi = 1; vi < nV; ++vi) {
                     int probe_same = 0, top_same = 0, top_tie_only = 0, top_nontie = 0;
                     double prim_abs = 0.0;
                     int ord = 0, set = 0, bits = 0; double fin_rel = 0.0;
+                    int nontie_psame = 0;
                     for (int q = 0; q < nused; ++q) {
-                        probe_same += std::equal(rprobe[0].begin() + (size_t)q * nprobe, rprobe[0].begin() + (size_t)(q + 1) * nprobe,
-                                                 rprobe[vi].begin() + (size_t)q * nprobe);
+                        const bool psame = std::equal(rprobe[0].begin() + (size_t)q * nprobe, rprobe[0].begin() + (size_t)(q + 1) * nprobe,
+                                                      rprobe[vi].begin() + (size_t)q * nprobe);
+                        probe_same += psame;
                         // primary top-ck: sets of positions, and where they differ, whether only at ties
                         std::map<int, float> R, V;
                         float rmax = -1.f, vmax = -1.f;
@@ -264,7 +301,7 @@ int main(int argc, char** argv) {
                         }
                         for (auto& kv : V) if (!R.count(kv.first)) { same = false; if (kv.second != vmax) tie_only = false; }
                         if (rmax != vmax) tie_only = false;
-                        if (same) ++top_same; else if (tie_only) ++top_tie_only; else ++top_nontie;
+                        if (same) ++top_same; else if (tie_only) ++top_tie_only; else { ++top_nontie; nontie_psame += psame; }
                         // final top-k
                         const int* a0 = rid[0].data() + (size_t)q * k; const int* a1 = rid[vi].data() + (size_t)q * k;
                         const float* d0 = rdist[0].data() + (size_t)q * k; const float* d1 = rdist[vi].data() + (size_t)q * k;
@@ -290,7 +327,29 @@ int main(int argc, char** argv) {
                            "max |dprimary| %.2e  final order/set/bits %d/%d/%d  max rel %.2e\n",
                            groups[vi], probe_same, nused, top_same, top_tie_only, top_nontie, prim_abs,
                            ord, set, bits, fin_rel);
+#ifdef JHQ_PIPELINE_V64
+                    // the routing distance is ||c||^2 - 2<q', c>, so its error is twice the dot's
+                    double dist_abs = 0.0, dot_rel = 0.0;
+                    for (int q = 0; q < nused; ++q) {
+                        const float* a0 = rdots[0].data() + (size_t)q * nlist;
+                        const float* a1 = rdots[vi].data() + (size_t)q * nlist;
+                        double scale = 0.0, mx = 0.0;
+                        for (int l = 0; l < nlist; ++l) {
+                            scale = std::max(scale, (double)std::fabs(a0[l]));
+                            mx = std::max(mx, std::fabs((double)a1[l] - (double)a0[l]));
+                        }
+                        dist_abs = std::max(dist_abs, 2.0 * mx);
+                        dot_rel  = std::max(dot_rel, mx / std::max(scale, 1e-30));
+                    }
+                    char b2[256];
+                    std::snprintf(b2, sizeof(b2), ",\"route_dist_max_abs\":%.6e,\"route_dot_max_rel\":%.6e,"
+                                  "\"nontie_same_probes\":%d", dist_abs, dot_rel, nontie_psame);
+                    cmpjson[vi] += b2;
+                    printf("  route %d vs 0: max |d routing distance| %.3e, max |d dot| / max |dot| %.3e; "
+                           "NON-TIE among queries with identical probes %d\n", groups[vi], dist_abs, dot_rel, nontie_psame);
+#endif
                 }
+#ifdef JHQ_PIPELINE_V62
                 const int v1 = (int)(std::find(groups.begin(), groups.end(), 1) - groups.begin());
                 if (dump && !dumped && v1 < nV) {
                     char dp[512];
@@ -307,6 +366,7 @@ int main(int argc, char** argv) {
                     }
                     dumped = true;
                 }
+#endif
             }
 #endif
             // 3. timing: rounds, variant order rotated, one NVTX range per (variant, round)
