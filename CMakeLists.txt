@@ -2187,6 +2187,13 @@ target_compile_definitions(demo_jhq_v66_bound_pilot PRIVATE
     JHQ_INDEX_HEADER="${V66}/jhq_gpu_index.cuh" ${V61_DEFS})
 target_compile_options(demo_jhq_v66_bound_pilot PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-O3 -Xcompiler=-fopenmp>)
 target_link_libraries(demo_jhq_v66_bound_pilot PRIVATE jhq_v66_exp)
+# The bound-aware residual quantization pilot (experiments/bound_aware_quant):
+# residual-prefix and coarse-code bounds, offline, on the same export.
+add_executable(demo_jhq_v66_bound_aware_quant examples/demo_jhq_v66_bound_aware_quant.cu)
+target_compile_definitions(demo_jhq_v66_bound_aware_quant PRIVATE
+    JHQ_INDEX_HEADER="${V66}/jhq_gpu_index.cuh" ${V61_DEFS})
+target_compile_options(demo_jhq_v66_bound_aware_quant PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-O3 -Xcompiler=-fopenmp>)
+target_link_libraries(demo_jhq_v66_bound_aware_quant PRIVATE jhq_v66_exp)
 
 # v64: v61 with the IVF centroid scoring selectable (jhq_gpu::set_route_mode,
 # JHQ_ROUTE_MODE): 0 = v61's, rotate then score against c; 1 = score the query
