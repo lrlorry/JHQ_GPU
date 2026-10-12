@@ -11,6 +11,11 @@
 //                       serial, Pi^T c overlapped) and checks every mode
 //                       against 0: probe ids, centroid dot products, primary
 //                       top-ck, final ids and distances, recall.
+//   demo_jhq_v65_batch  v65 (JHQ_PIPELINE_V62, _V63 and _V65): variant -1 is
+//                       the scheduled G (calibrated first on JHQ_BP_SCHED_CAL,
+//                       default 512, base vectors as pseudo-queries), g >= 1000
+//                       is refinement lanes 0 with g - 1000 (v61 L0 at 1000),
+//                       and g in 100..108 the shared-bound groups of v63.
 //   demo_jhq_v63_batch  v63 (JHQ_PIPELINE_V62 and _V63): as v62's, where a
 //                       variant g >= 100 is G = g - 100 with the shared bound
 //                       and g < 100 v62's independent groups, and each g >= 100
@@ -169,7 +174,27 @@ int main(int argc, char** argv) {
     std::vector<int> groups;
     for (double g : parse_list(std::getenv("JHQ_BP_GROUPS"), "0,1,2,4,8")) groups.push_back((int)g);
     if (groups[0] != 0) { fprintf(stderr, "JHQ_BP_GROUPS must start with 0, the v61 reference\n"); return 1; }
-#ifdef JHQ_PIPELINE_V63
+#if defined(JHQ_PIPELINE_V65)
+    auto set_variant = [&](int g) {
+        const int base = (g >= 1000) ? g - 1000 : g;
+        jhq_gpu::set_refine_lanes(g >= 1000 ? 0 : lanes);
+        jhq_gpu::set_primary_groups(base < 0 ? -1 : base % 100);
+        jhq_gpu::set_shared_bound(base < 0 || base >= 100);
+    };
+    {
+        // the schedule's one statistic, on base vectors offset half a stride from
+        // the training sample's -- never on the evaluation queries
+        const int n_cal = std::max(1, env_int("JHQ_BP_SCHED_CAL", 512));
+        std::vector<float> cal((size_t)n_cal * d);
+        const long long st = std::max(1LL, (long long)nb / n_cal);
+        for (int i = 0; i < n_cal; ++i) {
+            const long long r = std::min((long long)nb - 1, i * st + st / 2);
+            std::memcpy(cal.data() + (size_t)i * d, base.data + (size_t)r * d, (size_t)d * sizeof(float));
+        }
+        idx.calibrate_schedule(cal.data(), n_cal);
+        printf("schedule: per-query candidate count CV %.3f on %d pseudo-queries\n", jhq_gpu::schedule_skew(), n_cal);
+    }
+#elif defined(JHQ_PIPELINE_V63)
     auto set_variant = [&](int g) { jhq_gpu::set_primary_groups(g % 100); jhq_gpu::set_shared_bound(g >= 100); };
 #else
     auto set_variant = [&](int g) { jhq_gpu::set_primary_groups(g); };
@@ -210,6 +235,9 @@ int main(int argc, char** argv) {
 #ifdef JHQ_PIPELINE_V64
     std::fprintf(js, "\"orth_max_abs\":%.6e,\"norm_max_rel\":%.6e,", orth, nrel);
 #endif
+#ifdef JHQ_PIPELINE_V65
+    std::fprintf(js, "\"sched_cv\":%.5f,", jhq_gpu::schedule_skew());
+#endif
     std::fprintf(js, "\"runs\":[");
     bool first_run = true;
 
@@ -222,6 +250,7 @@ int main(int argc, char** argv) {
         for (double bd : batches) {
             const int b = (int)bd;
             if (b > batch_size) { printf("skip b=%d > batch_size %d\n", b, batch_size); continue; }
+            if (b > nq) { printf("skip b=%d > %d queries\n", b, nq); continue; }
             const int nbatch = std::max(1, nq / b);
             const int nused  = nbatch * b;
             const int reps   = std::max(1, (min_batches + nbatch - 1) / nbatch);
@@ -279,8 +308,13 @@ int main(int argc, char** argv) {
             }
 
             // 2. per-query comparison against variant 0 (v62 only)
-            std::fprintf(js, "%s{\"alpha\":%g,\"ck\":%d,\"batch\":%d,\"nbatch\":%d,\"reps\":%d,\"nused\":%d,\"variants\":[",
+            std::fprintf(js, "%s{\"alpha\":%g,\"ck\":%d,\"batch\":%d,\"nbatch\":%d,\"reps\":%d,\"nused\":%d,",
                          first_run ? "" : ",", a, ck, b, nbatch, reps, nused);
+#ifdef JHQ_PIPELINE_V65
+            std::fprintf(js, "\"sched_G\":%d,", jhq_gpu::scheduled_groups(b));
+            printf("  scheduled G for b=%d: %d\n", b, jhq_gpu::scheduled_groups(b));
+#endif
+            std::fprintf(js, "\"variants\":[");
             first_run = false;
             std::vector<std::string> cmpjson(nV, "");
 #ifdef JHQ_BP_CHECKS

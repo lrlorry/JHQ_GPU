@@ -16,11 +16,13 @@ sed -i '' 's|jhq_v<prev>_<name>/|jhq_v<next>_<newname>/|g' \
 
 Afterwards `git status --porcelain jhq_v<prev>_<name>` must be empty.
 
-**Highest version: v64** (`jhq_v64_orthoroute`, v61 with the IVF centroid
-scoring selectable: v61's, or the unrotated query against Pi^T c, serial or on
-a second stream). v62 (`jhq_v62_listgroup`) is v61 with G list groups per query
-and an exact GPU merge; v63 is the pipeline campaign's budget-aware selection
-on top of v62 (experiments/pipeline_campaign). The next change is v65.
+**Highest version: v65** (`jhq_v65_schedule`, v63 with the primary execution
+scheduled per batch: G from the batch size and the index's per-query
+candidate-count skew; one group runs v61's scan). v62 (`jhq_v62_listgroup`):
+G list groups per query and an exact GPU merge; v63 (`jhq_v63_sharedbound`):
+v62 plus an exact shared bound between a query's groups; v64
+(`jhq_v64_orthoroute`): routing by Pi^T c, measured NO-GO
+(experiments/pipeline_campaign). The next change is v66.
 The head for search is **v53** (`jhq_v53_cap`, at `JHQ_CAP_MULT=1`); v48, v49's
 bound, v50, v53's larger buffer and v54's table-free distance are measured
 negatives kept for the record (`results/front6/NEGATIVES.md`).

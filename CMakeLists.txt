@@ -2163,6 +2163,20 @@ target_compile_definitions(demo_jhq_v63_batch PRIVATE
     JHQ_INDEX_HEADER="${V63}/jhq_gpu_index.cuh" JHQ_PIPELINE_V62=1 JHQ_PIPELINE_V63=1 ${V61_DEFS})
 target_link_libraries(demo_jhq_v63_batch PRIVATE jhq_v63_exp)
 
+# v65: v63 with the primary execution scheduled per batch (set_primary_groups
+# (-1) / JHQ_PRIMARY_GROUPS=-1): G from the batch size and one per-index
+# statistic (the per-query candidate count's CV, measured once by
+# calibrate_schedule on pseudo-queries), on the host, with no device read per
+# search; one group runs v61's scan. Fixed G and the shared bound remain
+# selectable so one binary measures the schedule against every fixed choice.
+# demo_jhq_v65_batch: experiments/pipeline_campaign/exp47_bench.sh.
+set(V65 jhq_v65_schedule)
+add_jhq_variant(v65_exp ${V65} ${V61_DEFS})
+add_executable(demo_jhq_v65_batch examples/demo_jhq_batch_pipeline.cu)
+target_compile_definitions(demo_jhq_v65_batch PRIVATE
+    JHQ_INDEX_HEADER="${V65}/jhq_gpu_index.cuh" JHQ_PIPELINE_V62=1 JHQ_PIPELINE_V63=1 JHQ_PIPELINE_V65=1 ${V61_DEFS})
+target_link_libraries(demo_jhq_v65_batch PRIVATE jhq_v65_exp)
+
 # v64: v61 with the IVF centroid scoring selectable (jhq_gpu::set_route_mode,
 # JHQ_ROUTE_MODE): 0 = v61's, rotate then score against c; 1 = score the query
 # as given against Pi^T c (precomputed once per index -- the same products,
