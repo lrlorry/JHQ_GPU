@@ -2084,6 +2084,24 @@ add_jhq_variant(v58_timed ${V58} JHQ_PAPER_FAITHFUL=1
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1
     JHQ_STEP_TIMING=1)
 
+# v60: two probes of the residual refinement, both off by default, so the
+# default binary is v58 and shares its trained-state cache (training is
+# untouched; the arms6 cache directories give the index the paper measured).
+#
+#   JHQ_REFINE_LANES=1|8|16|32  residual_refine_group_kernel: L lanes per
+#       candidate reading 32-bit words, against the thread-per-candidate
+#       fused kernel. L=1 must reproduce the fused kernel's distances exactly.
+#   JHQ_DUMP_REFINE=<path>      raw residual-stage inputs for the first 100
+#       queries, for experiments/refine_probe/analyze_refine_dump.py to measure
+#       how many survivors a partial residual sum can rule out.
+#
+# Driven by experiments/refine_probe/run_refine_probe.sh.
+set(V60 jhq_v60_refine_probe)
+add_jhq_variant(v60_exp ${V60} JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
 # Pure C++ (common/recall.cuh has no CUDA in it), so no CUDA toolchain needed
 # to run these.  ctest, or: ./build/test_recall

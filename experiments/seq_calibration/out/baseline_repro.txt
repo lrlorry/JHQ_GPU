@@ -1,0 +1,31 @@
+R1 alpha_resample.json: 20 cells, 20 identical, 0 differ []
+
+R2 vogue-768/np128  held-out recall  replay | GPU log (different training of the same config)
+   a200 0.9678|0.9676  a100 0.9678|0.9676  a64 0.9676|0.9674  a32 0.9654|0.9650  a16 0.9572|0.9568  a8 0.9352|0.9346  a4 0.8872|0.8870  a2 0.7990|0.7988
+   FULL pool pick: replay 100 | GPU 100
+   S=32   replay: median_a=32  mean_loss=0.0031 p95=0.0106 frac>1e-3=0.701 enum!=bisect=0/2000  | GPU(64): median_a=32 mean_loss=0.0035 p95=0.0108 frac=0.688  [within 64-draw CI]
+   S=64   replay: median_a=64  mean_loss=0.0012 p95=0.0024 frac>1e-3=0.413 enum!=bisect=0/2000  | GPU(64): median_a=64 mean_loss=0.0015 p95=0.0026 frac=0.453  [within 64-draw CI]
+   S=128  replay: median_a=64  mean_loss=0.0004 p95=0.0024 frac>1e-3=0.101 enum!=bisect=0/2000  | GPU(64): median_a=64 mean_loss=0.0004 p95=0.0026 frac=0.078  [within 64-draw CI]
+
+R2 vogue-768/np512  held-out recall  replay | GPU log (different training of the same config)
+   a200 0.9916|0.9912  a100 0.9914|0.9910  a64 0.9910|0.9908  a32 0.9882|0.9878  a16 0.9802|0.9796  a8 0.9554|0.9546  a4 0.9030|0.9028  a2 0.8134|0.8132
+   FULL pool pick: replay 100 | GPU 100
+   S=32   replay: median_a=32  mean_loss=0.0034 p95=0.0114 frac>1e-3=0.624 enum!=bisect=0/2000  | GPU(64): median_a=32 mean_loss=0.0032 p95=0.0116 frac=0.594  [within 64-draw CI]
+   S=64   replay: median_a=64  mean_loss=0.0014 p95=0.0034 frac>1e-3=0.287 enum!=bisect=0/2000  | GPU(64): median_a=64 mean_loss=0.0015 p95=0.0034 frac=0.359  [within 64-draw CI]
+   S=128  replay: median_a=64  mean_loss=0.0006 p95=0.0006 frac>1e-3=0.036 enum!=bisect=0/2000  | GPU(64): median_a=64 mean_loss=0.0005 p95=0.0004 frac=0.031  [within 64-draw CI]
+
+R2 openai3-3072/np128  held-out recall  replay | GPU log (different training of the same config)
+   a200 0.9382|0.9386  a100 0.9382|0.9386  a64 0.9382|0.9386  a32 0.9382|0.9386  a16 0.9382|0.9386  a8 0.9382|0.9386  a4 0.9382|0.9386  a2 0.9334|0.9338
+   FULL pool pick: replay 4 | GPU 4
+   S=32   replay: median_a=4   mean_loss=0.0010 p95=0.0048 frac>1e-3=0.208 enum!=bisect=0/2000  | GPU(64): median_a=4 mean_loss=0.0012 p95=0.0048 frac=0.250  [within 64-draw CI]
+   S=64   replay: median_a=4   mean_loss=0.0001 p95=0.0000 frac>1e-3=0.021 enum!=bisect=0/2000  | GPU(64): median_a=4 mean_loss=0.0003 p95=0.0000 frac=0.062  [within 64-draw CI]
+   S=128  replay: median_a=4   mean_loss=0.0000 p95=0.0000 frac>1e-3=0.000 enum!=bisect=0/2000  | GPU(64): median_a=4 mean_loss=0.0000 p95=0.0000 frac=0.000  [within 64-draw CI]
+
+R2 openai3-3072/np512  held-out recall  replay | GPU log (different training of the same config)
+   a200 0.9796|0.9802  a100 0.9796|0.9802  a64 0.9796|0.9802  a32 0.9796|0.9802  a16 0.9796|0.9802  a8 0.9796|0.9802  a4 0.9794|0.9800  a2 0.9716|0.9722
+   FULL pool pick: replay 4 | GPU 4
+   S=32   replay: median_a=4   mean_loss=0.0017 p95=0.0080 frac>1e-3=0.195 enum!=bisect=0/2000  | GPU(64): median_a=4 mean_loss=0.0025 p95=0.0080 frac=0.297  [within 64-draw CI]
+   S=64   replay: median_a=4   mean_loss=0.0003 p95=0.0002 frac>1e-3=0.011 enum!=bisect=0/2000  | GPU(64): median_a=4 mean_loss=0.0003 p95=0.0002 frac=0.016  [within 64-draw CI]
+   S=128  replay: median_a=4   mean_loss=0.0002 p95=0.0002 frac>1e-3=0.000 enum!=bisect=0/2000  | GPU(64): median_a=4 mean_loss=0.0002 p95=0.0002 frac=0.000  [within 64-draw CI]
+
+wrote out/baseline_repro.json
