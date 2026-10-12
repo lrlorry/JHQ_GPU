@@ -17,16 +17,23 @@
 #   cd /root/JHQ_GPU && git pull
 #   cmake -S . -B build && cmake --build build --target demo_jhq_v61_batch -j8
 #   nohup bash experiments/pipeline_v62/run_phase0.sh > results/pipeline_v62_phase0.log 2>&1 & tail -f /root/JHQ_GPU/results/pipeline_v62_phase0.log
+# (or the same from a worktree: git worktree add --detach <dir> origin/<branch>)
 set -u
 exec 9>/root/.lock_pipeline_v62; flock -n 9 || { echo "already running"; exit 0; }
 export PATH=/root/miniconda3/bin:/usr/local/cuda/bin:/usr/local/bin:$PATH
-cd /root/JHQ_GPU
+# The repository this script lives in -- /root/JHQ_GPU, or a separate worktree
+# when that one holds someone else's uncommitted work (it did, 2026-10-13).
+cd "$(dirname "$(readlink -f "$0")")/../.."
+echo "repo: $(pwd)"
 R=results/pipeline_v62/phase0
 NS=/root/autodl-tmp/pipeline_v62_nsys
 mkdir -p $R $NS
 echo "=== $(date -u +%FT%TZ) head=$(git log --oneline -1) ==="
 nvidia-smi --query-gpu=name,driver_version --format=csv,noheader | sed 's/^/GPU: /'
-timeout 600 cmake -S . -B build >/dev/null 2>&1; echo "configure_rc=$?"
+# Release and compute_80, as every earlier build on this box: a fresh worktree
+# would otherwise get CMakeLists' default architecture.
+timeout 600 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=80 >/dev/null 2>&1
+echo "configure_rc=$?"
 timeout 2400 cmake --build build -j 16 --target demo_jhq_v61_batch >/dev/null 2>&1
 rc=$?; echo "build_rc=$rc"
 [ $rc -ne 0 ] && { echo "=== PHASE0""_DONE build failed, nothing run ==="; exit 1; }
