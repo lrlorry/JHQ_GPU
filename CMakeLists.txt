@@ -2123,6 +2123,14 @@ target_compile_definitions(demo_jhq_v61_ab PRIVATE
     JHQ_INDEX_HEADER="${V61}/jhq_gpu_index.cuh" ${V61_DEFS})
 target_link_libraries(demo_jhq_v61_ab PRIVATE jhq_v61_exp)
 
+# Batch-size sweep of the v61 pipeline (refinement lanes 16), with NVTX ranges
+# for nsys: the Phase 0 baseline of experiments/pipeline_v62. A new harness on
+# the existing library; v61's sources are not touched.
+add_executable(demo_jhq_v61_batch examples/demo_jhq_batch_pipeline.cu)
+target_compile_definitions(demo_jhq_v61_batch PRIVATE
+    JHQ_INDEX_HEADER="${V61}/jhq_gpu_index.cuh" ${V61_DEFS})
+target_link_libraries(demo_jhq_v61_batch PRIVATE jhq_v61_exp)
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
 # Pure C++ (common/recall.cuh has no CUDA in it), so no CUDA toolchain needed
 # to run these.  ctest, or: ./build/test_recall
