@@ -10,7 +10,8 @@ Inputs in <dir>, per configuration tag <t>:
                            memcpy with its duration and enclosing NVTX range
                            "a<alpha>|b<b>|G<G>|r<round>"
 
-Each NVTX range holds back-to-back searches. They are split in time order: a
+Each NVTX range holds back-to-back searches (nsys writes the range in front of
+the kernel name, "a64|b8|G-1|r0/<kernel>"). They are split in time order: a
 search starts at its first kernel after the previous search's final top-k; an
 H2D copy is charged to the search that follows it and a D2H copy to the one
 before. Within a search the kernels before select_probes are cuBLAS GEMMs: the
@@ -73,8 +74,14 @@ def read_trace(path):
     knvtx = next((c for c in cols if "NVTX" in c), None)
     out = []
     for r in rows:
+        name = r[kname]
         rng = (r.get(knvtx) or "") if knvtx else ""
-        out.append((float(r[kstart]), float(r[kdur]), r[kname], rng))
+        # nsys 2025 puts the enclosing NVTX range in front of the name,
+        # "a64|b8|G-1|r0/void cutlass::...", rather than in a column of its own.
+        m = re.match(r"^(a[\d.]+\|b\d+\|G-?\d+\|r\d+)/(.*)$", name)
+        if m:
+            rng, name = m.group(1), m.group(2)
+        out.append((float(r[kstart]), float(r[kdur]), name, rng))
     out.sort()
     return out
 
@@ -108,8 +115,12 @@ def searches_by_range(trace):
                 after_topk = False
             cur["_kernels"] += 1
             if st == "gemm":
-                cur["rotation" if cur["_gemms"] == 0 else "centroid"] += dur
-                cur["_gemms"] += 1
+                # One cublasSgemm can launch a GEMM kernel and a split-K reduce;
+                # the reduce belongs to the call before it. The first call is the
+                # query rotation, the second the IVF centroid scoring.
+                if "reduce" not in name.lower() or cur["_gemms"] == 0:
+                    cur["_gemms"] += 1
+                cur["rotation" if cur["_gemms"] == 1 else "centroid"] += dur
             else:
                 cur[st] += dur
             if st == "topk":
