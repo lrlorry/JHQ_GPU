@@ -2177,6 +2177,17 @@ target_compile_definitions(demo_jhq_v65_batch PRIVATE
     JHQ_INDEX_HEADER="${V65}/jhq_gpu_index.cuh" JHQ_PIPELINE_V62=1 JHQ_PIPELINE_V63=1 JHQ_PIPELINE_V65=1 ${V61_DEFS})
 target_link_libraries(demo_jhq_v65_batch PRIVATE jhq_v65_exp)
 
+# v66 (bound pilot): v65 plus a read-only host export of the representation
+# (export_host_state); search is v65's. demo_jhq_v66_bound_pilot runs the
+# offline FP64 study of experiments/residual_aware_bound -- not a search system.
+set(V66 jhq_v66_boundpilot)
+add_jhq_variant(v66_exp ${V66} ${V61_DEFS})
+add_executable(demo_jhq_v66_bound_pilot examples/demo_jhq_v66_bound_pilot.cu)
+target_compile_definitions(demo_jhq_v66_bound_pilot PRIVATE
+    JHQ_INDEX_HEADER="${V66}/jhq_gpu_index.cuh" ${V61_DEFS})
+target_compile_options(demo_jhq_v66_bound_pilot PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-O3 -Xcompiler=-fopenmp>)
+target_link_libraries(demo_jhq_v66_bound_pilot PRIVATE jhq_v66_exp)
+
 # v64: v61 with the IVF centroid scoring selectable (jhq_gpu::set_route_mode,
 # JHQ_ROUTE_MODE): 0 = v61's, rotate then score against c; 1 = score the query
 # as given against Pi^T c (precomputed once per index -- the same products,
