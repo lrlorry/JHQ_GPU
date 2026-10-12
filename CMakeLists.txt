@@ -2102,6 +2102,27 @@ add_jhq_variant(v60_exp ${V60} JHQ_PAPER_FAITHFUL=1
     JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
     JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
 
+# v61: v58 with the refinement kernel selectable between v58's
+# thread-per-candidate byte kernel (lanes 0, the default -- so the default
+# binary searches exactly as v58) and residual_refine_group_kernel (lanes 1:
+# 32-bit loads only; 8/16/32: lanes per candidate), ported from v60 where it
+# was measured. jhq_gpu::set_refine_lanes() switches it between searches;
+# JHQ_REFINE_LANES sets the start. No dump path, no other change.
+#
+# demo_jhq_v61_ab builds one index and measures every kernel on it: per-query
+# ids and distances against lanes 0, and rotated, paired timing. Driven by
+# experiments/warp_refine/run_warp_refine.sh.
+set(V61 jhq_v61_warp_refine)
+set(V61_DEFS JHQ_PAPER_FAITHFUL=1
+    JHQ_PREFIX_NUM=1 JHQ_PREFIX_DEN=1
+    JHQ_K_LOCAL=4 JHQ_PREFIX_KEEP=4
+    JHQ_TILE_C=2 JHQ_TILE_STRIDED=1 JHQ_BITONIC_SELECT=1 JHQ_CAP_MULT=1)
+add_jhq_variant(v61_exp ${V61} ${V61_DEFS})
+add_executable(demo_jhq_v61_ab examples/demo_jhq_v61_refine_ab.cu)
+target_compile_definitions(demo_jhq_v61_ab PRIVATE
+    JHQ_INDEX_HEADER="${V61}/jhq_gpu_index.cuh" ${V61_DEFS})
+target_link_libraries(demo_jhq_v61_ab PRIVATE jhq_v61_exp)
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
 # Pure C++ (common/recall.cuh has no CUDA in it), so no CUDA toolchain needed
 # to run these.  ctest, or: ./build/test_recall

@@ -16,8 +16,9 @@ sed -i '' 's|jhq_v<prev>_<name>/|jhq_v<next>_<newname>/|g' \
 
 Afterwards `git status --porcelain jhq_v<prev>_<name>` must be empty.
 
-**Highest version: v60** (`jhq_v60_refine_probe`, v58 plus two off-by-default
-refinement probes). The next change is v61.
+**Highest version: v61** (`jhq_v61_warp_refine`, v58 with the refinement kernel
+selectable: v58's by default, or 32-bit loads / L lanes per candidate). The
+next change is v62.
 The head for search is **v53** (`jhq_v53_cap`, at `JHQ_CAP_MULT=1`); v48, v49's
 bound, v50, v53's larger buffer and v54's table-free distance are measured
 negatives kept for the record (`results/front6/NEGATIVES.md`).
