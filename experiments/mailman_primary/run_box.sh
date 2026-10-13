@@ -39,4 +39,9 @@ if [ $MODE = bench ] || [ $MODE = all ]; then
     echo "bench $t rc=$? $(tail -1 $R/bench_$t$SUF.txt)  $(date -u +%T)"
   done
 fi
+if [ $MODE = bench ] || [ $MODE = all ]; then
+  # which shared-memory atomic the FP32 histogram update compiles to (sm_80 SASS in the binary)
+  cuobjdump -sass -arch sm_80 build/mailman_bench 2>/dev/null | grep -oE "ATOMS\.[A-Z0-9.]+|RED\.[A-Z0-9.]+" | sort | uniq -c > $R/atomics_sass.txt
+  cat $R/atomics_sass.txt
+fi
 echo "=== MAILMAN_DONE $(date -u +%FT%TZ)"

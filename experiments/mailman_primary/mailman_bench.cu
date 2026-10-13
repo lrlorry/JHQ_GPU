@@ -184,6 +184,70 @@ __global__ void k_h1_r8(const u32* __restrict__ P8g, int d, GroupArgs a, float* 
     if (PROF && lane == 0) for (int i = 0; i < 4; ++i) atomicAdd(&g_phase[i], ph[i]);
 }
 
+// Iteration 2 (EXPERIMENT_LOG): H1 r = 8 shaped by the measured pattern distribution. Within a list most
+// dimensions carry the same bit for most codes, so the all-zero and all-one patterns are 35-52% of the
+// updates on the 768-dimensional sets and the buckets every warp collides on. Bucket 0 belongs to no
+// candidate (no bit set), so it is skipped; bucket 255 belongs to all eight, so it is summed in a register
+// and added to every z after the warp reduction. Same sums, fewer and less contended atomics.
+template <bool PROF>
+__global__ void k_h1z_r8(const u32* __restrict__ P8g, int d, GroupArgs a, float* __restrict__ out)
+{
+    extern __shared__ float sm[];
+    float* s_q = sm;
+    const int q = blockIdx.y, nw = blockDim.x >> 5, warp = threadIdx.x >> 5, lane = threadIdx.x & 31;
+    float* h = sm + d + warp * 256;
+    for (int i = threadIdx.x; i < d; i += blockDim.x) s_q[i] = a.qf[(long)q * d + i];
+    __syncthreads();
+    const int d4 = d >> 2;
+    const long gb = a.grp_off[q], ng = a.grp_off[q + 1] - gb, ob = a.cand_off[q];
+    const float c0 = a.C0[q];
+    unsigned long long t0 = 0, ph[4] = {0, 0, 0, 0};
+    for (long e = (long)blockIdx.x * nw + warp; e < ng; e += (long)gridDim.x * nw) {
+        if (PROF) t0 = clock64();
+        #pragma unroll
+        for (int i = 0; i < 8; ++i) h[lane + 32 * i] = 0.f;
+        __syncwarp();
+        if (PROF) { ph[0] += clock64() - t0; t0 = clock64(); }
+        const u32* pp = P8g + (long)a.grp_id[gb + e] * d4;
+        float all = 0.f;
+        for (int j4 = lane; j4 < d4; j4 += 32) {
+            const u32 w = __ldg(&pp[j4]);
+            const float4 qv = reinterpret_cast<const float4*>(s_q)[j4];
+            const float qq[4] = {qv.x, qv.y, qv.z, qv.w};
+            #pragma unroll
+            for (int t = 0; t < 4; ++t) {
+                const u32 p = (w >> (8 * t)) & 255u;
+                if (p == 255u) all += qq[t];
+                else if (p != 0u) atomicAdd(&h[p], qq[t]);
+            }
+        }
+        __syncwarp();
+        if (PROF) { ph[1] += clock64() - t0; t0 = clock64(); }
+        float v[8], tot = 0.f;
+        #pragma unroll
+        for (int u = 0; u < 8; ++u) { v[u] = h[lane * 8 + u]; tot += v[u]; }
+        float z[8];
+        z[0] = v[1] + v[3] + v[5] + v[7];
+        z[1] = v[2] + v[3] + v[6] + v[7];
+        z[2] = v[4] + v[5] + v[6] + v[7];
+        #pragma unroll
+        for (int k = 3; k < 8; ++k) z[k] = ((lane >> (k - 3)) & 1) ? tot : 0.f;
+        #pragma unroll
+        for (int k = 0; k < 8; ++k) z[k] = warp_sum(z[k]);
+        const float allsum = warp_sum(all);
+        float my = z[0];
+        #pragma unroll
+        for (int k = 1; k < 8; ++k) my = (lane == k) ? z[k] : my;
+        my += allsum;
+        if (PROF) { ph[2] += clock64() - t0; t0 = clock64(); }
+        const int cnt = a.grp_cnt[gb + e];
+        if (lane < cnt) out[ob + a.grp_out[gb + e] + lane] = fmaf(a.coef, my, c0);
+        __syncwarp();
+        if (PROF) ph[3] += clock64() - t0;
+    }
+    if (PROF && lane == 0) for (int i = 0; i < 4; ++i) atomicAdd(&g_phase[i], ph[i]);
+}
+
 template <bool PROF>
 __global__ void k_h1_r4(const u32* __restrict__ P4g, int d, GroupArgs a, float* __restrict__ out)
 {
@@ -276,6 +340,64 @@ __global__ void k_h2_r8(const u32* __restrict__ P8d, long G, int d, GroupArgs a,
             float* o = out + ob + a.grp_out[gb + e];
             #pragma unroll
             for (int i = 0; i < 8; ++i) if (i < cnt) o[i] = fmaf(a.coef, z[i], c0);
+        }
+        if (PROF) ph[3] += clock64() - t0;
+    }
+    if (PROF && lane == 0) for (int i = 0; i < 4; ++i) atomicAdd(&g_phase[i], ph[i]);
+}
+
+// Iteration 1 (EXPERIMENT_LOG): r = 6 -- 64 buckets a lane, 8 KB a warp instead of r = 8's 32 KB, to test
+// whether H2 is bound by shared-memory operations per candidate-dimension (3 per dimension a group, so
+// 12/r times B0's) once occupancy is no longer the limit. Patterns are stored one byte a dimension.
+template <bool PROF>
+__global__ void k_h2_r6(const u32* __restrict__ P6d, long G, int d, GroupArgs a, float* __restrict__ out)
+{
+    extern __shared__ float sm[];
+    float* s_q = sm;
+    const int q = blockIdx.y, nw = blockDim.x >> 5, warp = threadIdx.x >> 5, lane = threadIdx.x & 31;
+    float* h = sm + d + (long)warp * 64 * 32 + lane;
+    for (int i = threadIdx.x; i < d; i += blockDim.x) s_q[i] = a.qf[(long)q * d + i];
+    __syncthreads();
+    const int d4 = d >> 2;
+    const long gb = a.grp_off[q], ng = a.grp_off[q + 1] - gb, ob = a.cand_off[q];
+    const float c0 = a.C0[q];
+    unsigned long long t0 = 0, ph[4] = {0, 0, 0, 0};
+    for (long e0 = ((long)blockIdx.x * nw + warp) * 32; e0 < ng; e0 += (long)gridDim.x * nw * 32) {
+        const long e = e0 + lane;
+        const bool valid = e < ng;
+        const long g = valid ? a.grp_id[gb + e] : 0;
+        if (PROF) t0 = clock64();
+        #pragma unroll
+        for (int p = 0; p < 64; ++p) h[p * 32] = 0.f;
+        if (PROF) { ph[0] += clock64() - t0; t0 = clock64(); }
+        for (int j4 = 0; j4 < d4; ++j4) {
+            const u32 w = valid ? __ldg(&P6d[(long)j4 * G + g]) : 0u;
+            const float4 qv = reinterpret_cast<const float4*>(s_q)[j4];
+            h[(w & 63u) * 32] += qv.x;
+            h[((w >> 8) & 63u) * 32] += qv.y;
+            h[((w >> 16) & 63u) * 32] += qv.z;
+            h[((w >> 24) & 63u) * 32] += qv.w;
+        }
+        if (PROF) { ph[1] += clock64() - t0; t0 = clock64(); }
+        float z[6];
+        #pragma unroll
+        for (int k = 5; k >= 0; --k) {
+            const int half = 1 << k;
+            float s = 0.f;
+            #pragma unroll
+            for (int t = 0; t < half; ++t) s += h[(half + t) * 32];
+            z[k] = s;
+            if (k > 0) {
+                #pragma unroll
+                for (int t = 0; t < half; ++t) h[t * 32] += h[(half + t) * 32];
+            }
+        }
+        if (PROF) { ph[2] += clock64() - t0; t0 = clock64(); }
+        if (valid) {
+            const int cnt = a.grp_cnt[gb + e];
+            float* o = out + ob + a.grp_out[gb + e];
+            #pragma unroll
+            for (int i = 0; i < 6; ++i) if (i < cnt) o[i] = fmaf(a.coef, z[i], c0);
         }
         if (PROF) ph[3] += clock64() - t0;
     }
@@ -444,10 +566,11 @@ int main(int argc, char** argv)
                 gcnt[g] = (unsigned char)std::min<long>(r, offs[l + 1] - s);
             }
     };
-    std::vector<long> gb8, gb4; std::vector<int> gs8, gs4; std::vector<unsigned char> gc8, gc4;
+    std::vector<long> gb8, gb4, gb6; std::vector<int> gs8, gs4, gs6; std::vector<unsigned char> gc8, gc4, gc6;
     make_groups(8, gb8, gs8, gc8);
     make_groups(4, gb4, gs4, gc4);
-    const long G8 = gb8[nlist], G4 = gb4[nlist];
+    make_groups(6, gb6, gs6, gc6);
+    const long G8 = gb8[nlist], G4 = gb4[nlist], G6 = gb6[nlist];
     auto bit = [&](long pos, int j) -> u32 { return (codes[(size_t)pos * M + (j >> 3)] >> (7 - (j & 7))) & 1u; };
     t0 = clk::now();
     std::vector<u32> P8g((size_t)G8 * (d / 4)), P8d((size_t)(d / 4) * G8);
@@ -479,6 +602,20 @@ int main(int argc, char** argv)
             P4d[(size_t)j8 * G4 + g] = w;
         }
     const double t_p4 = secs(t0);
+    t0 = clk::now();
+    std::vector<u32> P6d((size_t)(d / 4) * G6);
+    #pragma omp parallel for schedule(dynamic, 256)
+    for (long g = 0; g < G6; ++g)
+        for (int j4 = 0; j4 < d / 4; ++j4) {
+            u32 w = 0;
+            for (int t = 0; t < 4; ++t) {
+                u32 p = 0;
+                for (int i = 0; i < gc6[g]; ++i) p |= bit(gs6[g] + i, 4 * j4 + t) << i;
+                w |= p << (8 * t);
+            }
+            P6d[(size_t)j4 * G6 + g] = w;
+        }
+    const double t_p6 = secs(t0);
     std::printf("layouts: words %.2f s, r=8 patterns %.2f s (G=%ld), r=4 patterns %.2f s (G=%ld), threads %d\n",
                 t_words, t_p8, G8, t_p4, G4, omp_get_max_threads());
 
@@ -510,7 +647,8 @@ int main(int argc, char** argv)
     std::printf("candidate order differs from the export's in %ld queries (mapped by position)\n", order_mismatch);
 
     // ── device data ──────────────────────────────────────────────────────────────────────────
-    u32 *d_words, *d_P8g, *d_P8d, *d_P4g, *d_P4d;
+    u32 *d_words, *d_P8g, *d_P8d, *d_P4g, *d_P4d, *d_P6d;
+    CK(cudaMalloc(&d_P6d, P6d.size() * 4)); CK(cudaMemcpy(d_P6d, P6d.data(), P6d.size() * 4, cudaMemcpyHostToDevice));
     CK(cudaMalloc(&d_words, words.size() * 4)); CK(cudaMemcpy(d_words, words.data(), words.size() * 4, cudaMemcpyHostToDevice));
     CK(cudaMalloc(&d_P8g, P8g.size() * 4)); CK(cudaMemcpy(d_P8g, P8g.data(), P8g.size() * 4, cudaMemcpyHostToDevice));
     CK(cudaMalloc(&d_P8d, P8d.size() * 4)); CK(cudaMemcpy(d_P8d, P8d.data(), P8d.size() * 4, cudaMemcpyHostToDevice));
@@ -523,32 +661,32 @@ int main(int argc, char** argv)
 
     FILE* jf = std::fopen(outp.c_str(), "w");
     std::fprintf(jf, "{\"gpu\":\"%s\",\"sms\":%d,\"N\":%ld,\"d\":%d,\"M\":%d,\"nlist\":%d,\"c\":%.10g,\"block_b0\":%d,"
-                     "\"layout_bytes\":{\"words\":%zu,\"P8\":%zu,\"P4\":%zu,\"raw_bits_bytes\":%ld},"
-                     "\"build_s\":{\"words\":%.3f,\"P8_both\":%.3f,\"P4_both\":%.3f},\"groups\":{\"G8\":%ld,\"G4\":%ld},"
+                     "\"layout_bytes\":{\"words\":%zu,\"P8\":%zu,\"P4\":%zu,\"P6_bytes_a_dim\":%zu,\"raw_bits_bytes\":%ld},"
+                     "\"build_s\":{\"words\":%.3f,\"P8_both\":%.3f,\"P4_both\":%.3f,\"P6\":%.3f},\"groups\":{\"G8\":%ld,\"G4\":%ld,\"G6\":%ld},"
                      "\"profile\":%d,\"runs\":[",
                  prop.name, dev_sms, N, d, M, nlist, c, block_b0, words.size() * 4, P8g.size() * 4, P4g.size() * 4,
-                 N * d / 8, t_words, t_p8, t_p4, G8, G4, (int)profile);
+                 P6d.size() * 4, N * d / 8, t_words, t_p8, t_p4, t_p6, G8, G4, G6, (int)profile);
     bool first = true;
 
     for (int B : batches) {
         const int nb = std::max(1, std::min(nS / B, B >= 256 ? 1 : 16));     // batches timed
         // per-batch device arrays, built for the first batch of size B and reused shape-wise
-        constexpr int NS = 5, NI = 8;                     // 5 scorers (checked), then 3 timed-only items
+        constexpr int NS = 7, NI = 10;                    // 7 scorers (checked), then 3 timed-only items
         std::vector<std::vector<double>> st(NI);         // ms per launch per item
-        const char* names[NI] = {"B0", "H1_r8", "H1_r4", "H2_r8", "H2_r4", "B0_scangrid", "B0_prep_lut", "MM_prep_C0"};
-        double err_max[5] = {0, 0, 0, 0, 0}, err_sum[5] = {0, 0, 0, 0, 0}; long err_n = 0;
-        std::vector<double> errs[5];
-        double vs_b0_max[5] = {0, 0, 0, 0, 0};
-        int topT_diff_fp64[5] = {0, 0, 0, 0, 0}, topT_diff_b0[5] = {0, 0, 0, 0, 0};
-        double topT_gap_max[5] = {0, 0, 0, 0, 0};
+        const char* names[NI] = {"B0", "H1_r8", "H1_r4", "H2_r8", "H2_r4", "H2_r6", "H1z_r8", "B0_scangrid", "B0_prep_lut", "MM_prep_C0"};
+        double err_max[NS] = {}, err_sum[NS] = {}; long err_n = 0;
+        std::vector<double> errs[NS];
+        double vs_b0_max[NS] = {};
+        int topT_diff_fp64[NS] = {}, topT_diff_b0[NS] = {};
+        double topT_gap_max[NS] = {};
         long ncand_tot = 0;
-        unsigned long long phase[5][4] = {};
+        unsigned long long phase[NS][4] = {};
         double c0_dev_rel = 0.0;
         for (int bi = 0; bi < nb; ++bi) {
             const int q0 = bi * B;
             // candidates, groups
-            std::vector<long> cand_off(B + 1, 0), g8off(B + 1, 0), g4off(B + 1, 0);
-            std::vector<int> cpos, g8id, g8out, g4id, g4out; std::vector<unsigned char> g8cnt, g4cnt;
+            std::vector<long> cand_off(B + 1, 0), g8off(B + 1, 0), g4off(B + 1, 0), g6off(B + 1, 0);
+            std::vector<int> cpos, g8id, g8out, g4id, g4out, g6id, g6out; std::vector<unsigned char> g8cnt, g4cnt, g6cnt;
             std::vector<float> qf((size_t)B * d), C0(B);
             for (int i = 0; i < B; ++i) {
                 const QueryData& Q = qd[q0 + i];
@@ -557,10 +695,11 @@ int main(int argc, char** argv)
                     for (int p = offs[l]; p < offs[l + 1]; ++p) cpos.push_back(p);
                     for (long g = gb8[l]; g < gb8[l + 1]; ++g) { g8id.push_back((int)g); g8out.push_back((int)(o + (g - gb8[l]) * 8)); g8cnt.push_back(gc8[g]); }
                     for (long g = gb4[l]; g < gb4[l + 1]; ++g) { g4id.push_back((int)g); g4out.push_back((int)(o + (g - gb4[l]) * 4)); g4cnt.push_back(gc4[g]); }
+                    for (long g = gb6[l]; g < gb6[l + 1]; ++g) { g6id.push_back((int)g); g6out.push_back((int)(o + (g - gb6[l]) * 6)); g6cnt.push_back(gc6[g]); }
                     o += offs[l + 1] - offs[l];
                 }
                 cand_off[i + 1] = cand_off[i] + o;
-                g8off[i + 1] = (long)g8id.size(); g4off[i + 1] = (long)g4id.size();
+                g8off[i + 1] = (long)g8id.size(); g4off[i + 1] = (long)g4id.size(); g6off[i + 1] = (long)g6id.size();
                 double qn2 = 0, sq = 0;
                 for (int j = 0; j < d; ++j) {
                     const double v = qrot[(size_t)(q0 + i) * d + j];
@@ -570,29 +709,32 @@ int main(int argc, char** argv)
             }
             const long nc = cand_off[B];
             ncand_tot += nc;
-            int *d_cpos, *d_g8id, *d_g8out, *d_g4id, *d_g4out; unsigned char *d_g8cnt, *d_g4cnt;
-            long *d_coff, *d_g8off, *d_g4off; float *d_qf, *d_C0, *d_C0x, *d_lut, *d_out[5];
+            int *d_cpos, *d_g8id, *d_g8out, *d_g4id, *d_g4out, *d_g6id, *d_g6out; unsigned char *d_g8cnt, *d_g4cnt, *d_g6cnt;
+            long *d_coff, *d_g8off, *d_g4off, *d_g6off; float *d_qf, *d_C0, *d_C0x, *d_lut, *d_out[NS];
             CK(cudaMalloc(&d_cpos, nc * 4)); CK(cudaMemcpy(d_cpos, cpos.data(), nc * 4, cudaMemcpyHostToDevice));
             CK(cudaMalloc(&d_coff, (B + 1) * 8)); CK(cudaMemcpy(d_coff, cand_off.data(), (B + 1) * 8, cudaMemcpyHostToDevice));
             auto up = [](auto& v, auto*& d) { CK(cudaMalloc(&d, v.size() * sizeof(v[0]))); CK(cudaMemcpy(d, v.data(), v.size() * sizeof(v[0]), cudaMemcpyHostToDevice)); };
             up(g8id, d_g8id); up(g8out, d_g8out); up(g8cnt, d_g8cnt); up(g4id, d_g4id); up(g4out, d_g4out); up(g4cnt, d_g4cnt);
             up(g8off, d_g8off); up(g4off, d_g4off); up(qf, d_qf); up(C0, d_C0);
+            up(g6id, d_g6id); up(g6out, d_g6out); up(g6cnt, d_g6cnt); up(g6off, d_g6off);
             CK(cudaMalloc(&d_lut, (size_t)B * M * 32 * 4));
             CK(cudaMalloc(&d_C0x, (size_t)B * 4));
-            for (int k = 0; k < 5; ++k) { CK(cudaMalloc(&d_out[k], nc * 4)); CK(cudaMemset(d_out[k], 0xff, nc * 4)); }
+            for (int k = 0; k < NS; ++k) { CK(cudaMalloc(&d_out[k], nc * 4)); CK(cudaMemset(d_out[k], 0xff, nc * 4)); }
             GroupArgs a8{d_g8id, d_g8out, d_g8cnt, d_g8off, d_coff, d_qf, d_C0, (float)(-4 * c)};
             GroupArgs a4{d_g4id, d_g4out, d_g4cnt, d_g4off, d_coff, d_qf, d_C0, (float)(-4 * c)};
-            long maxn = 0, maxg8 = 0, maxg4 = 0;
-            for (int i = 0; i < B; ++i) { maxn = std::max(maxn, cand_off[i + 1] - cand_off[i]); maxg8 = std::max(maxg8, g8off[i + 1] - g8off[i]); maxg4 = std::max(maxg4, g4off[i + 1] - g4off[i]); }
+            GroupArgs a6{d_g6id, d_g6out, d_g6cnt, d_g6off, d_coff, d_qf, d_C0, (float)(-4 * c)};
+            long maxn = 0, maxg8 = 0, maxg4 = 0, maxg6 = 0;
+            for (int i = 0; i < B; ++i) { maxn = std::max(maxn, cand_off[i + 1] - cand_off[i]); maxg8 = std::max(maxg8, g8off[i + 1] - g8off[i]); maxg4 = std::max(maxg4, g4off[i + 1] - g4off[i]); maxg6 = std::max(maxg6, g6off[i + 1] - g6off[i]); }
             const int target = std::max(1, 4 * dev_sms / B);     // blocks a query, before the work bound
-            const int h1w = 8, h2w8 = 2, h2w4 = 8;
+            const int h1w = 8, h2w8 = 2, h2w4 = 8, h2w6 = 4;
             const int gx_b0 = (int)std::min<long>(target, (maxn + block_b0 - 1) / block_b0);
             const int gx_h18 = (int)std::min<long>(target, (maxg8 + h1w - 1) / h1w);
             const int gx_h14 = (int)std::min<long>(target, (maxg4 + h1w - 1) / h1w);
             const int gx_h28 = (int)std::max<long>(1, std::min<long>(4 * target, (maxg8 + 32 * h2w8 - 1) / (32 * h2w8)));
             const int gx_h24 = (int)std::max<long>(1, std::min<long>(target, (maxg4 + 32 * h2w4 - 1) / (32 * h2w4)));
+            const int gx_h26 = (int)std::max<long>(1, std::min<long>(2 * target, (maxg6 + 32 * h2w6 - 1) / (32 * h2w6)));
             const int sm_b0 = M * 32 * 4, sm_h18 = d * 4 + h1w * 256 * 4, sm_h14 = d * 4 + h1w * 16 * 4;
-            const int sm_h28 = d * 4 + h2w8 * 256 * 32 * 4, sm_h24 = d * 4 + h2w4 * 16 * 32 * 4;
+            const int sm_h28 = d * 4 + h2w8 * 256 * 32 * 4, sm_h24 = d * 4 + h2w4 * 16 * 32 * 4, sm_h26 = d * 4 + h2w6 * 64 * 32 * 4;
             CK(cudaFuncSetAttribute(k_b0, cudaFuncAttributeMaxDynamicSharedMemorySize, sm_b0));
             CK(cudaFuncSetAttribute(k_h1_r8<false>, cudaFuncAttributeMaxDynamicSharedMemorySize, sm_h18));
             CK(cudaFuncSetAttribute(k_h1_r4<false>, cudaFuncAttributeMaxDynamicSharedMemorySize, sm_h14));
@@ -602,12 +744,20 @@ int main(int argc, char** argv)
             CK(cudaFuncSetAttribute(k_h1_r4<true>, cudaFuncAttributeMaxDynamicSharedMemorySize, sm_h14));
             CK(cudaFuncSetAttribute(k_h2_r8<true>, cudaFuncAttributeMaxDynamicSharedMemorySize, sm_h28));
             CK(cudaFuncSetAttribute(k_h2_r4<true>, cudaFuncAttributeMaxDynamicSharedMemorySize, sm_h24));
+            CK(cudaFuncSetAttribute(k_h2_r6<false>, cudaFuncAttributeMaxDynamicSharedMemorySize, sm_h26));
+            CK(cudaFuncSetAttribute(k_h2_r6<true>, cudaFuncAttributeMaxDynamicSharedMemorySize, sm_h26));
+            CK(cudaFuncSetAttribute(k_h1z_r8<false>, cudaFuncAttributeMaxDynamicSharedMemorySize, sm_h18));
+            CK(cudaFuncSetAttribute(k_h1z_r8<true>, cudaFuncAttributeMaxDynamicSharedMemorySize, sm_h18));
             auto launch = [&](int k, bool prof) {
                 switch (k) {
                 case 0: k_b0<<<dim3(gx_b0, B), block_b0, sm_b0>>>(d_words, N, M, d_lut, d_cpos, d_coff, d_out[0]); break;
-                case 5: k_b0<<<dim3(B <= 32 ? 8 : 1, B), block_b0, sm_b0>>>(d_words, N, M, d_lut, d_cpos, d_coff, d_out[0]); break;
-                case 6: k_build_lut<<<dim3((M * 32 + 255) / 256, B), 256>>>(d_qf, d, M, (float)c, d_lut); break;
-                case 7: k_prep_mm<<<B, 256>>>(d_qf, d, (float)c, d_C0x); break;
+                case 5: if (prof) k_h2_r6<true><<<dim3(gx_h26, B), 32 * h2w6, sm_h26>>>(d_P6d, G6, d, a6, d_out[5]);
+                        else k_h2_r6<false><<<dim3(gx_h26, B), 32 * h2w6, sm_h26>>>(d_P6d, G6, d, a6, d_out[5]); break;
+                case 6: if (prof) k_h1z_r8<true><<<dim3(gx_h18, B), 32 * h1w, sm_h18>>>(d_P8g, d, a8, d_out[6]);
+                        else k_h1z_r8<false><<<dim3(gx_h18, B), 32 * h1w, sm_h18>>>(d_P8g, d, a8, d_out[6]); break;
+                case 7: k_b0<<<dim3(B <= 32 ? 8 : 1, B), block_b0, sm_b0>>>(d_words, N, M, d_lut, d_cpos, d_coff, d_out[0]); break;
+                case 8: k_build_lut<<<dim3((M * 32 + 255) / 256, B), 256>>>(d_qf, d, M, (float)c, d_lut); break;
+                case 9: k_prep_mm<<<B, 256>>>(d_qf, d, (float)c, d_C0x); break;
                 case 1: if (prof) k_h1_r8<true><<<dim3(gx_h18, B), 32 * h1w, sm_h18>>>(d_P8g, d, a8, d_out[1]);
                         else k_h1_r8<false><<<dim3(gx_h18, B), 32 * h1w, sm_h18>>>(d_P8g, d, a8, d_out[1]); break;
                 case 2: if (prof) k_h1_r4<true><<<dim3(gx_h14, B), 32 * h1w, sm_h14>>>(d_P4g, d, a4, d_out[2]);
@@ -620,12 +770,12 @@ int main(int argc, char** argv)
             };
             // correctness: one run each, against FP64 and B0 (the LUT first; the C0 the scorers use is the
             // host's FP64 value, and the device preparation is checked against it)
-            launch(6, false);
+            launch(8, false);
             for (int k = 0; k < NS; ++k) launch(k, false);
-            launch(7, false);
+            launch(9, false);
             CK(cudaGetLastError()); CK(cudaDeviceSynchronize());
-            std::vector<std::vector<float>> h(5, std::vector<float>(nc));
-            for (int k = 0; k < 5; ++k) CK(cudaMemcpy(h[k].data(), d_out[k], nc * 4, cudaMemcpyDeviceToHost));
+            std::vector<std::vector<float>> h(NS, std::vector<float>(nc));
+            for (int k = 0; k < NS; ++k) CK(cudaMemcpy(h[k].data(), d_out[k], nc * 4, cudaMemcpyDeviceToHost));
             {
                 std::vector<float> cx(B);
                 CK(cudaMemcpy(cx.data(), d_C0x, B * 4, cudaMemcpyDeviceToHost));
@@ -646,7 +796,7 @@ int main(int argc, char** argv)
                 const std::vector<int> tb0 = topT([&](int x) { return (double)h[0][o + x]; });
                 double kth64 = -1e300;
                 for (int x : t64) kth64 = std::max(kth64, ref[x]);
-                for (int k = 0; k < 5; ++k) {
+                for (int k = 0; k < NS; ++k) {
                     for (long t = 0; t < n; ++t) {
                         const double e = std::fabs((double)h[k][o + t] - ref[t]);
                         err_max[k] = std::max(err_max[k], e); err_sum[k] += e;
@@ -664,7 +814,7 @@ int main(int argc, char** argv)
             }
             // phase profile
             if (profile) {
-                for (int k = 1; k < 5; ++k) {
+                for (int k = 1; k < NS; ++k) {
                     unsigned long long z[4] = {0, 0, 0, 0};
                     CK(cudaMemcpyToSymbol(g_phase, z, sizeof(z)));
                     launch(k, true); CK(cudaDeviceSynchronize());
@@ -685,26 +835,30 @@ int main(int argc, char** argv)
             CK(cudaFree(d_cpos)); CK(cudaFree(d_coff)); CK(cudaFree(d_g8id)); CK(cudaFree(d_g8out)); CK(cudaFree(d_g8cnt));
             CK(cudaFree(d_g4id)); CK(cudaFree(d_g4out)); CK(cudaFree(d_g4cnt)); CK(cudaFree(d_g8off)); CK(cudaFree(d_g4off));
             CK(cudaFree(d_qf)); CK(cudaFree(d_C0)); CK(cudaFree(d_C0x)); CK(cudaFree(d_lut));
-            for (int k = 0; k < 5; ++k) CK(cudaFree(d_out[k]));
+            for (int k = 0; k < NS; ++k) CK(cudaFree(d_out[k]));
+            CK(cudaFree(d_g6id)); CK(cudaFree(d_g6out)); CK(cudaFree(d_g6cnt)); CK(cudaFree(d_g6off));
             if (bi == 0) {
-                cudaFuncAttributes fa[5];
+                cudaFuncAttributes fa[NS];
                 CK(cudaFuncGetAttributes(&fa[0], k_b0)); CK(cudaFuncGetAttributes(&fa[1], k_h1_r8<false>));
                 CK(cudaFuncGetAttributes(&fa[2], k_h1_r4<false>)); CK(cudaFuncGetAttributes(&fa[3], k_h2_r8<false>));
-                CK(cudaFuncGetAttributes(&fa[4], k_h2_r4<false>));
-                const int bs[5] = {block_b0, 32 * h1w, 32 * h1w, 32 * h2w8, 32 * h2w4};
-                const int sms[5] = {sm_b0, sm_h18, sm_h14, sm_h28, sm_h24};
-                const int gxs[5] = {gx_b0, gx_h18, gx_h14, gx_h28, gx_h24};
-                int occ[5];
+                CK(cudaFuncGetAttributes(&fa[4], k_h2_r4<false>)); CK(cudaFuncGetAttributes(&fa[5], k_h2_r6<false>));
+                CK(cudaFuncGetAttributes(&fa[6], k_h1z_r8<false>));
+                const int bs[NS] = {block_b0, 32 * h1w, 32 * h1w, 32 * h2w8, 32 * h2w4, 32 * h2w6, 32 * h1w};
+                const int sms[NS] = {sm_b0, sm_h18, sm_h14, sm_h28, sm_h24, sm_h26, sm_h18};
+                const int gxs[NS] = {gx_b0, gx_h18, gx_h14, gx_h28, gx_h24, gx_h26, gx_h18};
+                int occ[NS];
                 CK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&occ[0], k_b0, bs[0], sms[0]));
                 CK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&occ[1], k_h1_r8<false>, bs[1], sms[1]));
                 CK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&occ[2], k_h1_r4<false>, bs[2], sms[2]));
                 CK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&occ[3], k_h2_r8<false>, bs[3], sms[3]));
                 CK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&occ[4], k_h2_r4<false>, bs[4], sms[4]));
-                for (int k = 0; k < 5; ++k)
+                CK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&occ[5], k_h2_r6<false>, bs[5], sms[5]));
+                CK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&occ[6], k_h1z_r8<false>, bs[6], sms[6]));
+                for (int k = 0; k < NS; ++k)
                     std::printf("  %-6s block %4d smem %6d regs %3d grid %5d x %4d  resident blocks/SM %d (warps %d)\n",
                                 names[k], bs[k], sms[k], fa[k].numRegs, gxs[k], B, occ[k], occ[k] * bs[k] / 32);
                 std::fprintf(jf, "%s{\"batch\":%d,\"config\":[", first ? "" : ",", B);
-                for (int k = 0; k < 5; ++k)
+                for (int k = 0; k < NS; ++k)
                     std::fprintf(jf, "%s{\"impl\":\"%s\",\"block\":%d,\"smem\":%d,\"regs\":%d,\"grid_x\":%d,\"blocks_per_sm\":%d}",
                                  k ? "," : "", names[k], bs[k], sms[k], fa[k].numRegs, gxs[k], occ[k]);
                 std::fprintf(jf, "],");
@@ -722,7 +876,7 @@ int main(int argc, char** argv)
             const double med = s[s.size() / 2], p10 = s[s.size() / 10], p90 = s[s.size() * 9 / 10];
             if (k >= NS) {
                 std::printf("  %-11s median %8.1f us/launch [p10 %8.1f, p90 %8.1f]%s\n", names[k], med * 1e3, p10 * 1e3,
-                            p90 * 1e3, k == 5 ? "  (B0 at the scan's own grid: G blocks a query)" : "");
+                            p90 * 1e3, k == 7 ? "  (B0 at the scan's own grid: G blocks a query)" : "");
                 std::fprintf(jf, ",{\"impl\":\"%s\",\"launches\":%zu,\"median_us\":%.3f,\"p10_us\":%.3f,\"p90_us\":%.3f}",
                              names[k], s.size(), med * 1e3, p10 * 1e3, p90 * 1e3);
                 continue;
