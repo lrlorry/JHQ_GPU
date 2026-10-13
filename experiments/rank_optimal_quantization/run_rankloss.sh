@@ -10,7 +10,8 @@ R=results/rank_optimal_quantization
 mkdir -p $R/raw
 echo "=== $(date -u +%FT%TZ) head=$(git log --oneline -1) rankloss ==="
 exec 8>/root/.gpu_lock; flock 8; echo "got the GPU $(date -u +%T)"
-for tag in arxiv-768_np128_a100 vogue-768_np128_a64 openai3-3072_np128_a4; do
+tags="${*:-arxiv-768_np128_a100 vogue-768_np128_a64 openai3-3072_np128_a4}"
+for tag in $tags; do
   t0=$(date +%s)
   python3 $E/rankloss.py $tag $R > $R/raw/rankloss_$tag.txt 2>&1
   echo "rankloss $tag rc=$? $(( $(date +%s) - t0 )) s"

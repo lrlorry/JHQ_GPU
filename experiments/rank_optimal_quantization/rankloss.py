@@ -32,6 +32,22 @@ import roq_common as C  # noqa: E402
 NQ, NHOLD, K, HARD, RAND, NPROBE = 20000, 2000, 10, 100, 200, 128
 
 
+def holdout_cov(X, qi, P, H, Rn, tt, lo_f, hi_f, K, NQ, NHOLD, chunk=200):
+    """coverage of the exact top-10 within the primary top-T among positives + negatives, hard bits, in chunks
+    (2,000 queries x 310 candidates x d floats at once does not fit at d = 3072)."""
+    ranks = []
+    for a in range(NQ, NQ + NHOLD, chunk):
+        hb = torch.arange(a, min(NQ + NHOLD, a + chunk), device=X.device)
+        q = X[qi[hb]]
+        idx = torch.cat([P[hb], H[hb], Rn[hb]], 1)
+        x = X[idx]
+        D = ((q[:, None, :] - torch.where(x > tt, hi_f, lo_f)) ** 2).sum(-1)
+        ranks.append(torch.argsort(torch.argsort(D, 1), 1)[:, :K].float())
+        del x, D
+    rk = torch.cat(ranks)
+    return {T: float((rk < T).float().mean()) for T in (10, 20, 40, 80)}
+
+
 def cond_means_t(x, t):
     a = x > t
     hi = torch.where(a, x, 0).sum(0) / a.sum(0).clamp(min=1)
@@ -48,7 +64,7 @@ def main():
     m = C.meta(tag)
     N, d = m["N"], m["d"]
     xp = C.xpos(tag)
-    X = torch.from_numpy(np.ascontiguousarray(xp[:])).to(dev)                  # [N, d], position order
+    X = torch.from_numpy(np.array(xp[:])).to(dev)                              # [N, d], position order
     off = C.list_offsets(tag)
     lmean = torch.from_numpy(np.fromfile(os.path.join(C.RQ, tag, "lmean.f32"), dtype=np.float32).reshape(-1, d)).to(dev)
     lpos = torch.from_numpy(C.list_of_pos(tag).astype(np.int64)).to(dev)
@@ -111,7 +127,7 @@ def main():
             loss = (F.softplus(g * diff) * w).sum() / w.sum()
             opt.zero_grad(); loss.backward(); opt.step()
             if s % 100 == 0 or s == steps - 1:
-                hist.append((s, float(loss)))
+                hist.append((s, float(loss.detach())))
         with torch.no_grad():
             tt = t.detach()
             if variant == "rl_t":
@@ -120,14 +136,7 @@ def main():
                 lo_f, hi_f = lo.detach(), hi.detach()
             # held-out pseudo-queries, hard bits: coverage of the exact top-10 within the primary top-T among
             # the routed negatives plus positives (a cheap sanity check, not the evaluation)
-            hb = torch.arange(NQ, NQ + NHOLD, device=dev)
-            q = X[qi[hb]]
-            idx = torch.cat([P[hb], H[hb], Rn[hb]], 1)
-            x = X[idx]
-            lv = torch.where(x > tt, hi_f, lo_f)
-            D = ((q[:, None, :] - lv) ** 2).sum(-1)
-            rk = torch.argsort(torch.argsort(D, 1), 1)[:, :K].float()
-            cov = {T: float((rk < T).float().mean()) for T in (10, 20, 40, 80)}
+            cov = holdout_cov(X, qi, P, H, Rn, tt, lo_f, hi_f, K, NQ, NHOLD)
             shift = float(((tt - med) / sd).abs().mean())
             shift0 = float((tt / sd).abs().mean())
         name = "%s_%s" % (variant, init)
@@ -140,13 +149,8 @@ def main():
     with torch.no_grad():
         for nm, tt in (("t0", torch.zeros(d, device=dev)), ("median", med)):
             lo_f, hi_f = cond_means_t(smp, tt)
-            hb = torch.arange(NQ, NQ + NHOLD, device=dev)
-            q = X[qi[hb]]
-            idx = torch.cat([P[hb], H[hb], Rn[hb]], 1)
-            x = X[idx]
-            D = ((q[:, None, :] - torch.where(x > tt, hi_f, lo_f)) ** 2).sum(-1)
-            rk = torch.argsort(torch.argsort(D, 1), 1)[:, :K].float()
-            out["runs"]["reference_" + nm] = dict(holdout_coverage_of_top10_within_T={T: float((rk < T).float().mean()) for T in (10, 20, 40, 80)})
+            out["runs"]["reference_" + nm] = dict(holdout_coverage_of_top10_within_T=holdout_cov(X, qi, P, H, Rn, tt, lo_f, hi_f, K, NQ, NHOLD))
+            print(tag, "reference_" + nm, json.dumps(out["runs"]["reference_" + nm]), flush=True)
     for variant in ("rl_t", "rl_tl"):
         for init in ("zero", "median"):
             run(variant, init)

@@ -2209,6 +2209,18 @@ target_compile_definitions(demo_jhq_v66_export_quant PRIVATE
 target_compile_options(demo_jhq_v66_export_quant PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-O3 -Xcompiler=-fopenmp>)
 target_link_libraries(demo_jhq_v66_export_quant PRIVATE jhq_v66_exp)
 
+# v67 (rank-optimal quantization study): v66 plus import_state, which replaces the primary and residual
+# representation with one built offline on the same rotation, lists and positions; search is v65's.
+# demo_jhq_v67_repr_bench measures v65's search on the paper index and on the imported representation
+# side by side (experiments/rank_optimal_quantization).
+set(V67 jhq_v67_import)
+add_jhq_variant(v67_exp ${V67} ${V61_DEFS})
+add_executable(demo_jhq_v67_repr_bench examples/demo_jhq_v67_repr_bench.cu)
+target_compile_definitions(demo_jhq_v67_repr_bench PRIVATE
+    JHQ_INDEX_HEADER="${V67}/jhq_gpu_index.cuh" ${V61_DEFS})
+target_compile_options(demo_jhq_v67_repr_bench PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-O3 -Xcompiler=-fopenmp>)
+target_link_libraries(demo_jhq_v67_repr_bench PRIVATE jhq_v67_exp)
+
 # v64: v61 with the IVF centroid scoring selectable (jhq_gpu::set_route_mode,
 # JHQ_ROUTE_MODE): 0 = v61's, rotate then score against c; 1 = score the query
 # as given against Pi^T c (precomputed once per index -- the same products,
