@@ -63,6 +63,7 @@ for st in "$@"; do
       rc=0; for p in $pids; do wait $p || rc=1; done; echo "iter4 quantize rc=$rc"
       python3 $E/eval_variants.py $R iter4 median list_mean list_median > $R/raw/eval_iter4.txt 2>&1
       echo "iter4 eval rc=$? $(tail -1 $R/raw/eval_iter4.txt | cut -c1-300)" ;;
+    lmmse) python3 $E/diag_lmmse.py $R median > $R/raw/lmmse.txt 2>&1; echo "lmmse rc=$? $(tail -1 $R/raw/lmmse.txt | cut -c1-200)" ;;
     confirm=*)
       # the final, single read of the test split, for the variants named after "confirm=" (comma separated)
       vs="${st#confirm=}"
