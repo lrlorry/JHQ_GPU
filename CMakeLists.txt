@@ -2233,6 +2233,16 @@ target_compile_definitions(demo_jhq_v68_e8_bench PRIVATE
 target_compile_options(demo_jhq_v68_e8_bench PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-O3 -Xcompiler=-fopenmp>)
 target_link_libraries(demo_jhq_v68_e8_bench PRIVATE jhq_v68_exp)
 
+# v69 (experiments/practical_opt, item 2): v65 with the probe selection by radix select instead of
+# repeated bitonic compaction -- the same probes in the same order, bit for bit; search is otherwise v65's.
+# demo_jhq_v69_batch is demo_jhq_v65_batch's harness on it.
+set(V69 jhq_v69_probesel)
+add_jhq_variant(v69_exp ${V69} ${V61_DEFS})
+add_executable(demo_jhq_v69_batch examples/demo_jhq_batch_pipeline.cu)
+target_compile_definitions(demo_jhq_v69_batch PRIVATE
+    JHQ_INDEX_HEADER="${V69}/jhq_gpu_index.cuh" JHQ_PIPELINE_V62=1 JHQ_PIPELINE_V63=1 JHQ_PIPELINE_V65=1 ${V61_DEFS})
+target_link_libraries(demo_jhq_v69_batch PRIVATE jhq_v69_exp)
+
 # v64: v61 with the IVF centroid scoring selectable (jhq_gpu::set_route_mode,
 # JHQ_ROUTE_MODE): 0 = v61's, rotate then score against c; 1 = score the query
 # as given against Pi^T c (precomputed once per index -- the same products,
