@@ -61,6 +61,23 @@ def bench_rows(path, variant):
     return out
 
 
+def e8_bench_rows(path):
+    """demo_jhq_v68_e8_bench: runs [{batch, rep A|B, alpha, recall, qps[], lat_med_ms[]}], file <dataset>_np<nprobe>.json"""
+    j = jload(path)
+    if not j:
+        return []
+    ds, npb = os.path.basename(path)[:-5].rsplit("_np", 1)
+    name = {"A": "V1 GPU A: paper index, full 256 table", "B": "V1 GPU B: E8, full 256 table"}
+    out = []
+    for r in j["runs"]:
+        q = sorted(r["qps"]); lat = sorted(r["lat_med_ms"])
+        out.append(dict(variant=name[r["rep"]], dataset=ds, nprobe=int(npb), alpha=r["alpha"], ck=int(round(10 * r["alpha"])),
+                        batch=r["batch"], G=-1, recall_at_10=r["recall"], qps_median=q[len(q) // 2], qps_min=q[0], qps_max=q[-1],
+                        latency_median_ms=lat[len(lat) // 2], latency_p95_ms=None, gpu_used_mib=None, rounds=len(q),
+                        evidence="GPU measured"))
+    return out
+
+
 def main():
     R, O = sys.argv[1], sys.argv[2]
     os.makedirs(O, exist_ok=True)
@@ -69,11 +86,11 @@ def main():
     for p in sorted(glob.glob(os.path.join(R, "b0", "*.json"))):
         fr += bench_rows(p, "B0 v65")
     for p in sorted(glob.glob(os.path.join(R, "v1_gpu", "*.json"))):
-        fr += bench_rows(p, "V1 E8 (GPU prototype)")
+        fr += e8_bench_rows(p)
     write(os.path.join(O, "RECALL_QPS_FRONTIER.csv"), fr)
     # stage breakdown
     st = []
-    for sub, var in (("b0_stages", "B0 v65"), ("v1_stages", "V1 E8 (GPU prototype)")):
+    for sub, var in (("b0_stages", "B0 v65"),):
         s = jload(os.path.join(R, sub, "stages_summary.json"))
         for x in s or []:
             st.append(dict(variant=var, **{k: v for k, v in x.items() if k != "stages_us"}, **{"us_" + k: v for k, v in x.get("stages_us", {}).items()}))
