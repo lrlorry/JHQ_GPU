@@ -1,0 +1,38 @@
+=== 2026-10-13T12:19:28Z head=229d75c9 AC-JHQ: offline pilot (certified Hoeffding-Serfling / empirical Bernstein-Serfling bounds with and without the bucket control variate, deterministic bound, sector and warp accounting, permutation audit) and an exact synthetic check stages: synth pilot=openai3-3072_np128_a4 ===
+synth rc=0 SYNTH OK 1440 cases, 0 above nominal
+stage synth took 13 s
+pilot openai3-3072_np128_a4 rc=0
+{"tag": "openai3-3072_np128_a4", "queries": 400, "W": 96, "T": 40, "reconstruction_rel_err_max": 2.716037169980528e-15, "var_plain": 0.00999403495617384, "var_cv": 0.007479916011379608, "range_plain": 1.2499621605992157, "range_cv": 1.348499261376364}
+C0|12-24-48-72|0.01    elim 0.764  words/cand 0.798  sectors 0.884 (p90 0.991)  warps 0.922  topT-lost queries 0  elim_at {'12': 0.0, '24': 0.007, '48': 0.029, '72': 0.729}
+C1|12-24-48-72|0.01    elim 0.764  words/cand 0.798  sectors 0.884 (p90 0.991)  warps 0.922  topT-lost queries 0  elim_at {'12': 0.0, '24': 0.007, '48': 0.029, '72': 0.729}
+C2|12-24-48-72|0.01    elim 0.764  words/cand 0.798  sectors 0.884 (p90 0.991)  warps 0.922  topT-lost queries 0  elim_at {'12': 0.0, '24': 0.007, '48': 0.029, '72': 0.729}
+C3|12-24-48-72|0.01    elim 0.764  words/cand 0.798  sectors 0.884 (p90 0.991)  warps 0.922  topT-lost queries 0  elim_at {'12': 0.0, '24': 0.007, '48': 0.029, '72': 0.729}
+C1|12-24-48-72|0.001   elim 0.764  words/cand 0.798  sectors 0.884 (p90 0.991)  warps 0.922  topT-lost queries 0  elim_at {'12': 0.0, '24': 0.007, '48': 0.029, '72': 0.729}
+C2|12-24-48-72|0.001   elim 0.764  words/cand 0.798  sectors 0.884 (p90 0.991)  warps 0.922  topT-lost queries 0  elim_at {'12': 0.0, '24': 0.007, '48': 0.029, '72': 0.729}
+C3|12-24-48-72|0.001   elim 0.764  words/cand 0.798  sectors 0.884 (p90 0.991)  warps 0.922  topT-lost queries 0  elim_at {'12': 0.0, '24': 0.007, '48': 0.029, '72': 0.729}
+C1|12-24-48-72|0.0001  elim 0.764  words/cand 0.798  sectors 0.884 (p90 0.991)  warps 0.922  topT-lost queries 0  elim_at {'12': 0.0, '24': 0.007, '48': 0.029, '72': 0.729}
+C2|12-24-48-72|0.0001  elim 0.764  words/cand 0.798  sectors 0.884 (p90 0.991)  warps 0.922  topT-lost queries 0  elim_at {'12': 0.0, '24': 0.007, '48': 0.029, '72': 0.729}
+C3|12-24-48-72|0.0001  elim 0.764  words/cand 0.798  sectors 0.884 (p90 0.991)  warps 0.922  topT-lost queries 0  elim_at {'12': 0.0, '24': 0.007, '48': 0.029, '72': 0.729}
+C0|48-72|0.01          elim 0.764  words/cand 0.800  sectors 0.885 (p90 0.991)  warps 0.923  topT-lost queries 0  elim_at {'48': 0.036, '72': 0.729}
+C1|48-72|0.01          elim 0.764  words/cand 0.800  sectors 0.885 (p90 0.991)  warps 0.923  topT-lost queries 0  elim_at {'48': 0.036, '72': 0.729}
+C2|48-72|0.01          elim 0.764  words/cand 0.800  sectors 0.885 (p90 0.991)  warps 0.923  topT-lost queries 0  elim_at {'48': 0.036, '72': 0.729}
+C3|48-72|0.01          elim 0.764  words/cand 0.800  sectors 0.885 (p90 0.991)  warps 0.923  topT-lost queries 0  elim_at {'48': 0.036, '72': 0.729}
+C1|48-72|0.001         elim 0.764  words/cand 0.800  sectors 0.885 (p90 0.991)  warps 0.923  topT-lost queries 0  elim_at {'48': 0.036, '72': 0.729}
+C2|48-72|0.001         elim 0.764  words/cand 0.800  sectors 0.885 (p90 0.991)  warps 0.923  topT-lost queries 0  elim_at {'48': 0.036, '72': 0.729}
+C3|48-72|0.001         elim 0.764  words/cand 0.800  sectors 0.885 (p90 0.991)  warps 0.923  topT-lost queries 0  elim_at {'48': 0.036, '72': 0.729}
+C1|48-72|0.0001        elim 0.764  words/cand 0.800  sectors 0.885 (p90 0.991)  warps 0.923  topT-lost queries 0  elim_at {'48': 0.036, '72': 0.729}
+C2|48-72|0.0001        elim 0.764  words/cand 0.800  sectors 0.885 (p90 0.991)  warps 0.923  topT-lost queries 0  elim_at {'48': 0.036, '72': 0.729}
+C3|48-72|0.0001        elim 0.764  words/cand 0.800  sectors 0.885 (p90 0.991)  warps 0.923  topT-lost queries 0  elim_at {'48': 0.036, '72': 0.729}
+C0|72|0.01             elim 0.764  words/cand 0.809  sectors 0.891 (p90 0.991)  warps 0.928  topT-lost queries 0  elim_at {'72': 0.764}
+C1|72|0.01             elim 0.764  words/cand 0.809  sectors 0.891 (p90 0.991)  warps 0.928  topT-lost queries 0  elim_at {'72': 0.764}
+C2|72|0.01             elim 0.764  words/cand 0.809  sectors 0.891 (p90 0.991)  warps 0.928  topT-lost queries 0  elim_at {'72': 0.764}
+C3|72|0.01             elim 0.764  words/cand 0.809  sectors 0.891 (p90 0.991)  warps 0.928  topT-lost queries 0  elim_at {'72': 0.764}
+C1|72|0.001            elim 0.764  words/cand 0.809  sectors 0.891 (p90 0.991)  warps 0.928  topT-lost queries 0  elim_at {'72': 0.764}
+C2|72|0.001            elim 0.764  words/cand 0.809  sectors 0.891 (p90 0.991)  warps 0.928  topT-lost queries 0  elim_at {'72': 0.764}
+C3|72|0.001            elim 0.764  words/cand 0.809  sectors 0.891 (p90 0.991)  warps 0.928  topT-lost queries 0  elim_at {'72': 0.764}
+C1|72|0.0001           elim 0.764  words/cand 0.809  sectors 0.891 (p90 0.991)  warps 0.928  topT-lost queries 0  elim_at {'72': 0.764}
+C2|72|0.0001           elim 0.764  words/cand 0.809  sectors 0.891 (p90 0.991)  warps 0.928  topT-lost queries 0  elim_at {'72': 0.764}
+C3|72|0.0001           elim 0.764  words/cand 0.809  sectors 0.891 (p90 0.991)  warps 0.928  topT-lost queries 0  elim_at {'72': 0.764}
+audit {"C1|0.2": {"violations": 0, "checks": 4800000, "rate": 0.0}, "C1|0.05": {"violations": 0, "checks": 4800000, "rate": 0.0}, "C2|0.2": {"violations": 0, "checks": 4800000, "rate": 0.0}, "C2|0.05": {"violations": 0, "checks": 4800000, "rate": 0.0}, "C3|0.2
+stage pilot=openai3-3072_np128_a4 took 220 s
+=== AC_STAGE_DONE 2026-10-13T12:23:21Z ===

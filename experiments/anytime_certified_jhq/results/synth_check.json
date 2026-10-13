@@ -1,0 +1,61 @@
+{
+ "rows": 1440,
+ "failures": 0,
+ "worst": [
+  {
+   "shape": "gaussian_clip",
+   "trial": 4,
+   "kind": "C0",
+   "delta_c": 0.03,
+   "t": 2,
+   "W": 8,
+   "miscoverage": 0.0,
+   "nominal": 0.0,
+   "ok": true
+  },
+  {
+   "shape": "gaussian_clip",
+   "trial": 4,
+   "kind": "C0",
+   "delta_c": 0.03,
+   "t": 3,
+   "W": 8,
+   "miscoverage": 0.0,
+   "nominal": 0.0,
+   "ok": true
+  },
+  {
+   "shape": "gaussian_clip",
+   "trial": 4,
+   "kind": "C0",
+   "delta_c": 0.03,
+   "t": 4,
+   "W": 8,
+   "miscoverage": 0.0,
+   "nominal": 0.0,
+   "ok": true
+  },
+  {
+   "shape": "gaussian_clip",
+   "trial": 4,
+   "kind": "C0",
+   "delta_c": 0.03,
+   "t": 6,
+   "W": 8,
+   "miscoverage": 0.0,
+   "nominal": 0.0,
+   "ok": true
+  },
+  {
+   "shape": "gaussian_clip",
+   "trial": 4,
+   "kind": "C0",
+   "delta_c": 0.03,
+   "t": 7,
+   "W": 8,
+   "miscoverage": 0.0,
+   "nominal": 0.0,
+   "ok": true
+  }
+ ]
+}

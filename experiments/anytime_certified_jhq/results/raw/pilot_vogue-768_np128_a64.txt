@@ -1,0 +1,32 @@
+{"tag": "vogue-768_np128_a64", "queries": 400, "W": 24, "T": 640, "reconstruction_rel_err_max": 1.2890772705922379e-15, "var_plain": 0.03436004059780785, "var_cv": 0.017310933845700954, "range_plain": 2.3525580968776385, "range_cv": 2.533041147793808}
+C0|3-6-12-18|0.01      elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'3': 0.0, '6': 0.0, '12': 0.029, '18': 0.518}
+C1|3-6-12-18|0.01      elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'3': 0.0, '6': 0.0, '12': 0.029, '18': 0.518}
+C2|3-6-12-18|0.01      elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'3': 0.0, '6': 0.0, '12': 0.029, '18': 0.518}
+C3|3-6-12-18|0.01      elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'3': 0.0, '6': 0.0, '12': 0.029, '18': 0.518}
+C1|3-6-12-18|0.001     elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'3': 0.0, '6': 0.0, '12': 0.029, '18': 0.518}
+C2|3-6-12-18|0.001     elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'3': 0.0, '6': 0.0, '12': 0.029, '18': 0.518}
+C3|3-6-12-18|0.001     elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'3': 0.0, '6': 0.0, '12': 0.029, '18': 0.518}
+C1|3-6-12-18|0.0001    elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'3': 0.0, '6': 0.0, '12': 0.029, '18': 0.518}
+C2|3-6-12-18|0.0001    elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'3': 0.0, '6': 0.0, '12': 0.029, '18': 0.518}
+C3|3-6-12-18|0.0001    elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'3': 0.0, '6': 0.0, '12': 0.029, '18': 0.518}
+C0|12-18|0.01          elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'12': 0.029, '18': 0.518}
+C1|12-18|0.01          elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'12': 0.029, '18': 0.518}
+C2|12-18|0.01          elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'12': 0.029, '18': 0.518}
+C3|12-18|0.01          elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'12': 0.029, '18': 0.518}
+C1|12-18|0.001         elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'12': 0.029, '18': 0.518}
+C2|12-18|0.001         elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'12': 0.029, '18': 0.518}
+C3|12-18|0.001         elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'12': 0.029, '18': 0.518}
+C1|12-18|0.0001        elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'12': 0.029, '18': 0.518}
+C2|12-18|0.0001        elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'12': 0.029, '18': 0.518}
+C3|12-18|0.0001        elim 0.547  words/cand 0.856  sectors 0.958 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'12': 0.029, '18': 0.518}
+C0|18|0.01             elim 0.547  words/cand 0.863  sectors 0.959 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'18': 0.547}
+C1|18|0.01             elim 0.547  words/cand 0.863  sectors 0.959 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'18': 0.547}
+C2|18|0.01             elim 0.547  words/cand 0.863  sectors 0.959 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'18': 0.547}
+C3|18|0.01             elim 0.547  words/cand 0.863  sectors 0.959 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'18': 0.547}
+C1|18|0.001            elim 0.547  words/cand 0.863  sectors 0.959 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'18': 0.547}
+C2|18|0.001            elim 0.547  words/cand 0.863  sectors 0.959 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'18': 0.547}
+C3|18|0.001            elim 0.547  words/cand 0.863  sectors 0.959 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'18': 0.547}
+C1|18|0.0001           elim 0.547  words/cand 0.863  sectors 0.959 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'18': 0.547}
+C2|18|0.0001           elim 0.547  words/cand 0.863  sectors 0.959 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'18': 0.547}
+C3|18|0.0001           elim 0.547  words/cand 0.863  sectors 0.959 (p90 0.996)  warps 0.984  topT-lost queries 0  elim_at {'18': 0.547}
+audit {"C1|0.2": {"violations": 0, "checks": 4800000, "rate": 0.0}, "C1|0.05": {"violations": 0, "checks": 4800000, "rate": 0.0}, "C2|0.2": {"violations": 0, "checks": 4800000, "rate": 0.0}, "C2|0.05": {"violations": 0, "checks": 4800000, "rate": 0.0}, "C3|0.2": {"violations": 0, "checks": 4800000, "rate": 0.0}, "C3|0.05": {"violations": 0, "checks": 4800000, "rate": 0.0}}
