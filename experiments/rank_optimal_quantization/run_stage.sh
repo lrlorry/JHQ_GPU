@@ -68,17 +68,9 @@ for st in "$@"; do
       python3 $E/eval_variants.py $R iter3 median learned_rl_t_zero learned_rl_t_median learned_rl_tl_zero learned_rl_tl_median > $R/raw/eval_iter3.txt 2>&1
       echo "iter3 eval rc=$? $(tail -1 $R/raw/eval_iter3.txt | cut -c1-300)" ;;
     iter4)
-      pids=""
-      for tag in arxiv-768_np128_a100 vogue-768_np128_a64 openai3-3072_np128_a4; do
-        for v in list_mean list_median; do
-          OMP_NUM_THREADS=8 python3 $E/quantize.py $tag $v > $R/raw/quantize_${tag}_$v.txt 2>&1 &
-          pids="$pids $!"
-        done
-      done
-      rc=0; for p in $pids; do wait $p || rc=1; done; echo "iter4 quantize rc=$rc"
-      python3 $E/eval_variants.py $R iter4 median list_mean list_median > $R/raw/eval_iter4.txt 2>&1
+      # round 4: linear-MMSE (Bussgang) scoring on unchanged codes (THEORY.md 7); decoder fitted on database vectors only
+      python3 $E/eval_variants.py $R iter4 median lmmse@JHQ lmmse@median > $R/raw/eval_iter4.txt 2>&1
       echo "iter4 eval rc=$? $(tail -1 $R/raw/eval_iter4.txt | cut -c1-300)" ;;
-    lmmse) python3 $E/diag_lmmse.py $R median > $R/raw/lmmse.txt 2>&1; echo "lmmse rc=$? $(tail -1 $R/raw/lmmse.txt | cut -c1-200)" ;;
     confirm=*)
       # the final, single read of the test split, for the variants named after "confirm=" (comma separated)
       vs="${st#confirm=}"

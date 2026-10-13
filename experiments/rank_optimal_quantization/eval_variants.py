@@ -54,6 +54,24 @@ def distances(P, qr, pos, chunk=8192):
     return dp, dh
 
 
+def fit_linear_decoder(tag, bits_mm, N, ridge=1e-3):
+    """THEORY.md 7: the linear MMSE decoder of a 1-bit code, y_hat(b) = mu + B (b - p), B = Cov(y, b) (Cov(b) + r I)^-1,
+    fitted on the database only (the residual training sample: 100K base vectors, never a query)."""
+    ids = np.fromfile(os.path.join(C.RQ, tag, "list_ids.i32"), dtype=np.int32)
+    inv = np.empty(N, np.int64); inv[ids] = np.arange(N)
+    ptr = np.sort(inv[C.res_sample_rows(N)])
+    y = np.asarray(C.xpos(tag)[ptr], dtype=np.float64)
+    b = np.unpackbits(np.asarray(bits_mm[ptr]), axis=1).astype(np.float64)
+    mu, p = y.mean(0), b.mean(0)
+    yc, bc = y - mu, b - p
+    Cbb = bc.T @ bc / len(bc)
+    Cyb = yc.T @ bc / len(bc)
+    r = ridge * np.trace(Cbb) / Cbb.shape[0]
+    B = np.linalg.solve(Cbb + r * np.eye(Cbb.shape[0]), Cyb.T).T
+    off = float(np.linalg.norm(B - np.diag(np.diag(B))) ** 2 / np.linalg.norm(B) ** 2)
+    return dict(B=B, info=dict(ridge_rel=ridge, offdiag_share=off, metadata_floats=int(B.size)))
+
+
 def per_query(path):
     q = C.load_bin(path)
     n, ck = q["n"], q["ck"]
@@ -69,7 +87,21 @@ def per_query(path):
     out = dict(qid=q["qid"], n=n, ck=ck, R={}, X={}, MR={}, RK={}, full={})
     keys = {"JHQ": (q["P"], q["DH"])}
     for v in G["variants"]:
+        if "@" in v:
+            continue
         keys[v] = distances(G["var"][v], qr, pos)
+    for v in G["variants"]:
+        if "@" not in v:
+            continue
+        kind, base = v.split("@")
+        S = G["score"][v]
+        bits_mm = G["jhq_bits"] if base == "JHQ" else G["var"][base]["bits"]
+        w = S["B"].T @ qr                                     # THEORY.md 7: <q', E_lin[y | b]> = <B^T q', b> + const
+        sc = np.empty(len(pos))
+        for a0 in range(0, len(pos), 8192):
+            ps = pos[a0:a0 + 8192]
+            sc[a0:a0 + 8192] = np.unpackbits(np.asarray(bits_mm[ps]), axis=1).astype(np.float32) @ w
+        keys[v] = (-sc, keys[base][1])                        # rank by the linear-MMSE inner product; refine with the base code's D_H
     for v, (dp, dh) in keys.items():
         out["R"][v], order = C.recall_curve(dp, dh, pos, isgt, Ts)
         if v != "JHQ":
@@ -95,16 +127,26 @@ def main():
         G.clear()
         G["qrot"] = C.qrot(tag)
         G["lpos"] = C.list_of_pos(tag)
-        G["variants"] = [v for v in variants if os.path.isdir(os.path.join(C.RQ, tag, "var_" + v))]
+        G["variants"] = [v for v in variants if "@" in v or os.path.isdir(os.path.join(C.RQ, tag, "var_" + v))]
         G["var"] = {}
         info = {}
+        G["jhq_bits"] = np.memmap(os.path.join(C.PP, tag, "primary.u8"), dtype=np.uint8, mode="r", shape=(N, M))
         for v in G["variants"]:
+            if "@" in v:
+                continue
             pz = np.load(os.path.join(C.RQ, tag, "var_" + v, "params.npz"))
             G["var"][v] = dict(per_list=bool(pz["per_list"]), lo32=pz["lo"].astype(np.float32), hi32=pz["hi"].astype(np.float32),
                                res_cb=pz["res_cb"].astype(np.float32),
                                bits=np.memmap(os.path.join(C.RQ, tag, "var_" + v, "bits.u8"), dtype=np.uint8, mode="r", shape=(N, M)),
                                res=np.memmap(os.path.join(C.RQ, tag, "var_" + v, "res.u8"), dtype=np.uint8, mode="r", shape=(N, d)))
             info[v] = json.load(open(os.path.join(C.RQ, tag, "var_" + v, "info.json")))
+        G["score"] = {}
+        for v in G["variants"]:
+            if "@" in v:
+                kind, base = v.split("@")
+                bits_mm = G["jhq_bits"] if base == "JHQ" else G["var"][base]["bits"]
+                G["score"][v] = fit_linear_decoder(tag, bits_mm, N)
+                info[v] = dict(G["score"][v]["info"])
         files = C.bin_files(tag)
         ck = C.load_bin(files[0])["ck"]
         G["Ts"] = Ts = C.t_grid(ck, 4 * ck)
@@ -140,8 +182,8 @@ def main():
                            gt_rank_median=float(np.mean([o["RK"][v][0] for o, f in zip(res, Sx[s]) if f])),
                            gt_rank_max_mean=float(np.mean([o["RK"][v][1] for o, f in zip(res, Sx[s]) if f])),
                            gt_within_ck=float(np.mean([o["RK"][v][2] for o, f in zip(res, Sx[s]) if f])),
-                           primary_mse=(info[v]["primary_mse_per_vector"] if v in info else None),
-                           hierarchical_mse=(info[v]["hierarchical_mse_per_vector"] if v in info else None),
+                           primary_mse=(info[v].get("primary_mse_per_vector") if v in info else None),
+                           hierarchical_mse=(info[v].get("hierarchical_mse_per_vector") if v in info else None),
                            **{"recall_T%d" % t: float(r) for t, r in zip(Ts, cur)})
                 rows.append(row)
                 ent[s] = dict(T_min=tm, T_min_JHQ=tj, reduction=row["reduction_vs_JHQ"], recall_at_ck=float(cur[Ts.index(ck)]),
