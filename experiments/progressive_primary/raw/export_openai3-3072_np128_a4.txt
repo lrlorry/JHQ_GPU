@@ -1,0 +1,4 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+levels -0.0121692754 0.0121692754 symmetric=1; codebook entries not equal to their digit's level: 0
+wrote /root/autodl-tmp/pp_pilot/openai3-3072_np128_a4: N=999000 d=3072 M=384, 1000 queries
+=== EP_OK ===

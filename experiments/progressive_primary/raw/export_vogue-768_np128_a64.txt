@@ -1,0 +1,4 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+levels -0.0243385509 0.0243385509 symmetric=1; codebook entries not equal to their digit's level: 0
+wrote /root/autodl-tmp/pp_pilot/vogue-768_np128_a64: N=932328 d=768 M=96, 1000 queries
+=== EP_OK ===

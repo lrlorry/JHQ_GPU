@@ -1,0 +1,11 @@
+repo: /root/autodl-tmp/jhq_pipeline_wt
+=== 2026-10-13T00:35:55Z head=d0fa5d3 Progressive primary screening pilot: exporter and offline analysis ===
+configure_rc=0
+build_rc=0
+got the GPU 00:35:59
+export arxiv-768_np128_a100 rc=0 1 ok | levels -0.0243385509 0.0243385509 symmetric=1; codebook entries not equal to their digit's level: 0 00:36:04
+export vogue-768_np128_a64 rc=0 1 ok | levels -0.0243385509 0.0243385509 symmetric=1; codebook entries not equal to their digit's level: 0 00:36:06
+export openai3-3072_np128_a4 rc=0 1 ok | levels -0.0121692754 0.0121692754 symmetric=1; codebook entries not equal to their digit's level: 0 00:36:17
+selftest rc=0 end-to-end checks passed: 180 rows; T* = 50
+analyze rc=0 done: arxiv-768_np128_a100, openai3-3072_np128_a4, vogue-768_np128_a64
+=== PP_DONE 2026-10-13T00:42:30Z ===

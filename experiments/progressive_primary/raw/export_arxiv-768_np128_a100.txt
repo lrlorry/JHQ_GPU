@@ -1,0 +1,4 @@
+  [mmap loader] reusing cached /root/autodl-tmp/arxiv-abstracts-768/base.fvecs.raw_f32
+levels -0.0243385509 0.0243385509 symmetric=1; codebook entries not equal to their digit's level: 0
+wrote /root/autodl-tmp/pp_pilot/arxiv-768_np128_a100: N=2253000 d=768 M=96, 1000 queries
+=== EP_OK ===

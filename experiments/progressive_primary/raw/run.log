@@ -1,0 +1,11 @@
+repo: /root/autodl-tmp/jhq_pipeline_wt
+=== 2026-10-13T00:49:16Z head=c95815f Progressive primary pilot: realistic-bytes operating points, novelty over non-inferior points ===
+configure_rc=0
+build_rc=0
+got the GPU 00:49:17
+export arxiv-768_np128_a100 rc=0 1 ok | levels -0.0243385509 0.0243385509 symmetric=1; codebook entries not equal to their digit's level: 0 00:49:21
+export vogue-768_np128_a64 rc=0 1 ok | levels -0.0243385509 0.0243385509 symmetric=1; codebook entries not equal to their digit's level: 0 00:49:24
+export openai3-3072_np128_a4 rc=0 1 ok | levels -0.0121692754 0.0121692754 symmetric=1; codebook entries not equal to their digit's level: 0 00:49:35
+selftest rc=0 end-to-end checks passed: 180 rows; T* = 50
+analyze rc=0 done: arxiv-768_np128_a100, openai3-3072_np128_a4, vogue-768_np128_a64
+=== PP_DONE 2026-10-13T00:55:47Z ===

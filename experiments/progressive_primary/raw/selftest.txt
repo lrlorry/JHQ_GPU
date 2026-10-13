@@ -1,0 +1,7 @@
+per-query checks passed: reconstruction 2.77e-16, A0 sectors/recall match the brute force
+syn_np8_a5 ideal T*=50 {'A0/T50': (0.125, 16, np.float64(-0.0375), np.float64(0.56), np.float64(1.197), False), 'A0c/T50': (0.125, 4, np.float64(-0.0042), np.float64(0.234), np.float64(0.348), False), 'A1/T50': (0.25, 4, np.float64(-0.0625), np.float64(0.343), np.float64(0.598), False), 'A1c/T50': (0.125, 4, np.float64(0.0), np.float64(0.234), np.float64(0.348), True), 'A2/T50': (0.25, 4, np.float64(-0.0625), np.float64(0.343), np.float64(0.598), False), 'A3/T50': (0.125, 4, np.float64(0.0), np.float64(0.234), np.float64(0.349), True)}
+syn_np8_a5 realistic T*=50 {'A0/T50': (0.5, 4, np.float64(-0.0167), np.float64(0.562), np.float64(0.71), False), 'A0c/T50': (0.125, 4, np.float64(-0.0042), np.float64(0.234), np.float64(0.348), False), 'A1/T50': (0.25, 4, np.float64(-0.0625), np.float64(0.343), np.float64(0.598), False), 'A1c/T50': (0.125, 4, np.float64(0.0), np.float64(0.234), np.float64(0.348), True), 'A2/T50': (0.25, 4, np.float64(-0.0625), np.float64(0.343), np.float64(0.598), False), 'A3/T50': (0.125, 4, np.float64(0.0), np.float64(0.234), np.float64(0.349), True)}
+syn_np8_a5 novelty {'ideal': (np.float64(0.326380019383257), True), 'realistic': (np.float64(0.36177810167164653), True)} 2s
+done: syn_np8_a5
+ 
+end-to-end checks passed: 180 rows; T* = 50
