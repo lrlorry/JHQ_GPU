@@ -55,6 +55,18 @@ for st in "$@"; do
       rc=0; for p in $pids; do wait $p || rc=1; done; echo "iter3 quantize rc=$rc"
       python3 $E/eval_variants.py $R iter3 median learned_rl_t_zero learned_rl_t_median learned_rl_tl_zero learned_rl_tl_median > $R/raw/eval_iter3.txt 2>&1
       echo "iter3 eval rc=$? $(tail -1 $R/raw/eval_iter3.txt | cut -c1-300)" ;;
+    iter3build)
+      # round 3 without re-training (rankloss.py already wrote learned_*.npz): build the learned variants, evaluate
+      pids=""
+      for tag in arxiv-768_np128_a100 vogue-768_np128_a64 openai3-3072_np128_a4; do
+        for v in learned_rl_t_zero learned_rl_t_median learned_rl_tl_zero learned_rl_tl_median; do
+          OMP_NUM_THREADS=8 python3 $E/quantize.py $tag $v > $R/raw/quantize_${tag}_$v.txt 2>&1 &
+          pids="$pids $!"
+        done
+      done
+      rc=0; for p in $pids; do wait $p || rc=1; done; echo "iter3 quantize rc=$rc"
+      python3 $E/eval_variants.py $R iter3 median learned_rl_t_zero learned_rl_t_median learned_rl_tl_zero learned_rl_tl_median > $R/raw/eval_iter3.txt 2>&1
+      echo "iter3 eval rc=$? $(tail -1 $R/raw/eval_iter3.txt | cut -c1-300)" ;;
     iter4)
       pids=""
       for tag in arxiv-768_np128_a100 vogue-768_np128_a64 openai3-3072_np128_a4; do

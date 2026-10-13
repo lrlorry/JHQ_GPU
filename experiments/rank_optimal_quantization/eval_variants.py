@@ -161,6 +161,10 @@ def main():
                                             recall_variant=float(Rr[v][qi, Ts.index(tv)]), recall_JHQ=float(Rr["JHQ"][qi, Ts.index(tj)])))
             summ[tag]["methods"][v] = ent
         summ[tag]["seconds"] = time.time() - t0
+        # per-query recall curves (every split) for paired statistics after the fact
+        np.savez_compressed(os.path.join(R, "eval_%s_%s_perquery.npz" % (label, tag)), qid=np.array([o["qid"] for o in res]),
+                            split=np.array([sp[o["qid"]] for o in res]), Ts=np.array(Ts),
+                            **{"R_" + v: Rr[v].astype(np.float32) for v in meths})
         print(tag, json.dumps({v: {s: (e["T_min"], e["T_min_JHQ"], e["recall_at_ck"]) for s, e in ent.items() if isinstance(e, dict) and "T_min" in e}
                                for v, ent in summ[tag]["methods"].items()}), "%.0fs" % summ[tag]["seconds"], flush=True)
         write(R, label, test, rows, summ, pq_rows)
