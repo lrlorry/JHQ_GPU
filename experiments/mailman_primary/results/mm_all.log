@@ -1,0 +1,10 @@
+=== 2026-10-13T19:28:18Z head=1ace056a Mailman bench: fix the summary of the timed-only items; add B0 at the scan's own grid mode=all 
+build_rc=0
+stats vogue-768_np128_a64 rc=0  19:28:34
+stats arxiv-768_np128_a100 rc=0  19:28:46
+stats openai3-3072_np128_a4 rc=0  19:29:04
+got the GPU 19:29:04
+bench vogue-768_np128_a64 rc=0 MB_DONE  19:29:19
+bench arxiv-768_np128_a100 rc=0 MB_DONE  19:29:33
+bench openai3-3072_np128_a4 rc=0 MB_DONE  19:29:46
+=== MAILMAN_DONE 2026-10-13T19:29:46Z

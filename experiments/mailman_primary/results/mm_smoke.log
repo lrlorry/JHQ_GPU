@@ -1,0 +1,9 @@
+=== 2026-10-13T19:24:16Z head=1f359fbe Mailman primary scan, stages 0-1: structure statistics and the isolated scoring microbenchmark mode=smoke 
+build_rc=0
+got the GPU 19:24:21
+experiments/mailman_primary/run_box.sh: line 24: 169374 Aborted                 env MB_ROUNDS=2 MB_REPS=3 OMP_NUM_THREADS=24 timeout 1800 build/mailman_bench $PP/vogue-768_np128_a64 $LF/vogue-768_np128_a64 $R/smoke_vogue.json 8 > $R/smoke_vogue.txt 2>&1
+smoke rc=134 timeout: the monitored command dumped core
+terminate called after throwing an instance of 'std::bad_array_new_length'
+  what():  std::bad_array_new_length
+timeout: the monitored command dumped core
+=== MAILMAN_DONE 2026-10-13T19:24:23Z

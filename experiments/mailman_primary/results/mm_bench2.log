@@ -1,0 +1,9 @@
+=== 2026-10-13T19:33:09Z head=9cee251c Mailman bench: iteration 1 (H2 r=6, the shared-memory-operation model) and iteration 2 (H1 r=8 shaped by the measured pattern skew: bucket 0 skipped, the all-ones bucket summed in a register) mode=bench 
+build_rc=0
+got the GPU 19:33:15
+bench vogue-768_np128_a64 rc=0 MB_DONE  19:33:34
+bench arxiv-768_np128_a100 rc=0 MB_DONE  19:33:52
+bench openai3-3072_np128_a4 rc=0 MB_DONE  19:34:08
+    192 ATOMS.CAST.SPIN
+     24 RED.E.ADD.64.STRONG.GPU
+=== MAILMAN_DONE 2026-10-13T19:34:08Z

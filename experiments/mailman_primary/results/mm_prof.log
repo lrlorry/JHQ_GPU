@@ -1,0 +1,10 @@
+=== 2026-10-13T19:35:35Z head=49129bb6 Mailman run script: also inspect the sm_120 SASS of the shared FP32 atomics mode=bench profile
+build_rc=0
+got the GPU 19:35:41
+bench vogue-768_np128_a64 rc=0 MB_DONE  19:36:00
+bench arxiv-768_np128_a100 rc=0 MB_DONE  19:36:18
+bench openai3-3072_np128_a4 rc=0 MB_DONE  19:36:34
+    192 ATOMS.CAST.SPIN
+     24 RED.E.ADD.64.STRONG.GPU
+sm_120     224 ATOMS.CAST.SPIN
+=== MAILMAN_DONE 2026-10-13T19:36:37Z
