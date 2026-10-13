@@ -26,7 +26,9 @@
 | **中位数阈值**（如 Self-Taught Hashing，2010；NVIDIA cuVS binary quantizer 支持按维均值或中位数阈值） | 用每维中位数做阈值，使 bit 平衡、熵最大 | **与第 2 轮的 `median` 完全相同**；本研究只是从误排序界推出了它 | 已核实（检索摘要） |
 | **Bhattacharyya / Chernoff 界**（经典，Bhattacharyya 1943；Kailath 1967） | 两类判别误差的指数上界 | THEORY.md 4.1 的配对版本是直接应用，**不是新定理** | 经典结果 |
 | **概率排序原则**（Robertson 1977） | 按相关概率排序最优 | THEORY.md 2.3 引用 | 经典结果 |
-| **Bussgang 定理与 arcsine 律**（Bussgang 1952；Van Vleck） | 高斯输入经符号函数后的相关结构，1-bit 信号的 LMMSE 估计 | 若某轮使用相关感知解码器，即属于对这一经典工具的应用 | 经典结果 |
+| **Bussgang 定理与 arcsine 律**（Bussgang 1952；Van Vleck） | 高斯输入经符号函数后的相关结构，1-bit 信号的 LMMSE 估计 | 第 4 轮的数学基础 | 经典结果 |
+| **Bussgang LMMSE（BLMMSE）一比特 MIMO 信道估计**（Li, Tao, Seco-Granados, Mezghani, Swindlehurst, Liu, IEEE TSP 2017，arXiv 1609.07427） | 用 Bussgang 分解把 1-bit 量化写成线性映射加不相关噪声，arcsine 律给出量化输出的协方差，构造 LMMSE 估计量 | **与第 4 轮的估计量在数学上相同**；本研究只是把它用在 ANN 的码而不是信道上 | 已核实（检索摘要） |
+| **Hashing with Binary Autoencoders**（Carreira-Perpiñán, Raziperchikolaei, CVPR 2015） | 线性哈希函数加线性重建映射，用辅助坐标法交替优化 | 二值码的线性解码器同样出现在这里，不过它是与码一起学习的 | 题目、出处、“线性编解码”已核实；具体解码器形式**未核实** |
 
 ## 各候选方法的新颖性判断（随迭代更新）
 
@@ -34,4 +36,6 @@
 |---|---|---|
 | 第 1 轮：近邻 LLR 打分 | **已有方法的简单变体** | 数学上等价于对符号内积做奇函数重加权（THEORY.md 3.4）；同类非线性加权估计量见 P. Li（AAAI 2019） |
 | 第 2 轮：排序最优阈值，即每维中位数 | **已有做法** | 中位数阈值是哈希中的标准做法。本研究的贡献只是“由误排序界导出，并量化了 JHQ 的零阈值假设在真实 embedding 上的代价”，属于分析，不是新方法 |
-| 第 3 轮及以后 | 见 ITERATION_LOG.md 与最终报告 | — |
+| 第 3 轮：成对排序损失学习阈值和电平 | **已有方法的简单变体** | 属于用排序损失学习二值码这一类（Norouzi 等 2011/2012 等），只是参数化为逐维阈值和电平。学到的阈值回到中位数，本身也说明它没有带来新结构 |
+| 第 4 轮：线性 MMSE（Bussgang）解码打分 | **已有工具的新应用**（价值待实验确定） | 估计量与一比特 MIMO 的 BLMMSE（Li 等，TSP 2017）数学上相同；二值码的线性解码器见 Binary Autoencoder（CVPR 2015）。可能的贡献只是：用于 JHQ 非对称筛选的查询端变换 w = Bᵀq′（不改码和查表结构），以及“符号噪声白化 + 有效秩低”对 ANN 收益的解释 |
+| 第 5 轮 | 见 ITERATION_LOG.md 与最终报告 | — |
