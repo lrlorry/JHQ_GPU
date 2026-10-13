@@ -71,10 +71,22 @@ for st in "$@"; do
       # round 4: linear-MMSE (Bussgang) scoring on unchanged codes (THEORY.md 7); decoder fitted on database vectors only
       python3 $E/eval_variants.py $R iter4 median lmmse@JHQ lmmse@median > $R/raw/eval_iter4.txt 2>&1
       echo "iter4 eval rc=$? $(tail -1 $R/raw/eval_iter4.txt | cut -c1-300)" ;;
+    iter5)
+      # round 5: per-list (IVF-conditional) thresholds, re-encoded with a retrained residual
+      pids=""
+      for tag in arxiv-768_np128_a100 vogue-768_np128_a64 openai3-3072_np128_a4; do
+        for v in list_median list_mean; do
+          OMP_NUM_THREADS=8 python3 $E/quantize.py $tag $v > $R/raw/quantize_${tag}_$v.txt 2>&1 &
+          pids="$pids $!"
+        done
+      done
+      rc=0; for p in $pids; do wait $p || rc=1; done; echo "iter5 quantize rc=$rc"
+      OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 $E/eval_variants.py $R iter5 median list_median list_mean > $R/raw/eval_iter5.txt 2>&1
+      echo "iter5 eval rc=$? $(tail -1 $R/raw/eval_iter5.txt | cut -c1-300)" ;;
     confirm=*)
       # the final, single read of the test split, for the variants named after "confirm=" (comma separated)
       vs="${st#confirm=}"
-      python3 $E/eval_variants.py $R final ${vs//,/ } --test > $R/raw/eval_final_test.txt 2>&1
+      OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 $E/eval_variants.py $R final ${vs//,/ } --test > $R/raw/eval_final_test.txt 2>&1
       echo "confirm rc=$? $(tail -1 $R/raw/eval_final_test.txt | cut -c1-300)" ;;
     *) echo "unknown stage $st" ;;
   esac
