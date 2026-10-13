@@ -42,6 +42,13 @@ fi
 if [ $MODE = bench ] || [ $MODE = all ]; then
   # which shared-memory atomic the FP32 histogram update compiles to (sm_80 SASS in the binary)
   cuobjdump -sass -arch sm_80 build/mailman_bench 2>/dev/null | grep -oE "ATOMS\.[A-Z0-9.]+|RED\.[A-Z0-9.]+" | sort | uniq -c > $R/atomics_sass.txt
+  # and natively for the card (sm_120), if this nvcc knows it: does Blackwell have an FP32 shared add?
+  if nvcc --list-gpu-arch 2>/dev/null | grep -q compute_120; then
+    timeout 900 nvcc -O3 --use_fast_math -Xcompiler -fopenmp -arch=sm_120 -cubin -o build/mailman_bench_sm120.cubin \
+        experiments/mailman_primary/mailman_bench.cu > $R/build_sm120.log 2>&1 && \
+    cuobjdump -sass build/mailman_bench_sm120.cubin | grep -oE "ATOMS\.[A-Z0-9.]+|RED\.[A-Z0-9.]+" | sort | uniq -c \
+        | sed 's/^/sm_120 /' >> $R/atomics_sass.txt
+  fi
   cat $R/atomics_sass.txt
 fi
 echo "=== MAILMAN_DONE $(date -u +%FT%TZ)"
