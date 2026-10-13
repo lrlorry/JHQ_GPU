@@ -1,0 +1,36 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 15.8 ms
+add 292.0 ms
+schedule: per-query candidate count CV 0.495 on 512 pseudo-queries
+
+=== alpha=64 ck=640  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  scheduled G for b=8: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    1.214 ms    1.289 ms        6892        6892        6892      1425
+  -1     0.9644    0.386 ms    0.419 ms       20929       20929       20929      1485
+
+=== alpha=64 ck=640  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  scheduled G for b=32: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    1.284 ms    1.355 ms       24767       24767       24767      1485
+  -1     0.9644    0.476 ms    0.499 ms       66756       66756       66756      1485
+
+=== alpha=64 ck=640  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  scheduled G for b=256: 4
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9665    2.060 ms    2.122 ms      123989      123989      123989      1485
+  -1     0.9665    1.400 ms    1.460 ms      181992      181992      181992      1485
+
+=== alpha=64 ck=640  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 4
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    4.349 ms    4.498 ms      231690      231690      231690      1485
+  -1     0.9644    3.978 ms    4.019 ms      251345      251345      251345      1485
+
+wrote /root/autodl-tmp/practical_opt/nsys/v70_vogue-768.json
+=== BP_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-45cb.qdstrm'
+[1/1] [0%                          ] v70_vogue-768.nsys-rep[1/1] [0%                          ] v70_vogue-768.nsys-rep[1/1] [================68%         ] v70_vogue-768.nsys-rep[1/1] [================69%         ] v70_vogue-768.nsys-rep[1/1] [========================100%] v70_vogue-768.nsys-rep[1/1] [========================100%] v70_vogue-768.nsys-rep
+Generated:
+	/root/autodl-tmp/practical_opt/nsys/v70_vogue-768.nsys-rep

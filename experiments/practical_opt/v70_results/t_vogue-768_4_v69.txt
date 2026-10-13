@@ -1,0 +1,31 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 14.6 ms
+add 275.7 ms
+schedule: per-query candidate count CV 0.495 on 512 pseudo-queries
+
+=== alpha=64 ck=640  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  scheduled G for b=8: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    1.203 ms    1.296 ms        7014        7003        7014      1407
+  -1     0.9644    0.382 ms    0.411 ms       21246       21230       21250      1467
+
+=== alpha=64 ck=640  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  scheduled G for b=32: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    1.306 ms    1.416 ms       24269       24253       24283      1467
+  -1     0.9644    0.485 ms    0.507 ms       65729       65582       65746      1467
+
+=== alpha=64 ck=640  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  scheduled G for b=256: 4
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9665    2.093 ms    2.145 ms      122249      122145      122268      1467
+  -1     0.9665    1.439 ms    1.491 ms      177980      176917      178495      1467
+
+=== alpha=64 ck=640  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 4
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    4.408 ms    4.579 ms      227370      226676      228041      1467
+  -1     0.9644    4.028 ms    4.103 ms      247795      247231      248708      1467
+
+wrote results/practical_opt/v70/t_vogue-768_4_v69.json
+=== BP_OK ===

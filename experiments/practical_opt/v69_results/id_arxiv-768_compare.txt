@@ -1,0 +1,12 @@
+queries 1000  nprobe 128  ck 1000  nlist 8192
+list sizes identical: True
+probe ids identical (same lists, same order): 1000/1000
+primary top-ck positions identical: 1000/1000, distances bit-identical: 1000/1000
+alpha  batch  G   recall v65  recall v69   checks vs G=0 (v69)
+  100      8  -1   0.9766      0.9766   same  {"probe_same": 1000, "topck_same": 1000, "topck_tie_only": 0, "topck_nontie": 0, "primary_max_abs": 0.0, "final_same_order": 1000, "final_same_set": 1000, "final_bit_identical": 1000, "final_max_rel": 0.0}
+  100      8   0   0.9766      0.9766   same  {}
+  100      8   1   0.9766      0.9766   same  {"probe_same": 1000, "topck_same": 1000, "topck_tie_only": 0, "topck_nontie": 0, "primary_max_abs": 0.0, "final_same_order": 1000, "final_same_set": 1000, "final_bit_identical": 1000, "final_max_rel": 0.0}
+  100   1000  -1   0.9766      0.9766   same  {"probe_same": 1000, "topck_same": 999, "topck_tie_only": 1, "topck_nontie": 0, "primary_max_abs": 0.0, "final_same_order": 1000, "final_same_set": 1000, "final_bit_identical": 1000, "final_max_rel": 0.0}
+  100   1000   0   0.9766      0.9766   same  {}
+  100   1000   1   0.9766      0.9766   same  {"probe_same": 1000, "topck_same": 999, "topck_tie_only": 1, "topck_nontie": 0, "primary_max_abs": 0.0, "final_same_order": 1000, "final_same_set": 1000, "final_bit_identical": 1000, "final_max_rel": 0.0}
+IDENTITY_OK

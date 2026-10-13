@@ -1,0 +1,31 @@
+  [mmap loader] reusing cached /root/autodl-tmp/arxiv-abstracts-768/base.fvecs.raw_f32
+train 24.1 ms
+add 524.1 ms
+schedule: per-query candidate count CV 0.105 on 512 pseudo-queries
+
+=== alpha=100 ck=1000  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  scheduled G for b=8: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9766    1.047 ms    1.130 ms        7613        7611        7615      2545
+  -1     0.9766    0.447 ms    0.470 ms       17905       17856       17929      2641
+
+=== alpha=100 ck=1000  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  scheduled G for b=32: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9764    1.124 ms    1.189 ms       28335       28266       28355      2641
+  -1     0.9764    0.550 ms    0.573 ms       57968       57839       58021      2641
+
+=== alpha=100 ck=1000  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  scheduled G for b=256: 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9771    1.656 ms    1.672 ms      154622      154134      154871      2641
+  -1     0.9771    1.655 ms    1.667 ms      154812      154723      154872      2641
+
+=== alpha=100 ck=1000  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9766    4.363 ms    4.408 ms      229018      228051      229119      2641
+  -1     0.9766    4.368 ms    4.398 ms      228935      228602      229502      2641
+
+wrote results/practical_opt/v70/t_arxiv-768_4_v69.json
+=== BP_OK ===

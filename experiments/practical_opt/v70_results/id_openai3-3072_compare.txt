@@ -1,0 +1,11 @@
+queries 1000  nprobe 128  ck 40
+probe list identical 978/1000, probe set identical 998/1000, mean probe overlap 0.99998, worst query 127/128
+primary top-ck set identical 1000/1000, mean overlap 1.00000, worst 40/40
+alpha  batch  G   recall v69  recall v70  diff
+    4      8  -1   0.9267      0.9267   +0.0000
+    4      8   0   0.9267      0.9267   +0.0000
+    4      8   1   0.9267      0.9267   +0.0000
+    4   1000  -1   0.9267      0.9267   +0.0000
+    4   1000   0   0.9267      0.9267   +0.0000
+    4   1000   1   0.9267      0.9267   +0.0000
+{"probe_list_identical": 978, "probe_set_identical": 998, "probe_overlap": 0.999984375, "topck_set_identical": 1000, "topck_overlap": 1.0, "nused": 1000}

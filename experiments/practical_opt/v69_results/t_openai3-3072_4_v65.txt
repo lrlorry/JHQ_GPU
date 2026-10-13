@@ -1,0 +1,31 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+train 105.4 ms
+add 751.9 ms
+schedule: per-query candidate count CV 0.081 on 512 pseudo-queries
+
+=== alpha=4 ck=40  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  scheduled G for b=8: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9267    0.974 ms    1.039 ms        8242        8215        8251      4169
+  -1     0.9267    0.431 ms    0.433 ms       18548       18409       18553      4173
+
+=== alpha=4 ck=40  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  scheduled G for b=32: 4
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9273    1.021 ms    1.073 ms       31208       31192       31230      4173
+  -1     0.9273    0.591 ms    0.594 ms       54111       54094       54164      4173
+
+=== alpha=4 ck=40  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  scheduled G for b=256: 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9272    2.178 ms    2.191 ms      117709      117602      117901      4173
+  -1     0.9272    2.178 ms    2.191 ms      117736      117577      117784      4173
+
+=== alpha=4 ck=40  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9267    6.909 ms    6.927 ms      144699      144645      144738      4173
+  -1     0.9267    6.912 ms    6.926 ms      144674      144613      144680      4173
+
+wrote results/practical_opt/v69/t_openai3-3072_4_v65.json
+=== BP_OK ===

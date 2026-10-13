@@ -1,0 +1,36 @@
+  [mmap loader] reusing cached /root/autodl-tmp/arxiv-abstracts-768/base.fvecs.raw_f32
+train 23.8 ms
+add 550.5 ms
+schedule: per-query candidate count CV 0.105 on 512 pseudo-queries
+
+=== alpha=100 ck=1000  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  scheduled G for b=8: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9766    1.064 ms    1.143 ms        7506        7506        7506      2557
+  -1     0.9766    0.459 ms    0.482 ms       17441       17441       17441      2653
+
+=== alpha=100 ck=1000  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  scheduled G for b=32: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9764    1.133 ms    1.190 ms       28208       28208       28208      2653
+  -1     0.9764    0.559 ms    0.580 ms       57445       57445       57445      2653
+
+=== alpha=100 ck=1000  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  scheduled G for b=256: 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9771    1.662 ms    1.669 ms      154191      154191      154191      2653
+  -1     0.9771    1.661 ms    1.667 ms      154236      154236      154236      2653
+
+=== alpha=100 ck=1000  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9766    4.391 ms    4.457 ms      227693      227693      227693      2653
+  -1     0.9766    4.394 ms    4.435 ms      227773      227773      227773      2653
+
+wrote /root/autodl-tmp/practical_opt/nsys/v69_arxiv-768.json
+=== BP_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-ccf9.qdstrm'
+[1/1] [0%                          ] v69_arxiv-768.nsys-rep[1/1] [0%                          ] v69_arxiv-768.nsys-rep[1/1] [================70%         ] v69_arxiv-768.nsys-rep[1/1] [========================100%] v69_arxiv-768.nsys-rep[1/1] [========================100%] v69_arxiv-768.nsys-rep
+Generated:
+	/root/autodl-tmp/practical_opt/nsys/v69_arxiv-768.nsys-rep

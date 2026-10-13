@@ -1,0 +1,36 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+train 110.1 ms
+add 655.6 ms
+schedule: per-query candidate count CV 0.081 on 512 pseudo-queries
+
+=== alpha=4 ck=40  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  scheduled G for b=8: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9267    0.891 ms    0.955 ms        9022        9022        9022      4235
+  -1     0.9267    0.344 ms    0.349 ms       23190       23190       23190      4239
+
+=== alpha=4 ck=40  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  scheduled G for b=32: 4
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9273    0.940 ms    0.990 ms       34093       34093       34093      4239
+  -1     0.9273    0.504 ms    0.508 ms       63441       63441       63441      4239
+
+=== alpha=4 ck=40  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  scheduled G for b=256: 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9272    1.998 ms    2.012 ms      128491      128491      128491      4239
+  -1     0.9272    1.998 ms    2.010 ms      128380      128380      128380      4239
+
+=== alpha=4 ck=40  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9267    6.275 ms    6.288 ms      159335      159335      159335      4239
+  -1     0.9267    6.275 ms    6.297 ms      159238      159238      159238      4239
+
+wrote /root/autodl-tmp/practical_opt/nsys/v70_openai3-3072.json
+=== BP_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-1ba7.qdstrm'
+[1/1] [0%                          ] v70_openai3-3072.nsys-rep[1/1] [0%                          ] v70_openai3-3072.nsys-rep[1/1] [===============67%          ] v70_openai3-3072.nsys-rep[1/1] [================69%         ] v70_openai3-3072.nsys-rep[1/1] [========================100%] v70_openai3-3072.nsys-rep[1/1] [========================100%] v70_openai3-3072.nsys-rep
+Generated:
+	/root/autodl-tmp/practical_opt/nsys/v70_openai3-3072.nsys-rep

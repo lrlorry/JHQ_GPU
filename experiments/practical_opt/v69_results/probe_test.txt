@@ -1,0 +1,19 @@
+exactness: 1792 cases, 0 failing
+timing (us per launch, median of 9 x 50 launches):
+  nlist= 4096 block= 512 b=   8  v65    53.02  v69    14.75  x3.60
+  nlist= 4096 block= 512 b=  32  v65    53.10  v69    14.84  x3.58
+  nlist= 4096 block= 512 b= 256  v65    83.02  v69    18.08  x4.59
+  nlist= 4096 block= 512 b=1000  v65   219.71  v69    52.12  x4.22
+  nlist= 4096 block=1024 b=   8  v65    67.50  v69     9.69  x6.97
+  nlist= 4096 block=1024 b=  32  v65    67.60  v69     9.77  x6.92
+  nlist= 4096 block=1024 b= 256  v65   134.42  v69    19.72  x6.82
+  nlist= 4096 block=1024 b=1000  v65   398.72  v69    57.45  x6.94
+  nlist= 8192 block= 512 b=   8  v65    55.71  v69    22.02  x2.53
+  nlist= 8192 block= 512 b=  32  v65    55.83  v69    22.14  x2.52
+  nlist= 8192 block= 512 b= 256  v65    86.50  v69    26.21  x3.30
+  nlist= 8192 block= 512 b=1000  v65   225.85  v69    77.37  x2.92
+  nlist= 8192 block=1024 b=   8  v65    69.10  v69    14.48  x4.77
+  nlist= 8192 block=1024 b=  32  v65    69.14  v69    14.81  x4.67
+  nlist= 8192 block=1024 b= 256  v65   137.75  v69    29.59  x4.65
+  nlist= 8192 block=1024 b=1000  v65   411.24  v69    88.33  x4.66
+PROBE_TEST_OK
