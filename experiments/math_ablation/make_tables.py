@@ -84,7 +84,10 @@ def main():
     # frontier: B0 and any prototype
     fr = []
     for p in sorted(glob.glob(os.path.join(R, "b0", "*.json"))):
-        fr += bench_rows(p, "B0 v65")
+        for r in bench_rows(p, "B0 v65"):
+            if r["G"] == 0:                    # the v61 reference the harness measures first
+                r["variant"] = "v61 reference (G=0)"
+            fr.append(r)
     for p in sorted(glob.glob(os.path.join(R, "v1_gpu", "*.json"))):
         fr += e8_bench_rows(p)
     write(os.path.join(O, "RECALL_QPS_FRONTIER.csv"), fr)

@@ -1,6 +1,6 @@
 #!/bin/bash
 # B0: the v65 Recall-QPS frontier on the paper's indexes (arms6 cache), alpha and nprobe re-tuned around the paper's
-# configuration. demo_jhq_v65_batch, variant -1 (v65's scheduled G), batches 8, 32, 256, 1000, 3 rounds, all 1000
+# configuration. demo_jhq_v65_batch, variants 0 (v61, the reference the harness requires first) and -1 (v65, the scheduled G; the one reported), batches 8, 32, 256, 1000, 3 rounds, all 1000
 # queries; the same build and timing scope as experiments/pipeline_campaign/exp47.
 #   bash b0_frontier.sh <out dir>      (run from the repository root; called by run_stage.sh b0)
 set -u
@@ -28,7 +28,7 @@ for c in arxiv-768:128:25,50,75,100,150,200 vogue-768:128:16,32,48,64,96,128 ope
   env JHQ_INDEX_CACHE="$D/arms6_cache/$ds" JHQ_BLOCK=${BLK[$ds]} JHQ_TILE_M_RT=${MM[$ds]} \
       JHQ_N_TRAIN=${NT[$ds]} JHQ_GPU_CODEBOOK=1 JHQ_ENCODE_GROUPED_OFF=1 JHQ_Y_TRANSPOSED=1 \
       JHQ_RES_TRAIN_N=100000 JHQ_BP_ALPHAS="$al" JHQ_BP_ROUNDS=3 JHQ_BP_CHECK=0 \
-      JHQ_BP_LANES=16 JHQ_BP_GROUPS=-1 JHQ_BP_BATCHES=8,32,256,1000 \
+      JHQ_BP_LANES=16 JHQ_BP_GROUPS=0,-1 JHQ_BP_BATCHES=8,32,256,1000 \
       timeout 3600 build/demo_jhq_v65_batch ${P[$ds]} ${MM[$ds]} 8 8 ${al%%,*} 10 ${NL[$ds]} $np 8 1024 $OUT/$tag 3 \
       > $OUT/$tag.txt 2>&1
   echo "B0 $tag rc=$? $(grep -c BP_OK $OUT/$tag.txt) ok  $(date -u +%T)"

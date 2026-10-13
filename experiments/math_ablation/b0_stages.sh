@@ -24,7 +24,7 @@ for c in arxiv-768:100 vogue-768:64 openai3-3072:4; do
     env JHQ_INDEX_CACHE="$D/arms6_cache/$ds" JHQ_BLOCK=${BLK[$ds]} JHQ_TILE_M_RT=${MM[$ds]} \
         JHQ_N_TRAIN=${NT[$ds]} JHQ_GPU_CODEBOOK=1 JHQ_ENCODE_GROUPED_OFF=1 JHQ_Y_TRANSPOSED=1 \
         JHQ_RES_TRAIN_N=100000 JHQ_BP_ALPHAS="$al" JHQ_BP_ROUNDS=$1 JHQ_BP_CHECK=0 \
-        JHQ_BP_LANES=16 JHQ_BP_GROUPS=-1 JHQ_BP_BATCHES=8,32,256,1000 $EXTRA \
+        JHQ_BP_LANES=16 JHQ_BP_GROUPS=0,-1 JHQ_BP_BATCHES=8,32,256,1000 $EXTRA \
         timeout 3600 "${@:3}" $BIN ${P[$ds]} ${MM[$ds]} 8 8 $al 10 ${NL[$ds]} 128 8 1024 $2 3
   }
   run 3 $OUT/$ds > $OUT/$ds.txt 2>&1
