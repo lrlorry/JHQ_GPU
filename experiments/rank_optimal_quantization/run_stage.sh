@@ -87,6 +87,10 @@ for st in "$@"; do
       # round-5 diagnosis: D_P error split between / within IVF lists, misranking against same-list / other-list negatives
       OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 $E/diag_list.py $R median list_median > $R/raw/diag_list.txt 2>&1
       echo "diaglist rc=$? $(tail -1 $R/raw/diag_list.txt | cut -c1-300)" ;;
+    diagnorm)
+      # round-5 diagnosis, second step: the ||y_hat||^2 term of D_P against the inner product alone (unit-norm data)
+      OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 $E/diag_norm.py $R median list_median > $R/raw/diag_norm.txt 2>&1
+      echo "diagnorm rc=$? $(tail -1 $R/raw/diag_norm.txt | cut -c1-300)" ;;
     build67)
       # compile check of the v67 import benchmark (not run: the offline GO was not reached); no GPU use
       timeout 600 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=80 >/dev/null 2>&1
