@@ -1,0 +1,1 @@
+exported /root/autodl-tmp/roq/arxiv-768_np128_a100/var_median corr mean -5.031e-06 sd 0.02211

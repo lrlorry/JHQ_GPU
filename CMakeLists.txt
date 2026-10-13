@@ -2243,6 +2243,16 @@ target_compile_definitions(demo_jhq_v69_batch PRIVATE
     JHQ_INDEX_HEADER="${V69}/jhq_gpu_index.cuh" JHQ_PIPELINE_V62=1 JHQ_PIPELINE_V63=1 JHQ_PIPELINE_V65=1 ${V61_DEFS})
 target_link_libraries(demo_jhq_v69_batch PRIVATE jhq_v69_exp)
 
+# v70 (experiments/practical_opt, item 2, the optional part): v69 with the IVF centroid scoring on fp16
+# inputs (tensor cores, fp32 accumulation) against a copy of the centroids made at the first search; not
+# exact, measured against v69. demo_jhq_v70_batch is the same harness on it.
+set(V70 jhq_v70_c16route)
+add_jhq_variant(v70_exp ${V70} ${V61_DEFS})
+add_executable(demo_jhq_v70_batch examples/demo_jhq_batch_pipeline.cu)
+target_compile_definitions(demo_jhq_v70_batch PRIVATE
+    JHQ_INDEX_HEADER="${V70}/jhq_gpu_index.cuh" JHQ_PIPELINE_V62=1 JHQ_PIPELINE_V63=1 JHQ_PIPELINE_V65=1 ${V61_DEFS})
+target_link_libraries(demo_jhq_v70_batch PRIVATE jhq_v70_exp)
+
 # v64: v61 with the IVF centroid scoring selectable (jhq_gpu::set_route_mode,
 # JHQ_ROUTE_MODE): 0 = v61's, rotate then score against c; 1 = score the query
 # as given against Pi^T c (precomputed once per index -- the same products,

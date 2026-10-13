@@ -1,0 +1,48 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+built A in 994 ms, B (build + import) in 1746 ms
+schedule: per-query candidate count CV 0.495 on 512 pseudo-queries
+
+=== b=8 ===
+  A alpha=32      recall 0.9622  QPS median 22775 [22772, 22789]
+  A alpha=48      recall 0.9636  QPS median 16058 [15961, 16064]
+  A alpha=64      recall 0.9644  QPS median 19233 [19220, 19243]
+  A alpha=96      recall 0.9646  QPS median 16447 [16437, 16455]
+  B alpha=32      recall 0.9614  QPS median 22846 [22826, 22847]
+  B alpha=48      recall 0.9623  QPS median 16042 [15779, 16048]
+  B alpha=64      recall 0.9628  QPS median 19260 [19250, 19260]
+  B alpha=96      recall 0.9630  QPS median 16476 [16471, 16484]
+  B alpha=128     recall 0.9630  QPS median 12739 [12673, 12743]
+
+=== b=32 ===
+  A alpha=32      recall 0.9622  QPS median 72194 [72190, 72305]
+  A alpha=48      recall 0.9636  QPS median 52834 [50769, 52878]
+  A alpha=64      recall 0.9644  QPS median 59699 [59638, 59730]
+  A alpha=96      recall 0.9646  QPS median 52330 [51894, 53200]
+  B alpha=32      recall 0.9613  QPS median 72413 [67704, 72462]
+  B alpha=48      recall 0.9622  QPS median 53045 [53031, 53056]
+  B alpha=64      recall 0.9627  QPS median 59470 [59455, 59485]
+  B alpha=96      recall 0.9629  QPS median 53282 [53208, 53284]
+  B alpha=128     recall 0.9629  QPS median 42317 [42267, 42423]
+
+=== b=256 ===
+  A alpha=32      recall 0.9641  QPS median 191442 [190949, 191818]
+  A alpha=48      recall 0.9656  QPS median 165299 [164678, 165578]
+  A alpha=64      recall 0.9665  QPS median 168580 [167236, 169313]
+  A alpha=96      recall 0.9667  QPS median 156842 [155876, 157312]
+  B alpha=32      recall 0.9629  QPS median 191657 [189070, 191783]
+  B alpha=48      recall 0.9637  QPS median 166703 [165937, 167388]
+  B alpha=64      recall 0.9643  QPS median 169308 [168805, 170936]
+  B alpha=96      recall 0.9646  QPS median 156905 [156406, 157748]
+  B alpha=128     recall 0.9646  QPS median 139025 [138107, 139447]
+
+=== b=1000 ===
+  A alpha=32      recall 0.9622  QPS median 276060 [274486, 276096]
+  A alpha=48      recall 0.9636  QPS median 236550 [236238, 237678]
+  A alpha=64      recall 0.9644  QPS median 238912 [238081, 238917]
+  A alpha=96      recall 0.9646  QPS median 219936 [219339, 220488]
+  B alpha=32      recall 0.9614  QPS median 276093 [275011, 276709]
+  B alpha=48      recall 0.9623  QPS median 237949 [235603, 238111]
+  B alpha=64      recall 0.9628  QPS median 238674 [238540, 239098]
+  B alpha=96      recall 0.9630  QPS median 220045 [219398, 220241]
+  B alpha=128     recall 0.9630  QPS median 192538 [192344, 193122]
+=== RQ_BENCH_OK ===
