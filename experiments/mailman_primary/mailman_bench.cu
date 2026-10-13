@@ -533,9 +533,9 @@ int main(int argc, char** argv)
     for (int B : batches) {
         const int nb = std::max(1, std::min(nS / B, B >= 256 ? 1 : 16));     // batches timed
         // per-batch device arrays, built for the first batch of size B and reused shape-wise
-        constexpr int NI = 7;                              // 5 scorers, then the two query preparations
+        constexpr int NS = 5, NI = 8;                     // 5 scorers (checked), then 3 timed-only items
         std::vector<std::vector<double>> st(NI);         // ms per launch per item
-        const char* names[NI] = {"B0", "H1_r8", "H1_r4", "H2_r8", "H2_r4", "B0_prep_lut", "MM_prep_C0"};
+        const char* names[NI] = {"B0", "H1_r8", "H1_r4", "H2_r8", "H2_r4", "B0_scangrid", "B0_prep_lut", "MM_prep_C0"};
         double err_max[5] = {0, 0, 0, 0, 0}, err_sum[5] = {0, 0, 0, 0, 0}; long err_n = 0;
         std::vector<double> errs[5];
         double vs_b0_max[5] = {0, 0, 0, 0, 0};
@@ -605,8 +605,9 @@ int main(int argc, char** argv)
             auto launch = [&](int k, bool prof) {
                 switch (k) {
                 case 0: k_b0<<<dim3(gx_b0, B), block_b0, sm_b0>>>(d_words, N, M, d_lut, d_cpos, d_coff, d_out[0]); break;
-                case 5: k_build_lut<<<dim3((M * 32 + 255) / 256, B), 256>>>(d_qf, d, M, (float)c, d_lut); break;
-                case 6: k_prep_mm<<<B, 256>>>(d_qf, d, (float)c, d_C0x); break;
+                case 5: k_b0<<<dim3(B <= 32 ? 8 : 1, B), block_b0, sm_b0>>>(d_words, N, M, d_lut, d_cpos, d_coff, d_out[0]); break;
+                case 6: k_build_lut<<<dim3((M * 32 + 255) / 256, B), 256>>>(d_qf, d, M, (float)c, d_lut); break;
+                case 7: k_prep_mm<<<B, 256>>>(d_qf, d, (float)c, d_C0x); break;
                 case 1: if (prof) k_h1_r8<true><<<dim3(gx_h18, B), 32 * h1w, sm_h18>>>(d_P8g, d, a8, d_out[1]);
                         else k_h1_r8<false><<<dim3(gx_h18, B), 32 * h1w, sm_h18>>>(d_P8g, d, a8, d_out[1]); break;
                 case 2: if (prof) k_h1_r4<true><<<dim3(gx_h14, B), 32 * h1w, sm_h14>>>(d_P4g, d, a4, d_out[2]);
@@ -619,9 +620,9 @@ int main(int argc, char** argv)
             };
             // correctness: one run each, against FP64 and B0 (the LUT first; the C0 the scorers use is the
             // host's FP64 value, and the device preparation is checked against it)
-            launch(5, false);
-            for (int k = 0; k < 5; ++k) launch(k, false);
             launch(6, false);
+            for (int k = 0; k < NS; ++k) launch(k, false);
+            launch(7, false);
             CK(cudaGetLastError()); CK(cudaDeviceSynchronize());
             std::vector<std::vector<float>> h(5, std::vector<float>(nc));
             for (int k = 0; k < 5; ++k) CK(cudaMemcpy(h[k].data(), d_out[k], nc * 4, cudaMemcpyDeviceToHost));
@@ -719,14 +720,15 @@ int main(int argc, char** argv)
             std::vector<double> s = st[k];
             std::sort(s.begin(), s.end());
             const double med = s[s.size() / 2], p10 = s[s.size() / 10], p90 = s[s.size() * 9 / 10];
-            std::vector<double> e = errs[k]; std::sort(e.begin(), e.end());
-            const double e50 = e.empty() ? 0 : e[e.size() / 2], e99 = e.empty() ? 0 : e[std::min(e.size() - 1, e.size() * 99 / 100)];
-            if (k >= 5) {
-                std::printf("  %-11s median %8.1f us/launch [p10 %8.1f, p90 %8.1f]\n", names[k], med * 1e3, p10 * 1e3, p90 * 1e3);
+            if (k >= NS) {
+                std::printf("  %-11s median %8.1f us/launch [p10 %8.1f, p90 %8.1f]%s\n", names[k], med * 1e3, p10 * 1e3,
+                            p90 * 1e3, k == 5 ? "  (B0 at the scan's own grid: G blocks a query)" : "");
                 std::fprintf(jf, ",{\"impl\":\"%s\",\"launches\":%zu,\"median_us\":%.3f,\"p10_us\":%.3f,\"p90_us\":%.3f}",
                              names[k], s.size(), med * 1e3, p10 * 1e3, p90 * 1e3);
                 continue;
             }
+            std::vector<double> e = errs[k]; std::sort(e.begin(), e.end());
+            const double e50 = e.empty() ? 0 : e[e.size() / 2], e99 = e.empty() ? 0 : e[std::min(e.size() - 1, e.size() * 99 / 100)];
             std::printf("  %-6s median %8.1f us/launch [p10 %8.1f, p90 %8.1f]  B0/this %.3f | err vs FP64 max %.3e p50 %.3e p99 %.3e | vs B0 max %.3e | top-T != FP64 in %d queries (max FP64 gap past the T-th %.3e), != B0 in %d\n",
                         names[k], med * 1e3, p10 * 1e3, p90 * 1e3, med0 / med, err_max[k], e50, e99, vs_b0_max[k], topT_diff_fp64[k], topT_gap_max[k], topT_diff_b0[k]);
             std::fprintf(jf, "%s{\"impl\":\"%s\",\"launches\":%zu,\"median_us\":%.3f,\"p10_us\":%.3f,\"p90_us\":%.3f,"
