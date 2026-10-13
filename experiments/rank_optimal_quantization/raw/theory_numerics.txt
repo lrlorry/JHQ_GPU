@@ -1,0 +1,41 @@
+/root/autodl-tmp/jhq_pipeline_wt/experiments/rank_optimal_quantization/theory_numerics.py:25: IntegrationWarning: The occurrence of roundoff error is detected, which prevents 
+  the requested tolerance from being achieved.  The error may be 
+  underestimated.
+  return integrate.quad(lambda q: f(q) * phi(q), lo, hi, limit=400)[0]
+== 1. psi(t) = log Phi(t) - log Phi(-t): series and limits
+  t= 0.01 psi=   0.01596  4phi(0)t=   0.01596 (ratio 1.0000)  +cubic=   0.01596  large-t=  -3.68618 (ratio -0.0043)
+  t= 0.10 psi=   0.15965  4phi(0)t=   0.15958 (ratio 1.0005)  +cubic=   0.15965  large-t=  -1.37865 (ratio -0.1158)
+  t= 0.50 psi=   0.80697  4phi(0)t=   0.79788 (ratio 1.0114)  +cubic=   0.80697  large-t=   0.35079 (ratio 2.3004)
+  t= 1.00 psi=   1.66827  4phi(0)t=   1.59577 (ratio 1.0454)  +cubic=   1.66844  large-t=   1.41894 (ratio 1.1757)
+  t= 2.00 psi=   3.76017  4phi(0)t=   3.19154 (ratio 1.1782)  +cubic=   3.77291  large-t=   3.61209 (ratio 1.0410)
+  t= 4.00 psi=  10.36007  4phi(0)t=   6.38308 (ratio 1.6231)  +cubic=  11.03403  large-t=  10.30523 (ratio 1.0053)
+  t= 8.00 psi=  35.01344  4phi(0)t=  12.76615 (ratio 2.7427)  +cubic=  49.97381  large-t=  34.99838 (ratio 1.0004)
+  cubic coefficient (16 phi0^3 - 2 phi0)/3 = 0.07267
+== 2. ranking SNR of a reweighted sign inner product, relative to JHQ (h = q)
+  rho1 rho0 | locally optimal h* | LLR h = psi(lambda q)/2 at lambda = kappa1 | cos(h*, q)
+  0.90 0.85 |  x1.0108            |  x1.0088                                    | 0.99304
+  0.88 0.80 |  x1.0056            |  x1.0015                                    | 0.99262
+  0.85 0.60 |  x1.0151            |  x0.9582                                    | 0.97681
+  0.80 0.50 |  x1.0105            |  x0.9706                                    | 0.98644
+  0.70 0.60 |  x1.0068            |  x1.0057                                    | 0.99559
+  0.95 0.90 |  x1.0042            |  x0.9854                                    | 0.95734
+== 3. rank-optimal threshold: argmin_t E_q log Bhattacharyya(t, q), biased background
+  background y ~ N(m, 1); neighbour y | q ~ N(m + rho (q - m), 1 - rho^2); q ~ N(m, 1)
+  m=0.0 rho=0.8: argmin t = +0.00000 (m = +0.0); exponent per coordinate -2 g: at t=m 0.18383, at t=0 0.18383 (ratio 1.000)
+  m=0.0 rho=0.9: argmin t = +0.00000 (m = +0.0); exponent per coordinate -2 g: at t=m 0.29740, at t=0 0.29740 (ratio 1.000)
+  m=0.5 rho=0.8: argmin t = +0.50000 (m = +0.5); exponent per coordinate -2 g: at t=m 0.18383, at t=0 0.16321 (ratio 0.888)
+  m=0.5 rho=0.9: argmin t = +0.50000 (m = +0.5); exponent per coordinate -2 g: at t=m 0.29740, at t=0 0.26239 (ratio 0.882)
+  m=1.0 rho=0.8: argmin t = +1.00000 (m = +1.0); exponent per coordinate -2 g: at t=m 0.18383, at t=0 0.11381 (ratio 0.619)
+  m=1.0 rho=0.9: argmin t = +1.00000 (m = +1.0); exponent per coordinate -2 g: at t=m 0.29740, at t=0 0.17950 (ratio 0.604)
+== 4. information in a sign bit whose threshold sits a std away from the centre
+  Fisher information about a location shift, I(a) = phi(a)^2 / (Phi(a)(1 - Phi(a))), relative to I(0) = 2/pi
+  a=0.00  P(bit=1)=0.500 |E s|=0.000  I(a)/I(0)=1.000
+  a=0.25  P(bit=1)=0.599 |E s|=0.197  I(a)/I(0)=0.978
+  a=0.50  P(bit=1)=0.691 |E s|=0.383  I(a)/I(0)=0.913
+  a=0.75  P(bit=1)=0.773 |E s|=0.547  I(a)/I(0)=0.813
+  a=1.00  P(bit=1)=0.841 |E s|=0.683  I(a)/I(0)=0.689
+  a=1.25  P(bit=1)=0.894 |E s|=0.789  I(a)/I(0)=0.555
+  a=1.50  P(bit=1)=0.933 |E s|=0.866  I(a)/I(0)=0.423
+  a=2.00  P(bit=1)=0.977 |E s|=0.954  I(a)/I(0)=0.206
+== 5. half-normal conditional mean and the JHQ level
+  E[X | X > 0] / sigma = sqrt(2/pi) = 0.797885 ; JHQ level / sigma = sqrt(2) erfinv(1/2) = 0.674490 (median of |X|)

@@ -1,0 +1,197 @@
+{
+ "arxiv-768_np128_a100": {
+  "ck": 1000,
+  "T_grid": [
+   10,
+   15,
+   20,
+   30,
+   31,
+   40,
+   60,
+   62,
+   80,
+   120,
+   125,
+   160,
+   188,
+   240,
+   250,
+   320,
+   375,
+   480,
+   500,
+   625,
+   640,
+   750,
+   875,
+   960,
+   1000,
+   1250,
+   1280,
+   1500,
+   1920,
+   2000,
+   2560
+  ],
+  "target": {
+   "calib": 0.9742500000000001,
+   "val": 0.9790000000000001
+  },
+  "full_ivf_recall": {
+   "calib": 0.97625,
+   "val": 0.9804999999999999
+  },
+  "chosen": {
+   "JHQ": {
+    "param": 0.0,
+    "T_min_val": 750,
+    "T_min_val_JHQ": 750,
+    "reduction_val": 0.0,
+    "recall_at_ck_val": 0.9790000000000001
+   },
+   "LLR-iso": {
+    "param": 3.0,
+    "T_min_val": 960,
+    "T_min_val_JHQ": 750,
+    "reduction_val": -0.28,
+    "recall_at_ck_val": 0.9795
+   },
+   "LLR-bias": {
+    "param": 16.0,
+    "T_min_val": 1250,
+    "T_min_val_JHQ": 750,
+    "reduction_val": -0.6666666666666667,
+    "recall_at_ck_val": 0.9785
+   },
+   "LMP": {
+    "param": 1.5,
+    "T_min_val": 960,
+    "T_min_val_JHQ": 750,
+    "reduction_val": -0.28,
+    "recall_at_ck_val": 0.9795
+   }
+  },
+  "seconds": 100.36343097686768
+ },
+ "vogue-768_np128_a64": {
+  "ck": 640,
+  "T_grid": [
+   10,
+   15,
+   20,
+   30,
+   40,
+   60,
+   80,
+   120,
+   160,
+   240,
+   320,
+   400,
+   480,
+   560,
+   640,
+   800,
+   960,
+   1280,
+   1920,
+   2560
+  ],
+  "target": {
+   "calib": 0.9584999999999999,
+   "val": 0.9575000000000001
+  },
+  "full_ivf_recall": {
+   "calib": 0.959,
+   "val": 0.9574999999999999
+  },
+  "chosen": {
+   "JHQ": {
+    "param": 0.0,
+    "T_min_val": 640,
+    "T_min_val_JHQ": 640,
+    "reduction_val": 0.0,
+    "recall_at_ck_val": 0.9575000000000001
+   },
+   "LLR-iso": {
+    "param": 1.0,
+    "T_min_val": 640,
+    "T_min_val_JHQ": 640,
+    "reduction_val": 0.0,
+    "recall_at_ck_val": 0.9575000000000001
+   },
+   "LLR-bias": {
+    "param": 8.0,
+    "T_min_val": 1280,
+    "T_min_val_JHQ": 640,
+    "reduction_val": -1.0,
+    "recall_at_ck_val": 0.9570000000000002
+   },
+   "LMP": {
+    "param": 0.5,
+    "T_min_val": 640,
+    "T_min_val_JHQ": 640,
+    "reduction_val": 0.0,
+    "recall_at_ck_val": 0.9575000000000001
+   }
+  },
+  "seconds": 107.88966250419617
+ },
+ "openai3-3072_np128_a4": {
+  "ck": 40,
+  "T_grid": [
+   10,
+   15,
+   20,
+   25,
+   30,
+   35,
+   40,
+   50,
+   60,
+   80,
+   120,
+   160
+  ],
+  "target": {
+   "calib": 0.9305000000000001,
+   "val": 0.9025
+  },
+  "full_ivf_recall": {
+   "calib": 0.9305,
+   "val": 0.9025000000000001
+  },
+  "chosen": {
+   "JHQ": {
+    "param": 0.0,
+    "T_min_val": 25,
+    "T_min_val_JHQ": 25,
+    "reduction_val": 0.0,
+    "recall_at_ck_val": 0.9025
+   },
+   "LLR-iso": {
+    "param": 1.5,
+    "T_min_val": 30,
+    "T_min_val_JHQ": 25,
+    "reduction_val": -0.19999999999999996,
+    "recall_at_ck_val": 0.9025
+   },
+   "LLR-bias": {
+    "param": 8.0,
+    "T_min_val": 30,
+    "T_min_val_JHQ": 25,
+    "reduction_val": -0.19999999999999996,
+    "recall_at_ck_val": 0.9025
+   },
+   "LMP": {
+    "param": 1.0,
+    "T_min_val": 30,
+    "T_min_val_JHQ": 25,
+    "reduction_val": -0.19999999999999996,
+    "recall_at_ck_val": 0.9025
+   }
+  },
+  "seconds": 123.634850025177
+ }
+}

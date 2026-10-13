@@ -1,0 +1,5 @@
+=== 2026-10-13T05:01:07Z head=db6a809 Rank-optimal quantization: round-3 build stage without re-training; per-query recall curves saved by the evaluator stages: iter3build ===
+iter3 quantize rc=0
+iter3 eval rc=0 openai3-3072_np128_a4 {"JHQ": {"calib": [40, 40, 0.9305000000000001], "val": [25, 25, 0.9025000000000007]}, "median": {"calib": [30, 40, 0.9312499999999999], "val": [30, 25, 0.9030000000000007]}, "learned_rl_t_zero": {"calib": [40, 40, 0.9305], "val": [null, 25, 0.9015000000000007]}, "learned_rl_t_m
+stage iter3build took 971 s
+=== ROQ_STAGE_DONE 2026-10-13T05:17:18Z ===

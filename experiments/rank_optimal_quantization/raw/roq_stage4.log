@@ -1,0 +1,4 @@
+=== 2026-10-13T07:11:25Z head=5132cc3 Rank-optimal quantization: correct four round-3 numbers in the log stages: iter4 ===
+iter4 eval rc=0 openai3-3072_np128_a4 {"JHQ": {"calib": [40, 40, 0.9305000000000001], "val": [25, 25, 0.9025000000000007]}, "median": {"calib": [30, 40, 0.9312499999999999], "val": [30, 25, 0.9030000000000007]}, "lmmse@JHQ": {"calib": [160, 40, 0.929], "val": [50, 25, 0.9020000000000006]}, "lmmse@median": {"calib":
+stage iter4 took 2161 s
+=== ROQ_STAGE_DONE 2026-10-13T07:47:26Z ===

@@ -1,0 +1,9 @@
+repo: /root/autodl-tmp/jhq_pipeline_wt
+=== 2026-10-13T01:49:13Z head=189ba8b Rank-optimal quantization study: read-only export of the rest of the representation ===
+configure_rc=0
+build_rc=0
+got the GPU 01:49:17
+export arxiv-768_np128_a100 rc=0 1 ok | wrote /root/autodl-tmp/roq/arxiv-768_np128_a100: N=2253000 d=768 M=96 Kr=256 bpv=768, residual codebook unsorted pairs 0 01:49:26
+export vogue-768_np128_a64 rc=0 1 ok | wrote /root/autodl-tmp/roq/vogue-768_np128_a64: N=932328 d=768 M=96 Kr=256 bpv=768, residual codebook unsorted pairs 0 01:49:31
+export openai3-3072_np128_a4 rc=0 1 ok | wrote /root/autodl-tmp/roq/openai3-3072_np128_a4: N=999000 d=3072 M=384 Kr=256 bpv=3072, residual codebook unsorted pairs 0 01:49:41
+=== ROQ_EXPORT_DONE 2026-10-13T01:49:41Z ===

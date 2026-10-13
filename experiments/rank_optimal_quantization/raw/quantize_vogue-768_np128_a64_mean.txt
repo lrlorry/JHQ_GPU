@@ -1,0 +1,1 @@
+{"tag": "vogue-768_np128_a64", "kind": "mean", "per_list": false, "seconds": 89.15354704856873, "bit_one_fraction": 0.5005853486961312, "bit_entropy_mean": 0.9985119421763883, "bit_bias_abs_mean": 0.031613671875, "primary_mse_per_vector": 0.27581487124263, "hierarchical_mse_per_vector": 3.181160899701038e-05, "lloyd_iterations": [2000, 2000, 2000], "metadata_floats": 26880}

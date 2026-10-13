@@ -1,0 +1,5 @@
+=== 2026-10-13T07:47:57Z head=4b367b8 Rank-optimal quantization: pre-register round 5 (IVF-conditional thresholds), its stage, paired per-query analysis stages: iter5 ===
+iter5 quantize rc=0
+iter5 eval rc=0 openai3-3072_np128_a4 {"JHQ": {"calib": [40, 40, 0.9305000000000001], "val": [25, 25, 0.9025000000000007]}, "median": {"calib": [30, 40, 0.9312499999999999], "val": [30, 25, 0.9030000000000007]}, "list_median": {"calib": [160, 40, 0.9100000000000005], "val": [null, 25, 0.8780000000000007]}, "list_me
+stage iter5 took 870 s
+=== ROQ_STAGE_DONE 2026-10-13T08:02:27Z ===

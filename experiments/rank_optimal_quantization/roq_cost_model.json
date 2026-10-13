@@ -1,0 +1,788 @@
+{
+ "arxiv-768_np128_a100": {
+  "b8": {
+   "v65_measured_at_ck": 480.13,
+   "methods": {
+    "JHQ": {
+     "T_method": 750,
+     "T_JHQ": 750,
+     "jhq_us": 446.7752518242785,
+     "method_us": 446.7752518242785,
+     "method_us_upper": 446.7752518242785,
+     "time_saving": 0.0,
+     "time_saving_upper_cost": 0.0,
+     "stages_jhq": {
+      "front": 77.471,
+      "scan": 223.0355017863995,
+      "merge": 10.42063611932386,
+      "refine": 94.73698865450724,
+      "topk": 21.011125264047884,
+      "host": 20.100000000000023,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 77.471,
+      "scan": 223.0355017863995,
+      "merge": 10.42063611932386,
+      "refine": 94.73698865450724,
+      "topk": 21.011125264047884,
+      "host": 20.100000000000023,
+      "extra": 0.0
+     }
+    },
+    "jhq_re": {
+     "T_method": 625,
+     "T_JHQ": 750,
+     "jhq_us": 446.7752518242785,
+     "method_us": 425.6363273093101,
+     "method_us_upper": 425.6363273093101,
+     "time_saving": 0.04731444821228048,
+     "time_saving_upper_cost": 0.04731444821228048,
+     "stages_jhq": {
+      "front": 77.471,
+      "scan": 223.0355017863995,
+      "merge": 10.42063611932386,
+      "refine": 94.73698865450724,
+      "topk": 21.011125264047884,
+      "host": 20.100000000000023,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 77.471,
+      "scan": 213.9071324194736,
+      "merge": 9.480538567495609,
+      "refine": 84.70898782326952,
+      "topk": 19.968668499071327,
+      "host": 20.100000000000023,
+      "extra": 0.0
+     }
+    },
+    "lloydmax": {
+     "T_method": 480,
+     "T_JHQ": 750,
+     "jhq_us": 446.7752518242785,
+     "method_us": 395.0313464937218,
+     "method_us_upper": 395.0313464937218,
+     "time_saving": 0.11581640907654422,
+     "time_saving_upper_cost": 0.11581640907654422,
+     "stages_jhq": {
+      "front": 77.471,
+      "scan": 223.0355017863995,
+      "merge": 10.42063611932386,
+      "refine": 94.73698865450724,
+      "topk": 21.011125264047884,
+      "host": 20.100000000000023,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 77.471,
+      "scan": 200.69105942793863,
+      "merge": 8.119463290552737,
+      "refine": 70.19042644416935,
+      "topk": 18.459397331061034,
+      "host": 20.100000000000023,
+      "extra": 0.0
+     }
+    },
+    "median": {
+     "T_method": 320,
+     "T_JHQ": 750,
+     "jhq_us": 446.7752518242785,
+     "method_us": 348.02046931347496,
+     "method_us_upper": 348.02046931347496,
+     "time_saving": 0.22103906182709698,
+     "time_saving_upper_cost": 0.22103906182709698,
+     "stages_jhq": {
+      "front": 77.471,
+      "scan": 223.0355017863995,
+      "merge": 10.42063611932386,
+      "refine": 94.73698865450724,
+      "topk": 21.011125264047884,
+      "host": 20.100000000000023,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 77.471,
+      "scan": 180.39046888178228,
+      "merge": 6.028779324338926,
+      "refine": 47.88914450776267,
+      "topk": 16.141076599591056,
+      "host": 20.100000000000023,
+      "extra": 0.0
+     }
+    },
+    "mean": {
+     "T_method": 375,
+     "T_JHQ": 750,
+     "jhq_us": 446.7752518242785,
+     "method_us": 366.4096264683102,
+     "method_us_upper": 366.4096264683102,
+     "time_saving": 0.17987931298302295,
+     "time_saving_upper_cost": 0.17987931298302295,
+     "stages_jhq": {
+      "front": 77.471,
+      "scan": 223.0355017863995,
+      "merge": 10.42063611932386,
+      "refine": 94.73698865450724,
+      "topk": 21.011125264047884,
+      "host": 20.100000000000023,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 77.471,
+      "scan": 188.33141302664268,
+      "merge": 6.846588272433906,
+      "refine": 56.61269537260781,
+      "topk": 17.047929796625787,
+      "host": 20.100000000000023,
+      "extra": 0.0
+     }
+    },
+    "list_median": {
+     "T_method": 320,
+     "T_JHQ": 750,
+     "jhq_us": 446.7752518242785,
+     "method_us": 403.7793447600748,
+     "method_us_upper": 561.012469313475,
+     "time_saving": 0.09623609832604252,
+     "time_saving_upper_cost": -0.2556928053260372,
+     "stages_jhq": {
+      "front": 77.471,
+      "scan": 223.0355017863995,
+      "merge": 10.42063611932386,
+      "refine": 94.73698865450724,
+      "topk": 21.011125264047884,
+      "host": 20.100000000000023,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 77.471,
+      "scan": 180.39046888178228,
+      "merge": 6.028779324338926,
+      "refine": 47.88914450776267,
+      "topk": 16.141076599591056,
+      "host": 20.100000000000023,
+      "extra": 55.75887544659987
+     }
+    },
+    "list_mean": {
+     "T_method": 320,
+     "T_JHQ": 750,
+     "jhq_us": 446.7752518242785,
+     "method_us": 403.7793447600748,
+     "method_us_upper": 561.012469313475,
+     "time_saving": 0.09623609832604252,
+     "time_saving_upper_cost": -0.2556928053260372,
+     "stages_jhq": {
+      "front": 77.471,
+      "scan": 223.0355017863995,
+      "merge": 10.42063611932386,
+      "refine": 94.73698865450724,
+      "topk": 21.011125264047884,
+      "host": 20.100000000000023,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 77.471,
+      "scan": 180.39046888178228,
+      "merge": 6.028779324338926,
+      "refine": 47.88914450776267,
+      "topk": 16.141076599591056,
+      "host": 20.100000000000023,
+      "extra": 55.75887544659987
+     }
+    }
+   }
+  },
+  "b1000": {
+   "v65_measured_at_ck": 4555.780000000001,
+   "methods": {
+    "JHQ": {
+     "T_method": 750,
+     "T_JHQ": 750,
+     "jhq_us": 4380.7647936518115,
+     "method_us": 4380.7647936518115,
+     "method_us_upper": 4380.7647936518115,
+     "time_saving": 0.0,
+     "time_saving_upper_cost": 0.0,
+     "stages_jhq": {
+      "front": 546.717,
+      "scan": 2868.433327878526,
+      "merge": 0.0,
+      "refine": 616.5706000143937,
+      "topk": 59.16086575889117,
+      "host": 289.8830000000007,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 546.717,
+      "scan": 2868.433327878526,
+      "merge": 0.0,
+      "refine": 616.5706000143937,
+      "topk": 59.16086575889117,
+      "host": 289.8830000000007,
+      "extra": 0.0
+     }
+    },
+    "jhq_re": {
+     "T_method": 625,
+     "T_JHQ": 750,
+     "jhq_us": 4380.7647936518115,
+     "method_us": 4269.847055149474,
+     "method_us_upper": 4269.847055149474,
+     "time_saving": 0.025319263582256002,
+     "time_saving_upper_cost": 0.025319263582256002,
+     "stages_jhq": {
+      "front": 546.717,
+      "scan": 2868.433327878526,
+      "merge": 0.0,
+      "refine": 616.5706000143937,
+      "topk": 59.16086575889117,
+      "host": 289.8830000000007,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 546.717,
+      "scan": 2825.4804124358784,
+      "merge": 0.0,
+      "refine": 552.41286182925,
+      "topk": 55.35378088434512,
+      "host": 289.8830000000007,
+      "extra": 0.0
+     }
+    },
+    "lloydmax": {
+     "T_method": 480,
+     "T_JHQ": 750,
+     "jhq_us": 4380.7647936518115,
+     "method_us": 4109.260112489797,
+     "method_us_upper": 4109.260112489797,
+     "time_saving": 0.06197654837699862,
+     "time_saving_upper_cost": 0.06197654837699862,
+     "stages_jhq": {
+      "front": 546.717,
+      "scan": 2868.433327878526,
+      "merge": 0.0,
+      "refine": 616.5706000143937,
+      "topk": 59.16086575889117,
+      "host": 289.8830000000007,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 546.717,
+      "scan": 2763.2930881864836,
+      "merge": 0.0,
+      "refine": 459.5251491673557,
+      "topk": 49.84187513595694,
+      "host": 289.8830000000007,
+      "extra": 0.0
+     }
+    },
+    "median": {
+     "T_method": 320,
+     "T_JHQ": 750,
+     "jhq_us": 4380.7647936518115,
+     "method_us": 3862.590033406452,
+     "method_us_upper": 3862.590033406452,
+     "time_saving": 0.1182840861477541,
+     "time_saving_upper_cost": 0.1182840861477541,
+     "stages_jhq": {
+      "front": 546.717,
+      "scan": 2868.433327878526,
+      "merge": 0.0,
+      "refine": 616.5706000143937,
+      "topk": 59.16086575889117,
+      "host": 289.8830000000007,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 546.717,
+      "scan": 2667.7700528978144,
+      "merge": 0.0,
+      "refine": 316.8446855586932,
+      "topk": 41.37529494994377,
+      "host": 289.8830000000007,
+      "extra": 0.0
+     }
+    },
+    "mean": {
+     "T_method": 375,
+     "T_JHQ": 750,
+     "jhq_us": 4380.7647936518115,
+     "method_us": 3959.079508220277,
+     "method_us_upper": 3959.079508220277,
+     "time_saving": 0.09625837160730488,
+     "time_saving_upper_cost": 0.09625837160730488,
+     "stages_jhq": {
+      "front": 546.717,
+      "scan": 2868.433327878526,
+      "merge": 0.0,
+      "refine": 616.5706000143937,
+      "topk": 59.16086575889117,
+      "host": 289.8830000000007,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 546.717,
+      "scan": 2705.1356204683825,
+      "merge": 0.0,
+      "refine": 372.6567364201247,
+      "topk": 44.687151331769165,
+      "host": 289.8830000000007,
+      "extra": 0.0
+     }
+    },
+    "list_median": {
+     "T_method": 320,
+     "T_JHQ": 750,
+     "jhq_us": 4380.7647936518115,
+     "method_us": 4579.6983653760835,
+     "method_us_upper": 6275.134033406452,
+     "time_saving": -0.04541069450077484,
+     "time_saving_upper_cost": -0.43242888604742724,
+     "stages_jhq": {
+      "front": 546.717,
+      "scan": 2868.433327878526,
+      "merge": 0.0,
+      "refine": 616.5706000143937,
+      "topk": 59.16086575889117,
+      "host": 289.8830000000007,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 546.717,
+      "scan": 2667.7700528978144,
+      "merge": 0.0,
+      "refine": 316.8446855586932,
+      "topk": 41.37529494994377,
+      "host": 289.8830000000007,
+      "extra": 717.1083319696315
+     }
+    },
+    "list_mean": {
+     "T_method": 320,
+     "T_JHQ": 750,
+     "jhq_us": 4380.7647936518115,
+     "method_us": 4579.6983653760835,
+     "method_us_upper": 6275.134033406452,
+     "time_saving": -0.04541069450077484,
+     "time_saving_upper_cost": -0.43242888604742724,
+     "stages_jhq": {
+      "front": 546.717,
+      "scan": 2868.433327878526,
+      "merge": 0.0,
+      "refine": 616.5706000143937,
+      "topk": 59.16086575889117,
+      "host": 289.8830000000007,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 546.717,
+      "scan": 2667.7700528978144,
+      "merge": 0.0,
+      "refine": 316.8446855586932,
+      "topk": 41.37529494994377,
+      "host": 289.8830000000007,
+      "extra": 717.1083319696315
+     }
+    }
+   }
+  }
+ },
+ "vogue-768_np128_a64": {
+  "b8": {
+   "v65_measured_at_ck": 421.60999999999996,
+   "methods": {
+    "JHQ": {
+     "T_method": 640,
+     "T_JHQ": 640,
+     "jhq_us": 421.60999999999996,
+     "method_us": 421.60999999999996,
+     "method_us_upper": 421.60999999999996,
+     "time_saving": 0.0,
+     "time_saving_upper_cost": 0.0,
+     "stages_jhq": {
+      "front": 67.93599999999999,
+      "scan": 225.951,
+      "merge": 8.064,
+      "refine": 72.191,
+      "topk": 21.504,
+      "host": 25.963999999999942,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 67.93599999999999,
+      "scan": 225.951,
+      "merge": 8.064,
+      "refine": 72.191,
+      "topk": 21.504,
+      "host": 25.963999999999942,
+      "extra": 0.0
+     }
+    },
+    "jhq_re": {
+     "note": "no matched budget"
+    },
+    "lloydmax": {
+     "T_method": 800,
+     "T_JHQ": 640,
+     "jhq_us": 421.60999999999996,
+     "method_us": 440.67924090974634,
+     "method_us_upper": 440.67924090974634,
+     "time_saving": -0.045229574511388204,
+     "time_saving_upper_cost": -0.045229574511388204,
+     "stages_jhq": {
+      "front": 67.93599999999999,
+      "scan": 225.951,
+      "merge": 8.064,
+      "refine": 72.191,
+      "topk": 21.504,
+      "host": 25.963999999999942,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 67.93599999999999,
+      "scan": 231.79901084306255,
+      "merge": 8.95981253310854,
+      "refine": 82.38793275595394,
+      "topk": 23.632484777621364,
+      "host": 25.963999999999942,
+      "extra": 0.0
+     }
+    },
+    "median": {
+     "note": "no matched budget"
+    },
+    "mean": {
+     "note": "no matched budget"
+    },
+    "list_median": {
+     "T_method": 480,
+     "T_JHQ": 640,
+     "jhq_us": 421.60999999999996,
+     "method_us": 453.51322262876783,
+     "method_us_upper": 601.8254726287678,
+     "time_saving": -0.07566998559988591,
+     "time_saving_upper_cost": -0.42744591596206893,
+     "stages_jhq": {
+      "front": 67.93599999999999,
+      "scan": 225.951,
+      "merge": 8.064,
+      "refine": 72.191,
+      "topk": 21.504,
+      "host": 25.963999999999942,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 67.93599999999999,
+      "scan": 218.41160274139952,
+      "merge": 6.909096779471513,
+      "refine": 59.044867249994475,
+      "topk": 18.759905857902382,
+      "host": 25.963999999999942,
+      "extra": 56.48775
+     }
+    },
+    "list_mean": {
+     "note": "no matched budget"
+    }
+   }
+  },
+  "b1000": {
+   "v65_measured_at_ck": 4611.030000000001,
+   "methods": {
+    "JHQ": {
+     "T_method": 640,
+     "T_JHQ": 640,
+     "jhq_us": 4611.030000000001,
+     "method_us": 4611.030000000001,
+     "method_us_upper": 4611.030000000001,
+     "time_saving": 0.0,
+     "time_saving_upper_cost": 0.0,
+     "stages_jhq": {
+      "front": 415.902,
+      "scan": 3385.1345,
+      "merge": 0.0,
+      "refine": 461.30949999999996,
+      "topk": 56.608000000000004,
+      "host": 292.07600000000093,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 415.902,
+      "scan": 3385.1345,
+      "merge": 0.0,
+      "refine": 461.30949999999996,
+      "topk": 56.608000000000004,
+      "host": 292.07600000000093,
+      "extra": 0.0
+     }
+    },
+    "jhq_re": {
+     "note": "no matched budget"
+    },
+    "lloydmax": {
+     "T_method": 800,
+     "T_JHQ": 640,
+     "jhq_us": 4611.030000000001,
+     "method_us": 4715.756460009265,
+     "method_us_upper": 4715.756460009265,
+     "time_saving": -0.022712161926785157,
+     "time_saving_upper_cost": -0.022712161926785157,
+     "stages_jhq": {
+      "front": 415.902,
+      "scan": 3385.1345,
+      "merge": 0.0,
+      "refine": 461.30949999999996,
+      "topk": 56.608000000000004,
+      "host": 292.07600000000093,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 415.902,
+      "scan": 3420.3861502320206,
+      "merge": 0.0,
+      "refine": 524.2792227172438,
+      "topk": 63.113087059999316,
+      "host": 292.07600000000093,
+      "extra": 0.0
+     }
+    },
+    "median": {
+     "note": "no matched budget"
+    },
+    "mean": {
+     "note": "no matched budget"
+    },
+    "list_median": {
+     "T_method": 480,
+     "T_JHQ": 640,
+     "jhq_us": 4611.030000000001,
+     "method_us": 5322.29773554873,
+     "method_us_upper": 6900.8461105487295,
+     "time_saving": -0.1542535475910436,
+     "time_saving_upper_cost": -0.49659536167596574,
+     "stages_jhq": {
+      "front": 415.902,
+      "scan": 3385.1345,
+      "merge": 0.0,
+      "refine": 461.30949999999996,
+      "topk": 56.608000000000004,
+      "host": 292.07600000000093,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 415.902,
+      "scan": 3339.6872184793574,
+      "merge": 0.0,
+      "refine": 380.1274079058285,
+      "topk": 48.22148416354305,
+      "host": 292.07600000000093,
+      "extra": 846.283625
+     }
+    },
+    "list_mean": {
+     "note": "no matched budget"
+    }
+   }
+  }
+ },
+ "openai3-3072_np128_a4": {
+  "b8": {
+   "v65_measured_at_ck": 433.01,
+   "methods": {
+    "JHQ": {
+     "T_method": 25,
+     "T_JHQ": 25,
+     "jhq_us": 431.69371002060706,
+     "method_us": 431.69371002060706,
+     "method_us_upper": 431.69371002060706,
+     "time_saving": 0.0,
+     "time_saving_upper_cost": 0.0,
+     "stages_jhq": {
+      "front": 177.792,
+      "scan": 177.22287950318886,
+      "merge": 3.2522246518200624,
+      "refine": 23.391605865598194,
+      "topk": 16.192,
+      "host": 33.84299999999996,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 177.792,
+      "scan": 177.22287950318886,
+      "merge": 3.2522246518200624,
+      "refine": 23.391605865598194,
+      "topk": 16.192,
+      "host": 33.84299999999996,
+      "extra": 0.0
+     }
+    },
+    "jhq_re": {
+     "note": "no matched budget"
+    },
+    "lloydmax": {
+     "T_method": 40,
+     "T_JHQ": 25,
+     "jhq_us": 431.69371002060706,
+     "method_us": 433.01,
+     "method_us_upper": 433.01,
+     "time_saving": -0.0030491293916006246,
+     "time_saving_upper_cost": -0.0030491293916006246,
+     "stages_jhq": {
+      "front": 177.792,
+      "scan": 177.22287950318886,
+      "merge": 3.2522246518200624,
+      "refine": 23.391605865598194,
+      "topk": 16.192,
+      "host": 33.84299999999996,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 177.792,
+      "scan": 177.247,
+      "merge": 3.456,
+      "refine": 24.480000000000004,
+      "topk": 16.192,
+      "host": 33.84299999999996,
+      "extra": 0.0
+     }
+    },
+    "median": {
+     "T_method": 30,
+     "T_JHQ": 25,
+     "jhq_us": 431.69371002060706,
+     "method_us": 432.20431892509646,
+     "method_us_upper": 432.20431892509646,
+     "time_saving": -0.0011828036699099709,
+     "time_saving_upper_cost": -0.0011828036699099709,
+     "stages_jhq": {
+      "front": 177.792,
+      "scan": 177.22287950318886,
+      "merge": 3.2522246518200624,
+      "refine": 23.391605865598194,
+      "topk": 16.192,
+      "host": 33.84299999999996,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 177.792,
+      "scan": 177.23223621078773,
+      "merge": 3.331272208912375,
+      "refine": 23.813810505396404,
+      "topk": 16.192,
+      "host": 33.84299999999996,
+      "extra": 0.0
+     }
+    },
+    "mean": {
+     "note": "no matched budget"
+    },
+    "list_median": {
+     "note": "no matched budget"
+    },
+    "list_mean": {
+     "note": "no matched budget"
+    }
+   }
+  },
+  "b1000": {
+   "v65_measured_at_ck": 6982.25,
+   "methods": {
+    "JHQ": {
+     "T_method": 25,
+     "T_JHQ": 25,
+     "jhq_us": 6966.055121118631,
+     "method_us": 6966.055121118631,
+     "method_us_upper": 6966.055121118631,
+     "time_saving": 0.0,
+     "time_saving_upper_cost": 0.0,
+     "stages_jhq": {
+      "front": 1408.986,
+      "scan": 4299.263412623871,
+      "merge": 0.0,
+      "refine": 139.61091338335655,
+      "topk": 96.30079511140367,
+      "host": 1021.8940000000002,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 1408.986,
+      "scan": 4299.263412623871,
+      "merge": 0.0,
+      "refine": 139.61091338335655,
+      "topk": 96.30079511140367,
+      "host": 1021.8940000000002,
+      "extra": 0.0
+     }
+    },
+    "jhq_re": {
+     "note": "no matched budget"
+    },
+    "lloydmax": {
+     "T_method": 40,
+     "T_JHQ": 25,
+     "jhq_us": 6966.055121118631,
+     "method_us": 6982.25,
+     "method_us_upper": 6982.25,
+     "time_saving": -0.0023248278401173383,
+     "time_saving_upper_cost": -0.0023248278401173383,
+     "stages_jhq": {
+      "front": 1408.986,
+      "scan": 4299.263412623871,
+      "merge": 0.0,
+      "refine": 139.61091338335655,
+      "topk": 96.30079511140367,
+      "host": 1021.8940000000002,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 1408.986,
+      "scan": 4299.5795,
+      "merge": 0.0,
+      "refine": 154.6075,
+      "topk": 97.183,
+      "host": 1021.8940000000002,
+      "extra": 0.0
+     }
+    },
+    "median": {
+     "T_method": 30,
+     "T_JHQ": 25,
+     "jhq_us": 6966.055121118631,
+     "method_us": 6972.3373609695855,
+     "method_us_upper": 6972.3373609695855,
+     "time_saving": -0.0009018360810710835,
+     "time_saving_upper_cost": -0.0009018360810710835,
+     "stages_jhq": {
+      "front": 1408.986,
+      "scan": 4299.263412623871,
+      "merge": 0.0,
+      "refine": 139.61091338335655,
+      "topk": 96.30079511140367,
+      "host": 1021.8940000000002,
+      "extra": 0.0
+     },
+     "stages_method": {
+      "front": 1408.986,
+      "scan": 4299.386027724931,
+      "merge": 0.0,
+      "refine": 145.42831743815006,
+      "topk": 96.64301580650393,
+      "host": 1021.8940000000002,
+      "extra": 0.0
+     }
+    },
+    "mean": {
+     "note": "no matched budget"
+    },
+    "list_median": {
+     "note": "no matched budget"
+    },
+    "list_mean": {
+     "note": "no matched budget"
+    }
+   }
+  }
+ }
+}

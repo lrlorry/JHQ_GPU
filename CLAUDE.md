@@ -16,14 +16,14 @@ sed -i '' 's|jhq_v<prev>_<name>/|jhq_v<next>_<newname>/|g' \
 
 Afterwards `git status --porcelain jhq_v<prev>_<name>` must be empty.
 
-**Highest version: v66** (`jhq_v66_boundpilot`, v65 plus a read-only host
+**Highest version: v67** (`jhq_v67_import`, v66 plus import_state for an offline re-encoded representation and a side-by-side benchmark; compiled, never run: the rank-optimal study did not reach its GO, experiments/rank_optimal_quantization). v66 (`jhq_v66_boundpilot`, v65 plus a read-only host
 export of the representation for the residual-aware bound pilot; search is
 v65's. Measured NO-GO: experiments/residual_aware_bound). v65
 (`jhq_v65_schedule`) is the fastest exact pipeline: v63 with the primary
 execution scheduled per batch. v62 (`jhq_v62_listgroup`): G list groups per
 query and an exact GPU merge; v63 (`jhq_v63_sharedbound`): v62 plus an exact
 shared bound between a query's groups; v64 (`jhq_v64_orthoroute`): routing by
-Pi^T c, measured NO-GO (experiments/pipeline_campaign). The next change is v67.
+Pi^T c, measured NO-GO (experiments/pipeline_campaign). The next change is v68.
 The head for search is **v53** (`jhq_v53_cap`, at `JHQ_CAP_MULT=1`); v48, v49's
 bound, v50, v53's larger buffer and v54's table-free distance are measured
 negatives kept for the record (`results/front6/NEGATIVES.md`).

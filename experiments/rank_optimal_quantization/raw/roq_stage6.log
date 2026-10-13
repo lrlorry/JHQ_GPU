@@ -1,0 +1,8 @@
+=== 2026-10-13T08:43:53Z head=5c0f563 Rank-optimal quantization: rounds 4-5 results (H4 and H5 rejected), the round-5 diagnosis script, final test confirmation pre-registered (median only) stages: diaglist build67 confirm=median ===
+diaglist rc=0    list_median  error var between lists 2.471e-04  within 3.530e-03  (between share 0.07) | misrank same list 0.0039  other lists 1.83e-04
+stage diaglist took 200 s
+build67 rc=0
+stage build67 took 17 s
+confirm rc=0 openai3-3072_np128_a4 {"JHQ": {"calib": [40, 40, 0.9305000000000001], "val": [25, 25, 0.9025000000000007], "test": [35, 35, 0.9352499999999994]}, "median": {"calib": [30, 40, 0.9312499999999999], "val": [30, 25, 0.9030000000000007], "test": [null, 35, 0.9342499999999992]}} 68s
+stage confirm=median took 140 s
+=== ROQ_STAGE_DONE 2026-10-13T08:49:50Z ===

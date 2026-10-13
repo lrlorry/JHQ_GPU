@@ -1,0 +1,3 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+wrote /root/autodl-tmp/roq/vogue-768_np128_a64: N=932328 d=768 M=96 Kr=256 bpv=768, residual codebook unsorted pairs 0
+=== EQ_OK ===

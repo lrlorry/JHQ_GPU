@@ -1,0 +1,57 @@
+[  0%] Built target jhq_cpu
+[  0%] Built target jhq_v66_exp
+[  0%] Building CUDA object CMakeFiles/demo_jhq_v66_export_quant.dir/examples/demo_jhq_v66_export_quant.cu.o
+/root/autodl-tmp/jhq_pipeline_wt/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/autodl-tmp/jhq_pipeline_wt/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/autodl-tmp/jhq_pipeline_wt/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/autodl-tmp/jhq_pipeline_wt/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/autodl-tmp/jhq_pipeline_wt/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/autodl-tmp/jhq_pipeline_wt/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+/root/autodl-tmp/jhq_pipeline_wt/common/fvecs_io.cuh(13): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/root/autodl-tmp/jhq_pipeline_wt/common/fvecs_io.cuh(26): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/autodl-tmp/jhq_pipeline_wt/common/fvecs_io.cuh(27): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(float), d, f);
+          ^
+
+/root/autodl-tmp/jhq_pipeline_wt/common/fvecs_io.cuh(39): warning #1650-D: result of call is not used
+      fread(&d, sizeof(int), 1, f);
+      ^
+
+/root/autodl-tmp/jhq_pipeline_wt/common/fvecs_io.cuh(52): warning #1650-D: result of call is not used
+          fread(&dd, sizeof(int), 1, f);
+          ^
+
+/root/autodl-tmp/jhq_pipeline_wt/common/fvecs_io.cuh(53): warning #1650-D: result of call is not used
+          fread(out.data() + (size_t)i * d, sizeof(int), d, f);
+          ^
+
+[100%] Linking CXX executable demo_jhq_v66_export_quant
+[100%] Built target demo_jhq_v66_export_quant

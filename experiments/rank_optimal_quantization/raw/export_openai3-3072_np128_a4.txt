@@ -1,0 +1,3 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+wrote /root/autodl-tmp/roq/openai3-3072_np128_a4: N=999000 d=3072 M=384 Kr=256 bpv=3072, residual codebook unsorted pairs 0
+=== EQ_OK ===

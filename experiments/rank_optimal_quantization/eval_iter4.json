@@ -1,0 +1,317 @@
+{
+ "arxiv-768_np128_a100": {
+  "ck": 1000,
+  "T_grid": [
+   10,
+   15,
+   20,
+   30,
+   31,
+   40,
+   60,
+   62,
+   80,
+   120,
+   125,
+   160,
+   188,
+   240,
+   250,
+   320,
+   375,
+   480,
+   500,
+   625,
+   640,
+   750,
+   875,
+   960,
+   1000,
+   1250,
+   1280,
+   1500,
+   1920,
+   2000,
+   2560
+  ],
+  "target": {
+   "calib": 0.9742500000000001,
+   "val": 0.9790000000000001
+  },
+  "methods": {
+   "JHQ": {
+    "calib": {
+     "T_min": 875,
+     "T_min_JHQ": 875,
+     "reduction": 0.0,
+     "recall_at_ck": 0.9742499999999992,
+     "full_ivf": 0.97625,
+     "misrank_hard": 0.11697537341715712
+    },
+    "val": {
+     "T_min": 750,
+     "T_min_JHQ": 750,
+     "reduction": 0.0,
+     "recall_at_ck": 0.9790000000000006,
+     "full_ivf": 0.9804999999999999,
+     "misrank_hard": 0.10567104239740008
+    }
+   },
+   "median": {
+    "calib": {
+     "T_min": 320,
+     "T_min_JHQ": 875,
+     "reduction": 0.6342857142857143,
+     "recall_at_ck": 0.9792499999999991,
+     "full_ivf": 0.9792500000000001,
+     "misrank_hard": 0.07679643971820939
+    },
+    "val": {
+     "T_min": 320,
+     "T_min_JHQ": 750,
+     "reduction": 0.5733333333333333,
+     "recall_at_ck": 0.9820000000000008,
+     "full_ivf": 0.982,
+     "misrank_hard": 0.07052607900838238
+    }
+   },
+   "lmmse@JHQ": {
+    "calib": {
+     "T_min": null,
+     "T_min_JHQ": 875,
+     "reduction": null,
+     "recall_at_ck": 0.961249999999999,
+     "full_ivf": 0.97625,
+     "misrank_hard": 0.19740799409963736
+    },
+    "val": {
+     "T_min": 2560,
+     "T_min_JHQ": 750,
+     "reduction": -2.4133333333333336,
+     "recall_at_ck": 0.9645000000000009,
+     "full_ivf": 0.9804999999999999,
+     "misrank_hard": 0.18412089600301212
+    }
+   },
+   "lmmse@median": {
+    "calib": {
+     "T_min": 2560,
+     "T_min_JHQ": 875,
+     "reduction": -1.9257142857142857,
+     "recall_at_ck": 0.9602499999999992,
+     "full_ivf": 0.9792500000000001,
+     "misrank_hard": 0.21886008919901712
+    },
+    "val": {
+     "T_min": 2560,
+     "T_min_JHQ": 750,
+     "reduction": -2.4133333333333336,
+     "recall_at_ck": 0.9700000000000009,
+     "full_ivf": 0.982,
+     "misrank_hard": 0.20125226997998535
+    }
+   }
+  },
+  "seconds": 745.9527847766876
+ },
+ "vogue-768_np128_a64": {
+  "ck": 640,
+  "T_grid": [
+   10,
+   15,
+   20,
+   30,
+   40,
+   60,
+   80,
+   120,
+   160,
+   240,
+   320,
+   400,
+   480,
+   560,
+   640,
+   800,
+   960,
+   1280,
+   1920,
+   2560
+  ],
+  "target": {
+   "calib": 0.9584999999999999,
+   "val": 0.9575000000000001
+  },
+  "methods": {
+   "JHQ": {
+    "calib": {
+     "T_min": 560,
+     "T_min_JHQ": 560,
+     "reduction": 0.0,
+     "recall_at_ck": 0.9584999999999991,
+     "full_ivf": 0.959,
+     "misrank_hard": 0.06450436000138715
+    },
+    "val": {
+     "T_min": 640,
+     "T_min_JHQ": 640,
+     "reduction": 0.0,
+     "recall_at_ck": 0.9575000000000009,
+     "full_ivf": 0.9574999999999999,
+     "misrank_hard": 0.07239382245407526
+    }
+   },
+   "median": {
+    "calib": {
+     "T_min": null,
+     "T_min_JHQ": 560,
+     "reduction": null,
+     "recall_at_ck": 0.9564999999999995,
+     "full_ivf": 0.9564999999999999,
+     "misrank_hard": 0.055467022372827614
+    },
+    "val": {
+     "T_min": null,
+     "T_min_JHQ": 640,
+     "reduction": null,
+     "recall_at_ck": 0.955500000000001,
+     "full_ivf": 0.9564999999999999,
+     "misrank_hard": 0.06741206403701723
+    }
+   },
+   "lmmse@JHQ": {
+    "calib": {
+     "T_min": null,
+     "T_min_JHQ": 560,
+     "reduction": null,
+     "recall_at_ck": 0.9334999999999992,
+     "full_ivf": 0.959,
+     "misrank_hard": 0.17591141157878049
+    },
+    "val": {
+     "T_min": null,
+     "T_min_JHQ": 640,
+     "reduction": null,
+     "recall_at_ck": 0.9190000000000005,
+     "full_ivf": 0.9574999999999999,
+     "misrank_hard": 0.18990258555773537
+    }
+   },
+   "lmmse@median": {
+    "calib": {
+     "T_min": null,
+     "T_min_JHQ": 560,
+     "reduction": null,
+     "recall_at_ck": 0.9052499999999997,
+     "full_ivf": 0.9564999999999999,
+     "misrank_hard": 0.21927638591641405
+    },
+    "val": {
+     "T_min": null,
+     "T_min_JHQ": 640,
+     "reduction": null,
+     "recall_at_ck": 0.8935000000000008,
+     "full_ivf": 0.9564999999999999,
+     "misrank_hard": 0.24014730693775635
+    }
+   }
+  },
+  "seconds": 765.8709816932678
+ },
+ "openai3-3072_np128_a4": {
+  "ck": 40,
+  "T_grid": [
+   10,
+   15,
+   20,
+   25,
+   30,
+   35,
+   40,
+   50,
+   60,
+   80,
+   120,
+   160
+  ],
+  "target": {
+   "calib": 0.9305000000000001,
+   "val": 0.9025
+  },
+  "methods": {
+   "JHQ": {
+    "calib": {
+     "T_min": 40,
+     "T_min_JHQ": 40,
+     "reduction": 0.0,
+     "recall_at_ck": 0.9305000000000001,
+     "full_ivf": 0.9305,
+     "misrank_hard": 0.005706949398569249
+    },
+    "val": {
+     "T_min": 25,
+     "T_min_JHQ": 25,
+     "reduction": 0.0,
+     "recall_at_ck": 0.9025000000000007,
+     "full_ivf": 0.9025000000000001,
+     "misrank_hard": 0.006059964478925153
+    }
+   },
+   "median": {
+    "calib": {
+     "T_min": 30,
+     "T_min_JHQ": 40,
+     "reduction": 0.25,
+     "recall_at_ck": 0.9312499999999999,
+     "full_ivf": 0.93125,
+     "misrank_hard": 0.00596806125279908
+    },
+    "val": {
+     "T_min": 30,
+     "T_min_JHQ": 25,
+     "reduction": -0.19999999999999996,
+     "recall_at_ck": 0.9030000000000007,
+     "full_ivf": 0.9029999999999999,
+     "misrank_hard": 0.006514961704615263
+    }
+   },
+   "lmmse@JHQ": {
+    "calib": {
+     "T_min": 160,
+     "T_min_JHQ": 40,
+     "reduction": -3.0,
+     "recall_at_ck": 0.929,
+     "full_ivf": 0.9305,
+     "misrank_hard": 0.010871720121673305
+    },
+    "val": {
+     "T_min": 50,
+     "T_min_JHQ": 25,
+     "reduction": -1.0,
+     "recall_at_ck": 0.9020000000000006,
+     "full_ivf": 0.9025000000000001,
+     "misrank_hard": 0.011538550274458515
+    }
+   },
+   "lmmse@median": {
+    "calib": {
+     "T_min": 40,
+     "T_min_JHQ": 40,
+     "reduction": 0.0,
+     "recall_at_ck": 0.9307500000000001,
+     "full_ivf": 0.93125,
+     "misrank_hard": 0.011075793155381168
+    },
+    "val": {
+     "T_min": 40,
+     "T_min_JHQ": 25,
+     "reduction": -0.6000000000000001,
+     "recall_at_ck": 0.9030000000000007,
+     "full_ivf": 0.9029999999999999,
+     "misrank_hard": 0.01107625265045677
+    }
+   }
+  },
+  "seconds": 648.7375192642212
+ }
+}

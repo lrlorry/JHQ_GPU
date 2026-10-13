@@ -34,7 +34,9 @@ def rows_of(path):
 
 def main():
     R, split = sys.argv[1], sys.argv[2]
-    labels = sys.argv[3:]
+    labels = [a for a in sys.argv[3:] if not a.startswith("--methods=")]
+    pick = [a.split("=", 1)[1].split(",") for a in sys.argv[3:] if a.startswith("--methods=")]
+    pick = pick[0] if pick else None
     os.makedirs(os.path.join(R, "figures"), exist_ok=True)
     # recall-T
     ev = []
@@ -42,28 +44,33 @@ def main():
         ev += [r for r in rows_of(os.path.join(R, "eval_%s.csv" % lb)) if r["split"] == split]
         ev += [r for r in rows_of(os.path.join(R, "eval_%s_test.csv" % lb)) if r["split"] == split]
     it1 = [r for r in rows_of(os.path.join(R, "iter1_llr.csv")) if r["split"] == split]
-    fig, axes = plt.subplots(1, 3, figsize=(17, 5))
-    for a, tag in zip(axes, TAGS):
+    fig, axes2 = plt.subplots(2, 3, figsize=(17, 9))
+    for j, tag in enumerate(TAGS):
+        a, az = axes2[0, j], axes2[1, j]
         seen = {}
         for r in [x for x in it1 if x["tag"] == tag and x["chosen_on_calib"] == "True"] + [x for x in ev if x["tag"] == tag]:
             name = r["method"] + ("(%s)" % r["param"] if r.get("param") not in (None, "", "0.0") and r["method"] != "JHQ" else "")
-            if name in seen:
+            if name in seen or (pick and r["method"] not in pick and name not in pick):
                 continue
             Ts = sorted(int(k[8:]) for k in r if k.startswith("recall_T") and r[k] not in ("", None))
             ys = [float(r["recall_T%d" % t]) for t in Ts]
             seen[name] = (Ts, ys)
-        for i, (name, (Ts, ys)) in enumerate(seen.items()):
-            a.plot(Ts, ys, "-o" if name == "JHQ" else "-", ms=3, color=COL[i % len(COL)], lw=2 if name == "JHQ" else 1.2, label=name)
         tgt = [float(r["target_recall"]) for r in ev + it1 if r["tag"] == tag]
-        if tgt:
-            a.axhline(tgt[0], color="red", ls="--", lw=1)
-        a.set_xscale("log"); a.set_xlabel("refinement budget T (primary top-T)"); a.set_ylabel("recall@10 (%s split)" % split)
-        a.set_title(title(tag), fontsize=10); a.grid(alpha=0.3)
+        for ax in (a, az):
+            for i, (name, (Ts, ys)) in enumerate(seen.items()):
+                ax.plot(Ts, ys, "-o" if name == "JHQ" else "-", ms=3, color=COL[i % len(COL)], lw=2 if name == "JHQ" else 1.2, label=name)
+            if tgt:
+                ax.axhline(tgt[0], color="red", ls="--", lw=1)
+            ax.set_xscale("log"); ax.set_xlabel("refinement budget T (primary top-T)"); ax.grid(alpha=0.3)
+        a.set_ylabel("recall@10 (%s split)" % split); az.set_ylabel("zoom near the target")
+        a.set_title(title(tag), fontsize=10)
         allys = [y for _, (T, ys) in seen.items() for y in ys]
         if allys:
             a.set_ylim(max(0.0, min(allys) - 0.02), min(1.0, max(allys) + 0.01))
+        if tgt:
+            az.set_ylim(tgt[0] - 0.015, tgt[0] + 0.008)
         a.legend(fontsize=7)
-    fig.suptitle("Recall@10 vs refinement budget, %s split (red dashed = JHQ at T = ck: the matched-recall target)" % split, fontsize=11)
+    fig.suptitle("Recall@10 vs refinement budget, %s split (red dashed = JHQ at T = ck: the matched-recall target; bottom row zoomed)" % split, fontsize=11)
     fig.tight_layout(); fig.savefig(os.path.join(R, "figures", "fig_recall_T_%s.png" % split), dpi=110); plt.close(fig)
     # round 1 parameter scan
     if it1:

@@ -1,0 +1,18 @@
+== arxiv-768_np128_a100 targets {'calib': 0.9742500000000001, 'val': 0.9790000000000001}   spread of ||y_hat||^2 (between / within lists): {'median': '2.58e-04 / 7.41e-04', 'list_median': '3.96e-05 / 6.05e-04'}
+   JHQ|D_P            T_min calib 875   val 750   | misrank same 0.0078 other 5.33e-04 | T=125 +0.00 [+0.00,+0.00] T=250 +0.00 [+0.00,+0.00] T=500 +0.00 [+0.00,+0.00] T=1000 +0.00 [+0.00,+0.00]
+   median|D_P         T_min calib 320   val 320   | misrank same 0.0047 other 2.33e-04 | T=125 +3.05 [+2.30,+3.82] T=250 +1.73 [+1.27,+2.23] T=500 +0.78 [+0.50,+1.07] T=1000 +0.43 [+0.20,+0.67]
+   median|IP          T_min calib 1920  val 1920  | misrank same 0.0187 other 2.07e-03 | T=125 -14.15 [-15.48,-12.85] T=250 -8.18 [-9.17,-7.22] T=500 -3.62 [-4.27,-2.97] T=1000 -0.90 [-1.30,-0.52]
+   list_median|D_P    T_min calib 250   val 320   | misrank same 0.0092 other 2.77e-04 | T=125 +2.78 [+2.00,+3.58] T=250 +1.80 [+1.32,+2.30] T=500 +0.82 [+0.53,+1.10] T=1000 +0.52 [+0.28,+0.75]
+   list_median|IP     T_min calib 625   val 625   | misrank same 0.0074 other 5.52e-04 | T=125 +0.22 [-0.63,+1.08] T=250 +0.42 [-0.13,+1.00] T=500 +0.18 [-0.15,+0.52] T=1000 +0.33 [+0.08,+0.58]
+== vogue-768_np128_a64 targets {'calib': 0.9584999999999999, 'val': 0.9575000000000001}   spread of ||y_hat||^2 (between / within lists): {'median': '1.36e-03 / 1.18e-03', 'list_median': '5.53e-04 / 2.20e-03'}
+   JHQ|D_P            T_min calib 560   val 640   | misrank same 0.0029 other 2.29e-04 | T=80 +0.00 [+0.00,+0.00] T=160 +0.00 [+0.00,+0.00] T=320 +0.00 [+0.00,+0.00] T=640 +0.00 [+0.00,+0.00]
+   median|D_P         T_min calib None  val None  | misrank same 0.0028 other 2.03e-04 | T=80 +0.58 [-0.00,+1.17] T=160 +0.00 [-0.37,+0.37] T=320 -0.22 [-0.45,+0.02] T=640 -0.20 [-0.42,+0.02]
+   median|IP          T_min calib None  val None  | misrank same 0.0067 other 1.14e-03 | T=80 -9.73 [-10.90,-8.60] T=160 -6.12 [-6.98,-5.28] T=320 -3.27 [-3.87,-2.68] T=640 -1.22 [-1.55,-0.88]
+   list_median|D_P    T_min calib 480   val 480   | misrank same 0.0045 other 3.13e-04 | T=80 -1.32 [-2.03,-0.62] T=160 -0.45 [-0.90,-0.03] T=320 -0.10 [-0.35,+0.15] T=640 +0.12 [-0.08,+0.32]
+   list_median|IP     T_min calib 960   val 1920  | misrank same 0.0026 other 4.93e-04 | T=80 -2.50 [-3.23,-1.78] T=160 -1.47 [-2.00,-0.95] T=320 -0.68 [-1.03,-0.35] T=640 -0.18 [-0.45,+0.07]
+== openai3-3072_np128_a4 targets {'calib': 0.9305000000000001, 'val': 0.9025}   spread of ||y_hat||^2 (between / within lists): {'median': '8.14e-05 / 1.29e-04', 'list_median': '2.47e-04 / 1.54e-03'}
+   JHQ|D_P            T_min calib 40    val 25    | misrank same 0.0010 other 2.45e-05 | T=10 +0.00 [+0.00,+0.00] T=20 +0.00 [+0.00,+0.00] T=40 +0.00 [+0.00,+0.00]
+   median|D_P         T_min calib 30    val 30    | misrank same 0.0010 other 2.65e-05 | T=10 -0.30 [-0.92,+0.32] T=20 +0.00 [-0.22,+0.22] T=40 +0.07 [-0.02,+0.17]
+   median|IP          T_min calib 30    val 35    | misrank same 0.0011 other 2.77e-05 | T=10 -0.50 [-1.10,+0.12] T=20 +0.02 [-0.20,+0.23] T=40 +0.07 [-0.02,+0.17]
+   list_median|D_P    T_min calib 160   val None  | misrank same 0.0039 other 1.83e-04 | T=10 -12.70 [-13.67,-11.72] T=20 -7.70 [-8.50,-6.92] T=40 -2.18 [-2.62,-1.78]
+   list_median|IP     T_min calib 160   val None  | misrank same 0.0011 other 1.75e-04 | T=10 -9.78 [-10.75,-8.82] T=20 -6.45 [-7.20,-5.73] T=40 -2.08 [-2.52,-1.68]

@@ -1,0 +1,3 @@
+  [mmap loader] reusing cached /root/autodl-tmp/arxiv-abstracts-768/base.fvecs.raw_f32
+wrote /root/autodl-tmp/roq/arxiv-768_np128_a100: N=2253000 d=768 M=96 Kr=256 bpv=768, residual codebook unsorted pairs 0
+=== EQ_OK ===

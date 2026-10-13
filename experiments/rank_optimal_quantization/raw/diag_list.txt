@@ -1,0 +1,12 @@
+== arxiv-768_np128_a100 queries=600 list size mean 275 median 258, the top-10 spread over 4.69 lists
+   JHQ          error var between lists 1.959e-04  within 7.560e-04  (between share 0.21) | misrank same list 0.0078  other lists 5.33e-04
+   median       error var between lists 2.895e-04  within 9.811e-04  (between share 0.23) | misrank same list 0.0047  other lists 2.33e-04
+   list_median  error var between lists 3.964e-05  within 1.293e-03  (between share 0.03) | misrank same list 0.0092  other lists 2.77e-04
+== vogue-768_np128_a64 queries=600 list size mean 228 median 178, the top-10 spread over 5.46 lists
+   JHQ          error var between lists 1.516e-03  within 2.843e-03  (between share 0.35) | misrank same list 0.0029  other lists 2.29e-04
+   median       error var between lists 2.031e-03  within 2.874e-03  (between share 0.41) | misrank same list 0.0028  other lists 2.03e-04
+   list_median  error var between lists 5.529e-04  within 5.332e-03  (between share 0.09) | misrank same list 0.0045  other lists 3.13e-04
+== openai3-3072_np128_a4 queries=600 list size mean 122 median 105, the top-10 spread over 4.66 lists
+   JHQ          error var between lists 1.710e-03  within 2.249e-03  (between share 0.43) | misrank same list 0.0010  other lists 2.45e-05
+   median       error var between lists 1.093e-03  within 1.653e-03  (between share 0.40) | misrank same list 0.0010  other lists 2.65e-05
+   list_median  error var between lists 2.471e-04  within 3.530e-03  (between share 0.07) | misrank same list 0.0039  other lists 1.83e-04

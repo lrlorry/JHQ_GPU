@@ -1,0 +1,8 @@
+=== 2026-10-13T04:13:47Z head=abf10b9 Rank-optimal quantization: keep evaluation workers at a few hundred MB (the container is held to 90 GiB and throttled above memory.high: 64 workers at ~2 GB each stalled the pool) stages: iter2eval rankerr lmmse ===
+iter2 eval rc=0 openai3-3072_np128_a4 {"JHQ": {"calib": [40, 40, 0.9305000000000001], "val": [25, 25, 0.9025000000000007]}, "jhq_re": {"calib": [null, 40, 0.93], "val": [null, 25, 0.9015000000000007]}, "lloydmax": {"calib": [35, 40, 0.9307500000000002], "val": [40, 25, 0.9025000000000007]}, "median": {"calib": [30,
+stage iter2eval took 477 s
+rankerr rc=0 openai3-3072_np128_a4 [('JHQ', 'calib', 3e-05, -52.7, -38.7, 0.053), ('JHQ', 'val', 4e-05, -53.4, -38.2, 0.053), ('median', 'calib', 3e-05, -54.5, -41.4, 0.053), ('median', 'val', 4e-05, -55.4, -40.6, 0.053), ('lloydmax', 'calib', 3e-05, -54.5, -41.4, 0.053), ('lloydmax', 'val', 4e-05, -55.4, -40.5,
+stage rankerr took 172 s
+lmmse rc=0 openai3-3072_np128_a4 median {"offdiag_share_of_B": 0.43309755793574467, "recon_mse_per_coordinate_decoder": 0.33430542356943777, "recon_mse_lmmse": 0.17671702998692454, "recon_mse_gain": 0.4713904785
+stage lmmse took 90 s
+=== ROQ_STAGE_DONE 2026-10-13T04:26:06Z ===

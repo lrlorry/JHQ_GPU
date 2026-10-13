@@ -1,0 +1,10 @@
+=== 2026-10-13T01:56:42Z head=473018a Rank-optimal quantization study: offline framework, checks and iteration 1 stages: prep theory iter1 ===
+prep arxiv-768_np128_a100 rc=0
+prep vogue-768_np128_a64 rc=0
+prep openai3-3072_np128_a4 rc=0
+stage prep took 1340 s
+theory rc=0
+stage theory took 1 s
+iter1 rc=0 openai3-3072_np128_a4 {"JHQ": {"param": 0.0, "T_min_val": 25, "T_min_val_JHQ": 25, "reduction_val": 0.0, "recall_at_ck_val": 0.9025}, "LLR-iso": {"param": 1.5, "T_min_val": 30, "T_min_val_JHQ": 25, "reduction_val": -0.19999999999999996, "recall_at_ck_val": 0.9025}, "LLR-bias": {"param": 8.0, "T_min_
+stage iter1 took 333 s
+=== ROQ_STAGE_DONE 2026-10-13T02:24:36Z ===

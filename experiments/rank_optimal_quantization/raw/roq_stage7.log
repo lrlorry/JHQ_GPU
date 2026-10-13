@@ -1,0 +1,4 @@
+=== 2026-10-13T08:58:02Z head=52ebec1 Rank-optimal quantization: round-5 diagnosis (the loss of per-list codes is inside lists, not between them), the ||y_hat||^2 check pre-registered, THEORY 7.6 stages: diagnorm ===
+diagnorm rc=0    list_median|IP     T_min calib 160   val None  | misrank same 0.0011 other 1.75e-04 | T=10 -9.78 [-10.75,-8.82] T=20 -6.45 [-7.20,-5.73] T=40 -2.08 [-2.52,-1.68]
+stage diagnorm took 258 s
+=== ROQ_STAGE_DONE 2026-10-13T09:02:20Z ===

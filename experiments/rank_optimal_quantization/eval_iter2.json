@@ -1,0 +1,371 @@
+{
+ "arxiv-768_np128_a100": {
+  "ck": 1000,
+  "T_grid": [
+   10,
+   15,
+   20,
+   30,
+   31,
+   40,
+   60,
+   62,
+   80,
+   120,
+   125,
+   160,
+   188,
+   240,
+   250,
+   320,
+   375,
+   480,
+   500,
+   625,
+   640,
+   750,
+   875,
+   960,
+   1000,
+   1250,
+   1280,
+   1500,
+   1920,
+   2000,
+   2560
+  ],
+  "target": {
+   "calib": 0.9742500000000001,
+   "val": 0.9790000000000001
+  },
+  "methods": {
+   "JHQ": {
+    "calib": {
+     "T_min": 875,
+     "T_min_JHQ": 875,
+     "reduction": 0.0,
+     "recall_at_ck": 0.9742499999999992,
+     "full_ivf": 0.97625,
+     "misrank_hard": 0.11697537341715712
+    },
+    "val": {
+     "T_min": 750,
+     "T_min_JHQ": 750,
+     "reduction": 0.0,
+     "recall_at_ck": 0.9790000000000006,
+     "full_ivf": 0.9804999999999999,
+     "misrank_hard": 0.10567104239740008
+    }
+   },
+   "jhq_re": {
+    "calib": {
+     "T_min": 875,
+     "T_min_JHQ": 875,
+     "reduction": 0.0,
+     "recall_at_ck": 0.9742499999999992,
+     "full_ivf": 0.97625,
+     "misrank_hard": 0.11697537341715712
+    },
+    "val": {
+     "T_min": 625,
+     "T_min_JHQ": 750,
+     "reduction": 0.16666666666666663,
+     "recall_at_ck": 0.9800000000000005,
+     "full_ivf": 0.9814999999999999,
+     "misrank_hard": 0.10567104239740008
+    }
+   },
+   "lloydmax": {
+    "calib": {
+     "T_min": 320,
+     "T_min_JHQ": 875,
+     "reduction": 0.6342857142857143,
+     "recall_at_ck": 0.9784999999999993,
+     "full_ivf": 0.97875,
+     "misrank_hard": 0.07835447778570438
+    },
+    "val": {
+     "T_min": 480,
+     "T_min_JHQ": 750,
+     "reduction": 0.36,
+     "recall_at_ck": 0.9805000000000008,
+     "full_ivf": 0.9804999999999999,
+     "misrank_hard": 0.07122043601252404
+    }
+   },
+   "median": {
+    "calib": {
+     "T_min": 320,
+     "T_min_JHQ": 875,
+     "reduction": 0.6342857142857143,
+     "recall_at_ck": 0.9792499999999991,
+     "full_ivf": 0.9792500000000001,
+     "misrank_hard": 0.07679643971820939
+    },
+    "val": {
+     "T_min": 320,
+     "T_min_JHQ": 750,
+     "reduction": 0.5733333333333333,
+     "recall_at_ck": 0.9820000000000008,
+     "full_ivf": 0.982,
+     "misrank_hard": 0.07052607900838238
+    }
+   },
+   "mean": {
+    "calib": {
+     "T_min": 320,
+     "T_min_JHQ": 875,
+     "reduction": 0.6342857142857143,
+     "recall_at_ck": 0.977499999999999,
+     "full_ivf": 0.9775,
+     "misrank_hard": 0.07814436208211957
+    },
+    "val": {
+     "T_min": 375,
+     "T_min_JHQ": 750,
+     "reduction": 0.5,
+     "recall_at_ck": 0.9820000000000008,
+     "full_ivf": 0.982,
+     "misrank_hard": 0.0710360001387155
+    }
+   }
+  },
+  "seconds": 122.31034445762634
+ },
+ "vogue-768_np128_a64": {
+  "ck": 640,
+  "T_grid": [
+   10,
+   15,
+   20,
+   30,
+   40,
+   60,
+   80,
+   120,
+   160,
+   240,
+   320,
+   400,
+   480,
+   560,
+   640,
+   800,
+   960,
+   1280,
+   1920,
+   2560
+  ],
+  "target": {
+   "calib": 0.9584999999999999,
+   "val": 0.9575000000000001
+  },
+  "methods": {
+   "JHQ": {
+    "calib": {
+     "T_min": 560,
+     "T_min_JHQ": 560,
+     "reduction": 0.0,
+     "recall_at_ck": 0.9584999999999991,
+     "full_ivf": 0.959,
+     "misrank_hard": 0.06450436000138715
+    },
+    "val": {
+     "T_min": 640,
+     "T_min_JHQ": 640,
+     "reduction": 0.0,
+     "recall_at_ck": 0.9575000000000009,
+     "full_ivf": 0.9574999999999999,
+     "misrank_hard": 0.07239382245407526
+    }
+   },
+   "jhq_re": {
+    "calib": {
+     "T_min": 560,
+     "T_min_JHQ": 560,
+     "reduction": 0.0,
+     "recall_at_ck": 0.958749999999999,
+     "full_ivf": 0.9592499999999999,
+     "misrank_hard": 0.06450436000138715
+    },
+    "val": {
+     "T_min": null,
+     "T_min_JHQ": 640,
+     "reduction": null,
+     "recall_at_ck": 0.9570000000000008,
+     "full_ivf": 0.9570000000000001,
+     "misrank_hard": 0.07239382245407526
+    }
+   },
+   "lloydmax": {
+    "calib": {
+     "T_min": 400,
+     "T_min_JHQ": 560,
+     "reduction": 0.2857142857142857,
+     "recall_at_ck": 0.9587499999999993,
+     "full_ivf": 0.959,
+     "misrank_hard": 0.05389677597943047
+    },
+    "val": {
+     "T_min": 800,
+     "T_min_JHQ": 640,
+     "reduction": -0.25,
+     "recall_at_ck": 0.956500000000001,
+     "full_ivf": 0.9574999999999999,
+     "misrank_hard": 0.06343822478845887
+    }
+   },
+   "median": {
+    "calib": {
+     "T_min": null,
+     "T_min_JHQ": 560,
+     "reduction": null,
+     "recall_at_ck": 0.9564999999999995,
+     "full_ivf": 0.9564999999999999,
+     "misrank_hard": 0.055467022372827614
+    },
+    "val": {
+     "T_min": null,
+     "T_min_JHQ": 640,
+     "reduction": null,
+     "recall_at_ck": 0.955500000000001,
+     "full_ivf": 0.9564999999999999,
+     "misrank_hard": 0.06741206403701723
+    }
+   },
+   "mean": {
+    "calib": {
+     "T_min": 480,
+     "T_min_JHQ": 560,
+     "reduction": 0.1428571428571429,
+     "recall_at_ck": 0.9589999999999995,
+     "full_ivf": 0.9592499999999999,
+     "misrank_hard": 0.05626132153756218
+    },
+    "val": {
+     "T_min": null,
+     "T_min_JHQ": 640,
+     "reduction": null,
+     "recall_at_ck": 0.9530000000000011,
+     "full_ivf": 0.9545,
+     "misrank_hard": 0.06625589516081089
+    }
+   }
+  },
+  "seconds": 123.72004461288452
+ },
+ "openai3-3072_np128_a4": {
+  "ck": 40,
+  "T_grid": [
+   10,
+   15,
+   20,
+   25,
+   30,
+   35,
+   40,
+   50,
+   60,
+   80,
+   120,
+   160
+  ],
+  "target": {
+   "calib": 0.9305000000000001,
+   "val": 0.9025
+  },
+  "methods": {
+   "JHQ": {
+    "calib": {
+     "T_min": 40,
+     "T_min_JHQ": 40,
+     "reduction": 0.0,
+     "recall_at_ck": 0.9305000000000001,
+     "full_ivf": 0.9305,
+     "misrank_hard": 0.005706949398569249
+    },
+    "val": {
+     "T_min": 25,
+     "T_min_JHQ": 25,
+     "reduction": 0.0,
+     "recall_at_ck": 0.9025000000000007,
+     "full_ivf": 0.9025000000000001,
+     "misrank_hard": 0.006059964478925153
+    }
+   },
+   "jhq_re": {
+    "calib": {
+     "T_min": null,
+     "T_min_JHQ": 40,
+     "reduction": null,
+     "recall_at_ck": 0.93,
+     "full_ivf": 0.93,
+     "misrank_hard": 0.005701933966470484
+    },
+    "val": {
+     "T_min": null,
+     "T_min_JHQ": 25,
+     "reduction": null,
+     "recall_at_ck": 0.9015000000000007,
+     "full_ivf": 0.9015000000000001,
+     "misrank_hard": 0.006092592344886352
+    }
+   },
+   "lloydmax": {
+    "calib": {
+     "T_min": 35,
+     "T_min_JHQ": 40,
+     "reduction": 0.125,
+     "recall_at_ck": 0.9307500000000002,
+     "full_ivf": 0.931,
+     "misrank_hard": 0.0060228251392109074
+    },
+    "val": {
+     "T_min": 40,
+     "T_min_JHQ": 25,
+     "reduction": -0.6000000000000001,
+     "recall_at_ck": 0.9025000000000007,
+     "full_ivf": 0.9025000000000001,
+     "misrank_hard": 0.006585310029130253
+    }
+   },
+   "median": {
+    "calib": {
+     "T_min": 30,
+     "T_min_JHQ": 40,
+     "reduction": 0.25,
+     "recall_at_ck": 0.9312499999999999,
+     "full_ivf": 0.93125,
+     "misrank_hard": 0.00596806125279908
+    },
+    "val": {
+     "T_min": 30,
+     "T_min_JHQ": 25,
+     "reduction": -0.19999999999999996,
+     "recall_at_ck": 0.9030000000000007,
+     "full_ivf": 0.9029999999999999,
+     "misrank_hard": 0.006514961704615263
+    }
+   },
+   "mean": {
+    "calib": {
+     "T_min": 30,
+     "T_min_JHQ": 40,
+     "reduction": 0.25,
+     "recall_at_ck": 0.9312500000000001,
+     "full_ivf": 0.9315,
+     "misrank_hard": 0.0060163379604859
+    },
+    "val": {
+     "T_min": null,
+     "T_min_JHQ": 25,
+     "reduction": null,
+     "recall_at_ck": 0.9015000000000007,
+     "full_ivf": 0.9015000000000001,
+     "misrank_hard": 0.006606981104967996
+    }
+   }
+  },
+  "seconds": 230.50362706184387
+ }
+}

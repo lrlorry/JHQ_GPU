@@ -1,0 +1,1 @@
+=== 2026-10-13T03:05:38Z head=d74f8e6 Rank-optimal quantization: close and join every pool before the next fork (a with-pool teardown left a lock that deadlocked the next workload's workers); write evaluation results after each workload stages: iter2eval rankerr lmmse ===
