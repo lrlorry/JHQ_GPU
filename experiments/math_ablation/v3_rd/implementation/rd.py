@@ -280,6 +280,11 @@ def evaluate(out, test):
             vd = os.path.join(MC.MA, tag, "v3_rd", alloc)
             if os.path.exists(os.path.join(vd, "params.npz")):
                 methods["RD-" + alloc] = rd_dist(tag, vd)
+        if "RD-uniform" not in methods:
+            # openai3: every allocation is the uniform one (stats_<tag>.json), so its codes are JHQ's offline
+            # re-implementation's by construction; the build was not repeated
+            print(tag, "no RD build: the optimal allocation equals the uniform one", flush=True)
+            continue
         r, s = MC.evaluate(out, label, tag, methods, test=test)
         rows += r
         s["paired_calib_val"] = {a + " - RD-uniform": MC.paired(out, label, tag, a, "RD-uniform") for a in methods if a != "RD-uniform"}
