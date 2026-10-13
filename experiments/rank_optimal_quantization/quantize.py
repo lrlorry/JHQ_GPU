@@ -13,7 +13,8 @@ Variants (all 1 bit per coordinate; per-vector storage identical to JHQ's: d bit
              symmetric location model, THEORY.md 5)
   mean       t_j = mean of y_j, levels = conditional means
   list_mean  per IVF list l: t_lj = mean of y_j over the list's members, levels = conditional means within
-             the list (THEORY.md 5.6); metadata nlist x d x 3
+             the list (THEORY.md 5.6); metadata nlist x d x 3 (list_median: the same with the median)
+  learned_*  thresholds and levels from RQ/<tag>/learned_*.npz (rankloss.py, round 3)
 Statistics come from the database only: the strided training sample for per-coordinate rules, each list's
 own members for per-list rules. Output RQ/<tag>/var_<variant>/: bits.u8 [N][M], res.u8 [N][d] (position
 order), params.npz.
@@ -101,7 +102,11 @@ def build(tag, kind):
         lt = lpos[ptr]
         ytr_hat = np.where(ytr > T[lt], HI[lt], LO[lt])
     else:
-        t, lo, hi = fit_global(kind, ytr, c)
+        if kind.startswith("learned_"):
+            z = np.load(os.path.join(C.RQ, tag, kind + ".npz"))
+            t, lo, hi = z["thr"].astype(np.float64), z["lo"].astype(np.float64), z["hi"].astype(np.float64)
+        else:
+            t, lo, hi = fit_global(kind, ytr, c)
         T, LO, HI = t.astype(np.float32), lo.astype(np.float32), hi.astype(np.float32)
         thr = lambda a, b: T[None, :]
         lev = lambda a, b, bits: np.where(bits, HI[None, :], LO[None, :])
@@ -124,7 +129,11 @@ def build(tag, kind):
         mse_h += float(((r - C.decode_residual(rc, cb)).astype(np.float64) ** 2).sum())
     bits_mm.flush(); res_mm.flush()
     np.savez(os.path.join(out, "params.npz"), kind=kind, per_list=per_list, thr=T, lo=LO, hi=HI, res_cb=cb)
+    # balance of every bit over the training sample: mean entropy (1 = balanced) and mean |E s|
+    pb = (ytr > (T[lt] if per_list else T[None, :])).mean(0)
+    ent = -(pb * np.log2(np.clip(pb, 1e-12, 1)) + (1 - pb) * np.log2(np.clip(1 - pb, 1e-12, 1)))
     info = dict(tag=tag, kind=kind, per_list=per_list, seconds=time.time() - t0, bit_one_fraction=ones / (N * d),
+                bit_entropy_mean=float(ent.mean()), bit_bias_abs_mean=float(np.abs(2 * pb - 1).mean()),
                 primary_mse_per_vector=mse_p / N, hierarchical_mse_per_vector=mse_h / N,
                 lloyd_iterations=[int(min(iters)), int(np.median(iters)), int(max(iters))],
                 metadata_floats=int(T.size + LO.size + HI.size + cb.size))
