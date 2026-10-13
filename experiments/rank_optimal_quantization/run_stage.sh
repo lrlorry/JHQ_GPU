@@ -83,6 +83,16 @@ for st in "$@"; do
       rc=0; for p in $pids; do wait $p || rc=1; done; echo "iter5 quantize rc=$rc"
       OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 $E/eval_variants.py $R iter5 median list_median list_mean > $R/raw/eval_iter5.txt 2>&1
       echo "iter5 eval rc=$? $(tail -1 $R/raw/eval_iter5.txt | cut -c1-300)" ;;
+    diaglist)
+      # round-5 diagnosis: D_P error split between / within IVF lists, misranking against same-list / other-list negatives
+      OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 $E/diag_list.py $R median list_median > $R/raw/diag_list.txt 2>&1
+      echo "diaglist rc=$? $(tail -1 $R/raw/diag_list.txt | cut -c1-300)" ;;
+    build67)
+      # compile check of the v67 import benchmark (not run: the offline GO was not reached); no GPU use
+      timeout 600 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=80 >/dev/null 2>&1
+      timeout 2400 cmake --build build -j 16 --target demo_jhq_v67_repr_bench > $R/raw/build67.log 2>&1
+      rc=$?; echo "build67 rc=$rc"
+      [ $rc -ne 0 ] && grep -E "error" $R/raw/build67.log | head -20 ;;
     confirm=*)
       # the final, single read of the test split, for the variants named after "confirm=" (comma separated)
       vs="${st#confirm=}"
