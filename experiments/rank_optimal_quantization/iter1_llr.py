@@ -104,8 +104,9 @@ def main():
         files = C.bin_files(tag)
         q0 = C.load_bin(files[0])
         G["Ts"] = C.t_grid(q0["ck"], 4 * q0["ck"])
-        with mp.get_context("fork").Pool(workers) as pool:
-            res = pool.map(per_query, files, chunksize=4)
+        pool = mp.get_context("fork").Pool(workers)       # close + join: see eval_variants.py
+        res = pool.map(per_query, files, chunksize=4)
+        pool.close(); pool.join()
         sp = C.splits([o["qid"] for o in res])
         names = res[0]["names"]
         Ts = G["Ts"]

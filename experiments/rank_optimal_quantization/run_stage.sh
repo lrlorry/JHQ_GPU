@@ -34,6 +34,9 @@ for st in "$@"; do
       rc=0; for p in $pids; do wait $p || rc=1; done; echo "iter2 quantize rc=$rc"
       python3 $E/eval_variants.py $R iter2 jhq_re lloydmax median mean > $R/raw/eval_iter2.txt 2>&1
       echo "iter2 eval rc=$? $(tail -1 $R/raw/eval_iter2.txt | cut -c1-300)" ;;
+    iter2eval)
+      python3 $E/eval_variants.py $R iter2 jhq_re lloydmax median mean > $R/raw/eval_iter2.txt 2>&1
+      echo "iter2 eval rc=$? $(tail -1 $R/raw/eval_iter2.txt | cut -c1-300)" ;;
     rankerr) python3 $E/rank_error.py $R median lloydmax > $R/raw/rank_error.txt 2>&1; echo "rankerr rc=$? $(tail -1 $R/raw/rank_error.txt | cut -c1-300)" ;;
     iter3)
       # rank-loss thresholds (GPU training on database pseudo-queries), then the four learned variants

@@ -92,8 +92,11 @@ def main():
         files = C.bin_files(tag)
         ck = C.load_bin(files[0])["ck"]
         G["Ts"] = Ts = C.t_grid(ck, 4 * ck)
-        with mp.get_context("fork").Pool(64) as pool:
-            res = pool.map(per_query, files, chunksize=4)
+        # close + join before the next workload forks again: a pool torn down by "with" (terminate) can leave
+        # its handler threads holding locks that the next fork's children inherit locked (seen: a deadlock)
+        pool = mp.get_context("fork").Pool(64)
+        res = pool.map(per_query, files, chunksize=4)
+        pool.close(); pool.join()
         sp = C.splits([o["qid"] for o in res])
         meths = ["JHQ"] + G["variants"]
         splits = ("calib", "val", "test") if test else ("calib", "val")
@@ -144,6 +147,10 @@ def main():
         summ[tag]["seconds"] = time.time() - t0
         print(tag, json.dumps({v: {s: (e["T_min"], e["T_min_JHQ"], e["recall_at_ck"]) for s, e in ent.items() if isinstance(e, dict) and "T_min" in e}
                                for v, ent in summ[tag]["methods"].items()}), "%.0fs" % summ[tag]["seconds"], flush=True)
+        write(R, label, test, rows, summ, pq_rows)
+
+
+def write(R, label, test, rows, summ, pq_rows):
     keys = []
     for r in rows:
         for k in r:
