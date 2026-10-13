@@ -1,0 +1,42 @@
+N=999000 d=3072 M=384 nlist=8192 c=0.0121692754 block_b0=1024
+loaded codes 383.6 MB in 0.3 s
+layouts: words 0.17 s, r=8 patterns 0.50 s (G=128416), r=4 patterns 0.46 s (G=252829), threads 24
+read 1000 query files in 0.0 s
+candidate order differs from the export's in 0 queries (mapped by position)
+  B0     block 1024 smem  49152 regs  40 grid    20 x    8  resident blocks/SM 1 (warps 32)
+  H1_r8  block  256 smem  20480 regs  40 grid    85 x    8  resident blocks/SM 4 (warps 32)
+  H1_r4  block  256 smem  12800 regs  40 grid    85 x    8  resident blocks/SM 6 (warps 48)
+  H2_r8  block   64 smem  77824 regs  40 grid    41 x    8  resident blocks/SM 1 (warps 2)
+  H2_r4  block  256 smem  28672 regs  40 grid    20 x    8  resident blocks/SM 3 (warps 24)
+  H2_r6  block  128 smem  45056 regs  40 grid    27 x    8  resident blocks/SM 2 (warps 8)
+  H1z_r8 block  256 smem  20480 regs  40 grid    85 x    8  resident blocks/SM 4 (warps 32)
+batch 8: 16 batches, 2355077 candidates scored per implementation per pass; device C0 vs FP64 max rel 8.61e-08
+  B0     median     27.7 us/launch [p10     26.6, p90     29.6]  B0/this 1.000 | err vs FP64 max 1.954e-06 p50 2.469e-07 p99 9.643e-07 | vs B0 max 0.000e+00 | top-T != FP64 in 0 queries (max FP64 gap past the T-th 0.000e+00), != B0 in 0
+  H1_r8  median    173.1 us/launch [p10    161.8, p90    190.5]  B0/this 0.160 | err vs FP64 max 6.812e-07 p50 3.892e-08 p99 1.390e-07 | vs B0 max 1.907e-06 | top-T != FP64 in 0 queries (max FP64 gap past the T-th 0.000e+00), != B0 in 0
+  H1_r4  median    316.5 us/launch [p10    299.8, p90    333.9]  B0/this 0.088 | err vs FP64 max 6.687e-07 p50 5.017e-08 p99 2.127e-07 | vs B0 max 1.907e-06 | top-T != FP64 in 0 queries (max FP64 gap past the T-th 0.000e+00), != B0 in 0
+  H2_r8  median    346.7 us/launch [p10    342.7, p90    349.0]  B0/this 0.080 | err vs FP64 max 6.812e-07 p50 3.917e-08 p99 1.386e-07 | vs B0 max 1.907e-06 | top-T != FP64 in 0 queries (max FP64 gap past the T-th 0.000e+00), != B0 in 0
+  H2_r4  median    148.2 us/launch [p10    141.3, p90    166.4]  B0/this 0.187 | err vs FP64 max 6.816e-07 p50 5.019e-08 p99 2.161e-07 | vs B0 max 1.907e-06 | top-T != FP64 in 0 queries (max FP64 gap past the T-th 0.000e+00), != B0 in 0
+  H2_r6  median    178.8 us/launch [p10    176.7, p90    180.9]  B0/this 0.155 | err vs FP64 max 7.419e-07 p50 4.182e-08 p99 1.620e-07 | vs B0 max 1.907e-06 | top-T != FP64 in 0 queries (max FP64 gap past the T-th 0.000e+00), != B0 in 0
+  H1z_r8 median    161.6 us/launch [p10    156.6, p90    177.2]  B0/this 0.172 | err vs FP64 max 6.812e-07 p50 3.630e-08 p99 1.172e-07 | vs B0 max 1.907e-06 | top-T != FP64 in 0 queries (max FP64 gap past the T-th 0.000e+00), != B0 in 0
+  B0_scangrid median     65.4 us/launch [p10     64.3, p90     80.6]  (B0 at the scan's own grid: G blocks a query)
+  B0_prep_lut median      4.2 us/launch [p10      3.4, p90      4.9]
+  MM_prep_C0  median      5.2 us/launch [p10      4.8, p90      6.3]
+  B0     block 1024 smem  49152 regs  40 grid     1 x 1000  resident blocks/SM 1 (warps 32)
+  H1_r8  block  256 smem  20480 regs  40 grid     1 x 1000  resident blocks/SM 4 (warps 32)
+  H1_r4  block  256 smem  12800 regs  40 grid     1 x 1000  resident blocks/SM 6 (warps 48)
+  H2_r8  block   64 smem  77824 regs  40 grid     4 x 1000  resident blocks/SM 1 (warps 2)
+  H2_r4  block  256 smem  28672 regs  40 grid     1 x 1000  resident blocks/SM 3 (warps 24)
+  H2_r6  block  128 smem  45056 regs  40 grid     2 x 1000  resident blocks/SM 2 (warps 8)
+  H1z_r8 block  256 smem  20480 regs  40 grid     1 x 1000  resident blocks/SM 4 (warps 32)
+batch 1000: 1 batches, 18316479 candidates scored per implementation per pass; device C0 vs FP64 max rel 1.66e-07
+  B0     median   3701.5 us/launch [p10   3687.7, p90   3717.3]  B0/this 1.000 | err vs FP64 max 2.177e-06 p50 2.470e-07 p99 9.620e-07 | vs B0 max 0.000e+00 | top-T != FP64 in 0 queries (max FP64 gap past the T-th 0.000e+00), != B0 in 0
+  H1_r8  median  14193.2 us/launch [p10  13906.3, p90  14762.5]  B0/this 0.261 | err vs FP64 max 9.293e-07 p50 3.914e-08 p99 1.402e-07 | vs B0 max 2.146e-06 | top-T != FP64 in 0 queries (max FP64 gap past the T-th 0.000e+00), != B0 in 0
+  H1_r4  median  30795.3 us/launch [p10  30755.2, p90  31012.1]  B0/this 0.120 | err vs FP64 max 1.253e-06 p50 5.050e-08 p99 2.143e-07 | vs B0 max 2.146e-06 | top-T != FP64 in 0 queries (max FP64 gap past the T-th 0.000e+00), != B0 in 0
+  H2_r8  median  34263.4 us/launch [p10  34223.9, p90  34314.7]  B0/this 0.108 | err vs FP64 max 9.890e-07 p50 3.911e-08 p99 1.402e-07 | vs B0 max 2.146e-06 | top-T != FP64 in 0 queries (max FP64 gap past the T-th 0.000e+00), != B0 in 0
+  H2_r4  median   7134.4 us/launch [p10   7114.2, p90   7158.3]  B0/this 0.519 | err vs FP64 max 1.074e-06 p50 5.042e-08 p99 2.158e-07 | vs B0 max 2.146e-06 | top-T != FP64 in 0 queries (max FP64 gap past the T-th 0.000e+00), != B0 in 0
+  H2_r6  median  13445.6 us/launch [p10  13418.0, p90  13480.5]  B0/this 0.275 | err vs FP64 max 8.731e-07 p50 4.208e-08 p99 1.627e-07 | vs B0 max 2.146e-06 | top-T != FP64 in 0 queries (max FP64 gap past the T-th 0.000e+00), != B0 in 0
+  H1z_r8 median  14176.7 us/launch [p10  13992.4, p90  14351.8]  B0/this 0.261 | err vs FP64 max 9.293e-07 p50 3.621e-08 p99 1.170e-07 | vs B0 max 2.146e-06 | top-T != FP64 in 0 queries (max FP64 gap past the T-th 0.000e+00), != B0 in 0
+  B0_scangrid median   3700.1 us/launch [p10   3687.2, p90   3717.6]  (B0 at the scan's own grid: G blocks a query)
+  B0_prep_lut median     27.2 us/launch [p10     25.7, p90     32.3]
+  MM_prep_C0  median      7.0 us/launch [p10      6.0, p90      8.2]
+MB_DONE

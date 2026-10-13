@@ -1,0 +1,2 @@
+name, driver_version, clocks.max.sm [MHz]
+NVIDIA GeForce RTX 5090, 595.71.05, 3090 MHz

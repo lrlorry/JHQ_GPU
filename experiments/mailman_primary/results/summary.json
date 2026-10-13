@@ -1,0 +1,284 @@
+{
+ "vogue-768": {
+  "layout_bytes": {
+   "words": 89503488,
+   "P8": 90903552,
+   "P4": 90091392,
+   "P6_bytes_a_dim": 120675840,
+   "raw_bits_bytes": 89503488
+  },
+  "build_s": {
+   "words": 0.041,
+   "P8_both": 0.138,
+   "P4_both": 0.135,
+   "P6": 0.104
+  },
+  "8": {
+   "b0_us": 23.52,
+   "b0_scangrid_us": 80.96,
+   "scan_us": 225.194,
+   "latency_us": 372.02000000000004,
+   "f": 0.21762270845653456,
+   "best": "H2_r6",
+   "s_best": 0.4590880699562773,
+   "S_model": 0.7959186025885437,
+   "impls": {
+    "B0": 23.52,
+    "H1_r8": 176.128,
+    "H1_r4": 391.904,
+    "H2_r8": 128.608,
+    "H2_r4": 64.416,
+    "H2_r6": 51.232,
+    "H1z_r8": 115.616,
+    "B0_scangrid": 80.96,
+    "B0_prep_lut": 4.224,
+    "MM_prep_C0": 4.544
+   }
+  },
+  "1000": {
+   "b0_us": 2187.968,
+   "b0_scangrid_us": 2180.64,
+   "scan_us": 3004.3955,
+   "latency_us": 3942.9500000000003,
+   "f": 0.5530478448877109,
+   "best": "H2_r4",
+   "s_best": 0.4276609185696683,
+   "S_model": 0.5746649055620486,
+   "impls": {
+    "B0": 2187.968,
+    "H1_r8": 21256.512,
+    "H1_r4": 47615.265,
+    "H2_r8": 13705.44,
+    "H2_r4": 5116.128,
+    "H2_r6": 6032.928,
+    "H1z_r8": 11735.328,
+    "B0_scangrid": 2180.64,
+    "B0_prep_lut": 9.504,
+    "MM_prep_C0": 4.832
+   }
+  },
+  "stats": {
+   "bit_balance": {
+    "mean_abs_dev_from_half": 0.28390901275716984,
+    "p90": 0.48637602179836514,
+    "share_dev_gt_0.25": 0.5808244022286725
+   },
+   "dict_best_bytes": [
+    "n64_g8",
+    {
+     "U_mean": 26.153340469916557,
+     "U_median": 26.0,
+     "U_p10": 13.0,
+     "U_max_possible": 64,
+     "theoretical_bits_ratio": 1.073549818044465,
+     "implementable_bytes_ratio_with_fallback": 0.9763694866050576,
+     "share_blocks_worth_dictionary": 0.14349237718802937,
+     "share_blocks_worth_dictionary_scan_weighted": 0.13218886876162497,
+     "work_ratio_scan_weighted": 0.9590504417608968
+    }
+   ],
+   "dict_best_work": [
+    "n64_g8",
+    {
+     "U_mean": 26.153340469916557,
+     "U_median": 26.0,
+     "U_p10": 13.0,
+     "U_max_possible": 64,
+     "theoretical_bits_ratio": 1.073549818044465,
+     "implementable_bytes_ratio_with_fallback": 0.9763694866050576,
+     "share_blocks_worth_dictionary": 0.14349237718802937,
+     "share_blocks_worth_dictionary_scan_weighted": 0.13218886876162497,
+     "work_ratio_scan_weighted": 0.9590504417608968
+    }
+   ]
+  }
+ },
+ "arxiv-768": {
+  "layout_bytes": {
+   "words": 216288000,
+   "P8": 219110400,
+   "P4": 217497600,
+   "P6_bytes_a_dim": 291058944,
+   "raw_bits_bytes": 216288000
+  },
+  "build_s": {
+   "words": 0.096,
+   "P8_both": 0.308,
+   "P4_both": 0.265,
+   "P6": 0.196
+  },
+  "8": {
+   "b0_us": 22.56,
+   "b0_scangrid_us": 49.12,
+   "scan_us": 233.483,
+   "latency_us": 433.2,
+   "f": 0.1133887349953832,
+   "best": "H2_r4",
+   "s_best": 0.5812036273701565,
+   "S_model": 0.9244671311472829,
+   "impls": {
+    "B0": 22.56,
+    "H1_r8": 148.384,
+    "H1_r4": 296.8,
+    "H2_r8": 124.96,
+    "H2_r4": 38.816,
+    "H2_r6": 55.456,
+    "H1z_r8": 82.976,
+    "B0_scangrid": 49.12,
+    "B0_prep_lut": 4.352,
+    "MM_prep_C0": 4.512
+   }
+  },
+  "1000": {
+   "b0_us": 2033.024,
+   "b0_scangrid_us": 2029.152,
+   "scan_us": 2933.354,
+   "latency_us": 4190.92,
+   "f": 0.4841781756750308,
+   "best": "H2_r4",
+   "s_best": 0.48021889975661003,
+   "S_model": 0.6561393241907921,
+   "impls": {
+    "B0": 2033.024,
+    "H1_r8": 17278.496,
+    "H1_r4": 37126.305,
+    "H2_r8": 19978.657,
+    "H2_r4": 4233.536,
+    "H2_r6": 7542.4,
+    "H1z_r8": 6873.28,
+    "B0_scangrid": 2029.152,
+    "B0_prep_lut": 10.144,
+    "MM_prep_C0": 4.896
+   }
+  },
+  "stats": {
+   "bit_balance": {
+    "mean_abs_dev_from_half": 0.3611840096955878,
+    "p90": 0.5,
+    "share_dev_gt_0.25": 0.7495173784308068
+   },
+   "dict_best_bytes": [
+    "n128_g8",
+    {
+     "U_mean": 19.8183615427303,
+     "U_median": 18.0,
+     "U_p10": 7.0,
+     "U_max_possible": 128,
+     "theoretical_bits_ratio": 0.7489683055231282,
+     "implementable_bytes_ratio_with_fallback": 0.8637947414610606,
+     "share_blocks_worth_dictionary": 0.3968353064496239,
+     "share_blocks_worth_dictionary_scan_weighted": 0.3904772033298363,
+     "work_ratio_scan_weighted": 0.8368148810831819
+    }
+   ],
+   "dict_best_work": [
+    "n256_g16",
+    {
+     "U_mean": 90.54888143176734,
+     "U_median": 85.0,
+     "U_p10": 35.0,
+     "U_max_possible": 256,
+     "theoretical_bits_ratio": 0.8720350596488357,
+     "implementable_bytes_ratio_with_fallback": 0.899328366949463,
+     "share_blocks_worth_dictionary": 0.5715044742729306,
+     "share_blocks_worth_dictionary_scan_weighted": 0.5589568571575272,
+     "work_ratio_scan_weighted": 0.7311080505240244
+    }
+   ]
+  }
+ },
+ "openai3-3072": {
+  "layout_bytes": {
+   "words": 383616000,
+   "P8": 394493952,
+   "P4": 388345344,
+   "P6_bytes_a_dim": 522052608,
+   "raw_bits_bytes": 383616000
+  },
+  "build_s": {
+   "words": 0.18,
+   "P8_both": 0.5,
+   "P4_both": 0.461,
+   "P6": 0.367
+  },
+  "8": {
+   "b0_us": 27.744,
+   "b0_scangrid_us": 65.408,
+   "scan_us": 177.448,
+   "latency_us": 334.90999999999997,
+   "f": 0.19530022991251383,
+   "best": "H2_r4",
+   "s_best": 0.18725701943844492,
+   "S_model": 0.5412272980160566,
+   "impls": {
+    "B0": 27.744,
+    "H1_r8": 172.992,
+    "H1_r4": 316.384,
+    "H2_r8": 346.688,
+    "H2_r4": 148.16,
+    "H2_r6": 178.88,
+    "H1z_r8": 161.6,
+    "B0_scangrid": 65.408,
+    "B0_prep_lut": 4.16,
+    "MM_prep_C0": 5.216
+   }
+  },
+  "1000": {
+   "b0_us": 3703.392,
+   "b0_scangrid_us": 3701.28,
+   "scan_us": 4289.6185,
+   "latency_us": 6321.74,
+   "f": 0.5854843761369497,
+   "best": "H2_r4",
+   "s_best": 0.5193643641846772,
+   "S_model": 0.6485819899277421,
+   "impls": {
+    "B0": 3703.392,
+    "H1_r8": 14117.408,
+    "H1_r4": 30799.488,
+    "H2_r8": 34275.646,
+    "H2_r4": 7130.624,
+    "H2_r6": 13434.592,
+    "H1z_r8": 14129.824,
+    "B0_scangrid": 3701.28,
+    "B0_prep_lut": 26.656,
+    "MM_prep_C0": 6.272
+   }
+  },
+  "stats": {
+   "bit_balance": {
+    "mean_abs_dev_from_half": 0.19546001272225247,
+    "p90": 0.37890625,
+    "share_dev_gt_0.25": 0.33712462430135853
+   },
+   "dict_best_bytes": [
+    "n64_g8",
+    {
+     "U_mean": 38.49560917989957,
+     "U_median": 41.0,
+     "U_p10": 22.0,
+     "U_max_possible": 64,
+     "theoretical_bits_ratio": 1.4111197598150287,
+     "implementable_bytes_ratio_with_fallback": 0.9999891182203063,
+     "share_blocks_worth_dictionary": 9.755021715526602e-05,
+     "share_blocks_worth_dictionary_scan_weighted": 8.005092478590386e-05,
+     "work_ratio_scan_weighted": 0.9999778317025445
+    }
+   ],
+   "dict_best_work": [
+    "n64_g8",
+    {
+     "U_mean": 38.49560917989957,
+     "U_median": 41.0,
+     "U_p10": 22.0,
+     "U_max_possible": 64,
+     "theoretical_bits_ratio": 1.4111197598150287,
+     "implementable_bytes_ratio_with_fallback": 0.9999891182203063,
+     "share_blocks_worth_dictionary": 9.755021715526602e-05,
+     "share_blocks_worth_dictionary_scan_weighted": 8.005092478590386e-05,
+     "work_ratio_scan_weighted": 0.9999778317025445
+    }
+   ]
+  }
+ }
+}

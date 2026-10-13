@@ -1,0 +1,132 @@
+{
+ "tag": "arxiv-768_np128_a100",
+ "N": 2253000,
+ "d": 768,
+ "nlist": 8192,
+ "queries": 1000,
+ "lists_analysed": 512,
+ "share_of_scan_reads": 0.2879469381778541,
+ "list_size": {
+  "mean": 275.0244140625,
+  "median": 257.5,
+  "min": 1,
+  "max": 1231
+ },
+ "bit_balance": {
+  "mean_abs_dev_from_half": 0.3611840096955878,
+  "p90": 0.5,
+  "share_dev_gt_0.25": 0.7495173784308068
+ },
+ "mailman": {
+  "r4": {
+   "pattern_entropy_bits": 2.899199350686202,
+   "max_entropy_bits": 4,
+   "share_all_zero": 0.29436224469770383,
+   "share_all_one": 0.3547586306148148,
+   "top8_patterns": [
+    [
+     15,
+     0.3547586306148148
+    ],
+    [
+     0,
+     0.29436224469770383
+    ],
+    [
+     7,
+     0.0316453616040493
+    ],
+    [
+     13,
+     0.030985057560537172
+    ],
+    [
+     11,
+     0.030970313915543002
+    ],
+    [
+     14,
+     0.03094706507220099
+    ],
+    [
+     1,
+     0.030623227655049826
+    ],
+    [
+     2,
+     0.029755944267204848
+    ]
+   ],
+   "distinct_patterns_per_group": {
+    "mean": 15.941803428296659,
+    "of": 16
+   },
+   "warp32": {
+    "distinct_mean": 9.55854778924606,
+    "max_multiplicity_mean": 12.39651418395212,
+    "max_multiplicity_p95": 16.0,
+    "random_bits_max_multiplicity_mean": 4.81605
+   }
+  },
+  "r8": {
+   "pattern_entropy_bits": 5.006570141428669,
+   "max_entropy_bits": 8,
+   "share_all_zero": 0.2357858070708695,
+   "share_all_one": 0.28912558469230304,
+   "top8_patterns": [
+    [
+     255,
+     0.28912558469230304
+    ],
+    [
+     0,
+     0.2357858070708695
+    ],
+    [
+     127,
+     0.011602401704723285
+    ],
+    [
+     1,
+     0.011414660794019812
+    ],
+    [
+     253,
+     0.011126972357235696
+    ],
+    [
+     251,
+     0.011120547502338573
+    ],
+    [
+     239,
+     0.011104126140658853
+    ],
+    [
+     223,
+     0.01109779662133416
+    ]
+   ],
+   "distinct_patterns_per_group": {
+    "mean": 153.33229129874763,
+    "of": 256
+   },
+   "warp32": {
+    "distinct_mean": 15.935864255128804,
+    "max_multiplicity_mean": 10.260987221848323,
+    "max_multiplicity_p95": 14.0,
+    "random_bits_max_multiplicity_mean": 1.9421
+   }
+  }
+ },
+ "seconds": 11.197001695632935
+}
+n64_g8 {'U_mean': 15.2352, 'U_median': 14.0, 'U_p10': 6.0, 'U_max_possible': 64, 'theoretical_bits_ratio': np.float64(0.7808), 'implementable_bytes_ratio_with_fallback': np.float64(0.8813), 'share_blocks_worth_dictionary': np.float64(0.5572), 'share_blocks_worth_dictionary_scan_weighted': np.float64(0.5491), 'work_ratio_scan_weighted': np.float64(0.8088)}
+n64_g16 {'U_mean': 38.7033, 'U_median': 39.0, 'U_p10': 22.0, 'U_max_possible': 64, 'theoretical_bits_ratio': np.float64(0.9978), 'implementable_bytes_ratio_with_fallback': np.float64(0.9851), 'share_blocks_worth_dictionary': np.float64(0.1296), 'share_blocks_worth_dictionary_scan_weighted': np.float64(0.1229), 'work_ratio_scan_weighted': np.float64(0.9491)}
+n64_g32 {'U_mean': 58.761, 'U_median': 63.0, 'U_p10': 52.0, 'U_max_possible': 64, 'theoretical_bits_ratio': np.float64(1.1552), 'implementable_bytes_ratio_with_fallback': np.float64(0.9999), 'share_blocks_worth_dictionary': np.float64(0.0025), 'share_blocks_worth_dictionary_scan_weighted': np.float64(0.002), 'work_ratio_scan_weighted': np.float64(0.9996)}
+n128_g8 {'U_mean': 19.8184, 'U_median': 18.0, 'U_p10': 7.0, 'U_max_possible': 128, 'theoretical_bits_ratio': np.float64(0.749), 'implementable_bytes_ratio_with_fallback': np.float64(0.8638), 'share_blocks_worth_dictionary': np.float64(0.3968), 'share_blocks_worth_dictionary_scan_weighted': np.float64(0.3905), 'work_ratio_scan_weighted': np.float64(0.8368)}
+n128_g16 {'U_mean': 61.5106, 'U_median': 61.0, 'U_p10': 30.0, 'U_max_possible': 128, 'theoretical_bits_ratio': np.float64(0.9341), 'implementable_bytes_ratio_with_fallback': np.float64(0.9546), 'share_blocks_worth_dictionary': np.float64(0.3672), 'share_blocks_worth_dictionary_scan_weighted': np.float64(0.3568), 'work_ratio_scan_weighted': np.float64(0.8475)}
+n128_g32 {'U_mean': 109.7996, 'U_median': 122.0, 'U_p10': 69.0, 'U_max_possible': 128, 'theoretical_bits_ratio': np.float64(1.1639), 'implementable_bytes_ratio_with_fallback': np.float64(0.9992), 'share_blocks_worth_dictionary': np.float64(0.0153), 'share_blocks_worth_dictionary_scan_weighted': np.float64(0.0132), 'work_ratio_scan_weighted': np.float64(0.9972)}
+n256_g8 {'U_mean': 24.3231, 'U_median': 22.0, 'U_p10': 8.0, 'U_max_possible': 256, 'theoretical_bits_ratio': np.float64(0.7348), 'implementable_bytes_ratio_with_fallback': np.float64(0.8849), 'share_blocks_worth_dictionary': np.float64(0.3022), 'share_blocks_worth_dictionary_scan_weighted': np.float64(0.2992), 'work_ratio_scan_weighted': np.float64(0.8734)}
+n256_g16 {'U_mean': 90.5489, 'U_median': 85.0, 'U_p10': 35.0, 'U_max_possible': 256, 'theoretical_bits_ratio': np.float64(0.872), 'implementable_bytes_ratio_with_fallback': np.float64(0.8993), 'share_blocks_worth_dictionary': np.float64(0.5715), 'share_blocks_worth_dictionary_scan_weighted': np.float64(0.559), 'work_ratio_scan_weighted': np.float64(0.7311)}
+n256_g32 {'U_mean': 192.4351, 'U_median': 224.0, 'U_p10': 70.0, 'U_max_possible': 256, 'theoretical_bits_ratio': np.float64(1.1625), 'implementable_bytes_ratio_with_fallback': np.float64(0.9961), 'share_blocks_worth_dictionary': np.float64(0.0517), 'share_blocks_worth_dictionary_scan_weighted': np.float64(0.0459), 'work_ratio_scan_weighted': np.float64(0.9889)}
