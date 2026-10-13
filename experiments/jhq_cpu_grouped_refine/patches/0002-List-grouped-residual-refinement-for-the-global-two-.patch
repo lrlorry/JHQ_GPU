@@ -1,0 +1,691 @@
+From 03681958487bf2c6177ec3b81505d38d9a2c6a91 Mon Sep 17 00:00:00 2001
+From: Rui Luo <u8076655@anu.edu.au>
+Date: Wed, 14 Oct 2026 03:50:22 +1100
+Subject: [PATCH 2/7] List-grouped residual refinement for the global two-stage
+ search
+
+After the global primary top-T, refinement groups the T candidates by IVF list (a counting sort
+over a small open-addressing map, O(T + nprobe), no sort of the candidates), opens each list once
+-- one set_list, one ScopedCodes, one ScopedIds -- and refines its candidates together, optionally
+in ascending offset. Refined distances and ids are kept at each candidate's position and pushed
+into the result heap in primary order, so results, including ties, are bit-identical to the
+one-at-a-time loop, which stays as the fallback and as refine_grouping = 0. Both entry points
+(search_preassigned and the rotated-query path) share the implementation. Scratch is thread_local
+and reused across queries.
+
+IndexIVFJHQ::refine_grouping (-1 auto, 0 original, 1 grouped, 2 grouped + ascending offset) and
+refine_grouping_min_candidates select the path; IndexIVFJHQStats gains the counters (two-stage
+queries, candidates, lists opened, set_list calls, scoped acquisitions, grouped queries, primary
+and refinement time, scratch bytes). Not stored in the index file.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ jhq/jhqlib/IndexIVFJHQ.h              |  33 ++
+ jhq/jhqlib/impl/IndexIVFJHQIO.cpp     |  10 +
+ jhq/jhqlib/impl/IndexIVFJHQSearch.cpp | 479 ++++++++++++++++++++++----
+ 3 files changed, 446 insertions(+), 76 deletions(-)
+
+diff --git a/jhq/jhqlib/IndexIVFJHQ.h b/jhq/jhqlib/IndexIVFJHQ.h
+index 9d40046..3361850 100644
+--- a/jhq/jhqlib/IndexIVFJHQ.h
++++ b/jhq/jhqlib/IndexIVFJHQ.h
+@@ -12,6 +12,9 @@
+ #include <utility>
+ #include <vector>
+ 
++// IndexIVFJHQ::refine_grouping and the refinement counters of IndexIVFJHQStats exist.
++#define JHQ_HAS_REFINE_GROUPING 1
++
+ namespace faiss {
+ 
+ struct IndexIVFPQ;
+@@ -56,6 +59,24 @@ struct IndexIVFJHQ : IndexIVF {
+     bool use_pre_decoded_codes = true;
+     size_t pre_decode_threshold = 1000;
+ 
++    /// Residual refinement of the global two-stage search (the global primary
++    /// top-T of the probed lists, each of the T then refined from its residual
++    /// code):
++    ///  -1  automatic: kRefineGroupingAuto when T >= refine_grouping_min_candidates,
++    ///      0 below it
++    ///   0  one candidate at a time in primary order, each with its own
++    ///      set_list and scoped codes and ids (the original loop)
++    ///   1  grouped by list: each list's candidates refined together, with one
++    ///      set_list, one ScopedCodes and one ScopedIds per list
++    ///   2  as 1, each list's candidates in ascending offset
++    /// Every mode returns the same labels and distances bit for bit: refined
++    /// distances are kept at their candidate's position and enter the result
++    /// heap in primary order, as the original loop pushes them. Not stored in
++    /// the index file.
++    int refine_grouping = -1;
++    size_t refine_grouping_min_candidates = 0;
++    static constexpr int kRefineGroupingAuto = 1;
++
+     struct SearchWorkspace {
+         std::vector<idx_t> list_indices;
+         std::vector<float> coarse_distances;
+@@ -307,6 +328,18 @@ struct IndexIVFJHQStats {
+     double jhq_search_time = 0.0;
+     double total_search_time = 0.0;
+ 
++    // Global two-stage search (IndexIVFJHQ::refine_grouping). Times are summed
++    // over queries, per thread, in milliseconds.
++    size_t n_two_stage = 0;                 ///< queries that took the global two-stage path
++    size_t refine_candidates = 0;           ///< candidates refined
++    size_t refine_groups = 0;               ///< lists opened by the grouped refinement
++    size_t refine_set_list_calls = 0;       ///< scanner->set_list() calls in refinement
++    size_t refine_scoped_acquisitions = 0;  ///< ScopedCodes + ScopedIds pairs taken in refinement
++    size_t refine_grouped_queries = 0;      ///< queries refined by the grouped path
++    double primary_stage_time = 0.0;        ///< primary distances of the probed lists and the global top-T
++    double refine_stage_time = 0.0;         ///< refinement of the T and the result heap
++    size_t refine_scratch_bytes = 0;        ///< largest grouped-refinement scratch held by one thread
++
+     void reset();
+     void add(const IndexIVFJHQStats& other);
+ };
+diff --git a/jhq/jhqlib/impl/IndexIVFJHQIO.cpp b/jhq/jhqlib/impl/IndexIVFJHQIO.cpp
+index 439213f..50fc252 100644
+--- a/jhq/jhqlib/impl/IndexIVFJHQIO.cpp
++++ b/jhq/jhqlib/impl/IndexIVFJHQIO.cpp
+@@ -7,6 +7,7 @@
+ #include <faiss/impl/io_macros.h>
+ #include <faiss/invlists/DirectMap.h>
+ 
++#include <algorithm>
+ #include <cstdint>
+ #include <cstring>
+ #include <memory>
+@@ -46,6 +47,15 @@ void IndexIVFJHQStats::add(const IndexIVFJHQStats& other)
+     quantization_time += other.quantization_time;
+     jhq_search_time += other.jhq_search_time;
+     total_search_time += other.total_search_time;
++    n_two_stage += other.n_two_stage;
++    refine_candidates += other.refine_candidates;
++    refine_groups += other.refine_groups;
++    refine_set_list_calls += other.refine_set_list_calls;
++    refine_scoped_acquisitions += other.refine_scoped_acquisitions;
++    refine_grouped_queries += other.refine_grouped_queries;
++    primary_stage_time += other.primary_stage_time;
++    refine_stage_time += other.refine_stage_time;
++    refine_scratch_bytes = std::max(refine_scratch_bytes, other.refine_scratch_bytes);
+ }
+ 
+ size_t estimate_ivfjhq_memory(int d,
+diff --git a/jhq/jhqlib/impl/IndexIVFJHQSearch.cpp b/jhq/jhqlib/impl/IndexIVFJHQSearch.cpp
+index 0550538..a7a6cf1 100644
+--- a/jhq/jhqlib/impl/IndexIVFJHQSearch.cpp
++++ b/jhq/jhqlib/impl/IndexIVFJHQSearch.cpp
+@@ -10,6 +10,7 @@
+ #include <faiss/utils/utils.h>
+ 
+ #include <algorithm>
++#include <chrono>
+ #include <cmath>
+ #include <cstring>
+ #include <limits>
+@@ -19,6 +20,316 @@
+ 
+ namespace faiss {
+ 
++namespace {
++
++using RefineClock = std::chrono::steady_clock;
++
++// The result heap update of the global two-stage refinement: a strict
++// comparison with the heap top, so that of two equal distances the one pushed
++// first stays. Every refinement mode pushes in primary order through this.
++inline void push_refined(bool is_max_heap,
++    size_t k,
++    float* simi,
++    idx_t* idxi,
++    float dis,
++    idx_t id)
++{
++    if (is_max_heap) {
++        if (CMin<float, idx_t>::cmp(simi[0], dis)) {
++            heap_replace_top<CMin<float, idx_t>>(k, simi, idxi, dis, id);
++        }
++    } else {
++        if (CMax<float, idx_t>::cmp(simi[0], dis)) {
++            heap_replace_top<CMax<float, idx_t>>(k, simi, idxi, dis, id);
++        }
++    }
++}
++
++struct RefineCounters {
++    size_t candidates = 0;
++    size_t groups = 0;
++    size_t set_list_calls = 0;
++    size_t scoped_acquisitions = 0;
++    size_t grouped_queries = 0;
++};
++
++// The original refinement: one candidate at a time in primary order, each
++// with its own set_list and scoped codes and ids.
++void refine_one_at_a_time(const IndexIVFJHQ& index,
++    InvertedListScanner* scanner,
++    const IVFJHQScanner* jhq_scanner,
++    const float* candidate_primary,
++    const idx_t* candidate_locs,
++    size_t candidate_count,
++    bool store_pairs,
++    bool is_max_heap,
++    size_t k,
++    float* simi,
++    idx_t* idxi,
++    RefineCounters& counters)
++{
++    for (size_t ci = 0; ci < candidate_count; ++ci) {
++        const idx_t loc = candidate_locs[ci];
++        const idx_t list_no = lo_listno(loc);
++        const idx_t offset = lo_offset(loc);
++        if (list_no < 0 || static_cast<size_t>(list_no) >= index.nlist) {
++            continue;
++        }
++
++        const size_t list_size = index.invlists->list_size(list_no);
++        if (offset < 0 || static_cast<size_t>(offset) >= list_size) {
++            continue;
++        }
++
++        scanner->set_list(list_no, 0.0f);
++        InvertedLists::ScopedCodes codes(index.invlists, list_no);
++        InvertedLists::ScopedIds ids(index.invlists, list_no);
++
++        const uint8_t* packed_code =
++            codes.get() + static_cast<size_t>(offset) * index.code_size;
++        const float dis = jhq_scanner->refine_distance_from_primary_for_list(
++            static_cast<size_t>(offset),
++            packed_code,
++            candidate_primary[ci]);
++        const idx_t id = store_pairs ? loc : ids.get()[offset];
++
++        push_refined(is_max_heap, k, simi, idxi, dis, id);
++        ++counters.candidates;
++        ++counters.set_list_calls;
++        ++counters.scoped_acquisitions;
++    }
++}
++
++// Scratch of the grouped refinement, one per thread, kept across queries and
++// searches so that a query allocates nothing once the buffers have grown.
++struct RefineScratch {
++    std::vector<idx_t> slot_list;       // open addressing, list_no -> group (-1 empty)
++    std::vector<int32_t> slot_group;
++    std::vector<idx_t> group_list;      // per group
++    std::vector<uint32_t> group_begin;  // per group, and the end
++    std::vector<uint32_t> group_fill;
++    std::vector<int32_t> cand_group;    // per candidate, -1 for an invalid list
++    std::vector<uint32_t> order;        // candidates, group by group
++    std::vector<float> dis;             // per candidate, its refined distance
++    std::vector<idx_t> ids;             // per candidate, its result id
++    std::vector<uint8_t> refined;       // per candidate, whether it was refined
++
++    size_t bytes() const
++    {
++        return slot_list.capacity() * sizeof(idx_t) + slot_group.capacity() * sizeof(int32_t) +
++            group_list.capacity() * sizeof(idx_t) +
++            (group_begin.capacity() + group_fill.capacity()) * sizeof(uint32_t) +
++            cand_group.capacity() * sizeof(int32_t) + order.capacity() * sizeof(uint32_t) +
++            dis.capacity() * sizeof(float) + ids.capacity() * sizeof(idx_t) +
++            refined.capacity() * sizeof(uint8_t);
++    }
++};
++
++thread_local RefineScratch refine_scratch;
++
++// List-grouped refinement. The candidates are grouped by list in O(T + lists)
++// (a counting sort over a small hash map, no sort of the T), each list is
++// opened once -- one set_list, one ScopedCodes and one ScopedIds -- and its
++// candidates refined together, optionally in ascending offset. Each refined
++// distance and id is kept at the candidate's own position, and the result heap
++// is then filled in primary order: the same calls, with the same values, in
++// the same order as refine_one_at_a_time makes.
++//
++// Returns false, having touched nothing, if the candidates come from more than
++// max_lists lists (not possible when they come from the query's probes); the
++// caller then refines one at a time.
++bool refine_grouped(const IndexIVFJHQ& index,
++    InvertedListScanner* scanner,
++    const IVFJHQScanner* jhq_scanner,
++    const float* candidate_primary,
++    const idx_t* candidate_locs,
++    size_t candidate_count,
++    size_t max_lists,
++    bool ascending_offsets,
++    bool store_pairs,
++    bool is_max_heap,
++    size_t k,
++    float* simi,
++    idx_t* idxi,
++    RefineCounters& counters,
++    size_t& scratch_bytes)
++{
++    RefineScratch& s = refine_scratch;
++    const size_t T = candidate_count;
++
++    size_t cap = 16;
++    int log2cap = 4;
++    while (cap < 2 * std::min(T, std::max<size_t>(max_lists, 1))) {
++        cap <<= 1;
++        ++log2cap;
++    }
++    const size_t mask = cap - 1;
++    s.slot_list.assign(cap, -1);
++    s.slot_group.resize(cap);
++    s.group_list.clear();
++    s.group_fill.clear();
++    s.cand_group.resize(T);
++
++    for (size_t ci = 0; ci < T; ++ci) {
++        const idx_t list_no = lo_listno(candidate_locs[ci]);
++        if (list_no < 0 || static_cast<size_t>(list_no) >= index.nlist) {
++            s.cand_group[ci] = -1;
++            continue;
++        }
++        size_t h = static_cast<size_t>(
++            (static_cast<uint64_t>(list_no) * 0x9E3779B97F4A7C15ull) >> (64 - log2cap));
++        while (s.slot_list[h] != -1 && s.slot_list[h] != list_no) {
++            h = (h + 1) & mask;
++        }
++        if (s.slot_list[h] == -1) {
++            if (2 * (s.group_list.size() + 1) > cap) {
++                return false;
++            }
++            s.slot_list[h] = list_no;
++            s.slot_group[h] = static_cast<int32_t>(s.group_list.size());
++            s.group_list.push_back(list_no);
++            s.group_fill.push_back(0);
++        }
++        const int32_t g = s.slot_group[h];
++        s.cand_group[ci] = g;
++        ++s.group_fill[g];
++    }
++
++    const size_t ngroups = s.group_list.size();
++    s.group_begin.resize(ngroups + 1);
++    s.group_begin[0] = 0;
++    for (size_t g = 0; g < ngroups; ++g) {
++        s.group_begin[g + 1] = s.group_begin[g] + s.group_fill[g];
++        s.group_fill[g] = s.group_begin[g];
++    }
++    s.order.resize(T);
++    for (size_t ci = 0; ci < T; ++ci) {
++        const int32_t g = s.cand_group[ci];
++        if (g >= 0) {
++            s.order[s.group_fill[g]++] = static_cast<uint32_t>(ci);
++        }
++    }
++
++    if (ascending_offsets) {
++        auto before = [candidate_locs](uint32_t a, uint32_t b) {
++            const idx_t oa = lo_offset(candidate_locs[a]);
++            const idx_t ob = lo_offset(candidate_locs[b]);
++            return oa < ob || (oa == ob && a < b);
++        };
++        for (size_t g = 0; g < ngroups; ++g) {
++            uint32_t* first = s.order.data() + s.group_begin[g];
++            uint32_t* last = s.order.data() + s.group_begin[g + 1];
++            if (last - first <= 32) {
++                for (uint32_t* i = first + 1; i < last; ++i) {
++                    const uint32_t x = *i;
++                    uint32_t* j = i;
++                    while (j > first && before(x, *(j - 1))) {
++                        *j = *(j - 1);
++                        --j;
++                    }
++                    *j = x;
++                }
++            } else {
++                std::sort(first, last, before);
++            }
++        }
++    }
++
++    s.dis.resize(T);
++    s.ids.resize(T);
++    s.refined.assign(T, 0);
++
++    for (size_t g = 0; g < ngroups; ++g) {
++        const idx_t list_no = s.group_list[g];
++        const size_t list_size = index.invlists->list_size(list_no);
++        size_t p = s.group_begin[g];
++        const size_t end = s.group_begin[g + 1];
++        // A list none of whose candidates lies inside it is never opened, as
++        // in the one-at-a-time loop.
++        while (p < end) {
++            const idx_t offset = lo_offset(candidate_locs[s.order[p]]);
++            if (offset >= 0 && static_cast<size_t>(offset) < list_size) {
++                break;
++            }
++            ++p;
++        }
++        if (p == end) {
++            continue;
++        }
++
++        scanner->set_list(list_no, 0.0f);
++        InvertedLists::ScopedCodes codes(index.invlists, list_no);
++        InvertedLists::ScopedIds ids(index.invlists, list_no);
++        ++counters.groups;
++        ++counters.set_list_calls;
++        ++counters.scoped_acquisitions;
++
++        const uint8_t* list_codes = codes.get();
++        const idx_t* list_ids = ids.get();
++        for (; p < end; ++p) {
++            const uint32_t ci = s.order[p];
++            const idx_t loc = candidate_locs[ci];
++            const idx_t offset = lo_offset(loc);
++            if (offset < 0 || static_cast<size_t>(offset) >= list_size) {
++                continue;
++            }
++            s.dis[ci] = jhq_scanner->refine_distance_from_primary_for_list(
++                static_cast<size_t>(offset),
++                list_codes + static_cast<size_t>(offset) * index.code_size,
++                candidate_primary[ci]);
++            s.ids[ci] = store_pairs ? loc : list_ids[offset];
++            s.refined[ci] = 1;
++            ++counters.candidates;
++        }
++    }
++
++    for (size_t ci = 0; ci < T; ++ci) {
++        if (s.refined[ci]) {
++            push_refined(is_max_heap, k, simi, idxi, s.dis[ci], s.ids[ci]);
++        }
++    }
++
++    ++counters.grouped_queries;
++    scratch_bytes = std::max(scratch_bytes, s.bytes());
++    return true;
++}
++
++// The refinement of the global two-stage search, shared by both entry points:
++// the candidates (the global primary top-T, primary order) are refined from
++// their residual codes and pushed into the query's result heap.
++void refine_global_candidates(const IndexIVFJHQ& index,
++    InvertedListScanner* scanner,
++    const IVFJHQScanner* jhq_scanner,
++    const float* candidate_primary,
++    const idx_t* candidate_locs,
++    size_t candidate_count,
++    size_t nprobe,
++    bool store_pairs,
++    bool is_max_heap,
++    size_t k,
++    float* simi,
++    idx_t* idxi,
++    RefineCounters& counters,
++    size_t& scratch_bytes)
++{
++    int mode = index.refine_grouping;
++    if (mode < 0) {
++        mode = candidate_count >= index.refine_grouping_min_candidates
++            ? IndexIVFJHQ::kRefineGroupingAuto
++            : 0;
++    }
++    if (mode > 0 &&
++        refine_grouped(index, scanner, jhq_scanner, candidate_primary, candidate_locs,
++            candidate_count, nprobe, mode == 2, store_pairs, is_max_heap, k, simi, idxi,
++            counters, scratch_bytes)) {
++        return;
++    }
++    refine_one_at_a_time(index, scanner, jhq_scanner, candidate_primary, candidate_locs,
++        candidate_count, store_pairs, is_max_heap, k, simi, idxi, counters);
++}
++
++} // namespace
++
+ void IndexIVFJHQ::search(idx_t n,
+     const float* x,
+     idx_t k,
+@@ -145,11 +456,17 @@ void IndexIVFJHQ::search_preassigned(idx_t n,
+         ? transformed_queries_single_level.data()
+         : x;
+ 
+-#pragma omp parallel if (n > 1) reduction(+ : total_ndis)
++    size_t st_two_stage = 0, st_candidates = 0, st_groups = 0, st_set_list = 0;
++    size_t st_scoped = 0, st_grouped = 0, st_scratch = 0;
++    int64_t st_primary_ns = 0, st_refine_ns = 0;
++
++#pragma omp parallel if (n > 1) reduction(+ : total_ndis, st_two_stage, st_candidates, st_groups, \
++        st_set_list, st_scoped, st_grouped, st_primary_ns, st_refine_ns) reduction(max : st_scratch)
+     {
+         std::unique_ptr<InvertedListScanner> scanner(
+             get_InvertedListScanner(store_pairs, nullptr, params));
+         auto* jhq_scanner = dynamic_cast<IVFJHQScanner*>(scanner.get());
++        RefineCounters counters;
+ 
+         std::vector<float> candidate_primary;
+         std::vector<idx_t> candidate_locs;
+@@ -223,6 +540,7 @@ void IndexIVFJHQ::search_preassigned(idx_t n,
+                     ndis_query += list_size;
+                 }
+             } else {
++                const auto t_primary = RefineClock::now();
+                 candidate_primary.resize(candidate_keep);
+                 candidate_locs.resize(candidate_keep);
+ 
+@@ -294,43 +612,28 @@ void IndexIVFJHQ::search_preassigned(idx_t n,
+                         candidate_locs.data());
+                 }
+ 
+-                for (size_t ci = 0; ci < candidate_count; ++ci) {
+-                    const idx_t loc = candidate_locs[ci];
+-                    const idx_t list_no = lo_listno(loc);
+-                    const idx_t offset = lo_offset(loc);
+-                    if (list_no < 0 || static_cast<size_t>(list_no) >= nlist) {
+-                        continue;
+-                    }
+-
+-                    const size_t list_size = invlists->list_size(list_no);
+-                    if (offset < 0 || static_cast<size_t>(offset) >= list_size) {
+-                        continue;
+-                    }
+-
+-                    scanner->set_list(list_no,  0.0f);
+-                    InvertedLists::ScopedCodes codes(invlists, list_no);
+-                    InvertedLists::ScopedIds ids(invlists, list_no);
+-
+-                    const uint8_t* packed_code =
+-                        codes.get() + static_cast<size_t>(offset) * code_size;
+-                    const float dis = jhq_scanner->refine_distance_from_primary_for_list(
+-                        static_cast<size_t>(offset),
+-                        packed_code,
+-                        candidate_primary[ci]);
+-                    const idx_t id = store_pairs ? loc : ids.get()[offset];
+-
+-                    if (is_max_heap) {
+-                        if (CMin<float, idx_t>::cmp(simi[0], dis)) {
+-                            heap_replace_top<CMin<float, idx_t>>(
+-                                k, simi, idxi, dis, id);
+-                        }
+-                    } else {
+-                        if (CMax<float, idx_t>::cmp(simi[0], dis)) {
+-                            heap_replace_top<CMax<float, idx_t>>(
+-                                k, simi, idxi, dis, id);
+-                        }
+-                    }
+-                }
++                const auto t_refine = RefineClock::now();
++                st_primary_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(
++                    t_refine - t_primary).count();
++
++                refine_global_candidates(*this,
++                    scanner.get(),
++                    jhq_scanner,
++                    candidate_primary.data(),
++                    candidate_locs.data(),
++                    candidate_count,
++                    nprobe,
++                    store_pairs,
++                    is_max_heap,
++                    static_cast<size_t>(k),
++                    simi,
++                    idxi,
++                    counters,
++                    st_scratch);
++
++                st_refine_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(
++                    RefineClock::now() - t_refine).count();
++                ++st_two_stage;
+             }
+ 
+             if (is_max_heap) {
+@@ -341,6 +644,12 @@ void IndexIVFJHQ::search_preassigned(idx_t n,
+ 
+             total_ndis += ndis_query;
+         }
++
++        st_candidates += counters.candidates;
++        st_groups += counters.groups;
++        st_set_list += counters.set_list_calls;
++        st_scoped += counters.scoped_acquisitions;
++        st_grouped += counters.grouped_queries;
+     }
+ 
+     if (ivf_stats) {
+@@ -349,6 +658,16 @@ void IndexIVFJHQ::search_preassigned(idx_t n,
+ 
+     indexIVFJHQ_stats.nq += n;
+     indexIVFJHQ_stats.ndis += total_ndis;
++    indexIVFJHQ_stats.n_two_stage += st_two_stage;
++    indexIVFJHQ_stats.refine_candidates += st_candidates;
++    indexIVFJHQ_stats.refine_groups += st_groups;
++    indexIVFJHQ_stats.refine_set_list_calls += st_set_list;
++    indexIVFJHQ_stats.refine_scoped_acquisitions += st_scoped;
++    indexIVFJHQ_stats.refine_grouped_queries += st_grouped;
++    indexIVFJHQ_stats.primary_stage_time += st_primary_ns * 1e-6;
++    indexIVFJHQ_stats.refine_stage_time += st_refine_ns * 1e-6;
++    indexIVFJHQ_stats.refine_scratch_bytes =
++        std::max(indexIVFJHQ_stats.refine_scratch_bytes, st_scratch);
+ }
+ 
+ void IndexIVFJHQ::search_preassigned_with_rotated_queries(
+@@ -382,11 +701,17 @@ void IndexIVFJHQ::search_preassigned_with_rotated_queries(
+ 
+     size_t total_ndis = 0;
+ 
+-#pragma omp parallel if (n > 1) reduction(+ : total_ndis)
++    size_t st_two_stage = 0, st_candidates = 0, st_groups = 0, st_set_list = 0;
++    size_t st_scoped = 0, st_grouped = 0, st_scratch = 0;
++    int64_t st_primary_ns = 0, st_refine_ns = 0;
++
++#pragma omp parallel if (n > 1) reduction(+ : total_ndis, st_two_stage, st_candidates, st_groups, \
++        st_set_list, st_scoped, st_grouped, st_primary_ns, st_refine_ns) reduction(max : st_scratch)
+     {
+         std::unique_ptr<InvertedListScanner> scanner(
+             get_InvertedListScanner(store_pairs, nullptr, params));
+         auto* jhq_scanner = dynamic_cast<IVFJHQScanner*>(scanner.get());
++        RefineCounters counters;
+ 
+         std::vector<float> candidate_primary;
+         std::vector<idx_t> candidate_locs;
+@@ -460,6 +785,7 @@ void IndexIVFJHQ::search_preassigned_with_rotated_queries(
+                     ndis_query += list_size;
+                 }
+             } else {
++                const auto t_primary = RefineClock::now();
+                 candidate_primary.resize(candidate_keep);
+                 candidate_locs.resize(candidate_keep);
+ 
+@@ -531,43 +857,28 @@ void IndexIVFJHQ::search_preassigned_with_rotated_queries(
+                         candidate_locs.data());
+                 }
+ 
+-                for (size_t ci = 0; ci < candidate_count; ++ci) {
+-                    const idx_t loc = candidate_locs[ci];
+-                    const idx_t list_no = lo_listno(loc);
+-                    const idx_t offset = lo_offset(loc);
+-                    if (list_no < 0 || static_cast<size_t>(list_no) >= nlist) {
+-                        continue;
+-                    }
+-
+-                    const size_t list_size = invlists->list_size(list_no);
+-                    if (offset < 0 || static_cast<size_t>(offset) >= list_size) {
+-                        continue;
+-                    }
+-
+-                    scanner->set_list(list_no,  0.0f);
+-                    InvertedLists::ScopedCodes codes(invlists, list_no);
+-                    InvertedLists::ScopedIds ids(invlists, list_no);
+-
+-                    const uint8_t* packed_code =
+-                        codes.get() + static_cast<size_t>(offset) * code_size;
+-                    const float dis = jhq_scanner->refine_distance_from_primary_for_list(
+-                        static_cast<size_t>(offset),
+-                        packed_code,
+-                        candidate_primary[ci]);
+-                    const idx_t id = store_pairs ? loc : ids.get()[offset];
+-
+-                    if (is_max_heap) {
+-                        if (CMin<float, idx_t>::cmp(simi[0], dis)) {
+-                            heap_replace_top<CMin<float, idx_t>>(
+-                                k, simi, idxi, dis, id);
+-                        }
+-                    } else {
+-                        if (CMax<float, idx_t>::cmp(simi[0], dis)) {
+-                            heap_replace_top<CMax<float, idx_t>>(
+-                                k, simi, idxi, dis, id);
+-                        }
+-                    }
+-                }
++                const auto t_refine = RefineClock::now();
++                st_primary_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(
++                    t_refine - t_primary).count();
++
++                refine_global_candidates(*this,
++                    scanner.get(),
++                    jhq_scanner,
++                    candidate_primary.data(),
++                    candidate_locs.data(),
++                    candidate_count,
++                    nprobe,
++                    store_pairs,
++                    is_max_heap,
++                    static_cast<size_t>(k),
++                    simi,
++                    idxi,
++                    counters,
++                    st_scratch);
++
++                st_refine_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(
++                    RefineClock::now() - t_refine).count();
++                ++st_two_stage;
+             }
+ 
+             if (is_max_heap) {
+@@ -578,6 +889,12 @@ void IndexIVFJHQ::search_preassigned_with_rotated_queries(
+ 
+             total_ndis += ndis_query;
+         }
++
++        st_candidates += counters.candidates;
++        st_groups += counters.groups;
++        st_set_list += counters.set_list_calls;
++        st_scoped += counters.scoped_acquisitions;
++        st_grouped += counters.grouped_queries;
+     }
+ 
+     if (ivf_stats) {
+@@ -586,6 +903,16 @@ void IndexIVFJHQ::search_preassigned_with_rotated_queries(
+ 
+     indexIVFJHQ_stats.nq += n;
+     indexIVFJHQ_stats.ndis += total_ndis;
++    indexIVFJHQ_stats.n_two_stage += st_two_stage;
++    indexIVFJHQ_stats.refine_candidates += st_candidates;
++    indexIVFJHQ_stats.refine_groups += st_groups;
++    indexIVFJHQ_stats.refine_set_list_calls += st_set_list;
++    indexIVFJHQ_stats.refine_scoped_acquisitions += st_scoped;
++    indexIVFJHQ_stats.refine_grouped_queries += st_grouped;
++    indexIVFJHQ_stats.primary_stage_time += st_primary_ns * 1e-6;
++    indexIVFJHQ_stats.refine_stage_time += st_refine_ns * 1e-6;
++    indexIVFJHQ_stats.refine_scratch_bytes =
++        std::max(indexIVFJHQ_stats.refine_scratch_bytes, st_scratch);
+ }
+ 
+ void IndexIVFJHQ::range_search_preassigned(idx_t nx,
+-- 
+2.50.1 (Apple Git-155)
+

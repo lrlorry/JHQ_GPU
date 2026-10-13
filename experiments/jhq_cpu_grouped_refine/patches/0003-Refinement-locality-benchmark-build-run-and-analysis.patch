@@ -1,0 +1,288 @@
+From cd7de66affa1fc46cdb6c9bb97cb99984c0b2dc8 Mon Sep 17 00:00:00 2001
+From: Rui Luo <u8076655@anu.edu.au>
+Date: Wed, 14 Oct 2026 04:06:24 +1100
+Subject: [PATCH 3/7] Refinement locality benchmark: build, run and analysis
+ scripts for the box
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ jhq/benchmarks/refine_locality/analyze.py   | 157 ++++++++++++++++++++
+ jhq/benchmarks/refine_locality/build_box.sh |  40 +++++
+ jhq/benchmarks/refine_locality/run_box.sh   |  54 +++++++
+ 3 files changed, 251 insertions(+)
+ create mode 100755 jhq/benchmarks/refine_locality/analyze.py
+ create mode 100755 jhq/benchmarks/refine_locality/build_box.sh
+ create mode 100755 jhq/benchmarks/refine_locality/run_box.sh
+
+diff --git a/jhq/benchmarks/refine_locality/analyze.py b/jhq/benchmarks/refine_locality/analyze.py
+new file mode 100755
+index 0000000..ee4e3fa
+--- /dev/null
++++ b/jhq/benchmarks/refine_locality/analyze.py
+@@ -0,0 +1,157 @@
++#!/usr/bin/env python3
++"""Summary of run_box.sh: correctness, refinement counters and time, per storage layout.
++
++    python3 analyze.py <out dir> [--md report_tables.md]
++
++Correctness:
++  * in-process: every run's labels and distances against the first mode's first round of the same
++    configuration (bench_refine_locality's "mismatch"), and the search_preassigned checks;
++  * across binaries: for each configuration, every hash of the optimised binary (all modes, all
++    rounds) and of the reference binary must be the same single value;
++  * inner product (opt_ip.json).
++Time: per configuration and mode, the median over rounds of
++  * batch: QPS; single: mean per-query latency;
++  * per two-stage query: primary-stage and refinement time (summed thread time / queries).
++Speedups of modes 1 and 2 over mode 0 are paired: the ratio within each round (the modes of a
++round run back to back), then the median over rounds, with the range of the per-round ratios.
++The reference binary (another process) is compared with mode 0 by medians.
++"""
++import json
++import os
++import statistics
++import sys
++from collections import defaultdict
++
++STORAGES = ["separated", "predecoded", "packed"]
++
++
++def load(path):
++    return json.load(open(path)) if os.path.exists(path) else None
++
++
++def med(xs):
++    return statistics.median(xs) if xs else float("nan")
++
++
++def main():
++    d = sys.argv[1]
++    md_path = sys.argv[sys.argv.index("--md") + 1] if "--md" in sys.argv else None
++    lines = []
++    out = {"storages": {}}
++
++    def emit(s=""):
++        print(s)
++        lines.append(s)
++
++    emit("## Correctness")
++    total_bad = 0
++    for st in STORAGES:
++        o, r = load(os.path.join(d, f"opt_{st}.json")), load(os.path.join(d, f"ref_{st}.json"))
++        if o is None:
++            continue
++        hashes = defaultdict(set)
++        for run in o["runs"]:
++            hashes[(run["workload"], run["k"], run["alpha"], run["nprobe"])].add(run["hash"])
++        ref_hashes = defaultdict(set)
++        if r:
++            for run in r["runs"]:
++                ref_hashes[(run["workload"], run["k"], run["alpha"], run["nprobe"])].add(run["hash"])
++        cross_bad = [key for key in hashes if r and (len(hashes[key] | ref_hashes.get(key, set())) != 1)]
++        in_proc = sum(run["mismatch"] for run in o["runs"])
++        checks = sum(c["mismatch"] for c in o["checks"])
++        nconf = len(hashes)
++        total_bad += in_proc + checks + len(cross_bad)
++        emit(f"- {st}: separated={o['separated']}, lists pre-decoded {o['lists_pre_decoded']}/{o['lists_nonempty']}; "
++             f"{len(o['runs'])} runs over {nconf} configurations, in-process mismatching queries {in_proc}; "
++             f"search_preassigned / store_pairs / invalid-probe checks {len(o['checks'])}, mismatching {checks}; "
++             f"reference binary: {'absent' if not r else f'{len(r['runs'])} runs, configurations whose hash differs from the optimised binary: {len(cross_bad)}'}")
++        out["storages"].setdefault(st, {})["correct"] = dict(in_process=in_proc, checks=checks,
++                                                             cross_binary_bad=len(cross_bad), configs=nconf)
++    ip = load(os.path.join(d, "opt_ip.json"))
++    if ip:
++        bad = sum(c["mismatch"] for c in ip["checks"])
++        total_bad += bad
++        emit(f"- inner product ({ip['nb']} vectors, {ip['nq']} queries): {len(ip['checks'])} checks over "
++             f"storages {sorted(set(c['storage'] for c in ip['checks']))}, mismatching queries {bad}")
++    emit(f"- total mismatches: {total_bad}")
++
++    for st in STORAGES:
++        o, r = load(os.path.join(d, f"opt_{st}.json")), load(os.path.join(d, f"ref_{st}.json"))
++        if o is None:
++            continue
++        emit(f"\n## {st} (threads {o['threads']} for batch, 1 for single; {o['rounds']} rounds)")
++        agg = defaultdict(lambda: defaultdict(list))
++        for run in o["runs"]:
++            key = (run["workload"], run["k"], run["alpha"], run["nprobe"])
++            s = run["stats"]
++            q = max(1, s["two_stage"])
++            a = agg[key][run["mode"]]
++            a.append(dict(round=run["round"], qps=run["qps"], lat_med=run["lat_med_us"], lat_mean=run["lat_mean_us"],
++                          prim=s["primary_ms"] / q * 1e3, ref=s["refine_ms"] / q * 1e3,
++                          T=s["candidates"] / q, groups=s["groups"] / q, set_list=s["set_list"] / q,
++                          scoped=s["scoped"] / q, grouped=s["grouped_queries"], scratch=s["scratch_bytes"],
++                          two_stage=s["two_stage"], nq=s["nq"]))
++        refq = defaultdict(list)
++        if r:
++            for run in r["runs"]:
++                refq[(run["workload"], run["k"], run["alpha"], run["nprobe"])].append(
++                    run["qps"] if run["workload"] == "batch" else run["lat_mean_us"])
++        rows = []
++        for wl in ("batch", "single"):
++            keys = sorted(k for k in agg if k[0] == wl)
++            if not keys:
++                continue
++            if wl == "batch":
++                emit("\n| k | alpha | nprobe | T/query | lists/query | set_list 0 → 1 | primary us | refine us 0 / 1 / 2 | refine x1 / x2 | QPS 0 / 1 / 2 | e2e x1 / x2 | ref QPS / mode 0 |")
++            else:
++                emit("\n| k | alpha | nprobe | T/query | lists/query | set_list 0 → 1 | primary us | refine us 0 / 1 / 2 | refine x1 / x2 | latency mean us 0 / 1 / 2 | e2e x1 / x2 | ref / mode 0 |")
++            emit("|---:|---:|---:|---:|---:|---|---:|---|---|---|---|---:|")
++            for key in keys:
++                m = agg[key]
++                if "0" not in m:
++                    continue
++                g = lambda mode, f: med([x[f] for x in m.get(mode, [])])
++                e2e = "qps" if wl == "batch" else "lat_mean"
++
++                def paired(mode, f, higher_better):
++                    by_round = {x["round"]: x[f] for x in m.get("0", [])}
++                    rs = []
++                    for x in m.get(mode, []):
++                        b = by_round.get(x["round"])
++                        if b and x[f]:
++                            rs.append(x[f] / b if higher_better else b / x[f])
++                    return (med(rs), min(rs), max(rs)) if rs else (float("nan"),) * 3
++
++                rr_full = {mode: paired(mode, "ref", False) for mode in ("1", "2")}
++                ee_full = {mode: paired(mode, e2e, wl == "batch") for mode in ("1", "2")}
++                rr = {mode: v[0] for mode, v in rr_full.items()}
++                ee = {mode: v[0] for mode, v in ee_full.items()}
++                refv = med(refq.get(key, []))
++                if wl == "batch":
++                    refrat = refv / g("0", "qps") if refq.get(key) else float("nan")
++                else:
++                    refrat = g("0", "lat_mean") / refv if refq.get(key) else float("nan")
++                row = dict(workload=wl, k=key[1], alpha=key[2], nprobe=key[3], T=g("0", "T"), lists=g("1", "groups"),
++                           set_list0=g("0", "set_list"), set_list1=g("1", "set_list"), primary_us=g("0", "prim"),
++                           refine_us={mode: g(mode, "ref") for mode in m}, refine_x=rr, refine_x_range=rr_full,
++                           e2e={mode: g(mode, e2e) for mode in m}, e2e_x=ee, e2e_x_range=ee_full,
++                           ref_vs_mode0=refrat,
++                           scratch=max(x["scratch"] for xs in m.values() for x in xs))
++                rows.append(row)
++                emit(f"| {key[1]} | {key[2]:g} | {key[3]} | {row['T']:.0f} | {row['lists']:.1f} | "
++                     f"{row['set_list0']:.0f} → {row['set_list1']:.1f} | {row['primary_us']:.0f} | "
++                     f"{g('0', 'ref'):.1f} / {g('1', 'ref'):.1f} / {g('2', 'ref'):.1f} | "
++                     f"{rr['1']:.3f} [{rr_full['1'][1]:.2f}, {rr_full['1'][2]:.2f}] / {rr['2']:.3f} | "
++                     f"{g('0', e2e):.0f} / {g('1', e2e):.0f} / {g('2', e2e):.0f} | "
++                     f"{ee['1']:.3f} [{ee_full['1'][1]:.2f}, {ee_full['1'][2]:.2f}] / {ee['2']:.3f} | {refrat:.3f} |")
++        sc = [row["scratch"] for row in rows]
++        if sc:
++            emit(f"\nlargest grouped-refinement scratch held by one thread: {max(sc)} bytes")
++        out["storages"].setdefault(st, {})["rows"] = rows
++    json.dump(out, open(os.path.join(d, "summary.json"), "w"), indent=1)
++    if md_path:
++        open(md_path, "w").write("\n".join(lines) + "\n")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/jhq/benchmarks/refine_locality/build_box.sh b/jhq/benchmarks/refine_locality/build_box.sh
+new file mode 100755
+index 0000000..6deca89
+--- /dev/null
++++ b/jhq/benchmarks/refine_locality/build_box.sh
+@@ -0,0 +1,40 @@
++#!/bin/bash
++# Builds the reference library (the commit before the optimisation: compile fixes and the benchmark,
++# refinement as in 1636e19) and the optimised one side by side, with the same compiler and flags
++# (those of the earlier box build: g++-12, Release, AVX2 without AVX-512):
++#   $LGR/build_ref/examples/bench_refine_locality, $LGR/build_opt/examples/bench_refine_locality
++#
++#   bash build_box.sh <reference commit> <optimised commit>
++#
++# Sources: /root/autodl-tmp/JHQ_lgr (a clone of jiabhan/JHQ with this branch fetched) and a worktree
++# of it for the reference; both use the same faiss checkout (5702caf) in jhq/external/faiss.
++set -u
++REFC=$1; OPTC=$2
++LGR=/root/autodl-tmp/lgr
++SRC=/root/autodl-tmp/JHQ_lgr
++SRC_REF=/root/autodl-tmp/JHQ_lgr_ref
++export PATH=/usr/local/bin:/usr/bin:/bin:$PATH
++build_one() {
++  local src=$1 bld=$2 log=$3
++  {
++    echo "=== $(date -u +%FT%TZ) $(git -C $src log --oneline -1) tree $(git -C $src rev-parse HEAD^{tree})"
++    timeout 900 cmake -S $src/jhq -B $bld -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-12 \
++      -DCMAKE_CXX_FLAGS="-mavx2 -mno-avx512f -mno-avx512vl -mno-avx512bw -mno-avx512dq -include immintrin.h" \
++      -DENABLE_CLANG_TIDY=OFF -DENABLE_CLANG_FORMAT=OFF -DENABLE_CMAKE_FORMAT=OFF -DENABLE_TESTING=OFF > $bld.cmake.log 2>&1
++    echo "cmake_rc=$?"
++    timeout 3600 cmake --build $bld -j 12 --target bench_refine_locality > $bld.build.log 2>&1
++    rc=$?; echo "build_rc=$rc"
++    [ $rc -ne 0 ] && { grep -E "error" $bld.build.log | head -20; echo "=== BUILD_FAILED"; exit 1; }
++    ls -la $bld/examples/bench_refine_locality
++    echo "=== BUILD_DONE $(date -u +%FT%TZ)"
++  } > $log 2>&1
++}
++mkdir -p $LGR
++git -C $SRC checkout -q --detach $OPTC || exit 1
++[ -d $SRC_REF ] || git -C $SRC worktree add -q --detach $SRC_REF $REFC
++git -C $SRC_REF checkout -q --detach $REFC || exit 1
++[ -e $SRC_REF/jhq/external/faiss ] || ln -s $SRC/jhq/external/faiss $SRC_REF/jhq/external/faiss
++build_one $SRC $LGR/build_opt $LGR/build_opt.log &
++build_one $SRC_REF $LGR/build_ref $LGR/build_ref.log &
++wait
++grep -h "^===\|build_rc" $LGR/build_opt.log $LGR/build_ref.log
+diff --git a/jhq/benchmarks/refine_locality/run_box.sh b/jhq/benchmarks/refine_locality/run_box.sh
+new file mode 100755
+index 0000000..ac73558
+--- /dev/null
++++ b/jhq/benchmarks/refine_locality/run_box.sh
+@@ -0,0 +1,54 @@
++#!/bin/bash
++# List-grouped residual refinement: correctness and time on vogue-768, the reference library
++# (3b50db4, the original refinement) against the optimised one (this branch), same flags.
++#
++#   bash run_box.sh <out dir> [smoke]
++#
++# Expects build_box.sh's binaries:  $LGR/build_ref/examples/bench_refine_locality  (reference)
++#                                   $LGR/build_opt/examples/bench_refine_locality  (optimised)
++# 1. one index, built once by the optimised binary (index code is the same in both):
++#    nlist 1024, M 96, levels [8, 4], trained on the first 300000 vectors, all 932328 added
++# 2. per storage (separated, predecoded, packed): the optimised binary with modes 0,1,2
++#    interleaved in-process (7 rounds), then the reference binary on the same grid (3 rounds;
++#    its hashes must equal the optimised binary's for every configuration)
++# 3. inner-product correctness on a 100000-vector subset
++# CPU quota is 25 cores (cgroup cpu.max); batch runs use 16 threads, single-query runs one.
++set -u
++OUT=$1; SMOKE=${2:-}
++LGR=/root/autodl-tmp/lgr
++D=/root/data
++BASE=$D/vogue-768_base.fvecs; QUERY=$D/vogue-768_query.fvecs; GT=$D/vogue-768_groundtruth.ivecs
++REF=$LGR/build_ref/examples/bench_refine_locality
++OPT=$LGR/build_opt/examples/bench_refine_locality
++IDX=$LGR/index/vogue_nl1024_m96
++mkdir -p $OUT $LGR/index
++export OPENBLAS_NUM_THREADS=1 OMP_WAIT_POLICY=PASSIVE
++echo "=== $(date -u +%FT%TZ) refine locality run, smoke=${SMOKE:-no}"
++for b in $REF $OPT; do [ -x $b ] || { echo "missing $b"; exit 1; }; done
++nproc; cat /sys/fs/cgroup/cpu.max; uptime
++
++if [ ! -f $IDX.full.idx ]; then
++  env OMP_NUM_THREADS=24 JHQ_NLIST=1024 JHQ_M=96 JHQ_BR=4 JHQ_NTRAIN=300000 \
++      timeout 7200 $OPT build $BASE $IDX > $OUT/build_index.log 2>&1
++  echo "build_index rc=$? $(tail -1 $OUT/build_index.log)"
++  [ -f $IDX.full.idx ] || { echo "=== DONE index build failed"; exit 1; }
++fi
++ls -la $IDX.*
++
++export JHQ_BENCH_SINGLE_NQ=100
++ROUNDS_OPT=7; ROUNDS_REF=3
++if [ -n "$SMOKE" ]; then
++  export JHQ_BENCH_GRID=10:10,100:20 JHQ_BENCH_NPROBE=32
++  ROUNDS_OPT=2; ROUNDS_REF=2
++fi
++for st in predecoded packed separated; do
++  env JHQ_BENCH_ROUNDS=$ROUNDS_OPT \
++      timeout 7200 $OPT run $st $IDX $BASE $QUERY $GT $OUT/opt_$st.json > $OUT/opt_$st.log 2>&1
++  echo "opt $st rc=$? $(tail -1 $OUT/opt_$st.log)  $(date -u +%T)"
++  env JHQ_BENCH_ROUNDS=$ROUNDS_REF \
++      timeout 7200 $REF run $st $IDX $BASE $QUERY $GT $OUT/ref_$st.json > $OUT/ref_$st.log 2>&1
++  echo "ref $st rc=$? $(tail -1 $OUT/ref_$st.log)  $(date -u +%T)"
++done
++env OMP_NUM_THREADS=16 timeout 3600 $OPT ipcheck $BASE $QUERY $OUT/opt_ip.json > $OUT/opt_ip.log 2>&1
++echo "ipcheck rc=$? $(tail -1 $OUT/opt_ip.log)"
++echo "=== REFINE_LOCALITY_DONE $(date -u +%FT%TZ)"
+-- 
+2.50.1 (Apple Git-155)
+

@@ -1,0 +1,347 @@
+From 911b5d5a198bf87a062e86dac546dc924f76d2ec Mon Sep 17 00:00:00 2001
+From: Rui Luo <u8076655@anu.edu.au>
+Date: Wed, 2 Sep 2026 06:35:01 +1000
+Subject: [PATCH] WIP: second residual level, encode and search paths done
+
+The official IndexJHQ indexes its scalar codebooks by (subspace, level) and
+this implementation only ever filled level 0, so a second level completes the
+design rather than changing it. Encoding, the correction term -- which becomes
+2*(yhat.r1 + yhat.r2 + r1.r2) -- the second lookup table and the refine term
+are all in. Still missing: the level-2 code accumulator in add(), training the
+level-2 codebook, and reordering the codes into IVF lists. Br2 defaults to 0,
+which is the single-level index unchanged.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+---
+ jhq_v21_cascade/encode.cu         | 42 +++++++++++++++++++++++++++----
+ jhq_v21_cascade/encode.cuh        |  5 ++++
+ jhq_v21_cascade/jhq_gpu_index.cu  | 16 ++++++++++--
+ jhq_v21_cascade/jhq_gpu_index.cuh | 12 +++++++++
+ jhq_v21_cascade/search.cu         | 31 +++++++++++++++++++++--
+ jhq_v21_cascade/search.cuh        |  5 ++++
+ 6 files changed, 102 insertions(+), 9 deletions(-)
+
+diff --git a/jhq_v21_cascade/encode.cu b/jhq_v21_cascade/encode.cu
+index 7adb9b3..431b65f 100644
+--- a/jhq_v21_cascade/encode.cu
++++ b/jhq_v21_cascade/encode.cu
+@@ -57,7 +57,10 @@ __global__ void residual_encode_kernel(
+     float*                      d_corrections,
+     const float*   __restrict__ d_cent,     // [M][K][Ds]
+     const float*   __restrict__ d_res_c1d,  // [M][Kr]
+-    int N, int d, int M, int Ds, int K, int Kr, int Br, int bpv)
++    uint8_t*                    d_res2_codes,
++    const float*   __restrict__ d_res2_c1d, // [M][Kr2], null when Br2 == 0
++    int N, int d, int M, int Ds, int K, int Kr, int Br, int bpv,
++    int Kr2, int Br2, int bpv2)
+ {
+     int vid = blockIdx.x * blockDim.x + threadIdx.x;
+     if (vid >= N) return;
+@@ -68,7 +71,15 @@ __global__ void residual_encode_kernel(
+ 
+     for (int i = 0; i < bpv; i++) rcode[i] = 0;
+ 
+-    float dot = 0.f;
++    uint8_t* rcode2 = (Br2 > 0) ? d_res2_codes + (long long)vid * bpv2 : nullptr;
++    for (int i = 0; i < bpv2; i++) rcode2[i] = 0;
++
++    // The reconstruction is yhat + rhat1 + rhat2, so the cross terms the
++    // asymmetric distance cannot see at query time are
++    //   2*(yhat.rhat1 + yhat.rhat2 + rhat1.rhat2),
++    // all of which are known here. With Br2 = 0 the last two vanish and this
++    // is the single-level correction unchanged.
++    float dot_y_r1 = 0.f, dot_y_r2 = 0.f, dot_r1_r2 = 0.f;
+     for (int j = 0; j < d; j++) {
+         const int m = j / Ds;
+         const int k = j - m * Ds;
+@@ -88,9 +99,27 @@ __global__ void residual_encode_kernel(
+         } else {
+             rcode[j] = (uint8_t)ri;
+         }
+-        dot += yhat_j * rhat_j;
++        dot_y_r1 += yhat_j * rhat_j;
++
++        if (Br2 > 0) {
++            const float* rcb2 = d_res2_c1d + (long long)m * Kr2;
++            float resid2  = resid - rhat_j;
++            int   ri2     = nearest_sorted_dev(rcb2, Kr2, resid2);
++            float rhat2_j = rcb2[ri2];
++            if (Br2 == 2) {
++                const int sh = 2 * (j & 3);
++                rcode2[j >> 2] |= (uint8_t)((ri2 & 0x03) << sh);
++            } else if (Br2 == 4) {
++                if (j % 2 == 0) rcode2[j / 2]  = (uint8_t)(ri2 & 0x0F);
++                else            rcode2[j / 2] |= (uint8_t)((ri2 & 0x0F) << 4);
++            } else {
++                rcode2[j] = (uint8_t)ri2;
++            }
++            dot_y_r2  += yhat_j * rhat2_j;
++            dot_r1_r2 += rhat_j * rhat2_j;
++        }
+     }
+-    d_corrections[vid] = 2.f * dot;
++    d_corrections[vid] = 2.f * (dot_y_r1 + dot_y_r2 + dot_r1_r2);
+ }
+ 
+ void launch_primary_encode(
+@@ -108,12 +137,15 @@ void launch_residual_encode(
+     uint8_t* d_res_codes, float* d_corrections,
+     const float* d_cent, const float* d_res_c1d,
+     int N, int d, int M, int Ds, int K, int Kr, int Br, int bpv,
++    uint8_t* d_res2_codes, const float* d_res2_c1d,
++    int Kr2, int Br2, int bpv2,
+     cudaStream_t stream)
+ {
+     const int BLOCK = 128;
+     residual_encode_kernel<<<(N + BLOCK - 1) / BLOCK, BLOCK, 0, stream>>>(
+         d_y, d_primary, d_res_codes, d_corrections,
+-        d_cent, d_res_c1d, N, d, M, Ds, K, Kr, Br, bpv);
++        d_cent, d_res_c1d, d_res2_codes, d_res2_c1d,
++        N, d, M, Ds, K, Kr, Br, bpv, Kr2, Br2, bpv2);
+     CUDA_CHECK(cudaGetLastError());
+ }
+ 
+diff --git a/jhq_v21_cascade/encode.cuh b/jhq_v21_cascade/encode.cuh
+index 85efbc5..c1c632c 100644
+--- a/jhq_v21_cascade/encode.cuh
++++ b/jhq_v21_cascade/encode.cuh
+@@ -25,6 +25,11 @@ void launch_residual_encode(
+     const float*   d_cent,
+     const float*   d_res_c1d,
+     int N, int d, int M, int Ds, int K, int Kr, int Br, int bpv,
++    // Level 2, quantising what level 1 leaves. Pass Br2 = 0 (and null
++    // pointers) to keep the single-level index exactly as it was.
++    uint8_t*       d_res2_codes,
++    const float*   d_res2_c1d,
++    int Kr2, int Br2, int bpv2,
+     cudaStream_t stream = 0);
+ 
+ } // namespace jhq_gpu
+diff --git a/jhq_v21_cascade/jhq_gpu_index.cu b/jhq_v21_cascade/jhq_gpu_index.cu
+index 73c5215..f5e188f 100644
+--- a/jhq_v21_cascade/jhq_gpu_index.cu
++++ b/jhq_v21_cascade/jhq_gpu_index.cu
+@@ -117,7 +117,7 @@ __global__ void transpose_uint8_kernel(
+ 
+ // ── Constructor / Destructor ──────────────────────────────────────────────────
+ JHQGpuIndex::JHQGpuIndex(int d, Params p)
+-    : d_(d), M_(p.M), B_(p.B), Br_(p.Br),
++    : d_(d), M_(p.M), B_(p.B), Br_(p.Br), Br2_(p.Br2),
+       nlist_(p.nlist), nprobe_(p.nprobe), ivf_iters_(p.ivf_iters),
+       batch_size_(p.batch_size), add_batch_(p.add_batch),
+       kmeans_iters_(p.kmeans_iters), seed_(p.seed),
+@@ -133,6 +133,8 @@ JHQGpuIndex::JHQGpuIndex(int d, Params p)
+     // dimension -- see cpu/pq_codebook.h.
+     if (p.B > 8)         throw std::invalid_argument("B must be <= 8");
+     if (p.Br != 4 && p.Br != 8) throw std::invalid_argument("Br must be 4 or 8");
++    if (p.Br2 != 0 && p.Br2 != 2 && p.Br2 != 4 && p.Br2 != 8)
++        throw std::invalid_argument("Br2 must be 0, 2, 4 or 8");
+     if (p.nlist <= 0)    throw std::invalid_argument("nlist must be positive");
+     if (p.nprobe <= 0)   throw std::invalid_argument("nprobe must be positive");
+     if (p.ivf_iters <= 0) throw std::invalid_argument("ivf_iters must be positive");
+@@ -145,6 +147,8 @@ JHQGpuIndex::JHQGpuIndex(int d, Params p)
+     K_            = 1 << B_;
+     Kr_           = 1 << Br_;
+     bpv_          = (d_ * Br_ + 7) / 8;
++    Kr2_          = Br2_ ? (1 << Br2_) : 0;
++    bpv2_         = Br2_ ? (d_ * Br2_ + 7) / 8 : 0;
+     nprobe_       = std::min(nprobe_, nlist_);
+ 
+     CUBLAS_CHECK(cublasCreate(&cublas_));
+@@ -164,6 +168,8 @@ JHQGpuIndex::~JHQGpuIndex() {
+     cudaFree(d_list_offsets_);
+     cudaFree(d_list_ids_);
+     cudaFree(d_list_primary_t_);
++    cudaFree(d_res2_c1d_);
++    cudaFree(d_list_res2_);
+     cudaFree(d_list_res_);
+     cudaFree(d_list_corr_);
+     if (ws_.h_q_pinned) cudaFreeHost(ws_.h_q_pinned);
+@@ -177,6 +183,7 @@ JHQGpuIndex::~JHQGpuIndex() {
+     cudaFree(ws_.d_topck_pos);
+     cudaFree(ws_.d_topck_primary);
+     cudaFree(ws_.d_lut_r);
++    cudaFree(ws_.d_lut_r2);
+     cudaFree(ws_.d_comp_dists);
+     cudaFree(ws_.d_final_ids);
+     cudaFree(ws_.d_final_dists);
+@@ -199,6 +206,7 @@ void JHQGpuIndex::alloc_workspace(int batch_size) {
+     cudaFree(ws_.d_topck_pos);     ws_.d_topck_pos      = nullptr;
+     cudaFree(ws_.d_topck_primary); ws_.d_topck_primary  = nullptr;
+     cudaFree(ws_.d_lut_r);         ws_.d_lut_r          = nullptr;
++    cudaFree(ws_.d_lut_r2);        ws_.d_lut_r2         = nullptr;
+     cudaFree(ws_.d_comp_dists);    ws_.d_comp_dists     = nullptr;
+     cudaFree(ws_.d_final_ids);     ws_.d_final_ids      = nullptr;
+     cudaFree(ws_.d_final_dists);   ws_.d_final_dists    = nullptr;
+@@ -214,6 +222,7 @@ void JHQGpuIndex::alloc_workspace(int batch_size) {
+     CUDA_CHECK(cudaMalloc(&ws_.d_query_total,    B                    * sizeof(int)));
+     CUDA_CHECK(cudaMalloc(&ws_.d_byte_lut,       B * M_ * 256         * sizeof(__half)));
+     CUDA_CHECK(cudaMalloc(&ws_.d_lut_r,          B * d_ * Kr_        * sizeof(float)));
++    if (Br2_) CUDA_CHECK(cudaMalloc(&ws_.d_lut_r2, B * d_ * Kr2_      * sizeof(float)));
+     ws_.batch_cap = batch_size;
+ 
+     if (ws_.h_q_pinned) { cudaFreeHost(ws_.h_q_pinned); ws_.h_q_pinned = nullptr; }
+@@ -650,7 +659,9 @@ void JHQGpuIndex::add(const float* h_x, int n) {
+         launch_residual_encode(d_y_batch, d_pc + start * M_,
+                                d_rc + start * bpv_, d_co + start,
+                                d_cent_, d_res_c1d_,
+-                               nb, d_, M_, Ds_, K_, Kr_, Br_, bpv_);
++                               nb, d_, M_, Ds_, K_, Kr_, Br_, bpv_,
++                               Br2_ ? d_rc2 + (long long)start * bpv2_ : nullptr,
++                               d_res2_c1d_, Kr2_, Br2_, bpv2_);
+         CUDA_CHECK(cudaDeviceSynchronize());
+ 
+         int* d_assign_batch = assign_on_gpu(d_y_batch, nb);
+@@ -742,6 +753,7 @@ void JHQGpuIndex::search(const float* h_q, int nq, int k,
+                h_q,
+                nq, d_, M_, Ds_, K_, Kr_, nlist_, nprobe_,
+                Br_, bpv_,
++               d_res2_c1d_, d_list_res2_, Kr2_, Br2_, bpv2_,
+                alpha_, k,
+                batch_size_,
+                ntotal_,
+diff --git a/jhq_v21_cascade/jhq_gpu_index.cuh b/jhq_v21_cascade/jhq_gpu_index.cuh
+index 359deab..3bc4dd9 100644
+--- a/jhq_v21_cascade/jhq_gpu_index.cuh
++++ b/jhq_v21_cascade/jhq_gpu_index.cuh
+@@ -19,6 +19,13 @@ public:
+         int   M          = 96;
+         int   B          = 8;   // bits per subspace; K = 2^B, B <= 8
+         int   Br         = 4;
++        // Second residual level. The official IndexJHQ indexes its scalar
++        // codebooks by (subspace, level), so more than one level is part of
++        // the design; this implementation only ever filled level 0. 0 leaves
++        // it off and the index is byte-identical to before. Each level costs
++        // d*Br2/8 bytes per vector -- 192 B at Br2=2, d=768 -- against the
++        // 384 B level 1 already spends, so it is not free.
++        int   Br2        = 0;
+         float alpha      = 4.0f;
+         int   nlist      = 1024;
+         int   nprobe     = 8;
+@@ -54,6 +61,7 @@ public:
+ 
+ private:
+     int   d_, M_, B_, Br_, Ds_, K_, bpv_;
++    int   Br2_ = 0, Kr2_ = 0, bpv2_ = 0;
+     int   nlist_, nprobe_, ivf_iters_, batch_size_, add_batch_;
+     int   kmeans_iters_, seed_;
+     float alpha_;
+@@ -68,11 +76,14 @@ private:
+     // One scalar residual codebook per subspace ([M][Kr]), as in the
+     // official get_scalar_codebook_ptr(subspace_idx, level).
+     std::vector<float> res_c1d_;
++    // Level 2, quantising what level 1 leaves. Empty when Br2 is 0.
++    std::vector<float> res2_c1d_;
+     std::vector<float> centroids_;
+ 
+     float*   d_Pi_             = nullptr;
+     float*   d_cent_           = nullptr;  // [M][K][Ds]
+     float*   d_res_c1d_        = nullptr;
++    float*   d_res2_c1d_       = nullptr;
+     float*   d_centroids_      = nullptr;
+     float*   d_cent_norms_     = nullptr;
+ 
+@@ -80,6 +91,7 @@ private:
+     int*     d_list_ids_       = nullptr;
+     uint8_t* d_list_primary_t_ = nullptr;  // [M, N] transposed — replaces [N, M]
+     uint8_t* d_list_res_       = nullptr;
++    uint8_t* d_list_res2_      = nullptr;
+     float*   d_list_corr_      = nullptr;
+ 
+     mutable SearchWorkspace ws_;
+diff --git a/jhq_v21_cascade/search.cu b/jhq_v21_cascade/search.cu
+index 5fa2b2a..f8bc6d2 100644
+--- a/jhq_v21_cascade/search.cu
++++ b/jhq_v21_cascade/search.cu
+@@ -525,7 +525,10 @@ __global__ void residual_refine_batched_kernel(
+     const uint8_t* __restrict__ list_res,
+     const float*   __restrict__ list_corr,
+     float*                      comp_dists,
+-    int ck, int d, int Kr, int Br, int bpv, int B)
++    int ck, int d, int Kr, int Br, int bpv, int B,
++    const float*   __restrict__ lut_r2,
++    const uint8_t* __restrict__ list_res2,
++    int Kr2, int Br2, int bpv2)
+ {
+     long long total = (long long)B * ck;
+     for (long long i = (long long)blockIdx.x * blockDim.x + threadIdx.x;
+@@ -542,6 +545,21 @@ __global__ void residual_refine_batched_kernel(
+                 : rc[j];
+             d_res += my_lut_r[(long long)j * Kr + ri];
+         }
++        if (Br2 > 0) {
++            // Second level, same asymmetric form. Each term adds another
++            // ||q||^2 to every candidate, which is constant per query and so
++            // leaves the ranking alone; the cross terms it cannot see are in
++            // list_corr, written at encode time.
++            const float*   my_lut_r2 = lut_r2 + (long long)bqi * d * Kr2;
++            const uint8_t* rc2       = list_res2 + (long long)pos * bpv2;
++            for (int j = 0; j < d; ++j) {
++                int ri2;
++                if (Br2 == 2)      ri2 = (rc2[j >> 2] >> (2 * (j & 3))) & 0x03;
++                else if (Br2 == 4) ri2 = (j % 2 == 0) ? (rc2[j/2] & 0x0F) : (rc2[j/2] >> 4);
++                else               ri2 = rc2[j];
++                d_res += my_lut_r2[(long long)j * Kr2 + ri2];
++            }
++        }
+         comp_dists[i] = topck_primary[i] + d_res + list_corr[pos];
+     }
+ }
+@@ -749,6 +767,12 @@ static void capture_graph(
+         build_residual_lut_batched_kernel<<<grid, BLOCK, 0, ws.stream>>>(
+             ws.d_q_rot, d_res_c1d, ws.d_lut_r, B, d, Ds, Kr);
+     }
++    if (Br2 > 0) {
++        long long tot  = (long long)B * d * Kr2;
++        int       grid = (int)std::min((tot + BLOCK - 1) / BLOCK, (long long)65535);
++        build_residual_lut_batched_kernel<<<grid, BLOCK, 0, ws.stream>>>(
++            ws.d_q_rot, d_res2_c1d, ws.d_lut_r2, B, d, Ds, Kr2);
++    }
+ #if JHQ_STEP_TIMING
+     CUDA_CHECK(cudaEventRecord(ws.ev_step[6], ws.stream));
+ #endif
+@@ -759,7 +783,8 @@ static void capture_graph(
+         residual_refine_batched_kernel<<<grid, BLOCK, 0, ws.stream>>>(
+             ws.d_topck_pos, ws.d_topck_primary,
+             ws.d_lut_r, d_list_res, d_list_corr,
+-            ws.d_comp_dists, ck, d, Kr, Br, bpv, B);
++            ws.d_comp_dists, ck, d, Kr, Br, bpv, B,
++            ws.d_lut_r2, d_list_res2, Kr2, Br2, bpv2);
+     }
+ #if JHQ_STEP_TIMING
+     CUDA_CHECK(cudaEventRecord(ws.ev_step[7], ws.stream));
+@@ -819,6 +844,8 @@ void search_gpu(
+     const float* h_queries,
+     int nq, int d, int M, int Ds, int K, int Kr,
+     int nlist, int nprobe, int Br, int bpv,
++    const float* d_res2_c1d, const uint8_t* d_list_res2,
++    int Kr2, int Br2, int bpv2,
+     float alpha, int k, int batch_size,
+     int ntotal,
+     SearchWorkspace& ws,
+diff --git a/jhq_v21_cascade/search.cuh b/jhq_v21_cascade/search.cuh
+index 6c3def8..3aaf541 100644
+--- a/jhq_v21_cascade/search.cuh
++++ b/jhq_v21_cascade/search.cuh
+@@ -48,6 +48,7 @@ struct SearchWorkspace {
+     int*      d_topck_pos     = nullptr;
+     float*    d_topck_primary = nullptr;
+     float*    d_lut_r         = nullptr;
++    float*    d_lut_r2        = nullptr;   // level 2; null when Br2 == 0
+     float*    d_comp_dists    = nullptr;
+     int*      d_final_ids     = nullptr;
+     float*    d_final_dists   = nullptr;
+@@ -74,6 +75,10 @@ void search_gpu(
+     int nq, int d, int M, int Ds, int K, int Kr,
+     int nlist, int nprobe,
+     int Br, int bpv,
++    // Level 2 of the residual hierarchy. Br2 = 0 with null pointers is the
++    // single-level index, unchanged.
++    const float* d_res2_c1d, const uint8_t* d_list_res2,
++    int Kr2, int Br2, int bpv2,
+     float alpha, int k,
+     int batch_size,
+     int ntotal,                         // N — needed for [M,N] index
+-- 
+2.50.1 (Apple Git-155)
+

@@ -1,0 +1,60 @@
+From 770b6d4b973fb5b43580f62d9081ac8f182f6326 Mon Sep 17 00:00:00 2001
+From: Rui Luo <u8076655@anu.edu.au>
+Date: Wed, 14 Oct 2026 04:52:48 +1100
+Subject: [PATCH 4/7] Refinement: automatic mode from the benchmark; dispatcher
+ out of line
+
+refine_grouping = -1 now groups in ascending offset (mode 2) from 256 candidates and keeps the
+one-at-a-time loop below, from the vogue-768 measurements. refine_global_candidates is noinline so
+the search functions' primary scan compiles as before.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ jhq/jhqlib/IndexIVFJHQ.h              | 11 +++++++++--
+ jhq/jhqlib/impl/IndexIVFJHQSearch.cpp |  7 ++++++-
+ 2 files changed, 15 insertions(+), 3 deletions(-)
+
+diff --git a/jhq/jhqlib/IndexIVFJHQ.h b/jhq/jhqlib/IndexIVFJHQ.h
+index 3361850..77c7279 100644
+--- a/jhq/jhqlib/IndexIVFJHQ.h
++++ b/jhq/jhqlib/IndexIVFJHQ.h
+@@ -73,9 +73,16 @@ struct IndexIVFJHQ : IndexIVF {
+     /// distances are kept at their candidate's position and enter the result
+     /// heap in primary order, as the original loop pushes them. Not stored in
+     /// the index file.
++    ///
++    /// The automatic choice comes from jhq/benchmarks/refine_locality
++    /// (vogue-768, nlist 1024, M 96, levels [8,4]): grouping in ascending offset
++    /// cut refinement time by 4-26% from T = 400 to 2000 with pre-decoded
++    /// lists, was within noise with separated storage and packed codes, and
++    /// cost up to 1 us per query at T = 20; below 256 candidates the original
++    /// loop is kept.
+     int refine_grouping = -1;
+-    size_t refine_grouping_min_candidates = 0;
+-    static constexpr int kRefineGroupingAuto = 1;
++    size_t refine_grouping_min_candidates = 256;
++    static constexpr int kRefineGroupingAuto = 2;
+ 
+     struct SearchWorkspace {
+         std::vector<idx_t> list_indices;
+diff --git a/jhq/jhqlib/impl/IndexIVFJHQSearch.cpp b/jhq/jhqlib/impl/IndexIVFJHQSearch.cpp
+index a7a6cf1..a30154d 100644
+--- a/jhq/jhqlib/impl/IndexIVFJHQSearch.cpp
++++ b/jhq/jhqlib/impl/IndexIVFJHQSearch.cpp
+@@ -296,7 +296,12 @@ bool refine_grouped(const IndexIVFJHQ& index,
+ 
+ // The refinement of the global two-stage search, shared by both entry points:
+ // the candidates (the global primary top-T, primary order) are refined from
+-// their residual codes and pushed into the query's result heap.
++// their residual codes and pushed into the query's result heap. Kept out of
++// line so that the search functions, whose primary scan dominates the query,
++// compile as they did with the refinement loop inside them.
++#if defined(__GNUC__)
++__attribute__((noinline))
++#endif
+ void refine_global_candidates(const IndexIVFJHQ& index,
+     InvertedListScanner* scanner,
+     const IVFJHQScanner* jhq_scanner,
+-- 
+2.50.1 (Apple Git-155)
+

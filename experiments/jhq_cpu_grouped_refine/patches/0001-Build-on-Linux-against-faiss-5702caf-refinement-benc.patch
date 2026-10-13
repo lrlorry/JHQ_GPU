@@ -1,0 +1,733 @@
+From 108cefbb4191dae42893f5e9e2e9fbabec3dcd4f Mon Sep 17 00:00:00 2001
+From: Rui Luo <u8076655@anu.edu.au>
+Date: Wed, 14 Oct 2026 03:46:42 +1100
+Subject: [PATCH 1/7] Build on Linux against faiss 5702caf; refinement
+ benchmark (reference mode)
+
+Compile fixes only, the same ones the earlier box build (JHQ_patched) used: scan_codes and
+scan_codes_range lose override (faiss 5702caf made the six-argument scan_codes non-virtual),
+the cblas include logic, immintrin includes, and the examples link the jhq target.
+bench_refine_locality builds and searches one index per storage layout and records results,
+time and (with the refine_grouping API) the refinement counters; without the API it runs the
+library as is, as the reference.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ jhq/examples/CMakeLists.txt            |  14 +-
+ jhq/examples/bench_refine_locality.cpp | 546 +++++++++++++++++++++++++
+ jhq/jhqlib/impl/IndexIVFJHQScanner.h   |   4 +-
+ jhq/jhqlib/impl/IndexJHQIO.cpp         |  24 +-
+ jhq/jhqlib/impl/IndexJHQSearch.cpp     |   2 +
+ jhq/jhqlib/impl/IndexJHQTrain.cpp      |  25 +-
+ 6 files changed, 593 insertions(+), 22 deletions(-)
+ create mode 100644 jhq/examples/bench_refine_locality.cpp
+
+diff --git a/jhq/examples/CMakeLists.txt b/jhq/examples/CMakeLists.txt
+index 95e74f2..e3beff5 100644
+--- a/jhq/examples/CMakeLists.txt
++++ b/jhq/examples/CMakeLists.txt
+@@ -1,7 +1,7 @@
+ # Add executable for the demo
+ add_executable(demo_jrpq_openai_1024_100k_test demo_jhq_test.cpp)
+ include_directories("${PROJECT_BINARY_DIR}/configured_files/include")
+-target_link_libraries(demo_jrpq_openai_1024_100k_test PRIVATE ${LIBRARY_NAME})
++target_link_libraries(demo_jrpq_openai_1024_100k_test PRIVATE jhq)
+ target_include_directories(demo_jrpq_openai_1024_100k_test PRIVATE
+         ${CMAKE_SOURCE_DIR}
+ )
+@@ -9,7 +9,17 @@ target_include_directories(demo_jrpq_openai_1024_100k_test PRIVATE
+ # Add executable for the demo
+ add_executable(demo_ivfjrpq_openai_1024_100k_test demo_ivfjhq_test.cpp)
+ include_directories("${PROJECT_BINARY_DIR}/configured_files/include")
+-target_link_libraries(demo_ivfjrpq_openai_1024_100k_test PRIVATE ${LIBRARY_NAME})
++target_link_libraries(demo_ivfjrpq_openai_1024_100k_test PRIVATE jhq)
+ target_include_directories(demo_ivfjrpq_openai_1024_100k_test PRIVATE
+         ${CMAKE_SOURCE_DIR}
+ )
++
++# Residual refinement of the global two-stage search: refinement modes compared on one index
++add_executable(bench_refine_locality bench_refine_locality.cpp)
++target_link_libraries(bench_refine_locality PRIVATE jhq)
++target_include_directories(bench_refine_locality PRIVATE
++        ${CMAKE_SOURCE_DIR}/jhqlib
++        ${CMAKE_SOURCE_DIR}/external/faiss
++        ${CMAKE_BINARY_DIR}/external/faiss
++        ${CMAKE_SOURCE_DIR}
++)
+diff --git a/jhq/examples/bench_refine_locality.cpp b/jhq/examples/bench_refine_locality.cpp
+new file mode 100644
+index 0000000..b410558
+--- /dev/null
++++ b/jhq/examples/bench_refine_locality.cpp
+@@ -0,0 +1,546 @@
++/**
++ * bench_refine_locality.cpp
++ *
++ * The residual refinement of IndexIVFJHQ's global two-stage search (global
++ * primary top-T, then residual refinement of those T), measured on one index
++ * per process: results and time of every refinement mode, interleaved.
++ *
++ * Built against a library with IndexIVFJHQ::refine_grouping (the header
++ * defines JHQ_HAS_REFINE_GROUPING) it sweeps the modes in JHQ_BENCH_MODES
++ * (default 0,1,2: 0 the original per-candidate loop, 1 grouped by list,
++ * 2 grouped by list in ascending offset) and reads the refinement counters
++ * from indexIVFJHQ_stats. Built against one without, it runs the library as
++ * it is, mode "ref", so the two binaries can be compared on the same index.
++ *
++ *   bench_refine_locality build <base.fvecs> <prefix>
++ *       Trains (JHQ_NLIST 1024, JHQ_M 96 at d = 768 else 128, JHQ_BR 4,
++ *       JHQ_NTRAIN 300000 first vectors) and writes <prefix>.trained.idx (no
++ *       vectors) and <prefix>.full.idx (all of base).
++ *
++ *   bench_refine_locality run <storage> <prefix> <base.fvecs> <query.fvecs> <gt.ivecs> <out.json>
++ *       storage  separated   <prefix>.trained.idx, then add(base) in this
++ *                            process: the layout an in-memory build searches
++ *                            (codes by global id through the list mapping)
++ *                predecoded  <prefix>.full.idx with every list pre-decoded
++ *                packed      <prefix>.full.idx with pre-decoding off: the
++ *                            packed codes are decoded per candidate
++ *                default     <prefix>.full.idx as loaded (lists below the
++ *                            pre-decode threshold stay packed)
++ *       Grid: JHQ_BENCH_GRID k:alpha pairs (10:2,10:10,10:40,10:100,100:4,100:20),
++ *       JHQ_BENCH_NPROBE (8,32,128), JHQ_BENCH_WORKLOADS (batch,single),
++ *       JHQ_BENCH_ROUNDS (5), JHQ_BENCH_THREADS for batch (16), single on one
++ *       thread over the first JHQ_BENCH_SINGLE_NQ queries (200). Each
++ *       configuration starts with one unmeasured pass; the rounds then rotate
++ *       the order of the modes.
++ *       Every run's labels and distances are compared bit for bit with the
++ *       first mode's first round of the same configuration. With the API, the
++ *       non-rotated entry point (search_preassigned, also with store_pairs and
++ *       with a third of the probes replaced by -1) is checked the same way.
++ *
++ *   bench_refine_locality ipcheck <base.fvecs> <query.fvecs> <out.json>
++ *       Inner-product index on the first JHQ_IP_NB (100000) base vectors:
++ *       agreement of every mode, both entry points, every storage.
++ */
++#include <algorithm>
++#include <chrono>
++#include <cmath>
++#include <cstdint>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <fstream>
++#include <memory>
++#include <stdexcept>
++#include <string>
++#include <vector>
++
++#include <omp.h>
++
++#include "IndexIVFJHQ.h"
++#include "IndexJHQ.h"
++#include <faiss/IndexFlat.h>
++#include <faiss/impl/io.h>
++
++using faiss::idx_t;
++
++namespace {
++
++using clk = std::chrono::steady_clock;
++double seconds_since(clk::time_point t) { return std::chrono::duration<double>(clk::now() - t).count(); }
++
++std::vector<float> read_fvecs(const char* path, int* n, int* d, int max_n = -1)
++{
++    std::ifstream f(path, std::ios::binary);
++    if (!f) throw std::runtime_error(std::string("cannot open ") + path);
++    int32_t dim = 0;
++    f.read(reinterpret_cast<char*>(&dim), 4);
++    f.seekg(0, std::ios::end);
++    const size_t fsz = f.tellg();
++    f.seekg(0);
++    size_t total = fsz / (4 + 4 * (size_t)dim);
++    if (max_n > 0 && (size_t)max_n < total) total = max_n;
++    std::vector<float> data(total * (size_t)dim);
++    for (size_t i = 0; i < total; ++i) {
++        int32_t d2;
++        f.read(reinterpret_cast<char*>(&d2), 4);
++        f.read(reinterpret_cast<char*>(data.data() + i * dim), 4 * (size_t)dim);
++    }
++    *n = (int)total;
++    *d = dim;
++    return data;
++}
++
++std::vector<int32_t> read_ivecs(const char* path, int* n, int* d)
++{
++    std::ifstream f(path, std::ios::binary);
++    if (!f) throw std::runtime_error(std::string("cannot open ") + path);
++    int32_t dim = 0;
++    f.read(reinterpret_cast<char*>(&dim), 4);
++    f.seekg(0, std::ios::end);
++    const size_t fsz = f.tellg();
++    f.seekg(0);
++    const size_t total = fsz / (4 + 4 * (size_t)dim);
++    std::vector<int32_t> data(total * (size_t)dim);
++    for (size_t i = 0; i < total; ++i) {
++        int32_t d2;
++        f.read(reinterpret_cast<char*>(&d2), 4);
++        f.read(reinterpret_cast<char*>(data.data() + i * dim), 4 * (size_t)dim);
++    }
++    *n = (int)total;
++    *d = dim;
++    return data;
++}
++
++int env_int(const char* name, int def) { const char* e = std::getenv(name); return e ? std::atoi(e) : def; }
++
++std::vector<std::string> split(const std::string& s, char sep)
++{
++    std::vector<std::string> out;
++    size_t p = 0;
++    while (p <= s.size()) {
++        const size_t q = s.find(sep, p);
++        const std::string tok = s.substr(p, q == std::string::npos ? std::string::npos : q - p);
++        if (!tok.empty()) out.push_back(tok);
++        if (q == std::string::npos) break;
++        p = q + 1;
++    }
++    return out;
++}
++
++std::string env_str(const char* name, const char* def) { const char* e = std::getenv(name); return e ? e : def; }
++
++// FNV-1a over the bytes of labels and distances
++uint64_t fnv(const std::vector<idx_t>& I, const std::vector<float>& D)
++{
++    uint64_t h = 1469598103934665603ull;
++    auto mix = [&](const void* p, size_t n) {
++        const auto* b = static_cast<const unsigned char*>(p);
++        for (size_t i = 0; i < n; ++i) { h ^= b[i]; h *= 1099511628211ull; }
++    };
++    mix(I.data(), I.size() * sizeof(idx_t));
++    mix(D.data(), D.size() * sizeof(float));
++    return h;
++}
++
++// queries whose labels or distances differ in any bit from the reference
++int mismatching_queries(const std::vector<idx_t>& I0, const std::vector<float>& D0,
++                        const std::vector<idx_t>& I1, const std::vector<float>& D1, int nq, int k)
++{
++    int bad = 0;
++    for (int q = 0; q < nq; ++q) {
++        const size_t o = (size_t)q * k;
++        if (std::memcmp(I0.data() + o, I1.data() + o, k * sizeof(idx_t)) ||
++            std::memcmp(D0.data() + o, D1.data() + o, k * sizeof(float)))
++            ++bad;
++    }
++    return bad;
++}
++
++double recall_at_k(const std::vector<idx_t>& I, const int32_t* gt, int nq, int k, int gt_k)
++{
++    const int w = std::min(k, gt_k);
++    long hits = 0;
++    for (int q = 0; q < nq; ++q)
++        for (int p = 0; p < k; ++p)
++            for (int g = 0; g < w; ++g)
++                if (I[(size_t)q * k + p] == (idx_t)gt[(size_t)q * gt_k + g]) { ++hits; break; }
++    return (double)hits / ((double)nq * w);
++}
++
++faiss::IndexIVFJHQ* read_index(const std::string& path)
++{
++    faiss::FileIOReader r(path.c_str());
++    return faiss::read_index_ivf_jhq(&r);
++}
++
++void write_index(const faiss::IndexIVFJHQ& idx, const std::string& path)
++{
++    faiss::FileIOWriter w(path.c_str());
++    faiss::write_index_ivf_jhq(&idx, &w);
++}
++
++struct StorageInfo {
++    bool separated = false;
++    size_t lists_pre_decoded = 0, lists_nonempty = 0, max_list = 0;
++};
++
++StorageInfo storage_info(const faiss::IndexIVFJHQ& idx)
++{
++    StorageInfo s;
++    s.separated = idx.jhq.has_pre_decoded_codes() &&
++        idx.mapping_initialized.load() && idx.jhq.separated_codes_.is_initialized &&
++        !idx.jhq.separated_codes_.empty();
++    for (size_t l = 0; l < idx.nlist; ++l) {
++        const size_t sz = idx.invlists->list_size(l);
++        if (sz == 0) continue;
++        ++s.lists_nonempty;
++        s.max_list = std::max(s.max_list, sz);
++        if (idx.has_pre_decoded_codes_for_list(l)) ++s.lists_pre_decoded;
++    }
++    return s;
++}
++
++#ifdef JHQ_HAS_REFINE_GROUPING
++const char* kApi = "refine_grouping";
++#else
++const char* kApi = "reference";
++#endif
++
++struct Mode {
++    std::string name;
++    int value;
++};
++
++std::vector<Mode> bench_modes()
++{
++    std::vector<Mode> m;
++#ifdef JHQ_HAS_REFINE_GROUPING
++    for (const auto& t : split(env_str("JHQ_BENCH_MODES", "0,1,2"), ','))
++        m.push_back({t, std::atoi(t.c_str())});
++#else
++    m.push_back({"ref", 0});
++#endif
++    return m;
++}
++
++void set_mode(faiss::IndexIVFJHQ& idx, const Mode& m)
++{
++#ifdef JHQ_HAS_REFINE_GROUPING
++    idx.refine_grouping = m.value;
++#else
++    (void)idx; (void)m;
++#endif
++}
++
++void stats_json(FILE* f)
++{
++    const auto& s = faiss::indexIVFJHQ_stats;
++#ifdef JHQ_HAS_REFINE_GROUPING
++    std::fprintf(f,
++        "\"stats\":{\"nq\":%zu,\"two_stage\":%zu,\"candidates\":%zu,\"groups\":%zu,\"set_list\":%zu,"
++        "\"scoped\":%zu,\"grouped_queries\":%zu,\"primary_ms\":%.4f,\"refine_ms\":%.4f,\"scratch_bytes\":%zu}",
++        s.nq, s.n_two_stage, s.refine_candidates, s.refine_groups, s.refine_set_list_calls,
++        s.refine_scoped_acquisitions, s.refine_grouped_queries, s.primary_stage_time, s.refine_stage_time,
++        s.refine_scratch_bytes);
++#else
++    std::fprintf(f, "\"stats\":{\"nq\":%zu}", s.nq);
++#endif
++}
++
++// ── build ────────────────────────────────────────────────────────────────────
++int cmd_build(const char* base_path, const std::string& prefix)
++{
++    int nb = 0, d = 0;
++    auto xb = read_fvecs(base_path, &nb, &d);
++    const int nlist = env_int("JHQ_NLIST", 1024);
++    const int M = env_int("JHQ_M", d == 768 ? 96 : 128);
++    const int Br = env_int("JHQ_BR", 4);
++    const int ntrain = std::min(nb, env_int("JHQ_NTRAIN", 300000));
++    std::printf("build: n=%d d=%d nlist=%d M=%d levels=[8,%d] ntrain=%d threads=%d\n",
++                nb, d, nlist, M, Br, ntrain, omp_get_max_threads());
++    auto t0 = clk::now();
++    auto* quantizer = new faiss::IndexFlatL2(d);
++    faiss::IndexIVFJHQ idx(quantizer, d, nlist, M, {8, Br}, true, 4.0f);
++    idx.own_fields = true;
++    idx.train(ntrain, xb.data());
++    std::printf("trained in %.1f s\n", seconds_since(t0));
++    write_index(idx, prefix + ".trained.idx");
++    t0 = clk::now();
++    idx.add(nb, xb.data());
++    std::printf("added in %.1f s\n", seconds_since(t0));
++    write_index(idx, prefix + ".full.idx");
++    std::printf("BUILD_OK\n");
++    return 0;
++}
++
++// ── run ──────────────────────────────────────────────────────────────────────
++std::unique_ptr<faiss::IndexIVFJHQ> open_storage(const std::string& storage, const std::string& prefix,
++                                                 const char* base_path)
++{
++    std::unique_ptr<faiss::IndexIVFJHQ> idx;
++    if (storage == "separated") {
++        idx.reset(read_index(prefix + ".trained.idx"));
++        int nb = 0, d = 0;
++        auto xb = read_fvecs(base_path, &nb, &d);
++        auto t0 = clk::now();
++        idx->add(nb, xb.data());
++        std::printf("added %d in %.1f s\n", nb, seconds_since(t0));
++    } else {
++        idx.reset(read_index(prefix + ".full.idx"));
++        if (storage == "predecoded") {
++            idx->set_pre_decode_threshold(1);
++            idx->optimize_for_search();
++        } else if (storage == "packed") {
++            idx->enable_pre_decoded_codes(false);
++        } else if (storage != "default") {
++            throw std::runtime_error("unknown storage " + storage);
++        }
++    }
++    return idx;
++}
++
++struct Cfg {
++    int k;
++    float alpha;
++    int nprobe;
++};
++
++int cmd_run(const std::string& storage, const std::string& prefix, const char* base_path,
++            const char* query_path, const char* gt_path, const char* out_path)
++{
++    int nq = 0, dq = 0, ngt = 0, gtk = 0;
++    auto xq = read_fvecs(query_path, &nq, &dq);
++    auto gt = read_ivecs(gt_path, &ngt, &gtk);
++    auto idx = open_storage(storage, prefix, base_path);
++    const StorageInfo si = storage_info(*idx);
++    std::printf("storage=%s separated=%d lists: %zu nonempty, %zu pre-decoded, largest %zu; api=%s\n",
++                storage.c_str(), (int)si.separated, si.lists_nonempty, si.lists_pre_decoded, si.max_list, kApi);
++
++    std::vector<Cfg> cfgs;
++    for (const auto& ka : split(env_str("JHQ_BENCH_GRID", "10:2,10:10,10:40,10:100,100:4,100:20"), ',')) {
++        const auto p = split(ka, ':');
++        for (const auto& np : split(env_str("JHQ_BENCH_NPROBE", "8,32,128"), ','))
++            cfgs.push_back({std::atoi(p[0].c_str()), (float)std::atof(p[1].c_str()), std::atoi(np.c_str())});
++    }
++    const auto workloads = split(env_str("JHQ_BENCH_WORKLOADS", "batch,single"), ',');
++    const int rounds = env_int("JHQ_BENCH_ROUNDS", 5);
++    const int threads = env_int("JHQ_BENCH_THREADS", 16);
++    const int nq_single = std::min(nq, env_int("JHQ_BENCH_SINGLE_NQ", 200));
++    const auto modes = bench_modes();
++
++    FILE* f = std::fopen(out_path, "w");
++    if (!f) throw std::runtime_error(std::string("cannot write ") + out_path);
++    std::fprintf(f, "{\"api\":\"%s\",\"storage\":\"%s\",\"d\":%d,\"ntotal\":%lld,\"nlist\":%zu,\"M\":%d,"
++                    "\"code_size\":%zu,\"separated\":%d,\"lists_nonempty\":%zu,\"lists_pre_decoded\":%zu,"
++                    "\"max_list\":%zu,\"nq\":%d,\"nq_single\":%d,\"threads\":%d,\"rounds\":%d,\"runs\":[",
++                 kApi, storage.c_str(), (int)idx->d, (long long)idx->ntotal, idx->nlist, idx->jhq.M,
++                 idx->code_size, (int)si.separated, si.lists_nonempty, si.lists_pre_decoded, si.max_list,
++                 nq, nq_single, threads, rounds);
++    bool first = true;
++    int total_bad = 0;
++
++    for (const auto& w : workloads) {
++        const bool single = (w == "single");
++        const int n = single ? nq_single : nq;
++        for (const auto& c : cfgs) {
++            faiss::IVFJHQSearchParameters params;
++            params.nprobe = c.nprobe;
++            params.jhq_oversampling_factor = c.alpha;
++            std::vector<idx_t> I0((size_t)n * c.k), I((size_t)n * c.k);
++            std::vector<float> D0((size_t)n * c.k), D((size_t)n * c.k);
++            bool have_ref = false;
++            // one unmeasured pass first, so that no mode pays for faulting in the index
++            {
++                set_mode(*idx, modes[0]);
++                omp_set_num_threads(single ? 1 : threads);
++                if (single) {
++                    for (int q = 0; q < n; ++q)
++                        idx->search(1, xq.data() + (size_t)q * dq, c.k, D.data() + (size_t)q * c.k,
++                                    I.data() + (size_t)q * c.k, &params);
++                } else {
++                    idx->search(n, xq.data(), c.k, D.data(), I.data(), &params);
++                }
++            }
++            for (int r = 0; r < rounds; ++r) {
++                for (size_t mi = 0; mi < modes.size(); ++mi) {
++                    const Mode& m = modes[(mi + r) % modes.size()];
++                    set_mode(*idx, m);
++                    faiss::indexIVFJHQ_stats.reset();
++                    std::vector<double> lat;
++                    double wall = 0.0;
++                    if (single) {
++                        omp_set_num_threads(1);
++                        lat.resize(n);
++                        for (int q = 0; q < n; ++q) {
++                            const auto t0 = clk::now();
++                            idx->search(1, xq.data() + (size_t)q * dq, c.k, D.data() + (size_t)q * c.k,
++                                        I.data() + (size_t)q * c.k, &params);
++                            lat[q] = seconds_since(t0);
++                            wall += lat[q];
++                        }
++                    } else {
++                        omp_set_num_threads(threads);
++                        const auto t0 = clk::now();
++                        idx->search(n, xq.data(), c.k, D.data(), I.data(), &params);
++                        wall = seconds_since(t0);
++                    }
++                    int bad = 0;
++                    if (!have_ref) { I0 = I; D0 = D; have_ref = true; }
++                    else bad = mismatching_queries(I0, D0, I, D, n, c.k);
++                    total_bad += bad;
++                    double lat_med = 0, lat_p95 = 0, lat_mean = 0;
++                    if (single) {
++                        std::vector<double> s = lat;
++                        std::sort(s.begin(), s.end());
++                        lat_med = s[s.size() / 2];
++                        lat_p95 = s[std::min(s.size() - 1, (size_t)(0.95 * s.size()))];
++                        lat_mean = wall / n;
++                    }
++                    std::fprintf(f, "%s{\"workload\":\"%s\",\"k\":%d,\"alpha\":%g,\"nprobe\":%d,\"mode\":\"%s\","
++                                    "\"round\":%d,\"n\":%d,\"wall_s\":%.6f,\"qps\":%.2f,\"lat_med_us\":%.2f,"
++                                    "\"lat_p95_us\":%.2f,\"lat_mean_us\":%.2f,\"recall\":%.6f,\"hash\":\"%016llx\","
++                                    "\"mismatch\":%d,",
++                                 first ? "" : ",", w.c_str(), c.k, c.alpha, c.nprobe, m.name.c_str(), r, n, wall,
++                                 n / wall, lat_med * 1e6, lat_p95 * 1e6, lat_mean * 1e6,
++                                 recall_at_k(I, gt.data(), n, c.k, gtk), (unsigned long long)fnv(I, D), bad);
++                    stats_json(f);
++                    std::fprintf(f, "}");
++                    first = false;
++                    std::fflush(f);
++                }
++            }
++            std::printf("%s k=%d alpha=%g nprobe=%d done\n", w.c_str(), c.k, c.alpha, c.nprobe);
++        }
++    }
++    std::fprintf(f, "],\"checks\":[");
++
++    // non-rotated entry point, store_pairs, invalid probes: every mode against the first
++    bool cfirst = true;
++#ifdef JHQ_HAS_REFINE_GROUPING
++    omp_set_num_threads(threads);
++    for (const Cfg c : {Cfg{10, 40.f, 32}, Cfg{100, 20.f, 128}, Cfg{10, 2.f, 8}}) {
++        faiss::IVFJHQSearchParameters params;
++        params.nprobe = c.nprobe;
++        params.jhq_oversampling_factor = c.alpha;
++        std::vector<idx_t> keys((size_t)nq * c.nprobe);
++        std::vector<float> cdis((size_t)nq * c.nprobe);
++        idx->quantizer->search(nq, xq.data(), c.nprobe, cdis.data(), keys.data());
++        std::vector<idx_t> holed = keys;
++        for (size_t i = 0; i < holed.size(); i += 3) holed[i] = -1;
++        struct Variant { const char* name; const idx_t* keys; bool store_pairs; };
++        for (const Variant v : {Variant{"preassigned", keys.data(), false},
++                                Variant{"store_pairs", keys.data(), true},
++                                Variant{"invalid_probes", holed.data(), false}}) {
++            std::vector<idx_t> I0((size_t)nq * c.k), I((size_t)nq * c.k);
++            std::vector<float> D0((size_t)nq * c.k), D((size_t)nq * c.k);
++            for (size_t mi = 0; mi < modes.size(); ++mi) {
++                set_mode(*idx, modes[mi]);
++                idx->search_preassigned(nq, xq.data(), c.k, v.keys, cdis.data(), (mi ? D : D0).data(),
++                                        (mi ? I : I0).data(), v.store_pairs, &params, nullptr);
++                const int bad = mi ? mismatching_queries(I0, D0, I, D, nq, c.k) : 0;
++                total_bad += bad;
++                std::fprintf(f, "%s{\"check\":\"%s\",\"k\":%d,\"alpha\":%g,\"nprobe\":%d,\"mode\":\"%s\","
++                                "\"hash\":\"%016llx\",\"mismatch\":%d}",
++                             cfirst ? "" : ",", v.name, c.k, c.alpha, c.nprobe, modes[mi].name.c_str(),
++                             (unsigned long long)(mi ? fnv(I, D) : fnv(I0, D0)), bad);
++                cfirst = false;
++            }
++        }
++    }
++#endif
++    std::fprintf(f, "],\"total_mismatch\":%d}\n", total_bad);
++    std::fclose(f);
++    std::printf(total_bad ? "RUN_MISMATCH %d\n" : "RUN_OK\n", total_bad);
++    return total_bad ? 2 : 0;
++}
++
++// ── inner product ────────────────────────────────────────────────────────────
++int cmd_ipcheck(const char* base_path, const char* query_path, const char* out_path)
++{
++    int nb = 0, d = 0, nq = 0, dq = 0;
++    auto xb = read_fvecs(base_path, &nb, &d, env_int("JHQ_IP_NB", 100000));
++    auto xq = read_fvecs(query_path, &nq, &dq, 200);
++    const int nlist = env_int("JHQ_IP_NLIST", 128);
++    const int M = env_int("JHQ_M", d == 768 ? 96 : 128);
++    auto* quantizer = new faiss::IndexFlatIP(d);
++    auto idx = std::make_unique<faiss::IndexIVFJHQ>(quantizer, d, nlist, M, std::vector<int>{8, 4}, true, 4.0f,
++                                                    faiss::METRIC_INNER_PRODUCT);
++    idx->own_fields = true;
++    idx->train(nb, xb.data());
++    idx->add(nb, xb.data());
++    const auto modes = bench_modes();
++    FILE* f = std::fopen(out_path, "w");
++    std::fprintf(f, "{\"api\":\"%s\",\"metric\":\"ip\",\"nb\":%d,\"nq\":%d,\"checks\":[", kApi, nb, nq);
++    bool first = true;
++    int total_bad = 0;
++    auto check_all = [&](const char* storage) {
++        const StorageInfo si = storage_info(*idx);
++        for (const Cfg c : {Cfg{10, 40.f, 16}, Cfg{50, 8.f, 64}}) {
++            faiss::IVFJHQSearchParameters params;
++            params.nprobe = c.nprobe;
++            params.jhq_oversampling_factor = c.alpha;
++            std::vector<idx_t> keys((size_t)nq * c.nprobe);
++            std::vector<float> cdis((size_t)nq * c.nprobe);
++            idx->quantizer->search(nq, xq.data(), c.nprobe, cdis.data(), keys.data());
++            for (int path = 0; path < 3; ++path) {
++                std::vector<idx_t> I0((size_t)nq * c.k), I((size_t)nq * c.k);
++                std::vector<float> D0((size_t)nq * c.k), D((size_t)nq * c.k);
++                for (size_t mi = 0; mi < modes.size(); ++mi) {
++                    set_mode(*idx, modes[mi]);
++                    auto& Iv = mi ? I : I0;
++                    auto& Dv = mi ? D : D0;
++                    if (path == 0) idx->search(nq, xq.data(), c.k, Dv.data(), Iv.data(), &params);
++                    else idx->search_preassigned(nq, xq.data(), c.k, keys.data(), cdis.data(), Dv.data(), Iv.data(),
++                                                 path == 2, &params, nullptr);
++                    const int bad = mi ? mismatching_queries(I0, D0, I, D, nq, c.k) : 0;
++                    total_bad += bad;
++                    std::fprintf(f, "%s{\"storage\":\"%s\",\"separated\":%d,\"lists_pre_decoded\":%zu,"
++                                    "\"path\":\"%s\",\"k\":%d,\"alpha\":%g,\"nprobe\":%d,\"mode\":\"%s\","
++                                    "\"hash\":\"%016llx\",\"mismatch\":%d}",
++                                 first ? "" : ",", storage, (int)si.separated, si.lists_pre_decoded,
++                                 path == 0 ? "search" : path == 1 ? "preassigned" : "store_pairs", c.k, c.alpha,
++                                 c.nprobe, modes[mi].name.c_str(), (unsigned long long)fnv(Iv, Dv), bad);
++                    first = false;
++                }
++            }
++        }
++    };
++    check_all("separated");
++    // A loaded index has no separated storage: the list-based paths. (The reader
++    // always gives the coarse quantizer L2, so the probes differ from the
++    // in-memory index; what is compared is the modes against each other.)
++    const std::string tmp = std::string(out_path) + ".ip.idx";
++    write_index(*idx, tmp);
++    idx.reset(read_index(tmp));
++    idx->set_pre_decode_threshold(1);
++    idx->optimize_for_search();
++    check_all("predecoded");
++    idx->enable_pre_decoded_codes(false);
++    check_all("packed");
++    std::remove(tmp.c_str());
++    std::fprintf(f, "],\"total_mismatch\":%d}\n", total_bad);
++    std::fclose(f);
++    std::printf(total_bad ? "IP_MISMATCH %d\n" : "IP_OK\n", total_bad);
++    return total_bad ? 2 : 0;
++}
++
++} // namespace
++
++int main(int argc, char** argv)
++{
++    try {
++        if (argc >= 4 && std::string(argv[1]) == "build") return cmd_build(argv[2], argv[3]);
++        if (argc >= 8 && std::string(argv[1]) == "run")
++            return cmd_run(argv[2], argv[3], argv[4], argv[5], argv[6], argv[7]);
++        if (argc >= 5 && std::string(argv[1]) == "ipcheck") return cmd_ipcheck(argv[2], argv[3], argv[4]);
++    } catch (const std::exception& e) {
++        std::fprintf(stderr, "error: %s\n", e.what());
++        return 1;
++    }
++    std::fprintf(stderr,
++                 "usage: %s build <base.fvecs> <prefix>\n"
++                 "       %s run <separated|predecoded|packed|default> <prefix> <base> <query> <gt> <out.json>\n"
++                 "       %s ipcheck <base> <query> <out.json>\n",
++                 argv[0], argv[0], argv[0]);
++    return 1;
++}
+diff --git a/jhq/jhqlib/impl/IndexIVFJHQScanner.h b/jhq/jhqlib/impl/IndexIVFJHQScanner.h
+index 8ff3934..190dd62 100644
+--- a/jhq/jhqlib/impl/IndexIVFJHQScanner.h
++++ b/jhq/jhqlib/impl/IndexIVFJHQScanner.h
+@@ -30,14 +30,14 @@ public:
+         const idx_t* ids,
+         float* simi,
+         idx_t* idxi,
+-        size_t k) const override;
++        size_t k) const;
+ 
+     void scan_codes_range(
+         size_t list_size,
+         const uint8_t* codes,
+         const idx_t* ids,
+         float radius,
+-        RangeQueryResult& res) const override;
++        RangeQueryResult& res) const;
+ 
+     
+     
+diff --git a/jhq/jhqlib/impl/IndexJHQIO.cpp b/jhq/jhqlib/impl/IndexJHQIO.cpp
+index 8d688e6..4da1973 100644
+--- a/jhq/jhqlib/impl/IndexJHQIO.cpp
++++ b/jhq/jhqlib/impl/IndexJHQIO.cpp
+@@ -20,18 +20,22 @@
+ #include <unistd.h>
+ #endif
+ 
+-#ifdef __has_include
+-#if __has_include(<openblas/cblas.h>)
+-#include <openblas/cblas.h>
++#if defined(JHQ_USE_ACCELERATE)
++  #include <Accelerate/Accelerate.h>
++  #ifndef openblas_get_num_threads
++  static inline int openblas_get_num_threads() { return 1; }
++  #endif
++  #ifndef openblas_set_num_threads
++  static inline void openblas_set_num_threads(int) {}
++  #endif
++#elif __has_include(<openblas/cblas.h>)
++  #include <openblas/cblas.h>
+ #elif __has_include(<cblas.h>)
+-#include <cblas.h>
++  #include <cblas.h>
+ #elif __has_include(<cblas-openblas.h>)
+-#include <cblas-openblas.h>
++  #include <cblas-openblas.h>
+ #else
+-#error "CBLAS header not found"
+-#endif
+-#else
+-#include <cblas.h>
++  #error "CBLAS header not found"
+ #endif
+ 
+ #include <faiss/utils/prefetch.h>
+@@ -40,6 +44,8 @@ namespace faiss {
+ 
+ namespace {
+ 
++#include <immintrin.h>
++#include <smmintrin.h>
+ #if defined(__x86_64__) || defined(__i386__)
+ inline bool cpu_supports_avx2_runtime()
+ {
+diff --git a/jhq/jhqlib/impl/IndexJHQSearch.cpp b/jhq/jhqlib/impl/IndexJHQSearch.cpp
+index 312b1da..470a633 100644
+--- a/jhq/jhqlib/impl/IndexJHQSearch.cpp
++++ b/jhq/jhqlib/impl/IndexJHQSearch.cpp
+@@ -23,6 +23,8 @@ namespace faiss {
+ 
+ namespace {
+ 
++#include <immintrin.h>
++#include <smmintrin.h>
+ #if defined(__x86_64__) || defined(__i386__)
+ inline bool cpu_supports_avx2_runtime()
+ {
+diff --git a/jhq/jhqlib/impl/IndexJHQTrain.cpp b/jhq/jhqlib/impl/IndexJHQTrain.cpp
+index 12b7cef..a1c0515 100644
+--- a/jhq/jhqlib/impl/IndexJHQTrain.cpp
++++ b/jhq/jhqlib/impl/IndexJHQTrain.cpp
+@@ -22,22 +22,29 @@
+ #include <faiss/utils/hamming.h>
+ #include <faiss/utils/random.h>
+ 
+-#ifdef __has_include
+-#if __has_include(<openblas/cblas.h>)
+-#include <openblas/cblas.h>
++
++#if defined(JHQ_USE_ACCELERATE)
++  #include <Accelerate/Accelerate.h>
++  #ifndef openblas_get_num_threads
++  static inline int openblas_get_num_threads() { return 1; }
++  #endif
++  #ifndef openblas_set_num_threads
++  static inline void openblas_set_num_threads(int) {}
++  #endif
++#elif __has_include(<openblas/cblas.h>)
++  #include <openblas/cblas.h>
+ #elif __has_include(<cblas.h>)
+-#include <cblas.h>
++  #include <cblas.h>
+ #elif __has_include(<cblas-openblas.h>)
+-#include <cblas-openblas.h>
+-#else
+-#error "CBLAS header not found"
+-#endif
++  #include <cblas-openblas.h>
+ #else
+-#include <cblas.h>
++  #error "CBLAS header not found"
+ #endif
+ 
++
+ #if defined(JHQ_USE_ACCELERATE)
+ #include <Accelerate/Accelerate.h>
++
+ #elif defined(JHQ_USE_LAPACK)
+ #include <lapacke.h>
+ #endif
+-- 
+2.50.1 (Apple Git-155)
+

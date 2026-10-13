@@ -1,0 +1,99 @@
+From 9bd999003ca1b8d1eb371215fe77f1a39ee22a84 Mon Sep 17 00:00:00 2001
+From: Rui Luo <u8076655@anu.edu.au>
+Date: Wed, 14 Oct 2026 05:25:05 +1100
+Subject: [PATCH 6/7] Refinement profiling off by default (CMake option
+ JHQ_REFINE_PROFILE)
+
+Two clock reads per query cost 2-4% of batch QPS on the benchmark machine (process-level A/B,
+jhq/benchmarks/refine_locality/results/ab3); built without them the optimised library's original
+path matches the reference binary. The benchmark builds turn it on for stage times and counters.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ jhq/benchmarks/refine_locality/build_box.sh | 7 ++++++-
+ jhq/jhqlib/CMakeLists.txt                   | 5 +++++
+ jhq/jhqlib/IndexIVFJHQ.h                    | 5 +++--
+ jhq/jhqlib/impl/IndexIVFJHQSearch.cpp       | 9 +++++----
+ 4 files changed, 19 insertions(+), 7 deletions(-)
+
+diff --git a/jhq/benchmarks/refine_locality/build_box.sh b/jhq/benchmarks/refine_locality/build_box.sh
+index 6deca89..e85d937 100755
+--- a/jhq/benchmarks/refine_locality/build_box.sh
++++ b/jhq/benchmarks/refine_locality/build_box.sh
+@@ -6,6 +6,10 @@
+ #
+ #   bash build_box.sh <reference commit> <optimised commit>
+ #
++# PROFILE=ON (default) builds the optimised library with JHQ_REFINE_PROFILE, which run_box.sh needs
++# for stage times and counters; PROFILE=OFF builds it as shipped (ab3_box.sh compares the two).
++# The reference has no such option (CMake ignores it).
++#
+ # Sources: /root/autodl-tmp/JHQ_lgr (a clone of jiabhan/JHQ with this branch fetched) and a worktree
+ # of it for the reference; both use the same faiss checkout (5702caf) in jhq/external/faiss.
+ set -u
+@@ -20,7 +24,8 @@ build_one() {
+     echo "=== $(date -u +%FT%TZ) $(git -C $src log --oneline -1) tree $(git -C $src rev-parse HEAD^{tree})"
+     timeout 900 cmake -S $src/jhq -B $bld -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-12 \
+       -DCMAKE_CXX_FLAGS="-mavx2 -mno-avx512f -mno-avx512vl -mno-avx512bw -mno-avx512dq -include immintrin.h" \
+-      -DENABLE_CLANG_TIDY=OFF -DENABLE_CLANG_FORMAT=OFF -DENABLE_CMAKE_FORMAT=OFF -DENABLE_TESTING=OFF > $bld.cmake.log 2>&1
++      -DENABLE_CLANG_TIDY=OFF -DENABLE_CLANG_FORMAT=OFF -DENABLE_CMAKE_FORMAT=OFF -DENABLE_TESTING=OFF \
++      -DJHQ_REFINE_PROFILE=${PROFILE:-ON} > $bld.cmake.log 2>&1
+     echo "cmake_rc=$?"
+     timeout 3600 cmake --build $bld -j 12 --target bench_refine_locality > $bld.build.log 2>&1
+     rc=$?; echo "build_rc=$rc"
+diff --git a/jhq/jhqlib/CMakeLists.txt b/jhq/jhqlib/CMakeLists.txt
+index e37a604..f80bf07 100644
+--- a/jhq/jhqlib/CMakeLists.txt
++++ b/jhq/jhqlib/CMakeLists.txt
+@@ -41,6 +41,11 @@ add_library(jhq STATIC
+ 
+ target_include_directories(jhq PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+ 
++option(JHQ_REFINE_PROFILE "Time the IVF-JHQ two-stage search and count its refinement (indexIVFJHQ_stats)" OFF)
++if(JHQ_REFINE_PROFILE)
++    target_compile_definitions(jhq PRIVATE JHQ_REFINE_PROFILE=1)
++endif()
++
+ target_link_libraries(jhq PUBLIC
+     faiss
+     ${BLAS_LIBRARIES}
+diff --git a/jhq/jhqlib/IndexIVFJHQ.h b/jhq/jhqlib/IndexIVFJHQ.h
+index 77c7279..3b09429 100644
+--- a/jhq/jhqlib/IndexIVFJHQ.h
++++ b/jhq/jhqlib/IndexIVFJHQ.h
+@@ -335,8 +335,9 @@ struct IndexIVFJHQStats {
+     double jhq_search_time = 0.0;
+     double total_search_time = 0.0;
+ 
+-    // Global two-stage search (IndexIVFJHQ::refine_grouping). Times are summed
+-    // over queries, per thread, in milliseconds.
++    // Global two-stage search (IndexIVFJHQ::refine_grouping), filled only by a
++    // library built with JHQ_REFINE_PROFILE. Times are summed over queries, per
++    // thread, in milliseconds.
+     size_t n_two_stage = 0;                 ///< queries that took the global two-stage path
+     size_t refine_candidates = 0;           ///< candidates refined
+     size_t refine_groups = 0;               ///< lists opened by the grouped refinement
+diff --git a/jhq/jhqlib/impl/IndexIVFJHQSearch.cpp b/jhq/jhqlib/impl/IndexIVFJHQSearch.cpp
+index 45d427d..e17712f 100644
+--- a/jhq/jhqlib/impl/IndexIVFJHQSearch.cpp
++++ b/jhq/jhqlib/impl/IndexIVFJHQSearch.cpp
+@@ -18,11 +18,12 @@
+ #include <numeric>
+ #include <vector>
+ 
+-// JHQ_REFINE_PROFILE=1 times the two stages of the global two-stage search and
+-// fills the refinement counters of indexIVFJHQ_stats (bench_refine_locality);
+-// 0 compiles the search without them.
++// JHQ_REFINE_PROFILE=1 (CMake option JHQ_REFINE_PROFILE) times the two stages
++// of the global two-stage search and fills the refinement counters of
++// indexIVFJHQ_stats, for jhq/benchmarks/refine_locality. Off by default: two
++// clock reads per query cost 2-4% of batch QPS on the benchmark machine.
+ #ifndef JHQ_REFINE_PROFILE
+-#define JHQ_REFINE_PROFILE 1
++#define JHQ_REFINE_PROFILE 0
+ #endif
+ 
+ namespace faiss {
+-- 
+2.50.1 (Apple Git-155)
+
