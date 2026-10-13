@@ -288,7 +288,7 @@ def evaluate(out, test):
             vd = os.path.join(MC.MA, tag, "v3_rd", alloc)
             if os.path.exists(os.path.join(vd, "params.npz")):
                 methods["RD-" + alloc] = rd_dist(tag, vd)
-        if list(methods) == ["RD-uniform"]:
+        if not [m for m in methods if m != "RD-uniform"]:
             print(tag, "every allocation is the uniform one: its codes are JHQ's offline re-implementation's", flush=True)
             continue
         r, s = MC.evaluate(out, label, tag, methods, test=test)
