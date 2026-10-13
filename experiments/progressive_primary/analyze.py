@@ -40,9 +40,12 @@ Pre-declared decision rules (fixed before any result was seen):
                    full(T_final) is >= -0.0005, the one with the smallest validation ideal bytes;
                    reported on TEST.
   severe tail      test 1st percentile of the per-query difference < -0.1, or worst < -0.2.
-  novelty          the best of A1/A1c/A2/A3 must beat A0 (the old fixed prefix) by >= 0.05 of
+  novelty          the best of A0c/A1/A1c/A2/A3 must beat A0 (the old fixed prefix) by >= 0.05 of
                    B_old in ideal bytes at its operating point; otherwise the result is the
-                   v21/v39 cascade again.
+                   v21/v39 cascade again. Only operating points that are non-inferior on test count
+                   for the challengers; A0's is its validation choice.
+Added after the first run (secondary, labelled as such): the same validation selection by realistic
+bytes (sector level + metadata + scratch) instead of ideal bytes, and the same novelty test on it.
 Splits: seeded permutation of the query ids, 40% calibration / 20% validation / 40% test.
 
 Bytes per query (primary codes only): B_old = n W 4. Ideal B_new = n |J| 4 + L (W-|J|) 4.
@@ -359,7 +362,23 @@ def main():
                      same=SAME[ix, vi, pi, li, ti].mean(), lam=VARIANTS[vi][1], dl=dl, dck=dck)
             return o
 
-        ops = {}
+        def op_dict(pol, pi, li, ti, T):
+            a = stats(pol, pi, li, ti, "test")
+            lo, hi = boot_ci(a["dl"], bidx["test"])
+            return dict(policy=pol, T_final=T, p=PS[pi], L_over_ck=LMULT[li], lam=a["lam"],
+                        test_recall=a["recall"], baseline_recall=float(fullR[T][S["test"]].mean()),
+                        delta=a["delta"], ci95=[lo, hi], non_inferior=lo >= -NI_MARGIN,
+                        p1=qlow(a["dl"], 0.01), worst=float(a["dl"].min()),
+                        severe_tail=qlow(a["dl"], 0.01) < -0.1 or float(a["dl"].min()) < -0.2,
+                        frac_worse=float((a["dl"] < 0).mean()), ideal_bytes_ratio=a["ideal"],
+                        sector_bytes_ratio=a["sec"], total_bytes_ratio=a["total"],
+                        sector_stage1=a["sec_s1"], sector_stage2=a["sec_s2"], metadata_ratio=a["meta"],
+                        scratch_ratio=a["scratch"], same_final=a["same"], L_mean=float(Lq[S["test"], li].mean()))
+
+        # operating points, chosen on validation: by ideal bytes (the pre-declared rule) and by
+        # realistic bytes (sector level + metadata + scratch; secondary, added after the first run
+        # showed that stage 2's sectors reorder the configurations)
+        ops = {"ideal": {}, "realistic": {}}
         for pol in POLS:
             for ti, T in enumerate(Tfin):
                 for pi, p in enumerate(PS):
@@ -377,32 +396,37 @@ def main():
                                             same_final_as_baseline=a["same"], ideal_bytes_ratio=a["ideal"],
                                             sector_bytes_ratio=a["sec"], sector_stage1=a["sec_s1"], sector_stage2=a["sec_s2"],
                                             metadata_ratio=a["meta"], scratch_ratio=a["scratch"], total_bytes_ratio=a["total"],
-                                            val_delta=v["delta"], val_ideal=v["ideal"]))
-                # operating point, chosen on validation
-                best = None
-                for pi in range(len(PS)):
-                    for li in range(len(LMULT)):
-                        v = stats(pol, pi, li, ti, "val")
-                        if v["delta"] >= -VAL_TOL - 1e-12 and (best is None or v["ideal"] < best[0] - 1e-12):
-                            best = (v["ideal"], pi, li)
-                if best is None:
-                    ops["%s/T%d" % (pol, T)] = None
-                    continue
-                _, pi, li = best
-                a = stats(pol, pi, li, ti, "test")
-                lo, hi = boot_ci(a["dl"], bidx["test"])
-                ops["%s/T%d" % (pol, T)] = dict(policy=pol, T_final=T, p=PS[pi], L_over_ck=LMULT[li], lam=a["lam"],
-                                                 test_recall=a["recall"], baseline_recall=float(fullR[T][S["test"]].mean()),
-                                                 delta=a["delta"], ci95=[lo, hi], non_inferior=lo >= -NI_MARGIN,
-                                                 p1=qlow(a["dl"], 0.01), worst=float(a["dl"].min()),
-                                                 severe_tail=qlow(a["dl"], 0.01) < -0.1 or float(a["dl"].min()) < -0.2,
-                                                 frac_worse=float((a["dl"] < 0).mean()), ideal_bytes_ratio=a["ideal"],
-                                                 sector_bytes_ratio=a["sec"], total_bytes_ratio=a["total"],
-                                                 sector_stage1=a["sec_s1"], sector_stage2=a["sec_s2"], metadata_ratio=a["meta"],
-                                                 scratch_ratio=a["scratch"], same_final=a["same"])
-                for qi in S["test"]:
-                    rows_pq.append(dict(tag=tag, op="%s/T%d" % (pol, T), qid=res[qi]["qid"],
-                                        recall=float(Rr[qi, chosen[(pol, pi, li)], pi, li, ti]) / K, baseline=float(fullR[T][qi])))
+                                            val_delta=v["delta"], val_ideal=v["ideal"], val_total=v["total"]))
+                for rule, key in (("ideal", "ideal"), ("realistic", "total")):
+                    best = None
+                    for pi in range(len(PS)):
+                        for li in range(len(LMULT)):
+                            v = stats(pol, pi, li, ti, "val")
+                            if v["delta"] >= -VAL_TOL - 1e-12 and (best is None or v[key] < best[0] - 1e-12):
+                                best = (v[key], pi, li)
+                    if best is None:
+                        ops[rule]["%s/T%d" % (pol, T)] = None
+                        continue
+                    _, pi, li = best
+                    ops[rule]["%s/T%d" % (pol, T)] = op_dict(pol, pi, li, ti, T)
+                    for qi in S["test"]:
+                        rows_pq.append(dict(tag=tag, rule=rule, op="%s/T%d" % (pol, T), qid=res[qi]["qid"], p=PS[pi], L_over_ck=LMULT[li],
+                                            recall=float(Rr[qi, chosen[(pol, pi, li)], pi, li, ti]) / K, baseline=float(fullR[T][qi])))
+        # novelty: A0's operating point (its validation choice) against the best test-non-inferior
+        # operating point of the policies the old cascade did not have
+        novelty = {}
+        for rule, key in (("ideal", "ideal_bytes_ratio"), ("realistic", "total_bytes_ratio")):
+            k0 = "A0/T%d" % Tstar
+            a0 = ops[rule].get(k0)
+            cands = [ops[rule]["%s/T%d" % (p, Tstar)] for p in ("A0c", "A1", "A1c", "A2", "A3")
+                     if ops[rule].get("%s/T%d" % (p, Tstar)) and ops[rule]["%s/T%d" % (p, Tstar)]["non_inferior"]]
+            bn = min(cands, key=lambda o: o[key], default=None)
+            novelty[rule] = dict(A0=a0, best_novel=bn,
+                                 margin=None if (a0 is None or bn is None) else a0[key] - bn[key],
+                                 novel=bool(a0 is not None and bn is not None and a0[key] - bn[key] >= NOVELTY))
+        np.savez_compressed(os.path.join(pp_dir, tag, "perquery.npz"), qid=np.array([o["qid"] for o in res]), split=sp,
+                            R=Rr, SAME=SAME, COV=COV, S1=S1, S2=S2, IMP=IMP, LNEED=LNEED, n=nvec, L=Lq, B_old=Bold, B_old_sec=Bsec,
+                            **{"full_T%d" % T: fullR[T] for T in Tfin})
         # coverage against read ratio (test), and importance (test)
         for pol in POLS:
             for pi, p in enumerate(PS):
@@ -426,11 +450,6 @@ def main():
                                      L_need_final10_over_ck_median=float(np.median(LNEED[ix, vi, pi, 1] / ck)),
                                      L_need_final10_over_ck_p90=float(np.quantile(LNEED[ix, vi, pi, 1] / ck, 0.9)),
                                      L_need_final10_over_ck_max=float((LNEED[ix, vi, pi, 1] / ck).max())))
-        # gates
-        tstar_key = lambda pol: "%s/T%d" % (pol, Tstar)
-        a0 = ops.get(tstar_key("A0"))
-        bestn = min((ops[tstar_key(p)] for p in ("A1", "A1c", "A2", "A3", "A0c") if ops.get(tstar_key(p))),
-                    key=lambda o: o["ideal_bytes_ratio"], default=None)
         summary["workloads"][tag] = dict(
             N=meta["N"], d=meta["d"], M=meta["M"], W=W, levels=meta["levels"], nprobe=nprobe, ck=ck, T_star=Tstar, T_grid=Tg,
             n_cand_mean=float(nvec.mean()), n_queries=len(res), split_sizes={s: int(len(v)) for s, v in S.items()},
@@ -444,14 +463,13 @@ def main():
                                        p1=qlow((fullR[Tstar] - fullR[ck])[S["test"]], 0.01),
                                        worst=float((fullR[Tstar] - fullR[ck])[S["test"]].min())),
             B_old_mean=float(Bold.mean()), B_old_sector_mean=float(Bsec.mean()), mu=mu_stats,
-            operating_points=ops,
-            best_novel_at_Tstar=bestn, A0_at_Tstar=a0,
-            novelty_margin_vs_A0=(None if (bestn is None) else
-                                  (1.0 if a0 is None else a0["ideal_bytes_ratio"]) - bestn["ideal_bytes_ratio"]),
-            seconds=time.time() - t0)
-        print(tag, "T*=%d" % Tstar, "ops:", {k2: (None if v is None else (v["p"], v["L_over_ck"], round(v["delta"], 4),
-                                                                          round(v["ideal_bytes_ratio"], 3), v["non_inferior"]))
-                                             for k2, v in ops.items()}, "%.0fs" % (time.time() - t0), flush=True)
+            operating_points=ops, novelty=novelty, seconds=time.time() - t0)
+        for rule in ops:
+            print(tag, rule, "T*=%d" % Tstar, {k2: (None if v is None else (v["p"], v["L_over_ck"], round(v["delta"], 4),
+                                                                            round(v["ideal_bytes_ratio"], 3), round(v["total_bytes_ratio"], 3),
+                                                                            v["non_inferior"]))
+                                               for k2, v in ops[rule].items()}, flush=True)
+        print(tag, "novelty", {r: (v["margin"], v["novel"]) for r, v in novelty.items()}, "%.0fs" % (time.time() - t0), flush=True)
     for fn, rows in (("RECALL_VS_BYTES.csv", rows_rb), ("COVERAGE_VS_READ_RATIO.csv", rows_cov),
                      ("WORD_IMPORTANCE_ANALYSIS.csv", rows_imp), ("PER_QUERY_OPERATING_POINTS.csv", rows_pq)):
         with open(os.path.join(R, fn), "w", newline="") as f:
