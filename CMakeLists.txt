@@ -2201,6 +2201,13 @@ target_compile_definitions(demo_jhq_v66_export_primary PRIVATE
     JHQ_INDEX_HEADER="${V66}/jhq_gpu_index.cuh" ${V61_DEFS})
 target_compile_options(demo_jhq_v66_export_primary PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-O3 -Xcompiler=-fopenmp>)
 target_link_libraries(demo_jhq_v66_export_primary PRIVATE jhq_v66_exp)
+# The rank-optimal quantization study (experiments/rank_optimal_quantization):
+# the rotation, residual codebooks and codes, for an offline re-encoding.
+add_executable(demo_jhq_v66_export_quant examples/demo_jhq_v66_export_quant.cu)
+target_compile_definitions(demo_jhq_v66_export_quant PRIVATE
+    JHQ_INDEX_HEADER="${V66}/jhq_gpu_index.cuh" ${V61_DEFS})
+target_compile_options(demo_jhq_v66_export_quant PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-O3 -Xcompiler=-fopenmp>)
+target_link_libraries(demo_jhq_v66_export_quant PRIVATE jhq_v66_exp)
 
 # v64: v61 with the IVF centroid scoring selectable (jhq_gpu::set_route_mode,
 # JHQ_ROUTE_MODE): 0 = v61's, rotate then score against c; 1 = score the query
