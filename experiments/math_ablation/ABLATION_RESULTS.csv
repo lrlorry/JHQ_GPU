@@ -1,0 +1,1346 @@
+variant,dataset,split,recall_at_ck,T_min,target,coverage_at_ck,full_ivf_recall,misrank_random,frac_candidates_scanned,qps_b8,qps_b1000,evidence,lists_scanned
+B0 v65 (paper index),arxiv-768,calib,0.9742499999999992,875,0.9742500000000001,0.9978025791049003,0.97625,0.0006190768849206349,1.0,16659.0,220088.8,"offline (CPU, FP64) on the paper index's candidates; QPS GPU measured",
+B0 re-implemented (retrained residual),arxiv-768,calib,0.9742499999999992,875,0.9742500000000001,0.9978025791049003,0.97625,0.0006190768849206349,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8 primary + paper D_H (isolation only),arxiv-768,calib,0.9749999999999992,875,0.9742500000000001,0.9987222220003605,0.97625,0.0006508244047619047,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (global scale),arxiv-768,calib,0.9767499999999995,750,0.9742500000000001,0.9987222220003605,0.978,0.0006508244047619047,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (per-subspace scale),arxiv-768,calib,0.9727499999999993,1500,0.9742500000000001,0.9971944439411163,0.9755,0.0007451532738095239,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+B0 v65 (paper index),arxiv-768,val,0.9790000000000006,750,0.9790000000000001,0.9984444442391396,0.9804999999999999,0.0005557638888888888,1.0,16659.0,220088.8,"offline (CPU, FP64) on the paper index's candidates; QPS GPU measured",
+B0 re-implemented (retrained residual),arxiv-768,val,0.9800000000000005,625,0.9790000000000001,0.9984444442391396,0.9814999999999999,0.0005557638888888888,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8 primary + paper D_H (isolation only),arxiv-768,val,0.9790000000000008,1000,0.9790000000000001,0.9984999996423721,0.9804999999999999,0.000571047619047619,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (global scale),arxiv-768,val,0.9805000000000007,750,0.9790000000000001,0.9984999996423721,0.982,0.000571047619047619,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (per-subspace scale),arxiv-768,val,0.9780000000000006,1250,0.9790000000000001,0.995833332836628,0.9814999999999999,0.0006593501984126984,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+B0 v65 (paper index),arxiv-768,calib,0.9742499999999992,875,0.9742500000000001,0.9978025791049003,0.97625,0.0006190768849206349,1.0,16659.0,220088.8,"offline (CPU, FP64) on the paper index's candidates; QPS GPU measured",
+B0 re-implemented (retrained residual),arxiv-768,calib,0.9742499999999992,875,0.9742500000000001,0.9978025791049003,0.97625,0.0006190768849206349,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8 primary + paper D_H (isolation only),arxiv-768,calib,0.9749999999999992,875,0.9742500000000001,0.9987222220003605,0.97625,0.0006508244047619047,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (global scale),arxiv-768,calib,0.9767499999999995,750,0.9742500000000001,0.9987222220003605,0.978,0.0006508244047619047,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (per-subspace scale),arxiv-768,calib,0.9727499999999993,1500,0.9742500000000001,0.9971944439411163,0.9755,0.0007451532738095239,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+B0 v65 (paper index),arxiv-768,val,0.9790000000000006,750,0.9790000000000001,0.9984444442391396,0.9804999999999999,0.0005557638888888888,1.0,16659.0,220088.8,"offline (CPU, FP64) on the paper index's candidates; QPS GPU measured",
+B0 re-implemented (retrained residual),arxiv-768,val,0.9800000000000005,625,0.9790000000000001,0.9984444442391396,0.9814999999999999,0.0005557638888888888,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8 primary + paper D_H (isolation only),arxiv-768,val,0.9790000000000008,1000,0.9790000000000001,0.9984999996423721,0.9804999999999999,0.000571047619047619,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (global scale),arxiv-768,val,0.9805000000000007,750,0.9790000000000001,0.9984999996423721,0.982,0.000571047619047619,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (per-subspace scale),arxiv-768,val,0.9780000000000006,1250,0.9790000000000001,0.995833332836628,0.9814999999999999,0.0006593501984126984,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+B0 v65 (paper index),arxiv-768,test,0.9777499999999998,875,0.97775,0.9986041666567326,0.9789999999999999,0.0005916631944444445,1.0,16659.0,220088.8,"offline (CPU, FP64) on the paper index's candidates; QPS GPU measured",
+B0 re-implemented (retrained residual),arxiv-768,test,0.9764999999999996,,0.97775,0.9986041666567326,0.97775,0.0005916631944444445,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8 primary + paper D_H (isolation only),arxiv-768,test,0.9779999999999999,875,0.97775,0.9989722220599652,0.9789999999999999,0.0005627361111111111,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (global scale),arxiv-768,test,0.9774999999999997,1250,0.97775,0.9989722220599652,0.9785,0.0005627361111111111,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (per-subspace scale),arxiv-768,test,0.9794999999999999,750,0.97775,0.9992222221195698,0.9802500000000001,0.0006589652777777777,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V3 RD-JHQ uniform,arxiv-768,calib,0.9742499999999992,875,0.9742500000000001,0.9978025791049003,0.97625,0.0006190768849206349,1.0,,,"offline (CPU, FP64)",
+V3 RD-JHQ empirical,arxiv-768,calib,0.9752499999999992,750,0.9742500000000001,0.9978025791049003,0.977,0.0006190768849206349,1.0,,,"offline (CPU, FP64)",
+V3 RD-JHQ uniform,arxiv-768,val,0.9800000000000005,625,0.9790000000000001,0.9984444442391396,0.9814999999999999,0.0005557638888888888,1.0,,,"offline (CPU, FP64)",
+V3 RD-JHQ empirical,arxiv-768,val,0.9775000000000007,1500,0.9790000000000001,0.9984444442391396,0.9789999999999999,0.0005557638888888888,1.0,,,"offline (CPU, FP64)",
+V3 RD-JHQ uniform,arxiv-768,calib,0.9742499999999992,875,0.9742500000000001,0.9978025791049003,0.97625,0.0006190768849206349,1.0,,,"offline (CPU, FP64)",
+V3 RD-JHQ empirical,arxiv-768,calib,0.9752499999999992,750,0.9742500000000001,0.9978025791049003,0.977,0.0006190768849206349,1.0,,,"offline (CPU, FP64)",
+V3 RD-JHQ uniform,arxiv-768,val,0.9800000000000005,625,0.9790000000000001,0.9984444442391396,0.9814999999999999,0.0005557638888888888,1.0,,,"offline (CPU, FP64)",
+V3 RD-JHQ empirical,arxiv-768,val,0.9775000000000007,1500,0.9790000000000001,0.9984444442391396,0.9789999999999999,0.0005557638888888888,1.0,,,"offline (CPU, FP64)",
+V3 RD-JHQ uniform,arxiv-768,test,0.9764999999999996,,0.97775,0.9986041666567326,0.97775,0.0005916631944444445,1.0,,,"offline (CPU, FP64)",
+V3 RD-JHQ empirical,arxiv-768,test,0.9769999999999998,1920,0.97775,0.9986041666567326,0.9782500000000001,0.0005916631944444445,1.0,,,"offline (CPU, FP64)",
+V2 EVT-JHQ oracle,arxiv-768,calib,0.97425,,,,,,0.8040067530475696,,,offline simulation (CPU) on the paper index's candidates,95.8325
+V2 EVT-JHQ global L1=8 eps=0.3,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.1,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.03,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.01,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.003,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.001,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.3,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.1,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.03,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.01,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.003,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.001,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.3,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.1,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.03,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.01,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.003,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.001,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ iid_evt L1=8 eps=0.3,arxiv-768,calib,0.974,,,,,,0.9741309849510135,,,offline simulation (CPU) on the paper index's candidates,122.3175
+V2 EVT-JHQ iid_evt L1=8 eps=0.1,arxiv-768,calib,0.97425,,,,,,0.9930387647659249,,,offline simulation (CPU) on the paper index's candidates,125.985
+V2 EVT-JHQ iid_evt L1=8 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.9980044968323271,,,offline simulation (CPU) on the paper index's candidates,127.2875
+V2 EVT-JHQ iid_evt L1=8 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9991167940755011,,,offline simulation (CPU) on the paper index's candidates,127.6575
+V2 EVT-JHQ iid_evt L1=8 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.9997538249841008,,,offline simulation (CPU) on the paper index's candidates,127.8625
+V2 EVT-JHQ iid_evt L1=8 eps=0.001,arxiv-768,calib,0.97425,,,,,,0.9999352198934454,,,offline simulation (CPU) on the paper index's candidates,127.9525
+V2 EVT-JHQ iid_evt L1=16 eps=0.3,arxiv-768,calib,0.97425,,,,,,0.9739870468436569,,,offline simulation (CPU) on the paper index's candidates,122.2975
+V2 EVT-JHQ iid_evt L1=16 eps=0.1,arxiv-768,calib,0.97425,,,,,,0.9930091070431043,,,offline simulation (CPU) on the paper index's candidates,125.975
+V2 EVT-JHQ iid_evt L1=16 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.9979712844271648,,,offline simulation (CPU) on the paper index's candidates,127.285
+V2 EVT-JHQ iid_evt L1=16 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9991167940755011,,,offline simulation (CPU) on the paper index's candidates,127.6575
+V2 EVT-JHQ iid_evt L1=16 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.9997536127642594,,,offline simulation (CPU) on the paper index's candidates,127.86
+V2 EVT-JHQ iid_evt L1=16 eps=0.001,arxiv-768,calib,0.97425,,,,,,0.9999500752823359,,,offline simulation (CPU) on the paper index's candidates,127.9575
+V2 EVT-JHQ iid_evt L1=32 eps=0.3,arxiv-768,calib,0.97425,,,,,,0.9741406940087527,,,offline simulation (CPU) on the paper index's candidates,122.385
+V2 EVT-JHQ iid_evt L1=32 eps=0.1,arxiv-768,calib,0.97425,,,,,,0.9929945169290154,,,offline simulation (CPU) on the paper index's candidates,125.9825
+V2 EVT-JHQ iid_evt L1=32 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.997971974141649,,,offline simulation (CPU) on the paper index's candidates,127.2875
+V2 EVT-JHQ iid_evt L1=32 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9991174837899853,,,offline simulation (CPU) on the paper index's candidates,127.66
+V2 EVT-JHQ iid_evt L1=32 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.9997536127642594,,,offline simulation (CPU) on the paper index's candidates,127.86
+V2 EVT-JHQ iid_evt L1=32 eps=0.001,arxiv-768,calib,0.97425,,,,,,0.9999500752823359,,,offline simulation (CPU) on the paper index's candidates,127.9575
+V2 EVT-JHQ gev L1=8 eps=0.3,arxiv-768,calib,0.9702500000000001,,,,,,0.8435103092950327,,,offline simulation (CPU) on the paper index's candidates,105.625
+V2 EVT-JHQ gev L1=8 eps=0.1,arxiv-768,calib,0.9737500000000001,,,,,,0.955085262239262,,,offline simulation (CPU) on the paper index's candidates,121.3725
+V2 EVT-JHQ gev L1=8 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.98891326410616,,,offline simulation (CPU) on the paper index's candidates,126.2125
+V2 EVT-JHQ gev L1=8 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9966392335383323,,,offline simulation (CPU) on the paper index's candidates,127.4225
+V2 EVT-JHQ gev L1=8 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.9986303861992588,,,offline simulation (CPU) on the paper index's candidates,127.74
+V2 EVT-JHQ gev L1=8 eps=0.001,arxiv-768,calib,0.97425,,,,,,0.9993410573927869,,,offline simulation (CPU) on the paper index's candidates,127.8725
+V2 EVT-JHQ gev L1=16 eps=0.3,arxiv-768,calib,0.9702500000000001,,,,,,0.8506317174543233,,,offline simulation (CPU) on the paper index's candidates,106.5875
+V2 EVT-JHQ gev L1=16 eps=0.1,arxiv-768,calib,0.9737500000000001,,,,,,0.9572506473898896,,,offline simulation (CPU) on the paper index's candidates,121.67
+V2 EVT-JHQ gev L1=16 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.9893079399560036,,,offline simulation (CPU) on the paper index's candidates,126.2825
+V2 EVT-JHQ gev L1=16 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9967688468064017,,,offline simulation (CPU) on the paper index's candidates,127.4425
+V2 EVT-JHQ gev L1=16 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.9986626436151352,,,offline simulation (CPU) on the paper index's candidates,127.7475
+V2 EVT-JHQ gev L1=16 eps=0.001,arxiv-768,calib,0.97425,,,,,,0.9993763389414018,,,offline simulation (CPU) on the paper index's candidates,127.8825
+V2 EVT-JHQ gev L1=32 eps=0.3,arxiv-768,calib,0.97075,,,,,,0.8640672494966278,,,offline simulation (CPU) on the paper index's candidates,108.53
+V2 EVT-JHQ gev L1=32 eps=0.1,arxiv-768,calib,0.9737500000000001,,,,,,0.9614033121893399,,,offline simulation (CPU) on the paper index's candidates,122.2925
+V2 EVT-JHQ gev L1=32 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.99071617776786,,,offline simulation (CPU) on the paper index's candidates,126.49
+V2 EVT-JHQ gev L1=32 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9970935431635791,,,offline simulation (CPU) on the paper index's candidates,127.495
+V2 EVT-JHQ gev L1=32 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.998820906561779,,,offline simulation (CPU) on the paper index's candidates,127.7725
+V2 EVT-JHQ gev L1=32 eps=0.001,arxiv-768,calib,0.97425,,,,,,0.9994346993977571,,,offline simulation (CPU) on the paper index's candidates,127.8925
+V2 EVT-JHQ logistic L1=8 eps=0.3,arxiv-768,calib,0.97425,,,,,,0.9964231937398966,,,offline simulation (CPU) on the paper index's candidates,126.605
+V2 EVT-JHQ logistic L1=8 eps=0.1,arxiv-768,calib,0.97425,,,,,,0.9995217625876474,,,offline simulation (CPU) on the paper index's candidates,127.665
+V2 EVT-JHQ logistic L1=8 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.9999393051253903,,,offline simulation (CPU) on the paper index's candidates,127.9275
+V2 EVT-JHQ logistic L1=8 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9999972411420631,,,offline simulation (CPU) on the paper index's candidates,127.9825
+V2 EVT-JHQ logistic L1=8 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.9999998408351191,,,offline simulation (CPU) on the paper index's candidates,127.9975
+V2 EVT-JHQ logistic L1=8 eps=0.001,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=16 eps=0.3,arxiv-768,calib,0.974,,,,,,0.9944865815781824,,,offline simulation (CPU) on the paper index's candidates,125.7475
+V2 EVT-JHQ logistic L1=16 eps=0.1,arxiv-768,calib,0.97425,,,,,,0.9996060138646405,,,offline simulation (CPU) on the paper index's candidates,127.5225
+V2 EVT-JHQ logistic L1=16 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.9999624370880912,,,offline simulation (CPU) on the paper index's candidates,127.89
+V2 EVT-JHQ logistic L1=16 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9999970289222219,,,offline simulation (CPU) on the paper index's candidates,127.98
+V2 EVT-JHQ logistic L1=16 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.9999998408351191,,,offline simulation (CPU) on the paper index's candidates,127.9975
+V2 EVT-JHQ logistic L1=16 eps=0.001,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=32 eps=0.3,arxiv-768,calib,0.974,,,,,,0.992088072931895,,,offline simulation (CPU) on the paper index's candidates,124.6425
+V2 EVT-JHQ logistic L1=32 eps=0.1,arxiv-768,calib,0.97425,,,,,,0.999569989546581,,,offline simulation (CPU) on the paper index's candidates,127.335
+V2 EVT-JHQ logistic L1=32 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.9999711911565444,,,offline simulation (CPU) on the paper index's candidates,127.8425
+V2 EVT-JHQ logistic L1=32 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9999963392077377,,,offline simulation (CPU) on the paper index's candidates,127.9625
+V2 EVT-JHQ logistic L1=32 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.9999998408351191,,,offline simulation (CPU) on the paper index's candidates,127.9975
+V2 EVT-JHQ logistic L1=32 eps=0.001,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ oracle,arxiv-768,val,0.9789999999999999,,,,,,0.810842263533347,,,offline simulation (CPU) on the paper index's candidates,96.885
+V2 EVT-JHQ global L1=8 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ iid_evt L1=8 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,0.9773108897105498,,,offline simulation (CPU) on the paper index's candidates,122.9
+V2 EVT-JHQ iid_evt L1=8 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9938694213573919,,,offline simulation (CPU) on the paper index's candidates,126.28
+V2 EVT-JHQ iid_evt L1=8 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9975718790492318,,,offline simulation (CPU) on the paper index's candidates,127.345
+V2 EVT-JHQ iid_evt L1=8 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9985186988427064,,,offline simulation (CPU) on the paper index's candidates,127.665
+V2 EVT-JHQ iid_evt L1=8 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,0.9996067464038078,,,offline simulation (CPU) on the paper index's candidates,127.89
+V2 EVT-JHQ iid_evt L1=8 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,0.9999558928293298,,,offline simulation (CPU) on the paper index's candidates,127.98
+V2 EVT-JHQ iid_evt L1=16 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,0.9772812021918296,,,offline simulation (CPU) on the paper index's candidates,122.91
+V2 EVT-JHQ iid_evt L1=16 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9938870218149188,,,offline simulation (CPU) on the paper index's candidates,126.27
+V2 EVT-JHQ iid_evt L1=16 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9975768623113027,,,offline simulation (CPU) on the paper index's candidates,127.34
+V2 EVT-JHQ iid_evt L1=16 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9985186988427064,,,offline simulation (CPU) on the paper index's candidates,127.665
+V2 EVT-JHQ iid_evt L1=16 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,0.9996067464038078,,,offline simulation (CPU) on the paper index's candidates,127.89
+V2 EVT-JHQ iid_evt L1=16 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,0.9999558928293298,,,offline simulation (CPU) on the paper index's candidates,127.98
+V2 EVT-JHQ iid_evt L1=32 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,0.9775609010289164,,,offline simulation (CPU) on the paper index's candidates,122.99
+V2 EVT-JHQ iid_evt L1=32 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9939454426106865,,,offline simulation (CPU) on the paper index's candidates,126.295
+V2 EVT-JHQ iid_evt L1=32 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9975793009289119,,,offline simulation (CPU) on the paper index's candidates,127.345
+V2 EVT-JHQ iid_evt L1=32 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9985186988427064,,,offline simulation (CPU) on the paper index's candidates,127.665
+V2 EVT-JHQ iid_evt L1=32 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,0.9996067464038078,,,offline simulation (CPU) on the paper index's candidates,127.89
+V2 EVT-JHQ iid_evt L1=32 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,0.9999558928293298,,,offline simulation (CPU) on the paper index's candidates,127.98
+V2 EVT-JHQ gev L1=8 eps=0.3,arxiv-768,val,0.974,,,,,,0.8549489040693425,,,offline simulation (CPU) on the paper index's candidates,106.665
+V2 EVT-JHQ gev L1=8 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9625631906787978,,,offline simulation (CPU) on the paper index's candidates,122.295
+V2 EVT-JHQ gev L1=8 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9912074051698482,,,offline simulation (CPU) on the paper index's candidates,126.665
+V2 EVT-JHQ gev L1=8 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9965105502549787,,,offline simulation (CPU) on the paper index's candidates,127.475
+V2 EVT-JHQ gev L1=8 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,0.9979792342168162,,,offline simulation (CPU) on the paper index's candidates,127.705
+V2 EVT-JHQ gev L1=8 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,0.9986268462323306,,,offline simulation (CPU) on the paper index's candidates,127.805
+V2 EVT-JHQ gev L1=16 eps=0.3,arxiv-768,val,0.9744999999999999,,,,,,0.8616888190336861,,,offline simulation (CPU) on the paper index's candidates,107.62
+V2 EVT-JHQ gev L1=16 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9643141181221839,,,offline simulation (CPU) on the paper index's candidates,122.54
+V2 EVT-JHQ gev L1=16 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9918387950769189,,,offline simulation (CPU) on the paper index's candidates,126.74
+V2 EVT-JHQ gev L1=16 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9967550481770113,,,offline simulation (CPU) on the paper index's candidates,127.51
+V2 EVT-JHQ gev L1=16 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,0.9980225991995185,,,offline simulation (CPU) on the paper index's candidates,127.71
+V2 EVT-JHQ gev L1=16 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,0.9987709367249769,,,offline simulation (CPU) on the paper index's candidates,127.825
+V2 EVT-JHQ gev L1=32 eps=0.3,arxiv-768,val,0.976,,,,,,0.8747751833124761,,,offline simulation (CPU) on the paper index's candidates,109.475
+V2 EVT-JHQ gev L1=32 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9683139811354904,,,offline simulation (CPU) on the paper index's candidates,123.185
+V2 EVT-JHQ gev L1=32 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9928336450346088,,,offline simulation (CPU) on the paper index's candidates,126.9
+V2 EVT-JHQ gev L1=32 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9969192837716466,,,offline simulation (CPU) on the paper index's candidates,127.53
+V2 EVT-JHQ gev L1=32 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,0.9980496360469245,,,offline simulation (CPU) on the paper index's candidates,127.715
+V2 EVT-JHQ gev L1=32 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,0.9988812046516526,,,offline simulation (CPU) on the paper index's candidates,127.85
+V2 EVT-JHQ logistic L1=8 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,0.9957413254395636,,,offline simulation (CPU) on the paper index's candidates,126.57
+V2 EVT-JHQ logistic L1=8 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9994398601378582,,,offline simulation (CPU) on the paper index's candidates,127.725
+V2 EVT-JHQ logistic L1=8 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9999699944007219,,,offline simulation (CPU) on the paper index's candidates,127.96
+V2 EVT-JHQ logistic L1=8 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9999996819194423,,,offline simulation (CPU) on the paper index's candidates,127.995
+V2 EVT-JHQ logistic L1=8 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=8 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=16 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,0.9934768039223151,,,offline simulation (CPU) on the paper index's candidates,125.585
+V2 EVT-JHQ logistic L1=16 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9996281638280275,,,offline simulation (CPU) on the paper index's candidates,127.575
+V2 EVT-JHQ logistic L1=16 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9999847321332295,,,offline simulation (CPU) on the paper index's candidates,127.935
+V2 EVT-JHQ logistic L1=16 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9999991517851794,,,offline simulation (CPU) on the paper index's candidates,127.99
+V2 EVT-JHQ logistic L1=16 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,0.9999996819194423,,,offline simulation (CPU) on the paper index's candidates,127.995
+V2 EVT-JHQ logistic L1=16 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=32 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,0.9904005408217698,,,offline simulation (CPU) on the paper index's candidates,124.35
+V2 EVT-JHQ logistic L1=32 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9995972039870763,,,offline simulation (CPU) on the paper index's candidates,127.355
+V2 EVT-JHQ logistic L1=32 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9999769921729917,,,offline simulation (CPU) on the paper index's candidates,127.86
+V2 EVT-JHQ logistic L1=32 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9999987276777692,,,offline simulation (CPU) on the paper index's candidates,127.985
+V2 EVT-JHQ logistic L1=32 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,0.9999996819194423,,,offline simulation (CPU) on the paper index's candidates,127.995
+V2 EVT-JHQ logistic L1=32 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ oracle,arxiv-768,calib,0.97425,,,,,,0.8040067530475696,,,offline simulation (CPU) on the paper index's candidates,95.8325
+V2 EVT-JHQ global L1=8 eps=0.3,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.1,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.03,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.01,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.003,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.001,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.3,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.1,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.03,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.01,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.003,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.001,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.3,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.1,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.03,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.01,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.003,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.001,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ iid_evt L1=8 eps=0.3,arxiv-768,calib,0.974,,,,,,0.9741309849510135,,,offline simulation (CPU) on the paper index's candidates,122.3175
+V2 EVT-JHQ iid_evt L1=8 eps=0.1,arxiv-768,calib,0.97425,,,,,,0.9930387647659249,,,offline simulation (CPU) on the paper index's candidates,125.985
+V2 EVT-JHQ iid_evt L1=8 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.9980044968323271,,,offline simulation (CPU) on the paper index's candidates,127.2875
+V2 EVT-JHQ iid_evt L1=8 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9991167940755011,,,offline simulation (CPU) on the paper index's candidates,127.6575
+V2 EVT-JHQ iid_evt L1=8 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.9997538249841008,,,offline simulation (CPU) on the paper index's candidates,127.8625
+V2 EVT-JHQ iid_evt L1=8 eps=0.001,arxiv-768,calib,0.97425,,,,,,0.9999352198934454,,,offline simulation (CPU) on the paper index's candidates,127.9525
+V2 EVT-JHQ iid_evt L1=16 eps=0.3,arxiv-768,calib,0.97425,,,,,,0.9739870468436569,,,offline simulation (CPU) on the paper index's candidates,122.2975
+V2 EVT-JHQ iid_evt L1=16 eps=0.1,arxiv-768,calib,0.97425,,,,,,0.9930091070431043,,,offline simulation (CPU) on the paper index's candidates,125.975
+V2 EVT-JHQ iid_evt L1=16 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.9979712844271648,,,offline simulation (CPU) on the paper index's candidates,127.285
+V2 EVT-JHQ iid_evt L1=16 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9991167940755011,,,offline simulation (CPU) on the paper index's candidates,127.6575
+V2 EVT-JHQ iid_evt L1=16 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.9997536127642594,,,offline simulation (CPU) on the paper index's candidates,127.86
+V2 EVT-JHQ iid_evt L1=16 eps=0.001,arxiv-768,calib,0.97425,,,,,,0.9999500752823359,,,offline simulation (CPU) on the paper index's candidates,127.9575
+V2 EVT-JHQ iid_evt L1=32 eps=0.3,arxiv-768,calib,0.97425,,,,,,0.9741406940087527,,,offline simulation (CPU) on the paper index's candidates,122.385
+V2 EVT-JHQ iid_evt L1=32 eps=0.1,arxiv-768,calib,0.97425,,,,,,0.9929945169290154,,,offline simulation (CPU) on the paper index's candidates,125.9825
+V2 EVT-JHQ iid_evt L1=32 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.997971974141649,,,offline simulation (CPU) on the paper index's candidates,127.2875
+V2 EVT-JHQ iid_evt L1=32 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9991174837899853,,,offline simulation (CPU) on the paper index's candidates,127.66
+V2 EVT-JHQ iid_evt L1=32 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.9997536127642594,,,offline simulation (CPU) on the paper index's candidates,127.86
+V2 EVT-JHQ iid_evt L1=32 eps=0.001,arxiv-768,calib,0.97425,,,,,,0.9999500752823359,,,offline simulation (CPU) on the paper index's candidates,127.9575
+V2 EVT-JHQ gev L1=8 eps=0.3,arxiv-768,calib,0.9702500000000001,,,,,,0.8435103092950327,,,offline simulation (CPU) on the paper index's candidates,105.625
+V2 EVT-JHQ gev L1=8 eps=0.1,arxiv-768,calib,0.9737500000000001,,,,,,0.955085262239262,,,offline simulation (CPU) on the paper index's candidates,121.3725
+V2 EVT-JHQ gev L1=8 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.98891326410616,,,offline simulation (CPU) on the paper index's candidates,126.2125
+V2 EVT-JHQ gev L1=8 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9966392335383323,,,offline simulation (CPU) on the paper index's candidates,127.4225
+V2 EVT-JHQ gev L1=8 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.9986303861992588,,,offline simulation (CPU) on the paper index's candidates,127.74
+V2 EVT-JHQ gev L1=8 eps=0.001,arxiv-768,calib,0.97425,,,,,,0.9993410573927869,,,offline simulation (CPU) on the paper index's candidates,127.8725
+V2 EVT-JHQ gev L1=16 eps=0.3,arxiv-768,calib,0.9702500000000001,,,,,,0.8506317174543233,,,offline simulation (CPU) on the paper index's candidates,106.5875
+V2 EVT-JHQ gev L1=16 eps=0.1,arxiv-768,calib,0.9737500000000001,,,,,,0.9572506473898896,,,offline simulation (CPU) on the paper index's candidates,121.67
+V2 EVT-JHQ gev L1=16 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.9893079399560036,,,offline simulation (CPU) on the paper index's candidates,126.2825
+V2 EVT-JHQ gev L1=16 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9967688468064017,,,offline simulation (CPU) on the paper index's candidates,127.4425
+V2 EVT-JHQ gev L1=16 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.9986626436151352,,,offline simulation (CPU) on the paper index's candidates,127.7475
+V2 EVT-JHQ gev L1=16 eps=0.001,arxiv-768,calib,0.97425,,,,,,0.9993763389414018,,,offline simulation (CPU) on the paper index's candidates,127.8825
+V2 EVT-JHQ gev L1=32 eps=0.3,arxiv-768,calib,0.97075,,,,,,0.8640672494966278,,,offline simulation (CPU) on the paper index's candidates,108.53
+V2 EVT-JHQ gev L1=32 eps=0.1,arxiv-768,calib,0.9737500000000001,,,,,,0.9614033121893399,,,offline simulation (CPU) on the paper index's candidates,122.2925
+V2 EVT-JHQ gev L1=32 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.99071617776786,,,offline simulation (CPU) on the paper index's candidates,126.49
+V2 EVT-JHQ gev L1=32 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9970935431635791,,,offline simulation (CPU) on the paper index's candidates,127.495
+V2 EVT-JHQ gev L1=32 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.998820906561779,,,offline simulation (CPU) on the paper index's candidates,127.7725
+V2 EVT-JHQ gev L1=32 eps=0.001,arxiv-768,calib,0.97425,,,,,,0.9994346993977571,,,offline simulation (CPU) on the paper index's candidates,127.8925
+V2 EVT-JHQ logistic L1=8 eps=0.3,arxiv-768,calib,0.97425,,,,,,0.9964231937398966,,,offline simulation (CPU) on the paper index's candidates,126.605
+V2 EVT-JHQ logistic L1=8 eps=0.1,arxiv-768,calib,0.97425,,,,,,0.9995217625876474,,,offline simulation (CPU) on the paper index's candidates,127.665
+V2 EVT-JHQ logistic L1=8 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.9999393051253903,,,offline simulation (CPU) on the paper index's candidates,127.9275
+V2 EVT-JHQ logistic L1=8 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9999972411420631,,,offline simulation (CPU) on the paper index's candidates,127.9825
+V2 EVT-JHQ logistic L1=8 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.9999998408351191,,,offline simulation (CPU) on the paper index's candidates,127.9975
+V2 EVT-JHQ logistic L1=8 eps=0.001,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=16 eps=0.3,arxiv-768,calib,0.974,,,,,,0.9944865815781824,,,offline simulation (CPU) on the paper index's candidates,125.7475
+V2 EVT-JHQ logistic L1=16 eps=0.1,arxiv-768,calib,0.97425,,,,,,0.9996060138646405,,,offline simulation (CPU) on the paper index's candidates,127.5225
+V2 EVT-JHQ logistic L1=16 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.9999624370880912,,,offline simulation (CPU) on the paper index's candidates,127.89
+V2 EVT-JHQ logistic L1=16 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9999970289222219,,,offline simulation (CPU) on the paper index's candidates,127.98
+V2 EVT-JHQ logistic L1=16 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.9999998408351191,,,offline simulation (CPU) on the paper index's candidates,127.9975
+V2 EVT-JHQ logistic L1=16 eps=0.001,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=32 eps=0.3,arxiv-768,calib,0.974,,,,,,0.992088072931895,,,offline simulation (CPU) on the paper index's candidates,124.6425
+V2 EVT-JHQ logistic L1=32 eps=0.1,arxiv-768,calib,0.97425,,,,,,0.999569989546581,,,offline simulation (CPU) on the paper index's candidates,127.335
+V2 EVT-JHQ logistic L1=32 eps=0.03,arxiv-768,calib,0.97425,,,,,,0.9999711911565444,,,offline simulation (CPU) on the paper index's candidates,127.8425
+V2 EVT-JHQ logistic L1=32 eps=0.01,arxiv-768,calib,0.97425,,,,,,0.9999963392077377,,,offline simulation (CPU) on the paper index's candidates,127.9625
+V2 EVT-JHQ logistic L1=32 eps=0.003,arxiv-768,calib,0.97425,,,,,,0.9999998408351191,,,offline simulation (CPU) on the paper index's candidates,127.9975
+V2 EVT-JHQ logistic L1=32 eps=0.001,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ oracle,arxiv-768,val,0.9789999999999999,,,,,,0.810842263533347,,,offline simulation (CPU) on the paper index's candidates,96.885
+V2 EVT-JHQ global L1=8 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ iid_evt L1=8 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,0.9773108897105498,,,offline simulation (CPU) on the paper index's candidates,122.9
+V2 EVT-JHQ iid_evt L1=8 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9938694213573919,,,offline simulation (CPU) on the paper index's candidates,126.28
+V2 EVT-JHQ iid_evt L1=8 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9975718790492318,,,offline simulation (CPU) on the paper index's candidates,127.345
+V2 EVT-JHQ iid_evt L1=8 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9985186988427064,,,offline simulation (CPU) on the paper index's candidates,127.665
+V2 EVT-JHQ iid_evt L1=8 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,0.9996067464038078,,,offline simulation (CPU) on the paper index's candidates,127.89
+V2 EVT-JHQ iid_evt L1=8 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,0.9999558928293298,,,offline simulation (CPU) on the paper index's candidates,127.98
+V2 EVT-JHQ iid_evt L1=16 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,0.9772812021918296,,,offline simulation (CPU) on the paper index's candidates,122.91
+V2 EVT-JHQ iid_evt L1=16 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9938870218149188,,,offline simulation (CPU) on the paper index's candidates,126.27
+V2 EVT-JHQ iid_evt L1=16 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9975768623113027,,,offline simulation (CPU) on the paper index's candidates,127.34
+V2 EVT-JHQ iid_evt L1=16 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9985186988427064,,,offline simulation (CPU) on the paper index's candidates,127.665
+V2 EVT-JHQ iid_evt L1=16 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,0.9996067464038078,,,offline simulation (CPU) on the paper index's candidates,127.89
+V2 EVT-JHQ iid_evt L1=16 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,0.9999558928293298,,,offline simulation (CPU) on the paper index's candidates,127.98
+V2 EVT-JHQ iid_evt L1=32 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,0.9775609010289164,,,offline simulation (CPU) on the paper index's candidates,122.99
+V2 EVT-JHQ iid_evt L1=32 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9939454426106865,,,offline simulation (CPU) on the paper index's candidates,126.295
+V2 EVT-JHQ iid_evt L1=32 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9975793009289119,,,offline simulation (CPU) on the paper index's candidates,127.345
+V2 EVT-JHQ iid_evt L1=32 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9985186988427064,,,offline simulation (CPU) on the paper index's candidates,127.665
+V2 EVT-JHQ iid_evt L1=32 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,0.9996067464038078,,,offline simulation (CPU) on the paper index's candidates,127.89
+V2 EVT-JHQ iid_evt L1=32 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,0.9999558928293298,,,offline simulation (CPU) on the paper index's candidates,127.98
+V2 EVT-JHQ gev L1=8 eps=0.3,arxiv-768,val,0.974,,,,,,0.8549489040693425,,,offline simulation (CPU) on the paper index's candidates,106.665
+V2 EVT-JHQ gev L1=8 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9625631906787978,,,offline simulation (CPU) on the paper index's candidates,122.295
+V2 EVT-JHQ gev L1=8 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9912074051698482,,,offline simulation (CPU) on the paper index's candidates,126.665
+V2 EVT-JHQ gev L1=8 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9965105502549787,,,offline simulation (CPU) on the paper index's candidates,127.475
+V2 EVT-JHQ gev L1=8 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,0.9979792342168162,,,offline simulation (CPU) on the paper index's candidates,127.705
+V2 EVT-JHQ gev L1=8 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,0.9986268462323306,,,offline simulation (CPU) on the paper index's candidates,127.805
+V2 EVT-JHQ gev L1=16 eps=0.3,arxiv-768,val,0.9744999999999999,,,,,,0.8616888190336861,,,offline simulation (CPU) on the paper index's candidates,107.62
+V2 EVT-JHQ gev L1=16 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9643141181221839,,,offline simulation (CPU) on the paper index's candidates,122.54
+V2 EVT-JHQ gev L1=16 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9918387950769189,,,offline simulation (CPU) on the paper index's candidates,126.74
+V2 EVT-JHQ gev L1=16 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9967550481770113,,,offline simulation (CPU) on the paper index's candidates,127.51
+V2 EVT-JHQ gev L1=16 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,0.9980225991995185,,,offline simulation (CPU) on the paper index's candidates,127.71
+V2 EVT-JHQ gev L1=16 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,0.9987709367249769,,,offline simulation (CPU) on the paper index's candidates,127.825
+V2 EVT-JHQ gev L1=32 eps=0.3,arxiv-768,val,0.976,,,,,,0.8747751833124761,,,offline simulation (CPU) on the paper index's candidates,109.475
+V2 EVT-JHQ gev L1=32 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9683139811354904,,,offline simulation (CPU) on the paper index's candidates,123.185
+V2 EVT-JHQ gev L1=32 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9928336450346088,,,offline simulation (CPU) on the paper index's candidates,126.9
+V2 EVT-JHQ gev L1=32 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9969192837716466,,,offline simulation (CPU) on the paper index's candidates,127.53
+V2 EVT-JHQ gev L1=32 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,0.9980496360469245,,,offline simulation (CPU) on the paper index's candidates,127.715
+V2 EVT-JHQ gev L1=32 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,0.9988812046516526,,,offline simulation (CPU) on the paper index's candidates,127.85
+V2 EVT-JHQ logistic L1=8 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,0.9957413254395636,,,offline simulation (CPU) on the paper index's candidates,126.57
+V2 EVT-JHQ logistic L1=8 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9994398601378582,,,offline simulation (CPU) on the paper index's candidates,127.725
+V2 EVT-JHQ logistic L1=8 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9999699944007219,,,offline simulation (CPU) on the paper index's candidates,127.96
+V2 EVT-JHQ logistic L1=8 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9999996819194423,,,offline simulation (CPU) on the paper index's candidates,127.995
+V2 EVT-JHQ logistic L1=8 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=8 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=16 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,0.9934768039223151,,,offline simulation (CPU) on the paper index's candidates,125.585
+V2 EVT-JHQ logistic L1=16 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9996281638280275,,,offline simulation (CPU) on the paper index's candidates,127.575
+V2 EVT-JHQ logistic L1=16 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9999847321332295,,,offline simulation (CPU) on the paper index's candidates,127.935
+V2 EVT-JHQ logistic L1=16 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9999991517851794,,,offline simulation (CPU) on the paper index's candidates,127.99
+V2 EVT-JHQ logistic L1=16 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,0.9999996819194423,,,offline simulation (CPU) on the paper index's candidates,127.995
+V2 EVT-JHQ logistic L1=16 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=32 eps=0.3,arxiv-768,val,0.9789999999999999,,,,,,0.9904005408217698,,,offline simulation (CPU) on the paper index's candidates,124.35
+V2 EVT-JHQ logistic L1=32 eps=0.1,arxiv-768,val,0.9789999999999999,,,,,,0.9995972039870763,,,offline simulation (CPU) on the paper index's candidates,127.355
+V2 EVT-JHQ logistic L1=32 eps=0.03,arxiv-768,val,0.9789999999999999,,,,,,0.9999769921729917,,,offline simulation (CPU) on the paper index's candidates,127.86
+V2 EVT-JHQ logistic L1=32 eps=0.01,arxiv-768,val,0.9789999999999999,,,,,,0.9999987276777692,,,offline simulation (CPU) on the paper index's candidates,127.985
+V2 EVT-JHQ logistic L1=32 eps=0.003,arxiv-768,val,0.9789999999999999,,,,,,0.9999996819194423,,,offline simulation (CPU) on the paper index's candidates,127.995
+V2 EVT-JHQ logistic L1=32 eps=0.001,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ oracle,arxiv-768,test,0.97775,,,,,,0.8079564354182865,,,offline simulation (CPU) on the paper index's candidates,96.2275
+V2 EVT-JHQ global L1=8 eps=0.3,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.1,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.03,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.01,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.003,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.001,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.3,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.1,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.03,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.01,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.003,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.001,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.3,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.1,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.03,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.01,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.003,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.001,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ iid_evt L1=8 eps=0.3,arxiv-768,test,0.977,,,,,,0.9675318819828688,,,offline simulation (CPU) on the paper index's candidates,121.0725
+V2 EVT-JHQ iid_evt L1=8 eps=0.1,arxiv-768,test,0.97775,,,,,,0.9886895769621983,,,offline simulation (CPU) on the paper index's candidates,125.11
+V2 EVT-JHQ iid_evt L1=8 eps=0.03,arxiv-768,test,0.97775,,,,,,0.9958988298873209,,,offline simulation (CPU) on the paper index's candidates,126.8075
+V2 EVT-JHQ iid_evt L1=8 eps=0.01,arxiv-768,test,0.97775,,,,,,0.9974914910607035,,,offline simulation (CPU) on the paper index's candidates,127.345
+V2 EVT-JHQ iid_evt L1=8 eps=0.003,arxiv-768,test,0.97775,,,,,,0.998356976741782,,,offline simulation (CPU) on the paper index's candidates,127.5875
+V2 EVT-JHQ iid_evt L1=8 eps=0.001,arxiv-768,test,0.97775,,,,,,0.9986261223256871,,,offline simulation (CPU) on the paper index's candidates,127.6825
+V2 EVT-JHQ iid_evt L1=16 eps=0.3,arxiv-768,test,0.977,,,,,,0.9675970876295504,,,offline simulation (CPU) on the paper index's candidates,121.105
+V2 EVT-JHQ iid_evt L1=16 eps=0.1,arxiv-768,test,0.97775,,,,,,0.9887493222986294,,,offline simulation (CPU) on the paper index's candidates,125.1225
+V2 EVT-JHQ iid_evt L1=16 eps=0.03,arxiv-768,test,0.97775,,,,,,0.9960142915933965,,,offline simulation (CPU) on the paper index's candidates,126.835
+V2 EVT-JHQ iid_evt L1=16 eps=0.01,arxiv-768,test,0.97775,,,,,,0.9975809235208271,,,offline simulation (CPU) on the paper index's candidates,127.365
+V2 EVT-JHQ iid_evt L1=16 eps=0.003,arxiv-768,test,0.97775,,,,,,0.9983988037785558,,,offline simulation (CPU) on the paper index's candidates,127.5925
+V2 EVT-JHQ iid_evt L1=16 eps=0.001,arxiv-768,test,0.97775,,,,,,0.9986689566041579,,,offline simulation (CPU) on the paper index's candidates,127.695
+V2 EVT-JHQ iid_evt L1=32 eps=0.3,arxiv-768,test,0.977,,,,,,0.9677220916253844,,,offline simulation (CPU) on the paper index's candidates,121.1925
+V2 EVT-JHQ iid_evt L1=32 eps=0.1,arxiv-768,test,0.97775,,,,,,0.9888790974393424,,,offline simulation (CPU) on the paper index's candidates,125.1825
+V2 EVT-JHQ iid_evt L1=32 eps=0.03,arxiv-768,test,0.97775,,,,,,0.9961371750803951,,,offline simulation (CPU) on the paper index's candidates,126.875
+V2 EVT-JHQ iid_evt L1=32 eps=0.01,arxiv-768,test,0.97775,,,,,,0.9977038070078257,,,offline simulation (CPU) on the paper index's candidates,127.405
+V2 EVT-JHQ iid_evt L1=32 eps=0.003,arxiv-768,test,0.97775,,,,,,0.9985216872655545,,,offline simulation (CPU) on the paper index's candidates,127.6325
+V2 EVT-JHQ iid_evt L1=32 eps=0.001,arxiv-768,test,0.97775,,,,,,0.9987918400911565,,,offline simulation (CPU) on the paper index's candidates,127.735
+V2 EVT-JHQ gev L1=8 eps=0.3,arxiv-768,test,0.9717499999999999,,,,,,0.8362809731460351,,,offline simulation (CPU) on the paper index's candidates,104.115
+V2 EVT-JHQ gev L1=8 eps=0.1,arxiv-768,test,0.976,,,,,,0.948510811705866,,,offline simulation (CPU) on the paper index's candidates,120.175
+V2 EVT-JHQ gev L1=8 eps=0.03,arxiv-768,test,0.97775,,,,,,0.9834697324135202,,,offline simulation (CPU) on the paper index's candidates,125.3375
+V2 EVT-JHQ gev L1=8 eps=0.01,arxiv-768,test,0.97775,,,,,,0.9935542362809837,,,offline simulation (CPU) on the paper index's candidates,126.88
+V2 EVT-JHQ gev L1=8 eps=0.003,arxiv-768,test,0.97775,,,,,,0.9969325249317501,,,offline simulation (CPU) on the paper index's candidates,127.42
+V2 EVT-JHQ gev L1=8 eps=0.001,arxiv-768,test,0.97775,,,,,,0.9979186145528295,,,offline simulation (CPU) on the paper index's candidates,127.575
+V2 EVT-JHQ gev L1=16 eps=0.3,arxiv-768,test,0.9720000000000001,,,,,,0.84206179830706,,,offline simulation (CPU) on the paper index's candidates,104.9525
+V2 EVT-JHQ gev L1=16 eps=0.1,arxiv-768,test,0.976,,,,,,0.9508968082472102,,,offline simulation (CPU) on the paper index's candidates,120.53
+V2 EVT-JHQ gev L1=16 eps=0.03,arxiv-768,test,0.97775,,,,,,0.9842925958670116,,,offline simulation (CPU) on the paper index's candidates,125.46
+V2 EVT-JHQ gev L1=16 eps=0.01,arxiv-768,test,0.97775,,,,,,0.9939189638006346,,,offline simulation (CPU) on the paper index's candidates,126.9475
+V2 EVT-JHQ gev L1=16 eps=0.003,arxiv-768,test,0.97775,,,,,,0.9971451589551978,,,offline simulation (CPU) on the paper index's candidates,127.455
+V2 EVT-JHQ gev L1=16 eps=0.001,arxiv-768,test,0.97775,,,,,,0.9980273436433532,,,offline simulation (CPU) on the paper index's candidates,127.6
+V2 EVT-JHQ gev L1=32 eps=0.3,arxiv-768,test,0.9730000000000001,,,,,,0.8540344032413674,,,offline simulation (CPU) on the paper index's candidates,106.7275
+V2 EVT-JHQ gev L1=32 eps=0.1,arxiv-768,test,0.976,,,,,,0.9552133690448227,,,offline simulation (CPU) on the paper index's candidates,121.1925
+V2 EVT-JHQ gev L1=32 eps=0.03,arxiv-768,test,0.97775,,,,,,0.9853490863814189,,,offline simulation (CPU) on the paper index's candidates,125.6575
+V2 EVT-JHQ gev L1=32 eps=0.01,arxiv-768,test,0.97775,,,,,,0.994673652895075,,,offline simulation (CPU) on the paper index's candidates,127.08
+V2 EVT-JHQ gev L1=32 eps=0.003,arxiv-768,test,0.97775,,,,,,0.9973713112224696,,,offline simulation (CPU) on the paper index's candidates,127.51
+V2 EVT-JHQ gev L1=32 eps=0.001,arxiv-768,test,0.97775,,,,,,0.9982022326095348,,,offline simulation (CPU) on the paper index's candidates,127.65
+V2 EVT-JHQ logistic L1=8 eps=0.3,arxiv-768,test,0.97775,,,,,,0.9941340364092428,,,offline simulation (CPU) on the paper index's candidates,126.065
+V2 EVT-JHQ logistic L1=8 eps=0.1,arxiv-768,test,0.97775,,,,,,0.9983584610979667,,,offline simulation (CPU) on the paper index's candidates,127.43
+V2 EVT-JHQ logistic L1=8 eps=0.03,arxiv-768,test,0.97775,,,,,,0.9986153077306277,,,offline simulation (CPU) on the paper index's candidates,127.6375
+V2 EVT-JHQ logistic L1=8 eps=0.01,arxiv-768,test,0.97775,,,,,,0.99866005046705,,,offline simulation (CPU) on the paper index's candidates,127.6925
+V2 EVT-JHQ logistic L1=8 eps=0.003,arxiv-768,test,0.97775,,,,,,0.9986816266444479,,,offline simulation (CPU) on the paper index's candidates,127.715
+V2 EVT-JHQ logistic L1=8 eps=0.001,arxiv-768,test,0.97775,,,,,,0.998727800724334,,,offline simulation (CPU) on the paper index's candidates,127.7275
+V2 EVT-JHQ logistic L1=16 eps=0.3,arxiv-768,test,0.97775,,,,,,0.9926603887942347,,,offline simulation (CPU) on the paper index's candidates,125.3
+V2 EVT-JHQ logistic L1=16 eps=0.1,arxiv-768,test,0.97775,,,,,,0.998360899683127,,,offline simulation (CPU) on the paper index's candidates,127.255
+V2 EVT-JHQ logistic L1=16 eps=0.03,arxiv-768,test,0.97775,,,,,,0.998673727749037,,,offline simulation (CPU) on the paper index's candidates,127.6175
+V2 EVT-JHQ logistic L1=16 eps=0.01,arxiv-768,test,0.97775,,,,,,0.9986910098960435,,,offline simulation (CPU) on the paper index's candidates,127.69
+V2 EVT-JHQ logistic L1=16 eps=0.003,arxiv-768,test,0.97775,,,,,,0.9987074968522371,,,offline simulation (CPU) on the paper index's candidates,127.72
+V2 EVT-JHQ logistic L1=16 eps=0.001,arxiv-768,test,0.97775,,,,,,0.998778374860053,,,offline simulation (CPU) on the paper index's candidates,127.7325
+V2 EVT-JHQ logistic L1=32 eps=0.3,arxiv-768,test,0.97775,,,,,,0.9905455523201893,,,offline simulation (CPU) on the paper index's candidates,124.25
+V2 EVT-JHQ logistic L1=32 eps=0.1,arxiv-768,test,0.97775,,,,,,0.9983769625375535,,,offline simulation (CPU) on the paper index's candidates,127.08
+V2 EVT-JHQ logistic L1=32 eps=0.03,arxiv-768,test,0.97775,,,,,,0.998784577348396,,,offline simulation (CPU) on the paper index's candidates,127.5875
+V2 EVT-JHQ logistic L1=32 eps=0.01,arxiv-768,test,0.97775,,,,,,0.9988123560141368,,,offline simulation (CPU) on the paper index's candidates,127.715
+V2 EVT-JHQ logistic L1=32 eps=0.003,arxiv-768,test,0.97775,,,,,,0.9988472913971964,,,offline simulation (CPU) on the paper index's candidates,127.7575
+V2 EVT-JHQ logistic L1=32 eps=0.001,arxiv-768,test,0.97775,,,,,,0.9992561785133399,,,offline simulation (CPU) on the paper index's candidates,127.8125
+B0 nprobe cut to 8,arxiv-768,calib,0.7785,,,,,,0.06568830136533227,,,offline simulation (CPU),8
+B0 nprobe cut to 12,arxiv-768,calib,0.83375,,,,,,0.09776586092628972,,,offline simulation (CPU),12
+B0 nprobe cut to 16,arxiv-768,calib,0.861,,,,,,0.12779098934714755,,,offline simulation (CPU),16
+B0 nprobe cut to 24,arxiv-768,calib,0.8955,,,,,,0.18910761503681564,,,offline simulation (CPU),24
+B0 nprobe cut to 32,arxiv-768,calib,0.9155,,,,,,0.2503883225183449,,,offline simulation (CPU),32
+B0 nprobe cut to 48,arxiv-768,calib,0.93925,,,,,,0.37000317109497854,,,offline simulation (CPU),48
+B0 nprobe cut to 64,arxiv-768,calib,0.95175,,,,,,0.48955605147795467,,,offline simulation (CPU),64
+B0 nprobe cut to 80,arxiv-768,calib,0.9592499999999999,,,,,,0.6112341013516335,,,offline simulation (CPU),80
+B0 nprobe cut to 96,arxiv-768,calib,0.9644999999999999,,,,,,0.7374724903398854,,,offline simulation (CPU),96
+B0 nprobe cut to 112,arxiv-768,calib,0.9710000000000001,,,,,,0.8691106540249428,,,offline simulation (CPU),112
+B0 nprobe cut to 128,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU),128
+B0 nprobe cut to 8,arxiv-768,val,0.7929999999999999,,,,,,0.06634280411125483,,,offline simulation (CPU),8
+B0 nprobe cut to 12,arxiv-768,val,0.843,,,,,,0.09838146828742142,,,offline simulation (CPU),12
+B0 nprobe cut to 16,arxiv-768,val,0.873,,,,,,0.1289927989742538,,,offline simulation (CPU),16
+B0 nprobe cut to 24,arxiv-768,val,0.9065,,,,,,0.18923980125054432,,,offline simulation (CPU),24
+B0 nprobe cut to 32,arxiv-768,val,0.933,,,,,,0.25058142475279577,,,offline simulation (CPU),32
+B0 nprobe cut to 48,arxiv-768,val,0.954,,,,,,0.3718727512367237,,,offline simulation (CPU),48
+B0 nprobe cut to 64,arxiv-768,val,0.9625,,,,,,0.49092585086284124,,,offline simulation (CPU),64
+B0 nprobe cut to 80,arxiv-768,val,0.9675,,,,,,0.6121662844575343,,,offline simulation (CPU),80
+B0 nprobe cut to 96,arxiv-768,val,0.9720000000000001,,,,,,0.7377335678788682,,,offline simulation (CPU),96
+B0 nprobe cut to 112,arxiv-768,val,0.975,,,,,,0.8675205079788918,,,offline simulation (CPU),112
+B0 nprobe cut to 128,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU),128
+B0 nprobe cut to 8,arxiv-768,calib,0.7785,,,,,,0.06568830136533227,,,offline simulation (CPU),8
+B0 nprobe cut to 12,arxiv-768,calib,0.83375,,,,,,0.09776586092628972,,,offline simulation (CPU),12
+B0 nprobe cut to 16,arxiv-768,calib,0.861,,,,,,0.12779098934714755,,,offline simulation (CPU),16
+B0 nprobe cut to 24,arxiv-768,calib,0.8955,,,,,,0.18910761503681564,,,offline simulation (CPU),24
+B0 nprobe cut to 32,arxiv-768,calib,0.9155,,,,,,0.2503883225183449,,,offline simulation (CPU),32
+B0 nprobe cut to 48,arxiv-768,calib,0.93925,,,,,,0.37000317109497854,,,offline simulation (CPU),48
+B0 nprobe cut to 64,arxiv-768,calib,0.95175,,,,,,0.48955605147795467,,,offline simulation (CPU),64
+B0 nprobe cut to 80,arxiv-768,calib,0.9592499999999999,,,,,,0.6112341013516335,,,offline simulation (CPU),80
+B0 nprobe cut to 96,arxiv-768,calib,0.9644999999999999,,,,,,0.7374724903398854,,,offline simulation (CPU),96
+B0 nprobe cut to 112,arxiv-768,calib,0.9710000000000001,,,,,,0.8691106540249428,,,offline simulation (CPU),112
+B0 nprobe cut to 128,arxiv-768,calib,0.97425,,,,,,1.0,,,offline simulation (CPU),128
+B0 nprobe cut to 8,arxiv-768,val,0.7929999999999999,,,,,,0.06634280411125483,,,offline simulation (CPU),8
+B0 nprobe cut to 12,arxiv-768,val,0.843,,,,,,0.09838146828742142,,,offline simulation (CPU),12
+B0 nprobe cut to 16,arxiv-768,val,0.873,,,,,,0.1289927989742538,,,offline simulation (CPU),16
+B0 nprobe cut to 24,arxiv-768,val,0.9065,,,,,,0.18923980125054432,,,offline simulation (CPU),24
+B0 nprobe cut to 32,arxiv-768,val,0.933,,,,,,0.25058142475279577,,,offline simulation (CPU),32
+B0 nprobe cut to 48,arxiv-768,val,0.954,,,,,,0.3718727512367237,,,offline simulation (CPU),48
+B0 nprobe cut to 64,arxiv-768,val,0.9625,,,,,,0.49092585086284124,,,offline simulation (CPU),64
+B0 nprobe cut to 80,arxiv-768,val,0.9675,,,,,,0.6121662844575343,,,offline simulation (CPU),80
+B0 nprobe cut to 96,arxiv-768,val,0.9720000000000001,,,,,,0.7377335678788682,,,offline simulation (CPU),96
+B0 nprobe cut to 112,arxiv-768,val,0.975,,,,,,0.8675205079788918,,,offline simulation (CPU),112
+B0 nprobe cut to 128,arxiv-768,val,0.9789999999999999,,,,,,1.0,,,offline simulation (CPU),128
+B0 nprobe cut to 8,arxiv-768,test,0.79475,,,,,,0.06558850455196379,,,offline simulation (CPU),8
+B0 nprobe cut to 12,arxiv-768,test,0.84575,,,,,,0.09721451549792436,,,offline simulation (CPU),12
+B0 nprobe cut to 16,arxiv-768,test,0.876,,,,,,0.12791932439316206,,,offline simulation (CPU),16
+B0 nprobe cut to 24,arxiv-768,test,0.9057499999999999,,,,,,0.1890212563516529,,,offline simulation (CPU),24
+B0 nprobe cut to 32,arxiv-768,test,0.9235,,,,,,0.248462882904919,,,offline simulation (CPU),32
+B0 nprobe cut to 48,arxiv-768,test,0.94475,,,,,,0.36815754871723266,,,offline simulation (CPU),48
+B0 nprobe cut to 64,arxiv-768,test,0.9564999999999999,,,,,,0.4886339931243561,,,offline simulation (CPU),64
+B0 nprobe cut to 80,arxiv-768,test,0.966,,,,,,0.6108009071748848,,,offline simulation (CPU),80
+B0 nprobe cut to 96,arxiv-768,test,0.96975,,,,,,0.7362540267800121,,,offline simulation (CPU),96
+B0 nprobe cut to 112,arxiv-768,test,0.974,,,,,,0.8677908862332696,,,offline simulation (CPU),112
+B0 nprobe cut to 128,arxiv-768,test,0.97775,,,,,,1.0,,,offline simulation (CPU),128
+B0 v65 (paper index),vogue-768,calib,0.9584999999999991,560,0.9584999999999999,0.9994999998807907,0.959,0.0002465580357142857,1.0,19139.9,236493.0,"offline (CPU, FP64) on the paper index's candidates; QPS GPU measured",
+B0 re-implemented (retrained residual),vogue-768,calib,0.958749999999999,560,0.9584999999999999,0.9994999998807907,0.9592499999999999,0.0002465580357142857,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8 primary + paper D_H (isolation only),vogue-768,calib,0.9587499999999991,560,0.9584999999999999,0.999722222238779,0.959,0.00025913343253968255,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (global scale),vogue-768,calib,0.9597499999999993,400,0.9584999999999999,0.999722222238779,0.96,0.00025913343253968255,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (per-subspace scale),vogue-768,calib,0.9572499999999994,,0.9584999999999999,0.999722222238779,0.9574999999999999,0.000269139880952381,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+B0 v65 (paper index),vogue-768,val,0.9575000000000009,640,0.9575000000000001,1.0,0.9574999999999999,0.0002524345238095238,1.0,19139.9,236493.0,"offline (CPU, FP64) on the paper index's candidates; QPS GPU measured",
+B0 re-implemented (retrained residual),vogue-768,val,0.9570000000000008,,0.9575000000000001,1.0,0.9570000000000001,0.0002524345238095238,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8 primary + paper D_H (isolation only),vogue-768,val,0.9575000000000009,560,0.9575000000000001,1.0,0.9574999999999999,0.00023543353174603176,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (global scale),vogue-768,val,0.9580000000000009,400,0.9575000000000001,1.0,0.958,0.00023543353174603176,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (per-subspace scale),vogue-768,val,0.9600000000000007,320,0.9575000000000001,1.0,0.96,0.0002369781746031746,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+B0 v65 (paper index),vogue-768,calib,0.9584999999999991,560,0.9584999999999999,0.9994999998807907,0.959,0.0002465580357142857,1.0,19139.9,236493.0,"offline (CPU, FP64) on the paper index's candidates; QPS GPU measured",
+B0 re-implemented (retrained residual),vogue-768,calib,0.958749999999999,560,0.9584999999999999,0.9994999998807907,0.9592499999999999,0.0002465580357142857,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8 primary + paper D_H (isolation only),vogue-768,calib,0.9587499999999991,560,0.9584999999999999,0.999722222238779,0.959,0.00025913343253968255,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (global scale),vogue-768,calib,0.9597499999999993,400,0.9584999999999999,0.999722222238779,0.96,0.00025913343253968255,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (per-subspace scale),vogue-768,calib,0.9572499999999994,,0.9584999999999999,0.999722222238779,0.9574999999999999,0.000269139880952381,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+B0 v65 (paper index),vogue-768,val,0.9575000000000009,640,0.9575000000000001,1.0,0.9574999999999999,0.0002524345238095238,1.0,19139.9,236493.0,"offline (CPU, FP64) on the paper index's candidates; QPS GPU measured",
+B0 re-implemented (retrained residual),vogue-768,val,0.9570000000000008,,0.9575000000000001,1.0,0.9570000000000001,0.0002524345238095238,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8 primary + paper D_H (isolation only),vogue-768,val,0.9575000000000009,560,0.9575000000000001,1.0,0.9574999999999999,0.00023543353174603176,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (global scale),vogue-768,val,0.9580000000000009,400,0.9575000000000001,1.0,0.958,0.00023543353174603176,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (per-subspace scale),vogue-768,val,0.9600000000000007,320,0.9575000000000001,1.0,0.96,0.0002369781746031746,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+B0 v65 (paper index),vogue-768,test,0.9737499999999999,640,0.97375,0.9997499999403954,0.974,0.0002833869047619048,1.0,19139.9,236493.0,"offline (CPU, FP64) on the paper index's candidates; QPS GPU measured",
+B0 re-implemented (retrained residual),vogue-768,test,0.9732499999999997,,0.97375,0.9997499999403954,0.9734999999999999,0.0002833869047619048,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8 primary + paper D_H (isolation only),vogue-768,test,0.9724999999999998,1280,0.97375,0.9984444442391396,0.974,0.00028346974206349204,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (global scale),vogue-768,test,0.9732499999999998,800,0.97375,0.9984444442391396,0.97475,0.00028346974206349204,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (per-subspace scale),vogue-768,test,0.97275,1280,0.97375,0.9979166665673256,0.97475,0.00030406498015873016,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V2 EVT-JHQ oracle,vogue-768,calib,0.9585000000000001,,,,,,0.6437844576148927,,,offline simulation (CPU) on the paper index's candidates,75.95
+V2 EVT-JHQ global L1=8 eps=0.3,vogue-768,calib,0.9572499999999999,,,,,,0.9462633223189565,,,offline simulation (CPU) on the paper index's candidates,121.9625
+V2 EVT-JHQ global L1=8 eps=0.1,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.3,vogue-768,calib,0.9557499999999999,,,,,,0.9255866267439924,,,offline simulation (CPU) on the paper index's candidates,119.575
+V2 EVT-JHQ global L1=16 eps=0.1,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.3,vogue-768,calib,0.9574999999999999,,,,,,0.9473035450917001,,,offline simulation (CPU) on the paper index's candidates,122.0925
+V2 EVT-JHQ global L1=32 eps=0.1,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ iid_evt L1=8 eps=0.3,vogue-768,calib,0.9557499999999999,,,,,,0.939698898013159,,,offline simulation (CPU) on the paper index's candidates,116.4175
+V2 EVT-JHQ iid_evt L1=8 eps=0.1,vogue-768,calib,0.9577500000000001,,,,,,0.9770402089899669,,,offline simulation (CPU) on the paper index's candidates,122.52
+V2 EVT-JHQ iid_evt L1=8 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9933960040499829,,,offline simulation (CPU) on the paper index's candidates,125.7
+V2 EVT-JHQ iid_evt L1=8 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9970926955267244,,,offline simulation (CPU) on the paper index's candidates,126.8425
+V2 EVT-JHQ iid_evt L1=8 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9987147022279536,,,offline simulation (CPU) on the paper index's candidates,127.4525
+V2 EVT-JHQ iid_evt L1=8 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,0.9992702665772077,,,offline simulation (CPU) on the paper index's candidates,127.715
+V2 EVT-JHQ iid_evt L1=16 eps=0.3,vogue-768,calib,0.9557499999999999,,,,,,0.9396584649453916,,,offline simulation (CPU) on the paper index's candidates,116.4375
+V2 EVT-JHQ iid_evt L1=16 eps=0.1,vogue-768,calib,0.9577500000000001,,,,,,0.9770782731429781,,,offline simulation (CPU) on the paper index's candidates,122.5225
+V2 EVT-JHQ iid_evt L1=16 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9933245597345007,,,offline simulation (CPU) on the paper index's candidates,125.695
+V2 EVT-JHQ iid_evt L1=16 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9971055092019956,,,offline simulation (CPU) on the paper index's candidates,126.8475
+V2 EVT-JHQ iid_evt L1=16 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9987147022279536,,,offline simulation (CPU) on the paper index's candidates,127.4525
+V2 EVT-JHQ iid_evt L1=16 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,0.9992702665772077,,,offline simulation (CPU) on the paper index's candidates,127.715
+V2 EVT-JHQ iid_evt L1=32 eps=0.3,vogue-768,calib,0.9557499999999999,,,,,,0.9398015150932713,,,offline simulation (CPU) on the paper index's candidates,116.5
+V2 EVT-JHQ iid_evt L1=32 eps=0.1,vogue-768,calib,0.9577500000000001,,,,,,0.9771704454625754,,,offline simulation (CPU) on the paper index's candidates,122.5525
+V2 EVT-JHQ iid_evt L1=32 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9933905124748666,,,offline simulation (CPU) on the paper index's candidates,125.7125
+V2 EVT-JHQ iid_evt L1=32 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9971434118380916,,,offline simulation (CPU) on the paper index's candidates,126.86
+V2 EVT-JHQ iid_evt L1=32 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9987246085987515,,,offline simulation (CPU) on the paper index's candidates,127.4575
+V2 EVT-JHQ iid_evt L1=32 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,0.9992702665772077,,,offline simulation (CPU) on the paper index's candidates,127.715
+V2 EVT-JHQ gev L1=8 eps=0.3,vogue-768,calib,0.94575,,,,,,0.7517536699065882,,,offline simulation (CPU) on the paper index's candidates,97.02
+V2 EVT-JHQ gev L1=8 eps=0.1,vogue-768,calib,0.95525,,,,,,0.9183492152916032,,,offline simulation (CPU) on the paper index's candidates,117.8925
+V2 EVT-JHQ gev L1=8 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9813749461206491,,,offline simulation (CPU) on the paper index's candidates,125.325
+V2 EVT-JHQ gev L1=8 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9960617868960896,,,offline simulation (CPU) on the paper index's candidates,127.14
+V2 EVT-JHQ gev L1=8 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9983827849672545,,,offline simulation (CPU) on the paper index's candidates,127.5775
+V2 EVT-JHQ gev L1=8 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,0.9990731082627423,,,offline simulation (CPU) on the paper index's candidates,127.725
+V2 EVT-JHQ gev L1=16 eps=0.3,vogue-768,calib,0.94675,,,,,,0.7619893736944723,,,offline simulation (CPU) on the paper index's candidates,98.3725
+V2 EVT-JHQ gev L1=16 eps=0.1,vogue-768,calib,0.9555,,,,,,0.92273240749684,,,offline simulation (CPU) on the paper index's candidates,118.5075
+V2 EVT-JHQ gev L1=16 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9829321306999186,,,offline simulation (CPU) on the paper index's candidates,125.53
+V2 EVT-JHQ gev L1=16 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9963846592095383,,,offline simulation (CPU) on the paper index's candidates,127.1925
+V2 EVT-JHQ gev L1=16 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9984250485600605,,,offline simulation (CPU) on the paper index's candidates,127.59
+V2 EVT-JHQ gev L1=16 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,0.9991371228001262,,,offline simulation (CPU) on the paper index's candidates,127.74
+V2 EVT-JHQ gev L1=32 eps=0.3,vogue-768,calib,0.9477499999999999,,,,,,0.7808516959222256,,,offline simulation (CPU) on the paper index's candidates,100.53
+V2 EVT-JHQ gev L1=32 eps=0.1,vogue-768,calib,0.9564999999999999,,,,,,0.9299087117163186,,,offline simulation (CPU) on the paper index's candidates,119.3125
+V2 EVT-JHQ gev L1=32 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9849051674968097,,,offline simulation (CPU) on the paper index's candidates,125.775
+V2 EVT-JHQ gev L1=32 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9967245446380529,,,offline simulation (CPU) on the paper index's candidates,127.265
+V2 EVT-JHQ gev L1=32 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9985179207862902,,,offline simulation (CPU) on the paper index's candidates,127.6075
+V2 EVT-JHQ gev L1=32 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,0.9991460062304612,,,offline simulation (CPU) on the paper index's candidates,127.7425
+V2 EVT-JHQ logistic L1=8 eps=0.3,vogue-768,calib,0.953,,,,,,0.9034922433655043,,,offline simulation (CPU) on the paper index's candidates,113.735
+V2 EVT-JHQ logistic L1=8 eps=0.1,vogue-768,calib,0.958,,,,,,0.9842729364518158,,,offline simulation (CPU) on the paper index's candidates,124.77
+V2 EVT-JHQ logistic L1=8 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9983649104286411,,,offline simulation (CPU) on the paper index's candidates,127.3875
+V2 EVT-JHQ logistic L1=8 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9994172469700234,,,offline simulation (CPU) on the paper index's candidates,127.77
+V2 EVT-JHQ logistic L1=8 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9996484853535923,,,offline simulation (CPU) on the paper index's candidates,127.875
+V2 EVT-JHQ logistic L1=8 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,0.9999374391148529,,,offline simulation (CPU) on the paper index's candidates,127.97
+V2 EVT-JHQ logistic L1=16 eps=0.3,vogue-768,calib,0.9560000000000001,,,,,,0.9385617112523343,,,offline simulation (CPU) on the paper index's candidates,117.9425
+V2 EVT-JHQ logistic L1=16 eps=0.1,vogue-768,calib,0.9585000000000001,,,,,,0.9961455064971256,,,offline simulation (CPU) on the paper index's candidates,126.6675
+V2 EVT-JHQ logistic L1=16 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9993587778467276,,,offline simulation (CPU) on the paper index's candidates,127.7475
+V2 EVT-JHQ logistic L1=16 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9996618912575524,,,offline simulation (CPU) on the paper index's candidates,127.8775
+V2 EVT-JHQ logistic L1=16 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9999541291960884,,,offline simulation (CPU) on the paper index's candidates,127.975
+V2 EVT-JHQ logistic L1=16 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,0.9999931086116189,,,offline simulation (CPU) on the paper index's candidates,127.9975
+V2 EVT-JHQ logistic L1=32 eps=0.3,vogue-768,calib,0.9567500000000001,,,,,,0.9603644489209755,,,offline simulation (CPU) on the paper index's candidates,119.535
+V2 EVT-JHQ logistic L1=32 eps=0.1,vogue-768,calib,0.9585000000000001,,,,,,0.9986080472249617,,,offline simulation (CPU) on the paper index's candidates,127.3175
+V2 EVT-JHQ logistic L1=32 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9996263036972406,,,offline simulation (CPU) on the paper index's candidates,127.86
+V2 EVT-JHQ logistic L1=32 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9999541291960884,,,offline simulation (CPU) on the paper index's candidates,127.975
+V2 EVT-JHQ logistic L1=32 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9999931086116189,,,offline simulation (CPU) on the paper index's candidates,127.9975
+V2 EVT-JHQ logistic L1=32 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ oracle,vogue-768,val,0.9574999999999999,,,,,,0.6142629446138933,,,offline simulation (CPU) on the paper index's candidates,72.715
+V2 EVT-JHQ global L1=8 eps=0.3,vogue-768,val,0.9570000000000001,,,,,,0.9393415857359205,,,offline simulation (CPU) on the paper index's candidates,120.795
+V2 EVT-JHQ global L1=8 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.3,vogue-768,val,0.9555,,,,,,0.9134390681747525,,,offline simulation (CPU) on the paper index's candidates,117.86
+V2 EVT-JHQ global L1=16 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.3,vogue-768,val,0.9570000000000001,,,,,,0.9410377990062434,,,offline simulation (CPU) on the paper index's candidates,120.94
+V2 EVT-JHQ global L1=32 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ iid_evt L1=8 eps=0.3,vogue-768,val,0.9560000000000001,,,,,,0.9319647154987742,,,offline simulation (CPU) on the paper index's candidates,114.395
+V2 EVT-JHQ iid_evt L1=8 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,0.9691132693970733,,,offline simulation (CPU) on the paper index's candidates,121.23
+V2 EVT-JHQ iid_evt L1=8 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.9853778631376193,,,offline simulation (CPU) on the paper index's candidates,124.945
+V2 EVT-JHQ iid_evt L1=8 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.9911583676254319,,,offline simulation (CPU) on the paper index's candidates,126.385
+V2 EVT-JHQ iid_evt L1=8 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,0.9944936531121914,,,offline simulation (CPU) on the paper index's candidates,127.18
+V2 EVT-JHQ iid_evt L1=8 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,0.9968810342172377,,,offline simulation (CPU) on the paper index's candidates,127.56
+V2 EVT-JHQ iid_evt L1=16 eps=0.3,vogue-768,val,0.9560000000000001,,,,,,0.9319662087318897,,,offline simulation (CPU) on the paper index's candidates,114.39
+V2 EVT-JHQ iid_evt L1=16 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,0.9690216844326566,,,offline simulation (CPU) on the paper index's candidates,121.24
+V2 EVT-JHQ iid_evt L1=16 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.9853719897540317,,,offline simulation (CPU) on the paper index's candidates,124.945
+V2 EVT-JHQ iid_evt L1=16 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.9911583676254319,,,offline simulation (CPU) on the paper index's candidates,126.385
+V2 EVT-JHQ iid_evt L1=16 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,0.9944936531121914,,,offline simulation (CPU) on the paper index's candidates,127.18
+V2 EVT-JHQ iid_evt L1=16 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,0.9968810342172377,,,offline simulation (CPU) on the paper index's candidates,127.56
+V2 EVT-JHQ iid_evt L1=32 eps=0.3,vogue-768,val,0.9560000000000001,,,,,,0.9332451131208701,,,offline simulation (CPU) on the paper index's candidates,114.515
+V2 EVT-JHQ iid_evt L1=32 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,0.9700242411463968,,,offline simulation (CPU) on the paper index's candidates,121.315
+V2 EVT-JHQ iid_evt L1=32 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.9859028839010258,,,offline simulation (CPU) on the paper index's candidates,124.985
+V2 EVT-JHQ iid_evt L1=32 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.991278622665666,,,offline simulation (CPU) on the paper index's candidates,126.4
+V2 EVT-JHQ iid_evt L1=32 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,0.9944936531121914,,,offline simulation (CPU) on the paper index's candidates,127.18
+V2 EVT-JHQ iid_evt L1=32 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,0.9968810342172377,,,offline simulation (CPU) on the paper index's candidates,127.56
+V2 EVT-JHQ gev L1=8 eps=0.3,vogue-768,val,0.944,,,,,,0.7226886916560223,,,offline simulation (CPU) on the paper index's candidates,92.765
+V2 EVT-JHQ gev L1=8 eps=0.1,vogue-768,val,0.9555,,,,,,0.9053974105545897,,,offline simulation (CPU) on the paper index's candidates,115.865
+V2 EVT-JHQ gev L1=8 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.9735185061855192,,,offline simulation (CPU) on the paper index's candidates,124.58
+V2 EVT-JHQ gev L1=8 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.9880426869555237,,,offline simulation (CPU) on the paper index's candidates,126.53
+V2 EVT-JHQ gev L1=8 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,0.9918132001210116,,,offline simulation (CPU) on the paper index's candidates,127.15
+V2 EVT-JHQ gev L1=8 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,0.9946432750703638,,,offline simulation (CPU) on the paper index's candidates,127.46
+V2 EVT-JHQ gev L1=16 eps=0.3,vogue-768,val,0.9465,,,,,,0.7334379791100669,,,offline simulation (CPU) on the paper index's candidates,94.25
+V2 EVT-JHQ gev L1=16 eps=0.1,vogue-768,val,0.9555,,,,,,0.9102979029930066,,,offline simulation (CPU) on the paper index's candidates,116.5
+V2 EVT-JHQ gev L1=16 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.9749554941869928,,,offline simulation (CPU) on the paper index's candidates,124.82
+V2 EVT-JHQ gev L1=16 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.98863998020172,,,offline simulation (CPU) on the paper index's candidates,126.655
+V2 EVT-JHQ gev L1=16 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,0.9923952623894299,,,offline simulation (CPU) on the paper index's candidates,127.2
+V2 EVT-JHQ gev L1=16 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,0.9947773674041346,,,offline simulation (CPU) on the paper index's candidates,127.47
+V2 EVT-JHQ gev L1=32 eps=0.3,vogue-768,val,0.9480000000000001,,,,,,0.7532760787937305,,,offline simulation (CPU) on the paper index's candidates,96.45
+V2 EVT-JHQ gev L1=32 eps=0.1,vogue-768,val,0.9560000000000001,,,,,,0.9216479679038502,,,offline simulation (CPU) on the paper index's candidates,117.715
+V2 EVT-JHQ gev L1=32 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.9777689444743257,,,offline simulation (CPU) on the paper index's candidates,125.085
+V2 EVT-JHQ gev L1=32 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.9894918199196701,,,offline simulation (CPU) on the paper index's candidates,126.755
+V2 EVT-JHQ gev L1=32 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,0.992855775482247,,,offline simulation (CPU) on the paper index's candidates,127.245
+V2 EVT-JHQ gev L1=32 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,0.994816091916263,,,offline simulation (CPU) on the paper index's candidates,127.48
+V2 EVT-JHQ logistic L1=8 eps=0.3,vogue-768,val,0.9515,,,,,,0.8874104221897627,,,offline simulation (CPU) on the paper index's candidates,110.7
+V2 EVT-JHQ logistic L1=8 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,0.9765856070047366,,,offline simulation (CPU) on the paper index's candidates,123.875
+V2 EVT-JHQ logistic L1=8 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.992047737269018,,,offline simulation (CPU) on the paper index's candidates,126.765
+V2 EVT-JHQ logistic L1=8 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.9961265532984176,,,offline simulation (CPU) on the paper index's candidates,127.535
+V2 EVT-JHQ logistic L1=8 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,0.9980778107848662,,,offline simulation (CPU) on the paper index's candidates,127.785
+V2 EVT-JHQ logistic L1=8 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,0.999989348270443,,,offline simulation (CPU) on the paper index's candidates,127.97
+V2 EVT-JHQ logistic L1=16 eps=0.3,vogue-768,val,0.9550000000000001,,,,,,0.9275292158525211,,,offline simulation (CPU) on the paper index's candidates,115.82
+V2 EVT-JHQ logistic L1=16 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,0.9895766355606299,,,offline simulation (CPU) on the paper index's candidates,126.09
+V2 EVT-JHQ logistic L1=16 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.9961103268318959,,,offline simulation (CPU) on the paper index's candidates,127.52
+V2 EVT-JHQ logistic L1=16 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.998151178305274,,,offline simulation (CPU) on the paper index's candidates,127.79
+V2 EVT-JHQ logistic L1=16 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,0.999989348270443,,,offline simulation (CPU) on the paper index's candidates,127.97
+V2 EVT-JHQ logistic L1=16 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=32 eps=0.3,vogue-768,val,0.9570000000000001,,,,,,0.9526243920425806,,,offline simulation (CPU) on the paper index's candidates,117.715
+V2 EVT-JHQ logistic L1=32 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,0.9938856085875638,,,offline simulation (CPU) on the paper index's candidates,126.865
+V2 EVT-JHQ logistic L1=32 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.9980646703334499,,,offline simulation (CPU) on the paper index's candidates,127.77
+V2 EVT-JHQ logistic L1=32 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.999989348270443,,,offline simulation (CPU) on the paper index's candidates,127.97
+V2 EVT-JHQ logistic L1=32 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=32 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ oracle,vogue-768,calib,0.9585000000000001,,,,,,0.6437844576148927,,,offline simulation (CPU) on the paper index's candidates,75.95
+V2 EVT-JHQ global L1=8 eps=0.3,vogue-768,calib,0.9572499999999999,,,,,,0.9462633223189565,,,offline simulation (CPU) on the paper index's candidates,121.9625
+V2 EVT-JHQ global L1=8 eps=0.1,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.3,vogue-768,calib,0.9557499999999999,,,,,,0.9255866267439924,,,offline simulation (CPU) on the paper index's candidates,119.575
+V2 EVT-JHQ global L1=16 eps=0.1,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.3,vogue-768,calib,0.9574999999999999,,,,,,0.9473035450917001,,,offline simulation (CPU) on the paper index's candidates,122.0925
+V2 EVT-JHQ global L1=32 eps=0.1,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ iid_evt L1=8 eps=0.3,vogue-768,calib,0.9557499999999999,,,,,,0.939698898013159,,,offline simulation (CPU) on the paper index's candidates,116.4175
+V2 EVT-JHQ iid_evt L1=8 eps=0.1,vogue-768,calib,0.9577500000000001,,,,,,0.9770402089899669,,,offline simulation (CPU) on the paper index's candidates,122.52
+V2 EVT-JHQ iid_evt L1=8 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9933960040499829,,,offline simulation (CPU) on the paper index's candidates,125.7
+V2 EVT-JHQ iid_evt L1=8 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9970926955267244,,,offline simulation (CPU) on the paper index's candidates,126.8425
+V2 EVT-JHQ iid_evt L1=8 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9987147022279536,,,offline simulation (CPU) on the paper index's candidates,127.4525
+V2 EVT-JHQ iid_evt L1=8 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,0.9992702665772077,,,offline simulation (CPU) on the paper index's candidates,127.715
+V2 EVT-JHQ iid_evt L1=16 eps=0.3,vogue-768,calib,0.9557499999999999,,,,,,0.9396584649453916,,,offline simulation (CPU) on the paper index's candidates,116.4375
+V2 EVT-JHQ iid_evt L1=16 eps=0.1,vogue-768,calib,0.9577500000000001,,,,,,0.9770782731429781,,,offline simulation (CPU) on the paper index's candidates,122.5225
+V2 EVT-JHQ iid_evt L1=16 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9933245597345007,,,offline simulation (CPU) on the paper index's candidates,125.695
+V2 EVT-JHQ iid_evt L1=16 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9971055092019956,,,offline simulation (CPU) on the paper index's candidates,126.8475
+V2 EVT-JHQ iid_evt L1=16 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9987147022279536,,,offline simulation (CPU) on the paper index's candidates,127.4525
+V2 EVT-JHQ iid_evt L1=16 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,0.9992702665772077,,,offline simulation (CPU) on the paper index's candidates,127.715
+V2 EVT-JHQ iid_evt L1=32 eps=0.3,vogue-768,calib,0.9557499999999999,,,,,,0.9398015150932713,,,offline simulation (CPU) on the paper index's candidates,116.5
+V2 EVT-JHQ iid_evt L1=32 eps=0.1,vogue-768,calib,0.9577500000000001,,,,,,0.9771704454625754,,,offline simulation (CPU) on the paper index's candidates,122.5525
+V2 EVT-JHQ iid_evt L1=32 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9933905124748666,,,offline simulation (CPU) on the paper index's candidates,125.7125
+V2 EVT-JHQ iid_evt L1=32 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9971434118380916,,,offline simulation (CPU) on the paper index's candidates,126.86
+V2 EVT-JHQ iid_evt L1=32 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9987246085987515,,,offline simulation (CPU) on the paper index's candidates,127.4575
+V2 EVT-JHQ iid_evt L1=32 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,0.9992702665772077,,,offline simulation (CPU) on the paper index's candidates,127.715
+V2 EVT-JHQ gev L1=8 eps=0.3,vogue-768,calib,0.94575,,,,,,0.7517536699065882,,,offline simulation (CPU) on the paper index's candidates,97.02
+V2 EVT-JHQ gev L1=8 eps=0.1,vogue-768,calib,0.95525,,,,,,0.9183492152916032,,,offline simulation (CPU) on the paper index's candidates,117.8925
+V2 EVT-JHQ gev L1=8 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9813749461206491,,,offline simulation (CPU) on the paper index's candidates,125.325
+V2 EVT-JHQ gev L1=8 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9960617868960896,,,offline simulation (CPU) on the paper index's candidates,127.14
+V2 EVT-JHQ gev L1=8 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9983827849672545,,,offline simulation (CPU) on the paper index's candidates,127.5775
+V2 EVT-JHQ gev L1=8 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,0.9990731082627423,,,offline simulation (CPU) on the paper index's candidates,127.725
+V2 EVT-JHQ gev L1=16 eps=0.3,vogue-768,calib,0.94675,,,,,,0.7619893736944723,,,offline simulation (CPU) on the paper index's candidates,98.3725
+V2 EVT-JHQ gev L1=16 eps=0.1,vogue-768,calib,0.9555,,,,,,0.92273240749684,,,offline simulation (CPU) on the paper index's candidates,118.5075
+V2 EVT-JHQ gev L1=16 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9829321306999186,,,offline simulation (CPU) on the paper index's candidates,125.53
+V2 EVT-JHQ gev L1=16 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9963846592095383,,,offline simulation (CPU) on the paper index's candidates,127.1925
+V2 EVT-JHQ gev L1=16 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9984250485600605,,,offline simulation (CPU) on the paper index's candidates,127.59
+V2 EVT-JHQ gev L1=16 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,0.9991371228001262,,,offline simulation (CPU) on the paper index's candidates,127.74
+V2 EVT-JHQ gev L1=32 eps=0.3,vogue-768,calib,0.9477499999999999,,,,,,0.7808516959222256,,,offline simulation (CPU) on the paper index's candidates,100.53
+V2 EVT-JHQ gev L1=32 eps=0.1,vogue-768,calib,0.9564999999999999,,,,,,0.9299087117163186,,,offline simulation (CPU) on the paper index's candidates,119.3125
+V2 EVT-JHQ gev L1=32 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9849051674968097,,,offline simulation (CPU) on the paper index's candidates,125.775
+V2 EVT-JHQ gev L1=32 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9967245446380529,,,offline simulation (CPU) on the paper index's candidates,127.265
+V2 EVT-JHQ gev L1=32 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9985179207862902,,,offline simulation (CPU) on the paper index's candidates,127.6075
+V2 EVT-JHQ gev L1=32 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,0.9991460062304612,,,offline simulation (CPU) on the paper index's candidates,127.7425
+V2 EVT-JHQ logistic L1=8 eps=0.3,vogue-768,calib,0.953,,,,,,0.9034922433655043,,,offline simulation (CPU) on the paper index's candidates,113.735
+V2 EVT-JHQ logistic L1=8 eps=0.1,vogue-768,calib,0.958,,,,,,0.9842729364518158,,,offline simulation (CPU) on the paper index's candidates,124.77
+V2 EVT-JHQ logistic L1=8 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9983649104286411,,,offline simulation (CPU) on the paper index's candidates,127.3875
+V2 EVT-JHQ logistic L1=8 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9994172469700234,,,offline simulation (CPU) on the paper index's candidates,127.77
+V2 EVT-JHQ logistic L1=8 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9996484853535923,,,offline simulation (CPU) on the paper index's candidates,127.875
+V2 EVT-JHQ logistic L1=8 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,0.9999374391148529,,,offline simulation (CPU) on the paper index's candidates,127.97
+V2 EVT-JHQ logistic L1=16 eps=0.3,vogue-768,calib,0.9560000000000001,,,,,,0.9385617112523343,,,offline simulation (CPU) on the paper index's candidates,117.9425
+V2 EVT-JHQ logistic L1=16 eps=0.1,vogue-768,calib,0.9585000000000001,,,,,,0.9961455064971256,,,offline simulation (CPU) on the paper index's candidates,126.6675
+V2 EVT-JHQ logistic L1=16 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9993587778467276,,,offline simulation (CPU) on the paper index's candidates,127.7475
+V2 EVT-JHQ logistic L1=16 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9996618912575524,,,offline simulation (CPU) on the paper index's candidates,127.8775
+V2 EVT-JHQ logistic L1=16 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9999541291960884,,,offline simulation (CPU) on the paper index's candidates,127.975
+V2 EVT-JHQ logistic L1=16 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,0.9999931086116189,,,offline simulation (CPU) on the paper index's candidates,127.9975
+V2 EVT-JHQ logistic L1=32 eps=0.3,vogue-768,calib,0.9567500000000001,,,,,,0.9603644489209755,,,offline simulation (CPU) on the paper index's candidates,119.535
+V2 EVT-JHQ logistic L1=32 eps=0.1,vogue-768,calib,0.9585000000000001,,,,,,0.9986080472249617,,,offline simulation (CPU) on the paper index's candidates,127.3175
+V2 EVT-JHQ logistic L1=32 eps=0.03,vogue-768,calib,0.9585000000000001,,,,,,0.9996263036972406,,,offline simulation (CPU) on the paper index's candidates,127.86
+V2 EVT-JHQ logistic L1=32 eps=0.01,vogue-768,calib,0.9585000000000001,,,,,,0.9999541291960884,,,offline simulation (CPU) on the paper index's candidates,127.975
+V2 EVT-JHQ logistic L1=32 eps=0.003,vogue-768,calib,0.9585000000000001,,,,,,0.9999931086116189,,,offline simulation (CPU) on the paper index's candidates,127.9975
+V2 EVT-JHQ logistic L1=32 eps=0.001,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ oracle,vogue-768,val,0.9574999999999999,,,,,,0.6142629446138933,,,offline simulation (CPU) on the paper index's candidates,72.715
+V2 EVT-JHQ global L1=8 eps=0.3,vogue-768,val,0.9570000000000001,,,,,,0.9393415857359205,,,offline simulation (CPU) on the paper index's candidates,120.795
+V2 EVT-JHQ global L1=8 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.3,vogue-768,val,0.9555,,,,,,0.9134390681747525,,,offline simulation (CPU) on the paper index's candidates,117.86
+V2 EVT-JHQ global L1=16 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.3,vogue-768,val,0.9570000000000001,,,,,,0.9410377990062434,,,offline simulation (CPU) on the paper index's candidates,120.94
+V2 EVT-JHQ global L1=32 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ iid_evt L1=8 eps=0.3,vogue-768,val,0.9560000000000001,,,,,,0.9319647154987742,,,offline simulation (CPU) on the paper index's candidates,114.395
+V2 EVT-JHQ iid_evt L1=8 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,0.9691132693970733,,,offline simulation (CPU) on the paper index's candidates,121.23
+V2 EVT-JHQ iid_evt L1=8 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.9853778631376193,,,offline simulation (CPU) on the paper index's candidates,124.945
+V2 EVT-JHQ iid_evt L1=8 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.9911583676254319,,,offline simulation (CPU) on the paper index's candidates,126.385
+V2 EVT-JHQ iid_evt L1=8 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,0.9944936531121914,,,offline simulation (CPU) on the paper index's candidates,127.18
+V2 EVT-JHQ iid_evt L1=8 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,0.9968810342172377,,,offline simulation (CPU) on the paper index's candidates,127.56
+V2 EVT-JHQ iid_evt L1=16 eps=0.3,vogue-768,val,0.9560000000000001,,,,,,0.9319662087318897,,,offline simulation (CPU) on the paper index's candidates,114.39
+V2 EVT-JHQ iid_evt L1=16 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,0.9690216844326566,,,offline simulation (CPU) on the paper index's candidates,121.24
+V2 EVT-JHQ iid_evt L1=16 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.9853719897540317,,,offline simulation (CPU) on the paper index's candidates,124.945
+V2 EVT-JHQ iid_evt L1=16 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.9911583676254319,,,offline simulation (CPU) on the paper index's candidates,126.385
+V2 EVT-JHQ iid_evt L1=16 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,0.9944936531121914,,,offline simulation (CPU) on the paper index's candidates,127.18
+V2 EVT-JHQ iid_evt L1=16 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,0.9968810342172377,,,offline simulation (CPU) on the paper index's candidates,127.56
+V2 EVT-JHQ iid_evt L1=32 eps=0.3,vogue-768,val,0.9560000000000001,,,,,,0.9332451131208701,,,offline simulation (CPU) on the paper index's candidates,114.515
+V2 EVT-JHQ iid_evt L1=32 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,0.9700242411463968,,,offline simulation (CPU) on the paper index's candidates,121.315
+V2 EVT-JHQ iid_evt L1=32 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.9859028839010258,,,offline simulation (CPU) on the paper index's candidates,124.985
+V2 EVT-JHQ iid_evt L1=32 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.991278622665666,,,offline simulation (CPU) on the paper index's candidates,126.4
+V2 EVT-JHQ iid_evt L1=32 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,0.9944936531121914,,,offline simulation (CPU) on the paper index's candidates,127.18
+V2 EVT-JHQ iid_evt L1=32 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,0.9968810342172377,,,offline simulation (CPU) on the paper index's candidates,127.56
+V2 EVT-JHQ gev L1=8 eps=0.3,vogue-768,val,0.944,,,,,,0.7226886916560223,,,offline simulation (CPU) on the paper index's candidates,92.765
+V2 EVT-JHQ gev L1=8 eps=0.1,vogue-768,val,0.9555,,,,,,0.9053974105545897,,,offline simulation (CPU) on the paper index's candidates,115.865
+V2 EVT-JHQ gev L1=8 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.9735185061855192,,,offline simulation (CPU) on the paper index's candidates,124.58
+V2 EVT-JHQ gev L1=8 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.9880426869555237,,,offline simulation (CPU) on the paper index's candidates,126.53
+V2 EVT-JHQ gev L1=8 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,0.9918132001210116,,,offline simulation (CPU) on the paper index's candidates,127.15
+V2 EVT-JHQ gev L1=8 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,0.9946432750703638,,,offline simulation (CPU) on the paper index's candidates,127.46
+V2 EVT-JHQ gev L1=16 eps=0.3,vogue-768,val,0.9465,,,,,,0.7334379791100669,,,offline simulation (CPU) on the paper index's candidates,94.25
+V2 EVT-JHQ gev L1=16 eps=0.1,vogue-768,val,0.9555,,,,,,0.9102979029930066,,,offline simulation (CPU) on the paper index's candidates,116.5
+V2 EVT-JHQ gev L1=16 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.9749554941869928,,,offline simulation (CPU) on the paper index's candidates,124.82
+V2 EVT-JHQ gev L1=16 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.98863998020172,,,offline simulation (CPU) on the paper index's candidates,126.655
+V2 EVT-JHQ gev L1=16 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,0.9923952623894299,,,offline simulation (CPU) on the paper index's candidates,127.2
+V2 EVT-JHQ gev L1=16 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,0.9947773674041346,,,offline simulation (CPU) on the paper index's candidates,127.47
+V2 EVT-JHQ gev L1=32 eps=0.3,vogue-768,val,0.9480000000000001,,,,,,0.7532760787937305,,,offline simulation (CPU) on the paper index's candidates,96.45
+V2 EVT-JHQ gev L1=32 eps=0.1,vogue-768,val,0.9560000000000001,,,,,,0.9216479679038502,,,offline simulation (CPU) on the paper index's candidates,117.715
+V2 EVT-JHQ gev L1=32 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.9777689444743257,,,offline simulation (CPU) on the paper index's candidates,125.085
+V2 EVT-JHQ gev L1=32 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.9894918199196701,,,offline simulation (CPU) on the paper index's candidates,126.755
+V2 EVT-JHQ gev L1=32 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,0.992855775482247,,,offline simulation (CPU) on the paper index's candidates,127.245
+V2 EVT-JHQ gev L1=32 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,0.994816091916263,,,offline simulation (CPU) on the paper index's candidates,127.48
+V2 EVT-JHQ logistic L1=8 eps=0.3,vogue-768,val,0.9515,,,,,,0.8874104221897627,,,offline simulation (CPU) on the paper index's candidates,110.7
+V2 EVT-JHQ logistic L1=8 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,0.9765856070047366,,,offline simulation (CPU) on the paper index's candidates,123.875
+V2 EVT-JHQ logistic L1=8 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.992047737269018,,,offline simulation (CPU) on the paper index's candidates,126.765
+V2 EVT-JHQ logistic L1=8 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.9961265532984176,,,offline simulation (CPU) on the paper index's candidates,127.535
+V2 EVT-JHQ logistic L1=8 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,0.9980778107848662,,,offline simulation (CPU) on the paper index's candidates,127.785
+V2 EVT-JHQ logistic L1=8 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,0.999989348270443,,,offline simulation (CPU) on the paper index's candidates,127.97
+V2 EVT-JHQ logistic L1=16 eps=0.3,vogue-768,val,0.9550000000000001,,,,,,0.9275292158525211,,,offline simulation (CPU) on the paper index's candidates,115.82
+V2 EVT-JHQ logistic L1=16 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,0.9895766355606299,,,offline simulation (CPU) on the paper index's candidates,126.09
+V2 EVT-JHQ logistic L1=16 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.9961103268318959,,,offline simulation (CPU) on the paper index's candidates,127.52
+V2 EVT-JHQ logistic L1=16 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.998151178305274,,,offline simulation (CPU) on the paper index's candidates,127.79
+V2 EVT-JHQ logistic L1=16 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,0.999989348270443,,,offline simulation (CPU) on the paper index's candidates,127.97
+V2 EVT-JHQ logistic L1=16 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=32 eps=0.3,vogue-768,val,0.9570000000000001,,,,,,0.9526243920425806,,,offline simulation (CPU) on the paper index's candidates,117.715
+V2 EVT-JHQ logistic L1=32 eps=0.1,vogue-768,val,0.9574999999999999,,,,,,0.9938856085875638,,,offline simulation (CPU) on the paper index's candidates,126.865
+V2 EVT-JHQ logistic L1=32 eps=0.03,vogue-768,val,0.9574999999999999,,,,,,0.9980646703334499,,,offline simulation (CPU) on the paper index's candidates,127.77
+V2 EVT-JHQ logistic L1=32 eps=0.01,vogue-768,val,0.9574999999999999,,,,,,0.999989348270443,,,offline simulation (CPU) on the paper index's candidates,127.97
+V2 EVT-JHQ logistic L1=32 eps=0.003,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=32 eps=0.001,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ oracle,vogue-768,test,0.9737500000000001,,,,,,0.6310502886258829,,,offline simulation (CPU) on the paper index's candidates,73.8775
+V2 EVT-JHQ global L1=8 eps=0.3,vogue-768,test,0.9737500000000001,,,,,,0.9355392305459705,,,offline simulation (CPU) on the paper index's candidates,120.4925
+V2 EVT-JHQ global L1=8 eps=0.1,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.03,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.01,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.003,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=8 eps=0.001,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.3,vogue-768,test,0.9734999999999999,,,,,,0.910459028024122,,,offline simulation (CPU) on the paper index's candidates,117.715
+V2 EVT-JHQ global L1=16 eps=0.1,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.03,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.01,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.003,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=16 eps=0.001,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.3,vogue-768,test,0.9737500000000001,,,,,,0.9366882130994227,,,offline simulation (CPU) on the paper index's candidates,120.6425
+V2 EVT-JHQ global L1=32 eps=0.1,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.03,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.01,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.003,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ global L1=32 eps=0.001,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ iid_evt L1=8 eps=0.3,vogue-768,test,0.9720000000000001,,,,,,0.9268876519720081,,,offline simulation (CPU) on the paper index's candidates,114.3475
+V2 EVT-JHQ iid_evt L1=8 eps=0.1,vogue-768,test,0.97325,,,,,,0.9659535231706923,,,offline simulation (CPU) on the paper index's candidates,121.1375
+V2 EVT-JHQ iid_evt L1=8 eps=0.03,vogue-768,test,0.9737500000000001,,,,,,0.9861448224708955,,,offline simulation (CPU) on the paper index's candidates,124.82
+V2 EVT-JHQ iid_evt L1=8 eps=0.01,vogue-768,test,0.9737500000000001,,,,,,0.9935806507788062,,,offline simulation (CPU) on the paper index's candidates,126.2775
+V2 EVT-JHQ iid_evt L1=8 eps=0.003,vogue-768,test,0.9737500000000001,,,,,,0.9974652004256828,,,offline simulation (CPU) on the paper index's candidates,127.2175
+V2 EVT-JHQ iid_evt L1=8 eps=0.001,vogue-768,test,0.9737500000000001,,,,,,0.9991899126060176,,,offline simulation (CPU) on the paper index's candidates,127.65
+V2 EVT-JHQ iid_evt L1=16 eps=0.3,vogue-768,test,0.9720000000000001,,,,,,0.9268383243574446,,,offline simulation (CPU) on the paper index's candidates,114.3575
+V2 EVT-JHQ iid_evt L1=16 eps=0.1,vogue-768,test,0.97325,,,,,,0.9659960398593957,,,offline simulation (CPU) on the paper index's candidates,121.145
+V2 EVT-JHQ iid_evt L1=16 eps=0.03,vogue-768,test,0.9737500000000001,,,,,,0.9861152052629882,,,offline simulation (CPU) on the paper index's candidates,124.81
+V2 EVT-JHQ iid_evt L1=16 eps=0.01,vogue-768,test,0.9737500000000001,,,,,,0.9935867909316649,,,offline simulation (CPU) on the paper index's candidates,126.2775
+V2 EVT-JHQ iid_evt L1=16 eps=0.003,vogue-768,test,0.9737500000000001,,,,,,0.9974652004256828,,,offline simulation (CPU) on the paper index's candidates,127.2175
+V2 EVT-JHQ iid_evt L1=16 eps=0.001,vogue-768,test,0.9737500000000001,,,,,,0.9991896546164017,,,offline simulation (CPU) on the paper index's candidates,127.6475
+V2 EVT-JHQ iid_evt L1=32 eps=0.3,vogue-768,test,0.9720000000000001,,,,,,0.9272141636299138,,,offline simulation (CPU) on the paper index's candidates,114.445
+V2 EVT-JHQ iid_evt L1=32 eps=0.1,vogue-768,test,0.97325,,,,,,0.9660202908832919,,,offline simulation (CPU) on the paper index's candidates,121.1575
+V2 EVT-JHQ iid_evt L1=32 eps=0.03,vogue-768,test,0.9737500000000001,,,,,,0.9861155148505273,,,offline simulation (CPU) on the paper index's candidates,124.8125
+V2 EVT-JHQ iid_evt L1=32 eps=0.01,vogue-768,test,0.9737500000000001,,,,,,0.9935871005192042,,,offline simulation (CPU) on the paper index's candidates,126.28
+V2 EVT-JHQ iid_evt L1=32 eps=0.003,vogue-768,test,0.9737500000000001,,,,,,0.9974652004256828,,,offline simulation (CPU) on the paper index's candidates,127.2175
+V2 EVT-JHQ iid_evt L1=32 eps=0.001,vogue-768,test,0.9737500000000001,,,,,,0.9991896546164017,,,offline simulation (CPU) on the paper index's candidates,127.6475
+V2 EVT-JHQ gev L1=8 eps=0.3,vogue-768,test,0.9637499999999999,,,,,,0.7287918217291754,,,offline simulation (CPU) on the paper index's candidates,93.915
+V2 EVT-JHQ gev L1=8 eps=0.1,vogue-768,test,0.97325,,,,,,0.9037711116127576,,,offline simulation (CPU) on the paper index's candidates,115.9375
+V2 EVT-JHQ gev L1=8 eps=0.03,vogue-768,test,0.9737500000000001,,,,,,0.9702871811409591,,,offline simulation (CPU) on the paper index's candidates,124.14
+V2 EVT-JHQ gev L1=8 eps=0.01,vogue-768,test,0.9737500000000001,,,,,,0.9888641878164404,,,offline simulation (CPU) on the paper index's candidates,126.4
+V2 EVT-JHQ gev L1=8 eps=0.003,vogue-768,test,0.9737500000000001,,,,,,0.9955132509916476,,,offline simulation (CPU) on the paper index's candidates,127.28
+V2 EVT-JHQ gev L1=8 eps=0.001,vogue-768,test,0.9737500000000001,,,,,,0.9978536295914089,,,offline simulation (CPU) on the paper index's candidates,127.625
+V2 EVT-JHQ gev L1=16 eps=0.3,vogue-768,test,0.9657500000000001,,,,,,0.7381566899932278,,,offline simulation (CPU) on the paper index's candidates,95.13
+V2 EVT-JHQ gev L1=16 eps=0.1,vogue-768,test,0.97325,,,,,,0.9090061853010416,,,offline simulation (CPU) on the paper index's candidates,116.6375
+V2 EVT-JHQ gev L1=16 eps=0.03,vogue-768,test,0.9737500000000001,,,,,,0.971977374310684,,,offline simulation (CPU) on the paper index's candidates,124.38
+V2 EVT-JHQ gev L1=16 eps=0.01,vogue-768,test,0.9737500000000001,,,,,,0.9896036892515077,,,offline simulation (CPU) on the paper index's candidates,126.51
+V2 EVT-JHQ gev L1=16 eps=0.003,vogue-768,test,0.9737500000000001,,,,,,0.9958344480634654,,,offline simulation (CPU) on the paper index's candidates,127.33
+V2 EVT-JHQ gev L1=16 eps=0.001,vogue-768,test,0.9737500000000001,,,,,,0.9981354574478378,,,offline simulation (CPU) on the paper index's candidates,127.6625
+V2 EVT-JHQ gev L1=32 eps=0.3,vogue-768,test,0.96675,,,,,,0.7586196007610694,,,offline simulation (CPU) on the paper index's candidates,97.5
+V2 EVT-JHQ gev L1=32 eps=0.1,vogue-768,test,0.97325,,,,,,0.9182919023509303,,,offline simulation (CPU) on the paper index's candidates,117.67
+V2 EVT-JHQ gev L1=32 eps=0.03,vogue-768,test,0.9737500000000001,,,,,,0.9744072753071689,,,offline simulation (CPU) on the paper index's candidates,124.655
+V2 EVT-JHQ gev L1=32 eps=0.01,vogue-768,test,0.9737500000000001,,,,,,0.9905170756877035,,,offline simulation (CPU) on the paper index's candidates,126.6375
+V2 EVT-JHQ gev L1=32 eps=0.003,vogue-768,test,0.9737500000000001,,,,,,0.9962212776935728,,,offline simulation (CPU) on the paper index's candidates,127.3725
+V2 EVT-JHQ gev L1=32 eps=0.001,vogue-768,test,0.9737500000000001,,,,,,0.9982949466283981,,,offline simulation (CPU) on the paper index's candidates,127.6925
+V2 EVT-JHQ logistic L1=8 eps=0.3,vogue-768,test,0.9702500000000001,,,,,,0.8861340127059886,,,offline simulation (CPU) on the paper index's candidates,111.085
+V2 EVT-JHQ logistic L1=8 eps=0.1,vogue-768,test,0.9737500000000001,,,,,,0.9707699313102648,,,offline simulation (CPU) on the paper index's candidates,123.2
+V2 EVT-JHQ logistic L1=8 eps=0.03,vogue-768,test,0.9737500000000001,,,,,,0.9934881873004612,,,offline simulation (CPU) on the paper index's candidates,126.695
+V2 EVT-JHQ logistic L1=8 eps=0.01,vogue-768,test,0.9737500000000001,,,,,,0.9986530362152924,,,offline simulation (CPU) on the paper index's candidates,127.6275
+V2 EVT-JHQ logistic L1=8 eps=0.003,vogue-768,test,0.9737500000000001,,,,,,0.9999121287368183,,,offline simulation (CPU) on the paper index's candidates,127.95
+V2 EVT-JHQ logistic L1=8 eps=0.001,vogue-768,test,0.9737500000000001,,,,,,0.9999986068560741,,,offline simulation (CPU) on the paper index's candidates,127.995
+V2 EVT-JHQ logistic L1=16 eps=0.3,vogue-768,test,0.9722500000000001,,,,,,0.9252037021509885,,,offline simulation (CPU) on the paper index's candidates,115.74
+V2 EVT-JHQ logistic L1=16 eps=0.1,vogue-768,test,0.9737500000000001,,,,,,0.9892328549775872,,,offline simulation (CPU) on the paper index's candidates,125.8075
+V2 EVT-JHQ logistic L1=16 eps=0.03,vogue-768,test,0.9737500000000001,,,,,,0.998683582185817,,,offline simulation (CPU) on the paper index's candidates,127.615
+V2 EVT-JHQ logistic L1=16 eps=0.01,vogue-768,test,0.9737500000000001,,,,,,0.9999149150246703,,,offline simulation (CPU) on the paper index's candidates,127.95
+V2 EVT-JHQ logistic L1=16 eps=0.003,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=16 eps=0.001,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=32 eps=0.3,vogue-768,test,0.9727499999999999,,,,,,0.9474943145538393,,,offline simulation (CPU) on the paper index's candidates,117.6575
+V2 EVT-JHQ logistic L1=32 eps=0.1,vogue-768,test,0.9737500000000001,,,,,,0.9960410977458157,,,offline simulation (CPU) on the paper index's candidates,126.8375
+V2 EVT-JHQ logistic L1=32 eps=0.03,vogue-768,test,0.9737500000000001,,,,,,0.9998611499887129,,,offline simulation (CPU) on the paper index's candidates,127.915
+V2 EVT-JHQ logistic L1=32 eps=0.01,vogue-768,test,0.9737500000000001,,,,,,0.9999992260311523,,,offline simulation (CPU) on the paper index's candidates,127.9975
+V2 EVT-JHQ logistic L1=32 eps=0.003,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+V2 EVT-JHQ logistic L1=32 eps=0.001,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU) on the paper index's candidates,128.0
+B0 nprobe cut to 8,vogue-768,calib,0.63825,,,,,,0.06926297570365651,,,offline simulation (CPU),8
+B0 nprobe cut to 12,vogue-768,calib,0.70125,,,,,,0.10252528466548717,,,offline simulation (CPU),12
+B0 nprobe cut to 16,vogue-768,calib,0.74275,,,,,,0.13579351591420782,,,offline simulation (CPU),16
+B0 nprobe cut to 24,vogue-768,calib,0.80475,,,,,,0.20121588856969558,,,offline simulation (CPU),24
+B0 nprobe cut to 32,vogue-768,calib,0.8390000000000001,,,,,,0.2644981082600504,,,offline simulation (CPU),32
+B0 nprobe cut to 48,vogue-768,calib,0.885,,,,,,0.39050100716564407,,,offline simulation (CPU),48
+B0 nprobe cut to 64,vogue-768,calib,0.9119999999999999,,,,,,0.5102334425510714,,,offline simulation (CPU),64
+B0 nprobe cut to 80,vogue-768,calib,0.92925,,,,,,0.630305009619409,,,offline simulation (CPU),80
+B0 nprobe cut to 96,vogue-768,calib,0.9390000000000001,,,,,,0.7494210964565019,,,offline simulation (CPU),96
+B0 nprobe cut to 112,vogue-768,calib,0.952,,,,,,0.8733876439344531,,,offline simulation (CPU),112
+B0 nprobe cut to 128,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU),128
+B0 nprobe cut to 8,vogue-768,val,0.6745,,,,,,0.07363490868431528,,,offline simulation (CPU),8
+B0 nprobe cut to 12,vogue-768,val,0.734,,,,,,0.10951799729167333,,,offline simulation (CPU),12
+B0 nprobe cut to 16,vogue-768,val,0.7805,,,,,,0.14318214148941244,,,offline simulation (CPU),16
+B0 nprobe cut to 24,vogue-768,val,0.8324999999999999,,,,,,0.20919210414166123,,,offline simulation (CPU),24
+B0 nprobe cut to 32,vogue-768,val,0.8625,,,,,,0.2728166766663511,,,offline simulation (CPU),32
+B0 nprobe cut to 48,vogue-768,val,0.8965,,,,,,0.3944795370818064,,,offline simulation (CPU),48
+B0 nprobe cut to 64,vogue-768,val,0.9205,,,,,,0.5129554398333074,,,offline simulation (CPU),64
+B0 nprobe cut to 80,vogue-768,val,0.9349999999999999,,,,,,0.6327960581034925,,,offline simulation (CPU),80
+B0 nprobe cut to 96,vogue-768,val,0.944,,,,,,0.7535014574452952,,,offline simulation (CPU),96
+B0 nprobe cut to 112,vogue-768,val,0.95,,,,,,0.8737877560260169,,,offline simulation (CPU),112
+B0 nprobe cut to 128,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU),128
+B0 nprobe cut to 8,vogue-768,calib,0.63825,,,,,,0.06926297570365651,,,offline simulation (CPU),8
+B0 nprobe cut to 12,vogue-768,calib,0.70125,,,,,,0.10252528466548717,,,offline simulation (CPU),12
+B0 nprobe cut to 16,vogue-768,calib,0.74275,,,,,,0.13579351591420782,,,offline simulation (CPU),16
+B0 nprobe cut to 24,vogue-768,calib,0.80475,,,,,,0.20121588856969558,,,offline simulation (CPU),24
+B0 nprobe cut to 32,vogue-768,calib,0.8390000000000001,,,,,,0.2644981082600504,,,offline simulation (CPU),32
+B0 nprobe cut to 48,vogue-768,calib,0.885,,,,,,0.39050100716564407,,,offline simulation (CPU),48
+B0 nprobe cut to 64,vogue-768,calib,0.9119999999999999,,,,,,0.5102334425510714,,,offline simulation (CPU),64
+B0 nprobe cut to 80,vogue-768,calib,0.92925,,,,,,0.630305009619409,,,offline simulation (CPU),80
+B0 nprobe cut to 96,vogue-768,calib,0.9390000000000001,,,,,,0.7494210964565019,,,offline simulation (CPU),96
+B0 nprobe cut to 112,vogue-768,calib,0.952,,,,,,0.8733876439344531,,,offline simulation (CPU),112
+B0 nprobe cut to 128,vogue-768,calib,0.9585000000000001,,,,,,1.0,,,offline simulation (CPU),128
+B0 nprobe cut to 8,vogue-768,val,0.6745,,,,,,0.07363490868431528,,,offline simulation (CPU),8
+B0 nprobe cut to 12,vogue-768,val,0.734,,,,,,0.10951799729167333,,,offline simulation (CPU),12
+B0 nprobe cut to 16,vogue-768,val,0.7805,,,,,,0.14318214148941244,,,offline simulation (CPU),16
+B0 nprobe cut to 24,vogue-768,val,0.8324999999999999,,,,,,0.20919210414166123,,,offline simulation (CPU),24
+B0 nprobe cut to 32,vogue-768,val,0.8625,,,,,,0.2728166766663511,,,offline simulation (CPU),32
+B0 nprobe cut to 48,vogue-768,val,0.8965,,,,,,0.3944795370818064,,,offline simulation (CPU),48
+B0 nprobe cut to 64,vogue-768,val,0.9205,,,,,,0.5129554398333074,,,offline simulation (CPU),64
+B0 nprobe cut to 80,vogue-768,val,0.9349999999999999,,,,,,0.6327960581034925,,,offline simulation (CPU),80
+B0 nprobe cut to 96,vogue-768,val,0.944,,,,,,0.7535014574452952,,,offline simulation (CPU),96
+B0 nprobe cut to 112,vogue-768,val,0.95,,,,,,0.8737877560260169,,,offline simulation (CPU),112
+B0 nprobe cut to 128,vogue-768,val,0.9574999999999999,,,,,,1.0,,,offline simulation (CPU),128
+B0 nprobe cut to 8,vogue-768,test,0.67,,,,,,0.07028973523815667,,,offline simulation (CPU),8
+B0 nprobe cut to 12,vogue-768,test,0.7455,,,,,,0.10449286336224967,,,offline simulation (CPU),12
+B0 nprobe cut to 16,vogue-768,test,0.78275,,,,,,0.13739360830726563,,,offline simulation (CPU),16
+B0 nprobe cut to 24,vogue-768,test,0.8365,,,,,,0.20338136669999032,,,offline simulation (CPU),24
+B0 nprobe cut to 32,vogue-768,test,0.86825,,,,,,0.26756087587474603,,,offline simulation (CPU),32
+B0 nprobe cut to 48,vogue-768,test,0.9119999999999999,,,,,,0.39205010158341125,,,offline simulation (CPU),48
+B0 nprobe cut to 64,vogue-768,test,0.9355,,,,,,0.5124139185397788,,,offline simulation (CPU),64
+B0 nprobe cut to 80,vogue-768,test,0.9497500000000001,,,,,,0.6305172304814731,,,offline simulation (CPU),80
+B0 nprobe cut to 96,vogue-768,test,0.96,,,,,,0.7494201038408204,,,offline simulation (CPU),96
+B0 nprobe cut to 112,vogue-768,test,0.968,,,,,,0.8729862427037312,,,offline simulation (CPU),112
+B0 nprobe cut to 128,vogue-768,test,0.9737500000000001,,,,,,1.0,,,offline simulation (CPU),128
+B0 v65 (paper index),openai3-3072,calib,0.9305000000000001,40,0.9305000000000001,1.0,0.9305,2.516964285714286e-05,1.0,18462.8,144580.1,"offline (CPU, FP64) on the paper index's candidates; QPS GPU measured",
+B0 re-implemented (retrained residual),openai3-3072,calib,0.93,,0.9305000000000001,1.0,0.93,2.493700396825397e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8 primary + paper D_H (isolation only),openai3-3072,calib,0.9305000000000001,30,0.9305000000000001,1.0,0.9305,2.580753968253968e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (global scale),openai3-3072,calib,0.9305,30,0.9305000000000001,1.0,0.9305,2.580753968253968e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (per-subspace scale),openai3-3072,calib,0.9307500000000001,25,0.9305000000000001,1.0,0.93075,2.4836805555555557e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+B0 v65 (paper index),openai3-3072,val,0.9025000000000007,25,0.9025,1.0,0.9025000000000001,3.7729166666666664e-05,1.0,18462.8,144580.1,"offline (CPU, FP64) on the paper index's candidates; QPS GPU measured",
+B0 re-implemented (retrained residual),openai3-3072,val,0.9015000000000007,,0.9025,1.0,0.9015000000000001,3.822916666666667e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8 primary + paper D_H (isolation only),openai3-3072,val,0.9025000000000007,25,0.9025,1.0,0.9025000000000001,4.024603174603175e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (global scale),openai3-3072,val,0.9030000000000007,25,0.9025,1.0,0.9029999999999999,4.024603174603175e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (per-subspace scale),openai3-3072,val,0.9025000000000007,25,0.9025,1.0,0.9025000000000001,3.953075396825397e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+B0 v65 (paper index),openai3-3072,calib,0.9305000000000001,40,0.9305000000000001,1.0,0.9305,2.516964285714286e-05,1.0,18462.8,144580.1,"offline (CPU, FP64) on the paper index's candidates; QPS GPU measured",
+B0 re-implemented (retrained residual),openai3-3072,calib,0.93,,0.9305000000000001,1.0,0.93,2.493700396825397e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8 primary + paper D_H (isolation only),openai3-3072,calib,0.9305000000000001,30,0.9305000000000001,1.0,0.9305,2.580753968253968e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (global scale),openai3-3072,calib,0.9305,30,0.9305000000000001,1.0,0.9305,2.580753968253968e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (per-subspace scale),openai3-3072,calib,0.9307500000000001,25,0.9305000000000001,1.0,0.93075,2.4836805555555557e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+B0 v65 (paper index),openai3-3072,val,0.9025000000000007,25,0.9025,1.0,0.9025000000000001,3.7729166666666664e-05,1.0,18462.8,144580.1,"offline (CPU, FP64) on the paper index's candidates; QPS GPU measured",
+B0 re-implemented (retrained residual),openai3-3072,val,0.9015000000000007,,0.9025,1.0,0.9015000000000001,3.822916666666667e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8 primary + paper D_H (isolation only),openai3-3072,val,0.9025000000000007,25,0.9025,1.0,0.9025000000000001,4.024603174603175e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (global scale),openai3-3072,val,0.9030000000000007,25,0.9025,1.0,0.9029999999999999,4.024603174603175e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (per-subspace scale),openai3-3072,val,0.9025000000000007,25,0.9025,1.0,0.9025000000000001,3.953075396825397e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+B0 v65 (paper index),openai3-3072,test,0.9352499999999994,35,0.93525,1.0,0.9352499999999999,4.234474206349207e-05,1.0,18462.8,144580.1,"offline (CPU, FP64) on the paper index's candidates; QPS GPU measured",
+B0 re-implemented (retrained residual),openai3-3072,test,0.9347499999999992,,0.93525,1.0,0.93475,4.246974206349206e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8 primary + paper D_H (isolation only),openai3-3072,test,0.9352499999999994,35,0.93525,1.0,0.9352499999999999,2.892361111111111e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (global scale),openai3-3072,test,0.9354999999999992,30,0.93525,1.0,0.9355,2.892361111111111e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V1 E8-JHQ (per-subspace scale),openai3-3072,test,0.9357499999999991,30,0.93525,1.0,0.93575,2.908829365079365e-05,1.0,,,"offline (CPU, FP64) on the paper index's candidates",
+V2 EVT-JHQ oracle,openai3-3072,calib,0.9305,,,,,,0.12279854020513375,,,offline simulation (CPU) on the paper index's candidates,13.395
+V2 EVT-JHQ global L1=8 eps=0.3,openai3-3072,calib,0.8035,,,,,,0.14255501627055098,,,offline simulation (CPU) on the paper index's candidates,17.46
+V2 EVT-JHQ global L1=8 eps=0.1,openai3-3072,calib,0.876,,,,,,0.34159659421080013,,,offline simulation (CPU) on the paper index's candidates,43.435
+V2 EVT-JHQ global L1=8 eps=0.03,openai3-3072,calib,0.917,,,,,,0.6797881606078907,,,offline simulation (CPU) on the paper index's candidates,87.025
+V2 EVT-JHQ global L1=8 eps=0.01,openai3-3072,calib,0.9295,,,,,,0.9257224263311274,,,offline simulation (CPU) on the paper index's candidates,118.46
+V2 EVT-JHQ global L1=8 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.9514115964011451,,,offline simulation (CPU) on the paper index's candidates,121.7375
+V2 EVT-JHQ global L1=8 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9756229974523475,,,offline simulation (CPU) on the paper index's candidates,124.915
+V2 EVT-JHQ global L1=16 eps=0.3,openai3-3072,calib,0.8085000000000001,,,,,,0.14954046264544174,,,offline simulation (CPU) on the paper index's candidates,18.45
+V2 EVT-JHQ global L1=16 eps=0.1,openai3-3072,calib,0.8797499999999999,,,,,,0.3612395421567297,,,offline simulation (CPU) on the paper index's candidates,45.9775
+V2 EVT-JHQ global L1=16 eps=0.03,openai3-3072,calib,0.9164999999999999,,,,,,0.6699012889996283,,,offline simulation (CPU) on the paper index's candidates,85.805
+V2 EVT-JHQ global L1=16 eps=0.01,openai3-3072,calib,0.93,,,,,,0.9333524676934323,,,offline simulation (CPU) on the paper index's candidates,119.41
+V2 EVT-JHQ global L1=16 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.9555922863965033,,,offline simulation (CPU) on the paper index's candidates,122.29
+V2 EVT-JHQ global L1=16 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9774582100952739,,,offline simulation (CPU) on the paper index's candidates,125.15
+V2 EVT-JHQ global L1=32 eps=0.3,openai3-3072,calib,0.84825,,,,,,0.25219517156070304,,,offline simulation (CPU) on the paper index's candidates,32.0
+V2 EVT-JHQ global L1=32 eps=0.1,openai3-3072,calib,0.8772500000000001,,,,,,0.35538081138207095,,,offline simulation (CPU) on the paper index's candidates,45.215
+V2 EVT-JHQ global L1=32 eps=0.03,openai3-3072,calib,0.9185000000000001,,,,,,0.7082006459274133,,,offline simulation (CPU) on the paper index's candidates,90.65
+V2 EVT-JHQ global L1=32 eps=0.01,openai3-3072,calib,0.9305,,,,,,0.9434261508420252,,,offline simulation (CPU) on the paper index's candidates,120.7
+V2 EVT-JHQ global L1=32 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.9626266790265026,,,offline simulation (CPU) on the paper index's candidates,123.1875
+V2 EVT-JHQ global L1=32 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9626266790265026,,,offline simulation (CPU) on the paper index's candidates,123.1875
+V2 EVT-JHQ iid_evt L1=8 eps=0.3,openai3-3072,calib,0.88025,,,,,,0.39560552363927376,,,offline simulation (CPU) on the paper index's candidates,42.98
+V2 EVT-JHQ iid_evt L1=8 eps=0.1,openai3-3072,calib,0.9095000000000001,,,,,,0.6111430772456202,,,offline simulation (CPU) on the paper index's candidates,68.9075
+V2 EVT-JHQ iid_evt L1=8 eps=0.03,openai3-3072,calib,0.9237500000000001,,,,,,0.8099166744391507,,,offline simulation (CPU) on the paper index's candidates,95.915
+V2 EVT-JHQ iid_evt L1=8 eps=0.01,openai3-3072,calib,0.9289999999999999,,,,,,0.911342560427551,,,offline simulation (CPU) on the paper index's candidates,112.335
+V2 EVT-JHQ iid_evt L1=8 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.955278214592891,,,offline simulation (CPU) on the paper index's candidates,120.685
+V2 EVT-JHQ iid_evt L1=8 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9687044442927716,,,offline simulation (CPU) on the paper index's candidates,123.38
+V2 EVT-JHQ iid_evt L1=16 eps=0.3,openai3-3072,calib,0.88275,,,,,,0.40429620315741416,,,offline simulation (CPU) on the paper index's candidates,44.5375
+V2 EVT-JHQ iid_evt L1=16 eps=0.1,openai3-3072,calib,0.9097500000000001,,,,,,0.6149336927801283,,,offline simulation (CPU) on the paper index's candidates,69.585
+V2 EVT-JHQ iid_evt L1=16 eps=0.03,openai3-3072,calib,0.9237500000000001,,,,,,0.8122242184438735,,,offline simulation (CPU) on the paper index's candidates,96.26
+V2 EVT-JHQ iid_evt L1=16 eps=0.01,openai3-3072,calib,0.9289999999999999,,,,,,0.9126229128840956,,,offline simulation (CPU) on the paper index's candidates,112.5375
+V2 EVT-JHQ iid_evt L1=16 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.9560979284041372,,,offline simulation (CPU) on the paper index's candidates,120.8125
+V2 EVT-JHQ iid_evt L1=16 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9693165444052663,,,offline simulation (CPU) on the paper index's candidates,123.4725
+V2 EVT-JHQ iid_evt L1=32 eps=0.3,openai3-3072,calib,0.8915,,,,,,0.44807835642826127,,,offline simulation (CPU) on the paper index's candidates,51.405
+V2 EVT-JHQ iid_evt L1=32 eps=0.1,openai3-3072,calib,0.91225,,,,,,0.6337537997929573,,,offline simulation (CPU) on the paper index's candidates,72.9425
+V2 EVT-JHQ iid_evt L1=32 eps=0.03,openai3-3072,calib,0.9244999999999999,,,,,,0.8202046334156627,,,offline simulation (CPU) on the paper index's candidates,97.6475
+V2 EVT-JHQ iid_evt L1=32 eps=0.01,openai3-3072,calib,0.92925,,,,,,0.9175384765151788,,,offline simulation (CPU) on the paper index's candidates,113.27
+V2 EVT-JHQ iid_evt L1=32 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.9589660429916712,,,offline simulation (CPU) on the paper index's candidates,121.215
+V2 EVT-JHQ iid_evt L1=32 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9715977118169585,,,offline simulation (CPU) on the paper index's candidates,123.77
+V2 EVT-JHQ gev L1=8 eps=0.3,openai3-3072,calib,0.8567500000000001,,,,,,0.2739436242472134,,,offline simulation (CPU) on the paper index's candidates,32.19
+V2 EVT-JHQ gev L1=8 eps=0.1,openai3-3072,calib,0.9005000000000001,,,,,,0.48433760625076305,,,offline simulation (CPU) on the paper index's candidates,58.6375
+V2 EVT-JHQ gev L1=8 eps=0.03,openai3-3072,calib,0.9189999999999999,,,,,,0.7022425270625204,,,offline simulation (CPU) on the paper index's candidates,86.625
+V2 EVT-JHQ gev L1=8 eps=0.01,openai3-3072,calib,0.92675,,,,,,0.8481933257430382,,,offline simulation (CPU) on the paper index's candidates,105.935
+V2 EVT-JHQ gev L1=8 eps=0.003,openai3-3072,calib,0.92925,,,,,,0.921035142595397,,,offline simulation (CPU) on the paper index's candidates,116.605
+V2 EVT-JHQ gev L1=8 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9476042575628083,,,offline simulation (CPU) on the paper index's candidates,120.675
+V2 EVT-JHQ gev L1=16 eps=0.3,openai3-3072,calib,0.8630000000000001,,,,,,0.29310581119852247,,,offline simulation (CPU) on the paper index's candidates,34.885
+V2 EVT-JHQ gev L1=16 eps=0.1,openai3-3072,calib,0.9005000000000001,,,,,,0.49028987875740687,,,offline simulation (CPU) on the paper index's candidates,59.59
+V2 EVT-JHQ gev L1=16 eps=0.03,openai3-3072,calib,0.9185000000000001,,,,,,0.7035428659065677,,,offline simulation (CPU) on the paper index's candidates,86.895
+V2 EVT-JHQ gev L1=16 eps=0.01,openai3-3072,calib,0.92675,,,,,,0.8481674929972864,,,offline simulation (CPU) on the paper index's candidates,106.035
+V2 EVT-JHQ gev L1=16 eps=0.003,openai3-3072,calib,0.9295,,,,,,0.921902035158095,,,offline simulation (CPU) on the paper index's candidates,116.765
+V2 EVT-JHQ gev L1=16 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9480600015825955,,,offline simulation (CPU) on the paper index's candidates,120.76
+V2 EVT-JHQ gev L1=32 eps=0.3,openai3-3072,calib,0.8787499999999999,,,,,,0.3606977343050434,,,offline simulation (CPU) on the paper index's candidates,44.1225
+V2 EVT-JHQ gev L1=32 eps=0.1,openai3-3072,calib,0.9047499999999999,,,,,,0.52312234687504,,,offline simulation (CPU) on the paper index's candidates,64.4525
+V2 EVT-JHQ gev L1=32 eps=0.03,openai3-3072,calib,0.9195,,,,,,0.7149807899544881,,,offline simulation (CPU) on the paper index's candidates,88.7975
+V2 EVT-JHQ gev L1=32 eps=0.01,openai3-3072,calib,0.9269999999999999,,,,,,0.85415198845521,,,offline simulation (CPU) on the paper index's candidates,107.1775
+V2 EVT-JHQ gev L1=32 eps=0.003,openai3-3072,calib,0.9295,,,,,,0.92599897267249,,,offline simulation (CPU) on the paper index's candidates,117.4825
+V2 EVT-JHQ gev L1=32 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9517664567506811,,,offline simulation (CPU) on the paper index's candidates,121.335
+V2 EVT-JHQ logistic L1=8 eps=0.3,openai3-3072,calib,0.8227499999999999,,,,,,0.17934832412101365,,,offline simulation (CPU) on the paper index's candidates,19.265
+V2 EVT-JHQ logistic L1=8 eps=0.1,openai3-3072,calib,0.89,,,,,,0.41972338295849115,,,offline simulation (CPU) on the paper index's candidates,47.25
+V2 EVT-JHQ logistic L1=8 eps=0.03,openai3-3072,calib,0.91975,,,,,,0.7089415018832073,,,offline simulation (CPU) on the paper index's candidates,84.4025
+V2 EVT-JHQ logistic L1=8 eps=0.01,openai3-3072,calib,0.9285,,,,,,0.8871735794641092,,,offline simulation (CPU) on the paper index's candidates,109.715
+V2 EVT-JHQ logistic L1=8 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.9574390557941082,,,offline simulation (CPU) on the paper index's candidates,121.4125
+V2 EVT-JHQ logistic L1=8 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.97796806691932,,,offline simulation (CPU) on the paper index's candidates,124.7425
+V2 EVT-JHQ logistic L1=16 eps=0.3,openai3-3072,calib,0.8210000000000001,,,,,,0.1772742265607941,,,offline simulation (CPU) on the paper index's candidates,20.1175
+V2 EVT-JHQ logistic L1=16 eps=0.1,openai3-3072,calib,0.8835000000000001,,,,,,0.3957500510536633,,,offline simulation (CPU) on the paper index's candidates,43.8725
+V2 EVT-JHQ logistic L1=16 eps=0.03,openai3-3072,calib,0.91975,,,,,,0.7143703213838304,,,offline simulation (CPU) on the paper index's candidates,84.0825
+V2 EVT-JHQ logistic L1=16 eps=0.01,openai3-3072,calib,0.92875,,,,,,0.9030479376903295,,,offline simulation (CPU) on the paper index's candidates,111.49
+V2 EVT-JHQ logistic L1=16 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.9670780690049743,,,offline simulation (CPU) on the paper index's candidates,122.7175
+V2 EVT-JHQ logistic L1=16 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9833053841152543,,,offline simulation (CPU) on the paper index's candidates,125.51
+V2 EVT-JHQ logistic L1=32 eps=0.3,openai3-3072,calib,0.851,,,,,,0.2590950979509738,,,offline simulation (CPU) on the paper index's candidates,32.4325
+V2 EVT-JHQ logistic L1=32 eps=0.1,openai3-3072,calib,0.88475,,,,,,0.3978949847219703,,,offline simulation (CPU) on the paper index's candidates,45.325
+V2 EVT-JHQ logistic L1=32 eps=0.03,openai3-3072,calib,0.9199999999999999,,,,,,0.7108706641435779,,,offline simulation (CPU) on the paper index's candidates,82.75
+V2 EVT-JHQ logistic L1=32 eps=0.01,openai3-3072,calib,0.92875,,,,,,0.9126124438239751,,,offline simulation (CPU) on the paper index's candidates,112.2675
+V2 EVT-JHQ logistic L1=32 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.972666371720159,,,offline simulation (CPU) on the paper index's candidates,123.4425
+V2 EVT-JHQ logistic L1=32 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9865665643236728,,,offline simulation (CPU) on the paper index's candidates,125.99
+V2 EVT-JHQ oracle,openai3-3072,val,0.9025000000000001,,,,,,0.12283810658338845,,,offline simulation (CPU) on the paper index's candidates,13.61
+V2 EVT-JHQ global L1=8 eps=0.3,openai3-3072,val,0.7755,,,,,,0.15343835251299026,,,offline simulation (CPU) on the paper index's candidates,18.715
+V2 EVT-JHQ global L1=8 eps=0.1,openai3-3072,val,0.8545,,,,,,0.3650680694087488,,,offline simulation (CPU) on the paper index's candidates,46.46
+V2 EVT-JHQ global L1=8 eps=0.03,openai3-3072,val,0.8965,,,,,,0.7158846719604055,,,offline simulation (CPU) on the paper index's candidates,91.98
+V2 EVT-JHQ global L1=8 eps=0.01,openai3-3072,val,0.9025000000000001,,,,,,0.9362003547441268,,,offline simulation (CPU) on the paper index's candidates,120.005
+V2 EVT-JHQ global L1=8 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9672149624359536,,,offline simulation (CPU) on the paper index's candidates,123.805
+V2 EVT-JHQ global L1=8 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9900709488253626,,,offline simulation (CPU) on the paper index's candidates,126.68
+V2 EVT-JHQ global L1=16 eps=0.3,openai3-3072,val,0.7815000000000001,,,,,,0.15806955134849934,,,offline simulation (CPU) on the paper index's candidates,19.295
+V2 EVT-JHQ global L1=16 eps=0.1,openai3-3072,val,0.8585,,,,,,0.38394250819673925,,,offline simulation (CPU) on the paper index's candidates,49.025
+V2 EVT-JHQ global L1=16 eps=0.03,openai3-3072,val,0.8955,,,,,,0.7060463909666393,,,offline simulation (CPU) on the paper index's candidates,90.635
+V2 EVT-JHQ global L1=16 eps=0.01,openai3-3072,val,0.9025000000000001,,,,,,0.9437477170339705,,,offline simulation (CPU) on the paper index's candidates,120.975
+V2 EVT-JHQ global L1=16 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9704588309239472,,,offline simulation (CPU) on the paper index's candidates,124.215
+V2 EVT-JHQ global L1=16 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9906418960053442,,,offline simulation (CPU) on the paper index's candidates,126.75
+V2 EVT-JHQ global L1=32 eps=0.3,openai3-3072,val,0.8160000000000001,,,,,,0.2511018567575246,,,offline simulation (CPU) on the paper index's candidates,32.0
+V2 EVT-JHQ global L1=32 eps=0.1,openai3-3072,val,0.8525,,,,,,0.36172876882727123,,,offline simulation (CPU) on the paper index's candidates,46.315
+V2 EVT-JHQ global L1=32 eps=0.03,openai3-3072,val,0.8975,,,,,,0.7402160165766642,,,offline simulation (CPU) on the paper index's candidates,95.05
+V2 EVT-JHQ global L1=32 eps=0.01,openai3-3072,val,0.9025000000000001,,,,,,0.9533855357853896,,,offline simulation (CPU) on the paper index's candidates,122.175
+V2 EVT-JHQ global L1=32 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9769235325670246,,,offline simulation (CPU) on the paper index's candidates,124.97
+V2 EVT-JHQ global L1=32 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9769235325670246,,,offline simulation (CPU) on the paper index's candidates,124.97
+V2 EVT-JHQ iid_evt L1=8 eps=0.3,openai3-3072,val,0.8615,,,,,,0.42638456062296315,,,offline simulation (CPU) on the paper index's candidates,46.37
+V2 EVT-JHQ iid_evt L1=8 eps=0.1,openai3-3072,val,0.885,,,,,,0.6457009487266397,,,offline simulation (CPU) on the paper index's candidates,73.45
+V2 EVT-JHQ iid_evt L1=8 eps=0.03,openai3-3072,val,0.8995,,,,,,0.8259793033018408,,,offline simulation (CPU) on the paper index's candidates,99.13
+V2 EVT-JHQ iid_evt L1=8 eps=0.01,openai3-3072,val,0.901,,,,,,0.9221008113921787,,,offline simulation (CPU) on the paper index's candidates,114.205
+V2 EVT-JHQ iid_evt L1=8 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9713997145812561,,,offline simulation (CPU) on the paper index's candidates,122.725
+V2 EVT-JHQ iid_evt L1=8 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9834773590100511,,,offline simulation (CPU) on the paper index's candidates,125.285
+V2 EVT-JHQ iid_evt L1=16 eps=0.3,openai3-3072,val,0.8644999999999999,,,,,,0.43370979648831837,,,offline simulation (CPU) on the paper index's candidates,47.72
+V2 EVT-JHQ iid_evt L1=16 eps=0.1,openai3-3072,val,0.8865000000000001,,,,,,0.6487764399002679,,,offline simulation (CPU) on the paper index's candidates,74.03
+V2 EVT-JHQ iid_evt L1=16 eps=0.03,openai3-3072,val,0.8995,,,,,,0.8270243944175516,,,offline simulation (CPU) on the paper index's candidates,99.325
+V2 EVT-JHQ iid_evt L1=16 eps=0.01,openai3-3072,val,0.901,,,,,,0.922380526148942,,,offline simulation (CPU) on the paper index's candidates,114.255
+V2 EVT-JHQ iid_evt L1=16 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.971491581682742,,,offline simulation (CPU) on the paper index's candidates,122.745
+V2 EVT-JHQ iid_evt L1=16 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9834773590100511,,,offline simulation (CPU) on the paper index's candidates,125.285
+V2 EVT-JHQ iid_evt L1=32 eps=0.3,openai3-3072,val,0.869,,,,,,0.47033433043417217,,,offline simulation (CPU) on the paper index's candidates,53.845
+V2 EVT-JHQ iid_evt L1=32 eps=0.1,openai3-3072,val,0.8880000000000001,,,,,,0.6641067281819748,,,offline simulation (CPU) on the paper index's candidates,76.915
+V2 EVT-JHQ iid_evt L1=32 eps=0.03,openai3-3072,val,0.899,,,,,,0.832690537853085,,,offline simulation (CPU) on the paper index's candidates,100.465
+V2 EVT-JHQ iid_evt L1=32 eps=0.01,openai3-3072,val,0.901,,,,,,0.9251307803602945,,,offline simulation (CPU) on the paper index's candidates,114.75
+V2 EVT-JHQ iid_evt L1=32 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9725783557818136,,,offline simulation (CPU) on the paper index's candidates,122.94
+V2 EVT-JHQ iid_evt L1=32 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9840688734515594,,,offline simulation (CPU) on the paper index's candidates,125.395
+V2 EVT-JHQ gev L1=8 eps=0.3,openai3-3072,val,0.833,,,,,,0.2917797866050636,,,offline simulation (CPU) on the paper index's candidates,34.44
+V2 EVT-JHQ gev L1=8 eps=0.1,openai3-3072,val,0.8795,,,,,,0.5287382231860498,,,offline simulation (CPU) on the paper index's candidates,63.895
+V2 EVT-JHQ gev L1=8 eps=0.03,openai3-3072,val,0.8975,,,,,,0.7333704092501122,,,offline simulation (CPU) on the paper index's candidates,91.145
+V2 EVT-JHQ gev L1=8 eps=0.01,openai3-3072,val,0.9,,,,,,0.8576740017748176,,,offline simulation (CPU) on the paper index's candidates,107.775
+V2 EVT-JHQ gev L1=8 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9301799059500264,,,offline simulation (CPU) on the paper index's candidates,118.0
+V2 EVT-JHQ gev L1=8 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9626983918046866,,,offline simulation (CPU) on the paper index's candidates,122.61
+V2 EVT-JHQ gev L1=16 eps=0.3,openai3-3072,val,0.842,,,,,,0.3064519225179154,,,offline simulation (CPU) on the paper index's candidates,36.61
+V2 EVT-JHQ gev L1=16 eps=0.1,openai3-3072,val,0.881,,,,,,0.534383250899749,,,offline simulation (CPU) on the paper index's candidates,64.795
+V2 EVT-JHQ gev L1=16 eps=0.03,openai3-3072,val,0.898,,,,,,0.7341859697271849,,,offline simulation (CPU) on the paper index's candidates,91.35
+V2 EVT-JHQ gev L1=16 eps=0.01,openai3-3072,val,0.9,,,,,,0.8568280017506852,,,offline simulation (CPU) on the paper index's candidates,107.735
+V2 EVT-JHQ gev L1=16 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9295768738420632,,,offline simulation (CPU) on the paper index's candidates,117.945
+V2 EVT-JHQ gev L1=16 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9625127379906389,,,offline simulation (CPU) on the paper index's candidates,122.6
+V2 EVT-JHQ gev L1=32 eps=0.3,openai3-3072,val,0.8550000000000001,,,,,,0.3686640494140799,,,offline simulation (CPU) on the paper index's candidates,45.43
+V2 EVT-JHQ gev L1=32 eps=0.1,openai3-3072,val,0.8835000000000001,,,,,,0.5621712666032647,,,offline simulation (CPU) on the paper index's candidates,69.105
+V2 EVT-JHQ gev L1=32 eps=0.03,openai3-3072,val,0.898,,,,,,0.7437064179728249,,,offline simulation (CPU) on the paper index's candidates,93.125
+V2 EVT-JHQ gev L1=32 eps=0.01,openai3-3072,val,0.9,,,,,,0.8608169535662534,,,offline simulation (CPU) on the paper index's candidates,108.62
+V2 EVT-JHQ gev L1=32 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9322700881814482,,,offline simulation (CPU) on the paper index's candidates,118.49
+V2 EVT-JHQ gev L1=32 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9641411166432473,,,offline simulation (CPU) on the paper index's candidates,122.905
+V2 EVT-JHQ logistic L1=8 eps=0.3,openai3-3072,val,0.7945,,,,,,0.18757424781411144,,,offline simulation (CPU) on the paper index's candidates,19.95
+V2 EVT-JHQ logistic L1=8 eps=0.1,openai3-3072,val,0.869,,,,,,0.44362595884573236,,,offline simulation (CPU) on the paper index's candidates,49.96
+V2 EVT-JHQ logistic L1=8 eps=0.03,openai3-3072,val,0.898,,,,,,0.7349828825538067,,,offline simulation (CPU) on the paper index's candidates,87.875
+V2 EVT-JHQ logistic L1=8 eps=0.01,openai3-3072,val,0.901,,,,,,0.8953008469324066,,,offline simulation (CPU) on the paper index's candidates,111.335
+V2 EVT-JHQ logistic L1=8 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9730801969630656,,,offline simulation (CPU) on the paper index's candidates,123.4
+V2 EVT-JHQ logistic L1=8 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9909273695953349,,,offline simulation (CPU) on the paper index's candidates,126.53
+V2 EVT-JHQ logistic L1=16 eps=0.3,openai3-3072,val,0.7935,,,,,,0.1800065924928947,,,offline simulation (CPU) on the paper index's candidates,20.26
+V2 EVT-JHQ logistic L1=16 eps=0.1,openai3-3072,val,0.8615,,,,,,0.4142358905843625,,,offline simulation (CPU) on the paper index's candidates,45.97
+V2 EVT-JHQ logistic L1=16 eps=0.03,openai3-3072,val,0.898,,,,,,0.7368654725588855,,,offline simulation (CPU) on the paper index's candidates,87.035
+V2 EVT-JHQ logistic L1=16 eps=0.01,openai3-3072,val,0.901,,,,,,0.9102365180229541,,,offline simulation (CPU) on the paper index's candidates,112.905
+V2 EVT-JHQ logistic L1=16 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9814549116265906,,,offline simulation (CPU) on the paper index's candidates,124.585
+V2 EVT-JHQ logistic L1=16 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9929196516618896,,,offline simulation (CPU) on the paper index's candidates,126.89
+V2 EVT-JHQ logistic L1=32 eps=0.3,openai3-3072,val,0.819,,,,,,0.25847864789177344,,,offline simulation (CPU) on the paper index's candidates,32.495
+V2 EVT-JHQ logistic L1=32 eps=0.1,openai3-3072,val,0.8574999999999999,,,,,,0.40503080701546545,,,offline simulation (CPU) on the paper index's candidates,46.265
+V2 EVT-JHQ logistic L1=32 eps=0.03,openai3-3072,val,0.8960000000000001,,,,,,0.7334732455577457,,,offline simulation (CPU) on the paper index's candidates,85.81
+V2 EVT-JHQ logistic L1=32 eps=0.01,openai3-3072,val,0.901,,,,,,0.9174685156360549,,,offline simulation (CPU) on the paper index's candidates,113.425
+V2 EVT-JHQ logistic L1=32 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9852030893672193,,,offline simulation (CPU) on the paper index's candidates,125.155
+V2 EVT-JHQ logistic L1=32 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9938942656281022,,,offline simulation (CPU) on the paper index's candidates,127.065
+V2 EVT-JHQ oracle,openai3-3072,calib,0.9305,,,,,,0.12279854020513375,,,offline simulation (CPU) on the paper index's candidates,13.395
+V2 EVT-JHQ global L1=8 eps=0.3,openai3-3072,calib,0.8035,,,,,,0.14255501627055098,,,offline simulation (CPU) on the paper index's candidates,17.46
+V2 EVT-JHQ global L1=8 eps=0.1,openai3-3072,calib,0.876,,,,,,0.34159659421080013,,,offline simulation (CPU) on the paper index's candidates,43.435
+V2 EVT-JHQ global L1=8 eps=0.03,openai3-3072,calib,0.917,,,,,,0.6797881606078907,,,offline simulation (CPU) on the paper index's candidates,87.025
+V2 EVT-JHQ global L1=8 eps=0.01,openai3-3072,calib,0.9295,,,,,,0.9257224263311274,,,offline simulation (CPU) on the paper index's candidates,118.46
+V2 EVT-JHQ global L1=8 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.9514115964011451,,,offline simulation (CPU) on the paper index's candidates,121.7375
+V2 EVT-JHQ global L1=8 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9756229974523475,,,offline simulation (CPU) on the paper index's candidates,124.915
+V2 EVT-JHQ global L1=16 eps=0.3,openai3-3072,calib,0.8085000000000001,,,,,,0.14954046264544174,,,offline simulation (CPU) on the paper index's candidates,18.45
+V2 EVT-JHQ global L1=16 eps=0.1,openai3-3072,calib,0.8797499999999999,,,,,,0.3612395421567297,,,offline simulation (CPU) on the paper index's candidates,45.9775
+V2 EVT-JHQ global L1=16 eps=0.03,openai3-3072,calib,0.9164999999999999,,,,,,0.6699012889996283,,,offline simulation (CPU) on the paper index's candidates,85.805
+V2 EVT-JHQ global L1=16 eps=0.01,openai3-3072,calib,0.93,,,,,,0.9333524676934323,,,offline simulation (CPU) on the paper index's candidates,119.41
+V2 EVT-JHQ global L1=16 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.9555922863965033,,,offline simulation (CPU) on the paper index's candidates,122.29
+V2 EVT-JHQ global L1=16 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9774582100952739,,,offline simulation (CPU) on the paper index's candidates,125.15
+V2 EVT-JHQ global L1=32 eps=0.3,openai3-3072,calib,0.84825,,,,,,0.25219517156070304,,,offline simulation (CPU) on the paper index's candidates,32.0
+V2 EVT-JHQ global L1=32 eps=0.1,openai3-3072,calib,0.8772500000000001,,,,,,0.35538081138207095,,,offline simulation (CPU) on the paper index's candidates,45.215
+V2 EVT-JHQ global L1=32 eps=0.03,openai3-3072,calib,0.9185000000000001,,,,,,0.7082006459274133,,,offline simulation (CPU) on the paper index's candidates,90.65
+V2 EVT-JHQ global L1=32 eps=0.01,openai3-3072,calib,0.9305,,,,,,0.9434261508420252,,,offline simulation (CPU) on the paper index's candidates,120.7
+V2 EVT-JHQ global L1=32 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.9626266790265026,,,offline simulation (CPU) on the paper index's candidates,123.1875
+V2 EVT-JHQ global L1=32 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9626266790265026,,,offline simulation (CPU) on the paper index's candidates,123.1875
+V2 EVT-JHQ iid_evt L1=8 eps=0.3,openai3-3072,calib,0.88025,,,,,,0.39560552363927376,,,offline simulation (CPU) on the paper index's candidates,42.98
+V2 EVT-JHQ iid_evt L1=8 eps=0.1,openai3-3072,calib,0.9095000000000001,,,,,,0.6111430772456202,,,offline simulation (CPU) on the paper index's candidates,68.9075
+V2 EVT-JHQ iid_evt L1=8 eps=0.03,openai3-3072,calib,0.9237500000000001,,,,,,0.8099166744391507,,,offline simulation (CPU) on the paper index's candidates,95.915
+V2 EVT-JHQ iid_evt L1=8 eps=0.01,openai3-3072,calib,0.9289999999999999,,,,,,0.911342560427551,,,offline simulation (CPU) on the paper index's candidates,112.335
+V2 EVT-JHQ iid_evt L1=8 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.955278214592891,,,offline simulation (CPU) on the paper index's candidates,120.685
+V2 EVT-JHQ iid_evt L1=8 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9687044442927716,,,offline simulation (CPU) on the paper index's candidates,123.38
+V2 EVT-JHQ iid_evt L1=16 eps=0.3,openai3-3072,calib,0.88275,,,,,,0.40429620315741416,,,offline simulation (CPU) on the paper index's candidates,44.5375
+V2 EVT-JHQ iid_evt L1=16 eps=0.1,openai3-3072,calib,0.9097500000000001,,,,,,0.6149336927801283,,,offline simulation (CPU) on the paper index's candidates,69.585
+V2 EVT-JHQ iid_evt L1=16 eps=0.03,openai3-3072,calib,0.9237500000000001,,,,,,0.8122242184438735,,,offline simulation (CPU) on the paper index's candidates,96.26
+V2 EVT-JHQ iid_evt L1=16 eps=0.01,openai3-3072,calib,0.9289999999999999,,,,,,0.9126229128840956,,,offline simulation (CPU) on the paper index's candidates,112.5375
+V2 EVT-JHQ iid_evt L1=16 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.9560979284041372,,,offline simulation (CPU) on the paper index's candidates,120.8125
+V2 EVT-JHQ iid_evt L1=16 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9693165444052663,,,offline simulation (CPU) on the paper index's candidates,123.4725
+V2 EVT-JHQ iid_evt L1=32 eps=0.3,openai3-3072,calib,0.8915,,,,,,0.44807835642826127,,,offline simulation (CPU) on the paper index's candidates,51.405
+V2 EVT-JHQ iid_evt L1=32 eps=0.1,openai3-3072,calib,0.91225,,,,,,0.6337537997929573,,,offline simulation (CPU) on the paper index's candidates,72.9425
+V2 EVT-JHQ iid_evt L1=32 eps=0.03,openai3-3072,calib,0.9244999999999999,,,,,,0.8202046334156627,,,offline simulation (CPU) on the paper index's candidates,97.6475
+V2 EVT-JHQ iid_evt L1=32 eps=0.01,openai3-3072,calib,0.92925,,,,,,0.9175384765151788,,,offline simulation (CPU) on the paper index's candidates,113.27
+V2 EVT-JHQ iid_evt L1=32 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.9589660429916712,,,offline simulation (CPU) on the paper index's candidates,121.215
+V2 EVT-JHQ iid_evt L1=32 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9715977118169585,,,offline simulation (CPU) on the paper index's candidates,123.77
+V2 EVT-JHQ gev L1=8 eps=0.3,openai3-3072,calib,0.8567500000000001,,,,,,0.2739436242472134,,,offline simulation (CPU) on the paper index's candidates,32.19
+V2 EVT-JHQ gev L1=8 eps=0.1,openai3-3072,calib,0.9005000000000001,,,,,,0.48433760625076305,,,offline simulation (CPU) on the paper index's candidates,58.6375
+V2 EVT-JHQ gev L1=8 eps=0.03,openai3-3072,calib,0.9189999999999999,,,,,,0.7022425270625204,,,offline simulation (CPU) on the paper index's candidates,86.625
+V2 EVT-JHQ gev L1=8 eps=0.01,openai3-3072,calib,0.92675,,,,,,0.8481933257430382,,,offline simulation (CPU) on the paper index's candidates,105.935
+V2 EVT-JHQ gev L1=8 eps=0.003,openai3-3072,calib,0.92925,,,,,,0.921035142595397,,,offline simulation (CPU) on the paper index's candidates,116.605
+V2 EVT-JHQ gev L1=8 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9476042575628083,,,offline simulation (CPU) on the paper index's candidates,120.675
+V2 EVT-JHQ gev L1=16 eps=0.3,openai3-3072,calib,0.8630000000000001,,,,,,0.29310581119852247,,,offline simulation (CPU) on the paper index's candidates,34.885
+V2 EVT-JHQ gev L1=16 eps=0.1,openai3-3072,calib,0.9005000000000001,,,,,,0.49028987875740687,,,offline simulation (CPU) on the paper index's candidates,59.59
+V2 EVT-JHQ gev L1=16 eps=0.03,openai3-3072,calib,0.9185000000000001,,,,,,0.7035428659065677,,,offline simulation (CPU) on the paper index's candidates,86.895
+V2 EVT-JHQ gev L1=16 eps=0.01,openai3-3072,calib,0.92675,,,,,,0.8481674929972864,,,offline simulation (CPU) on the paper index's candidates,106.035
+V2 EVT-JHQ gev L1=16 eps=0.003,openai3-3072,calib,0.9295,,,,,,0.921902035158095,,,offline simulation (CPU) on the paper index's candidates,116.765
+V2 EVT-JHQ gev L1=16 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9480600015825955,,,offline simulation (CPU) on the paper index's candidates,120.76
+V2 EVT-JHQ gev L1=32 eps=0.3,openai3-3072,calib,0.8787499999999999,,,,,,0.3606977343050434,,,offline simulation (CPU) on the paper index's candidates,44.1225
+V2 EVT-JHQ gev L1=32 eps=0.1,openai3-3072,calib,0.9047499999999999,,,,,,0.52312234687504,,,offline simulation (CPU) on the paper index's candidates,64.4525
+V2 EVT-JHQ gev L1=32 eps=0.03,openai3-3072,calib,0.9195,,,,,,0.7149807899544881,,,offline simulation (CPU) on the paper index's candidates,88.7975
+V2 EVT-JHQ gev L1=32 eps=0.01,openai3-3072,calib,0.9269999999999999,,,,,,0.85415198845521,,,offline simulation (CPU) on the paper index's candidates,107.1775
+V2 EVT-JHQ gev L1=32 eps=0.003,openai3-3072,calib,0.9295,,,,,,0.92599897267249,,,offline simulation (CPU) on the paper index's candidates,117.4825
+V2 EVT-JHQ gev L1=32 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9517664567506811,,,offline simulation (CPU) on the paper index's candidates,121.335
+V2 EVT-JHQ logistic L1=8 eps=0.3,openai3-3072,calib,0.8227499999999999,,,,,,0.17934832412101365,,,offline simulation (CPU) on the paper index's candidates,19.265
+V2 EVT-JHQ logistic L1=8 eps=0.1,openai3-3072,calib,0.89,,,,,,0.41972338295849115,,,offline simulation (CPU) on the paper index's candidates,47.25
+V2 EVT-JHQ logistic L1=8 eps=0.03,openai3-3072,calib,0.91975,,,,,,0.7089415018832073,,,offline simulation (CPU) on the paper index's candidates,84.4025
+V2 EVT-JHQ logistic L1=8 eps=0.01,openai3-3072,calib,0.9285,,,,,,0.8871735794641092,,,offline simulation (CPU) on the paper index's candidates,109.715
+V2 EVT-JHQ logistic L1=8 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.9574390557941082,,,offline simulation (CPU) on the paper index's candidates,121.4125
+V2 EVT-JHQ logistic L1=8 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.97796806691932,,,offline simulation (CPU) on the paper index's candidates,124.7425
+V2 EVT-JHQ logistic L1=16 eps=0.3,openai3-3072,calib,0.8210000000000001,,,,,,0.1772742265607941,,,offline simulation (CPU) on the paper index's candidates,20.1175
+V2 EVT-JHQ logistic L1=16 eps=0.1,openai3-3072,calib,0.8835000000000001,,,,,,0.3957500510536633,,,offline simulation (CPU) on the paper index's candidates,43.8725
+V2 EVT-JHQ logistic L1=16 eps=0.03,openai3-3072,calib,0.91975,,,,,,0.7143703213838304,,,offline simulation (CPU) on the paper index's candidates,84.0825
+V2 EVT-JHQ logistic L1=16 eps=0.01,openai3-3072,calib,0.92875,,,,,,0.9030479376903295,,,offline simulation (CPU) on the paper index's candidates,111.49
+V2 EVT-JHQ logistic L1=16 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.9670780690049743,,,offline simulation (CPU) on the paper index's candidates,122.7175
+V2 EVT-JHQ logistic L1=16 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9833053841152543,,,offline simulation (CPU) on the paper index's candidates,125.51
+V2 EVT-JHQ logistic L1=32 eps=0.3,openai3-3072,calib,0.851,,,,,,0.2590950979509738,,,offline simulation (CPU) on the paper index's candidates,32.4325
+V2 EVT-JHQ logistic L1=32 eps=0.1,openai3-3072,calib,0.88475,,,,,,0.3978949847219703,,,offline simulation (CPU) on the paper index's candidates,45.325
+V2 EVT-JHQ logistic L1=32 eps=0.03,openai3-3072,calib,0.9199999999999999,,,,,,0.7108706641435779,,,offline simulation (CPU) on the paper index's candidates,82.75
+V2 EVT-JHQ logistic L1=32 eps=0.01,openai3-3072,calib,0.92875,,,,,,0.9126124438239751,,,offline simulation (CPU) on the paper index's candidates,112.2675
+V2 EVT-JHQ logistic L1=32 eps=0.003,openai3-3072,calib,0.9305,,,,,,0.972666371720159,,,offline simulation (CPU) on the paper index's candidates,123.4425
+V2 EVT-JHQ logistic L1=32 eps=0.001,openai3-3072,calib,0.9305,,,,,,0.9865665643236728,,,offline simulation (CPU) on the paper index's candidates,125.99
+V2 EVT-JHQ oracle,openai3-3072,val,0.9025000000000001,,,,,,0.12283810658338845,,,offline simulation (CPU) on the paper index's candidates,13.61
+V2 EVT-JHQ global L1=8 eps=0.3,openai3-3072,val,0.7755,,,,,,0.15343835251299026,,,offline simulation (CPU) on the paper index's candidates,18.715
+V2 EVT-JHQ global L1=8 eps=0.1,openai3-3072,val,0.8545,,,,,,0.3650680694087488,,,offline simulation (CPU) on the paper index's candidates,46.46
+V2 EVT-JHQ global L1=8 eps=0.03,openai3-3072,val,0.8965,,,,,,0.7158846719604055,,,offline simulation (CPU) on the paper index's candidates,91.98
+V2 EVT-JHQ global L1=8 eps=0.01,openai3-3072,val,0.9025000000000001,,,,,,0.9362003547441268,,,offline simulation (CPU) on the paper index's candidates,120.005
+V2 EVT-JHQ global L1=8 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9672149624359536,,,offline simulation (CPU) on the paper index's candidates,123.805
+V2 EVT-JHQ global L1=8 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9900709488253626,,,offline simulation (CPU) on the paper index's candidates,126.68
+V2 EVT-JHQ global L1=16 eps=0.3,openai3-3072,val,0.7815000000000001,,,,,,0.15806955134849934,,,offline simulation (CPU) on the paper index's candidates,19.295
+V2 EVT-JHQ global L1=16 eps=0.1,openai3-3072,val,0.8585,,,,,,0.38394250819673925,,,offline simulation (CPU) on the paper index's candidates,49.025
+V2 EVT-JHQ global L1=16 eps=0.03,openai3-3072,val,0.8955,,,,,,0.7060463909666393,,,offline simulation (CPU) on the paper index's candidates,90.635
+V2 EVT-JHQ global L1=16 eps=0.01,openai3-3072,val,0.9025000000000001,,,,,,0.9437477170339705,,,offline simulation (CPU) on the paper index's candidates,120.975
+V2 EVT-JHQ global L1=16 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9704588309239472,,,offline simulation (CPU) on the paper index's candidates,124.215
+V2 EVT-JHQ global L1=16 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9906418960053442,,,offline simulation (CPU) on the paper index's candidates,126.75
+V2 EVT-JHQ global L1=32 eps=0.3,openai3-3072,val,0.8160000000000001,,,,,,0.2511018567575246,,,offline simulation (CPU) on the paper index's candidates,32.0
+V2 EVT-JHQ global L1=32 eps=0.1,openai3-3072,val,0.8525,,,,,,0.36172876882727123,,,offline simulation (CPU) on the paper index's candidates,46.315
+V2 EVT-JHQ global L1=32 eps=0.03,openai3-3072,val,0.8975,,,,,,0.7402160165766642,,,offline simulation (CPU) on the paper index's candidates,95.05
+V2 EVT-JHQ global L1=32 eps=0.01,openai3-3072,val,0.9025000000000001,,,,,,0.9533855357853896,,,offline simulation (CPU) on the paper index's candidates,122.175
+V2 EVT-JHQ global L1=32 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9769235325670246,,,offline simulation (CPU) on the paper index's candidates,124.97
+V2 EVT-JHQ global L1=32 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9769235325670246,,,offline simulation (CPU) on the paper index's candidates,124.97
+V2 EVT-JHQ iid_evt L1=8 eps=0.3,openai3-3072,val,0.8615,,,,,,0.42638456062296315,,,offline simulation (CPU) on the paper index's candidates,46.37
+V2 EVT-JHQ iid_evt L1=8 eps=0.1,openai3-3072,val,0.885,,,,,,0.6457009487266397,,,offline simulation (CPU) on the paper index's candidates,73.45
+V2 EVT-JHQ iid_evt L1=8 eps=0.03,openai3-3072,val,0.8995,,,,,,0.8259793033018408,,,offline simulation (CPU) on the paper index's candidates,99.13
+V2 EVT-JHQ iid_evt L1=8 eps=0.01,openai3-3072,val,0.901,,,,,,0.9221008113921787,,,offline simulation (CPU) on the paper index's candidates,114.205
+V2 EVT-JHQ iid_evt L1=8 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9713997145812561,,,offline simulation (CPU) on the paper index's candidates,122.725
+V2 EVT-JHQ iid_evt L1=8 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9834773590100511,,,offline simulation (CPU) on the paper index's candidates,125.285
+V2 EVT-JHQ iid_evt L1=16 eps=0.3,openai3-3072,val,0.8644999999999999,,,,,,0.43370979648831837,,,offline simulation (CPU) on the paper index's candidates,47.72
+V2 EVT-JHQ iid_evt L1=16 eps=0.1,openai3-3072,val,0.8865000000000001,,,,,,0.6487764399002679,,,offline simulation (CPU) on the paper index's candidates,74.03
+V2 EVT-JHQ iid_evt L1=16 eps=0.03,openai3-3072,val,0.8995,,,,,,0.8270243944175516,,,offline simulation (CPU) on the paper index's candidates,99.325
+V2 EVT-JHQ iid_evt L1=16 eps=0.01,openai3-3072,val,0.901,,,,,,0.922380526148942,,,offline simulation (CPU) on the paper index's candidates,114.255
+V2 EVT-JHQ iid_evt L1=16 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.971491581682742,,,offline simulation (CPU) on the paper index's candidates,122.745
+V2 EVT-JHQ iid_evt L1=16 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9834773590100511,,,offline simulation (CPU) on the paper index's candidates,125.285
+V2 EVT-JHQ iid_evt L1=32 eps=0.3,openai3-3072,val,0.869,,,,,,0.47033433043417217,,,offline simulation (CPU) on the paper index's candidates,53.845
+V2 EVT-JHQ iid_evt L1=32 eps=0.1,openai3-3072,val,0.8880000000000001,,,,,,0.6641067281819748,,,offline simulation (CPU) on the paper index's candidates,76.915
+V2 EVT-JHQ iid_evt L1=32 eps=0.03,openai3-3072,val,0.899,,,,,,0.832690537853085,,,offline simulation (CPU) on the paper index's candidates,100.465
+V2 EVT-JHQ iid_evt L1=32 eps=0.01,openai3-3072,val,0.901,,,,,,0.9251307803602945,,,offline simulation (CPU) on the paper index's candidates,114.75
+V2 EVT-JHQ iid_evt L1=32 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9725783557818136,,,offline simulation (CPU) on the paper index's candidates,122.94
+V2 EVT-JHQ iid_evt L1=32 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9840688734515594,,,offline simulation (CPU) on the paper index's candidates,125.395
+V2 EVT-JHQ gev L1=8 eps=0.3,openai3-3072,val,0.833,,,,,,0.2917797866050636,,,offline simulation (CPU) on the paper index's candidates,34.44
+V2 EVT-JHQ gev L1=8 eps=0.1,openai3-3072,val,0.8795,,,,,,0.5287382231860498,,,offline simulation (CPU) on the paper index's candidates,63.895
+V2 EVT-JHQ gev L1=8 eps=0.03,openai3-3072,val,0.8975,,,,,,0.7333704092501122,,,offline simulation (CPU) on the paper index's candidates,91.145
+V2 EVT-JHQ gev L1=8 eps=0.01,openai3-3072,val,0.9,,,,,,0.8576740017748176,,,offline simulation (CPU) on the paper index's candidates,107.775
+V2 EVT-JHQ gev L1=8 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9301799059500264,,,offline simulation (CPU) on the paper index's candidates,118.0
+V2 EVT-JHQ gev L1=8 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9626983918046866,,,offline simulation (CPU) on the paper index's candidates,122.61
+V2 EVT-JHQ gev L1=16 eps=0.3,openai3-3072,val,0.842,,,,,,0.3064519225179154,,,offline simulation (CPU) on the paper index's candidates,36.61
+V2 EVT-JHQ gev L1=16 eps=0.1,openai3-3072,val,0.881,,,,,,0.534383250899749,,,offline simulation (CPU) on the paper index's candidates,64.795
+V2 EVT-JHQ gev L1=16 eps=0.03,openai3-3072,val,0.898,,,,,,0.7341859697271849,,,offline simulation (CPU) on the paper index's candidates,91.35
+V2 EVT-JHQ gev L1=16 eps=0.01,openai3-3072,val,0.9,,,,,,0.8568280017506852,,,offline simulation (CPU) on the paper index's candidates,107.735
+V2 EVT-JHQ gev L1=16 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9295768738420632,,,offline simulation (CPU) on the paper index's candidates,117.945
+V2 EVT-JHQ gev L1=16 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9625127379906389,,,offline simulation (CPU) on the paper index's candidates,122.6
+V2 EVT-JHQ gev L1=32 eps=0.3,openai3-3072,val,0.8550000000000001,,,,,,0.3686640494140799,,,offline simulation (CPU) on the paper index's candidates,45.43
+V2 EVT-JHQ gev L1=32 eps=0.1,openai3-3072,val,0.8835000000000001,,,,,,0.5621712666032647,,,offline simulation (CPU) on the paper index's candidates,69.105
+V2 EVT-JHQ gev L1=32 eps=0.03,openai3-3072,val,0.898,,,,,,0.7437064179728249,,,offline simulation (CPU) on the paper index's candidates,93.125
+V2 EVT-JHQ gev L1=32 eps=0.01,openai3-3072,val,0.9,,,,,,0.8608169535662534,,,offline simulation (CPU) on the paper index's candidates,108.62
+V2 EVT-JHQ gev L1=32 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9322700881814482,,,offline simulation (CPU) on the paper index's candidates,118.49
+V2 EVT-JHQ gev L1=32 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9641411166432473,,,offline simulation (CPU) on the paper index's candidates,122.905
+V2 EVT-JHQ logistic L1=8 eps=0.3,openai3-3072,val,0.7945,,,,,,0.18757424781411144,,,offline simulation (CPU) on the paper index's candidates,19.95
+V2 EVT-JHQ logistic L1=8 eps=0.1,openai3-3072,val,0.869,,,,,,0.44362595884573236,,,offline simulation (CPU) on the paper index's candidates,49.96
+V2 EVT-JHQ logistic L1=8 eps=0.03,openai3-3072,val,0.898,,,,,,0.7349828825538067,,,offline simulation (CPU) on the paper index's candidates,87.875
+V2 EVT-JHQ logistic L1=8 eps=0.01,openai3-3072,val,0.901,,,,,,0.8953008469324066,,,offline simulation (CPU) on the paper index's candidates,111.335
+V2 EVT-JHQ logistic L1=8 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9730801969630656,,,offline simulation (CPU) on the paper index's candidates,123.4
+V2 EVT-JHQ logistic L1=8 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9909273695953349,,,offline simulation (CPU) on the paper index's candidates,126.53
+V2 EVT-JHQ logistic L1=16 eps=0.3,openai3-3072,val,0.7935,,,,,,0.1800065924928947,,,offline simulation (CPU) on the paper index's candidates,20.26
+V2 EVT-JHQ logistic L1=16 eps=0.1,openai3-3072,val,0.8615,,,,,,0.4142358905843625,,,offline simulation (CPU) on the paper index's candidates,45.97
+V2 EVT-JHQ logistic L1=16 eps=0.03,openai3-3072,val,0.898,,,,,,0.7368654725588855,,,offline simulation (CPU) on the paper index's candidates,87.035
+V2 EVT-JHQ logistic L1=16 eps=0.01,openai3-3072,val,0.901,,,,,,0.9102365180229541,,,offline simulation (CPU) on the paper index's candidates,112.905
+V2 EVT-JHQ logistic L1=16 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9814549116265906,,,offline simulation (CPU) on the paper index's candidates,124.585
+V2 EVT-JHQ logistic L1=16 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9929196516618896,,,offline simulation (CPU) on the paper index's candidates,126.89
+V2 EVT-JHQ logistic L1=32 eps=0.3,openai3-3072,val,0.819,,,,,,0.25847864789177344,,,offline simulation (CPU) on the paper index's candidates,32.495
+V2 EVT-JHQ logistic L1=32 eps=0.1,openai3-3072,val,0.8574999999999999,,,,,,0.40503080701546545,,,offline simulation (CPU) on the paper index's candidates,46.265
+V2 EVT-JHQ logistic L1=32 eps=0.03,openai3-3072,val,0.8960000000000001,,,,,,0.7334732455577457,,,offline simulation (CPU) on the paper index's candidates,85.81
+V2 EVT-JHQ logistic L1=32 eps=0.01,openai3-3072,val,0.901,,,,,,0.9174685156360549,,,offline simulation (CPU) on the paper index's candidates,113.425
+V2 EVT-JHQ logistic L1=32 eps=0.003,openai3-3072,val,0.9025000000000001,,,,,,0.9852030893672193,,,offline simulation (CPU) on the paper index's candidates,125.155
+V2 EVT-JHQ logistic L1=32 eps=0.001,openai3-3072,val,0.9025000000000001,,,,,,0.9938942656281022,,,offline simulation (CPU) on the paper index's candidates,127.065
+V2 EVT-JHQ oracle,openai3-3072,test,0.9352499999999999,,,,,,0.12265989655909221,,,offline simulation (CPU) on the paper index's candidates,13.4925
+V2 EVT-JHQ global L1=8 eps=0.3,openai3-3072,test,0.8119999999999999,,,,,,0.13573157039309214,,,offline simulation (CPU) on the paper index's candidates,16.7525
+V2 EVT-JHQ global L1=8 eps=0.1,openai3-3072,test,0.8877499999999999,,,,,,0.344978421444118,,,offline simulation (CPU) on the paper index's candidates,44.32
+V2 EVT-JHQ global L1=8 eps=0.03,openai3-3072,test,0.9244999999999999,,,,,,0.70237150167856,,,offline simulation (CPU) on the paper index's candidates,90.1
+V2 EVT-JHQ global L1=8 eps=0.01,openai3-3072,test,0.9342499999999999,,,,,,0.9243896807352554,,,offline simulation (CPU) on the paper index's candidates,118.485
+V2 EVT-JHQ global L1=8 eps=0.003,openai3-3072,test,0.9352499999999999,,,,,,0.9571786412420347,,,offline simulation (CPU) on the paper index's candidates,122.68
+V2 EVT-JHQ global L1=8 eps=0.001,openai3-3072,test,0.9352499999999999,,,,,,0.9853508612078278,,,offline simulation (CPU) on the paper index's candidates,126.1475
+V2 EVT-JHQ global L1=16 eps=0.3,openai3-3072,test,0.8195,,,,,,0.14544133953419192,,,offline simulation (CPU) on the paper index's candidates,18.02
+V2 EVT-JHQ global L1=16 eps=0.1,openai3-3072,test,0.8915,,,,,,0.3631528300929842,,,offline simulation (CPU) on the paper index's candidates,46.7025
+V2 EVT-JHQ global L1=16 eps=0.03,openai3-3072,test,0.924,,,,,,0.6911811930195638,,,offline simulation (CPU) on the paper index's candidates,88.755
+V2 EVT-JHQ global L1=16 eps=0.01,openai3-3072,test,0.93475,,,,,,0.9330908237855852,,,offline simulation (CPU) on the paper index's candidates,119.575
+V2 EVT-JHQ global L1=16 eps=0.003,openai3-3072,test,0.9352499999999999,,,,,,0.9620039970465767,,,offline simulation (CPU) on the paper index's candidates,123.2925
+V2 EVT-JHQ global L1=16 eps=0.001,openai3-3072,test,0.9352499999999999,,,,,,0.9860274253882588,,,offline simulation (CPU) on the paper index's candidates,126.2325
+V2 EVT-JHQ global L1=32 eps=0.3,openai3-3072,test,0.8532500000000001,,,,,,0.25081063981590457,,,offline simulation (CPU) on the paper index's candidates,32.0
+V2 EVT-JHQ global L1=32 eps=0.1,openai3-3072,test,0.8862500000000001,,,,,,0.34420397487266063,,,offline simulation (CPU) on the paper index's candidates,44.2675
+V2 EVT-JHQ global L1=32 eps=0.03,openai3-3072,test,0.9257500000000001,,,,,,0.7300800106522289,,,offline simulation (CPU) on the paper index's candidates,93.6675
+V2 EVT-JHQ global L1=32 eps=0.01,openai3-3072,test,0.9349999999999999,,,,,,0.9429665555282295,,,offline simulation (CPU) on the paper index's candidates,120.86
+V2 EVT-JHQ global L1=32 eps=0.003,openai3-3072,test,0.9352499999999999,,,,,,0.9702824412797931,,,offline simulation (CPU) on the paper index's candidates,124.38
+V2 EVT-JHQ global L1=32 eps=0.001,openai3-3072,test,0.9352499999999999,,,,,,0.9702824412797931,,,offline simulation (CPU) on the paper index's candidates,124.38
+V2 EVT-JHQ iid_evt L1=8 eps=0.3,openai3-3072,test,0.892,,,,,,0.40509229038096345,,,offline simulation (CPU) on the paper index's candidates,43.87
+V2 EVT-JHQ iid_evt L1=8 eps=0.1,openai3-3072,test,0.9175000000000001,,,,,,0.633534343116879,,,offline simulation (CPU) on the paper index's candidates,71.635
+V2 EVT-JHQ iid_evt L1=8 eps=0.03,openai3-3072,test,0.93,,,,,,0.8157116548809068,,,offline simulation (CPU) on the paper index's candidates,97.4825
+V2 EVT-JHQ iid_evt L1=8 eps=0.01,openai3-3072,test,0.9332499999999999,,,,,,0.9112965438629997,,,offline simulation (CPU) on the paper index's candidates,112.695
+V2 EVT-JHQ iid_evt L1=8 eps=0.003,openai3-3072,test,0.9352499999999999,,,,,,0.9639079189178364,,,offline simulation (CPU) on the paper index's candidates,121.55
+V2 EVT-JHQ iid_evt L1=8 eps=0.001,openai3-3072,test,0.9352499999999999,,,,,,0.9799766257943889,,,offline simulation (CPU) on the paper index's candidates,124.8525
+V2 EVT-JHQ iid_evt L1=16 eps=0.3,openai3-3072,test,0.8945000000000001,,,,,,0.41283990036228796,,,offline simulation (CPU) on the paper index's candidates,45.275
+V2 EVT-JHQ iid_evt L1=16 eps=0.1,openai3-3072,test,0.9179999999999999,,,,,,0.6366698606037183,,,offline simulation (CPU) on the paper index's candidates,72.2225
+V2 EVT-JHQ iid_evt L1=16 eps=0.03,openai3-3072,test,0.92975,,,,,,0.8165735940923877,,,offline simulation (CPU) on the paper index's candidates,97.64
+V2 EVT-JHQ iid_evt L1=16 eps=0.01,openai3-3072,test,0.9332499999999999,,,,,,0.9118633321216514,,,offline simulation (CPU) on the paper index's candidates,112.7975
+V2 EVT-JHQ iid_evt L1=16 eps=0.003,openai3-3072,test,0.9352499999999999,,,,,,0.9642099052331673,,,offline simulation (CPU) on the paper index's candidates,121.6025
+V2 EVT-JHQ iid_evt L1=16 eps=0.001,openai3-3072,test,0.9352499999999999,,,,,,0.9801794993534432,,,offline simulation (CPU) on the paper index's candidates,124.89
+V2 EVT-JHQ iid_evt L1=32 eps=0.3,openai3-3072,test,0.9,,,,,,0.4517373509224527,,,offline simulation (CPU) on the paper index's candidates,51.6575
+V2 EVT-JHQ iid_evt L1=32 eps=0.1,openai3-3072,test,0.9199999999999999,,,,,,0.6541888946959091,,,offline simulation (CPU) on the paper index's candidates,75.3375
+V2 EVT-JHQ iid_evt L1=32 eps=0.03,openai3-3072,test,0.93,,,,,,0.8238157973703267,,,offline simulation (CPU) on the paper index's candidates,98.99
+V2 EVT-JHQ iid_evt L1=32 eps=0.01,openai3-3072,test,0.9335000000000001,,,,,,0.9147135415776646,,,offline simulation (CPU) on the paper index's candidates,113.3325
+V2 EVT-JHQ iid_evt L1=32 eps=0.003,openai3-3072,test,0.9352499999999999,,,,,,0.9657973498205923,,,offline simulation (CPU) on the paper index's candidates,121.88
+V2 EVT-JHQ iid_evt L1=32 eps=0.001,openai3-3072,test,0.9352499999999999,,,,,,0.9811728142322091,,,offline simulation (CPU) on the paper index's candidates,125.0525
+V2 EVT-JHQ gev L1=8 eps=0.3,openai3-3072,test,0.86625,,,,,,0.26978027453823367,,,offline simulation (CPU) on the paper index's candidates,31.7825
+V2 EVT-JHQ gev L1=8 eps=0.1,openai3-3072,test,0.9085000000000001,,,,,,0.5028975785181509,,,offline simulation (CPU) on the paper index's candidates,61.185
+V2 EVT-JHQ gev L1=8 eps=0.03,openai3-3072,test,0.925,,,,,,0.7238506713898111,,,offline simulation (CPU) on the paper index's candidates,89.4925
+V2 EVT-JHQ gev L1=8 eps=0.01,openai3-3072,test,0.931,,,,,,0.8492459433148857,,,offline simulation (CPU) on the paper index's candidates,106.6575
+V2 EVT-JHQ gev L1=8 eps=0.003,openai3-3072,test,0.9342499999999999,,,,,,0.9195343860429553,,,offline simulation (CPU) on the paper index's candidates,116.6125
+V2 EVT-JHQ gev L1=8 eps=0.001,openai3-3072,test,0.9352499999999999,,,,,,0.952507901337284,,,offline simulation (CPU) on the paper index's candidates,121.355
+V2 EVT-JHQ gev L1=16 eps=0.3,openai3-3072,test,0.8744999999999999,,,,,,0.2867962259502897,,,offline simulation (CPU) on the paper index's candidates,34.225
+V2 EVT-JHQ gev L1=16 eps=0.1,openai3-3072,test,0.9092499999999999,,,,,,0.5091377176533216,,,offline simulation (CPU) on the paper index's candidates,62.12
+V2 EVT-JHQ gev L1=16 eps=0.03,openai3-3072,test,0.9252499999999999,,,,,,0.7241985913411543,,,offline simulation (CPU) on the paper index's candidates,89.675
+V2 EVT-JHQ gev L1=16 eps=0.01,openai3-3072,test,0.931,,,,,,0.848675737374983,,,offline simulation (CPU) on the paper index's candidates,106.6675
+V2 EVT-JHQ gev L1=16 eps=0.003,openai3-3072,test,0.9342499999999999,,,,,,0.919502806668197,,,offline simulation (CPU) on the paper index's candidates,116.6475
+V2 EVT-JHQ gev L1=16 eps=0.001,openai3-3072,test,0.9352499999999999,,,,,,0.9525590298487977,,,offline simulation (CPU) on the paper index's candidates,121.3725
+V2 EVT-JHQ gev L1=32 eps=0.3,openai3-3072,test,0.8867499999999999,,,,,,0.3519510380249849,,,offline simulation (CPU) on the paper index's candidates,43.285
+V2 EVT-JHQ gev L1=32 eps=0.1,openai3-3072,test,0.91175,,,,,,0.5392347756996301,,,offline simulation (CPU) on the paper index's candidates,66.6625
+V2 EVT-JHQ gev L1=32 eps=0.03,openai3-3072,test,0.9257500000000001,,,,,,0.7356271807369642,,,offline simulation (CPU) on the paper index's candidates,91.6325
+V2 EVT-JHQ gev L1=32 eps=0.01,openai3-3072,test,0.9315,,,,,,0.8530656805881585,,,offline simulation (CPU) on the paper index's candidates,107.615
+V2 EVT-JHQ gev L1=32 eps=0.003,openai3-3072,test,0.9342499999999999,,,,,,0.9215124032437351,,,offline simulation (CPU) on the paper index's candidates,117.1375
+V2 EVT-JHQ gev L1=32 eps=0.001,openai3-3072,test,0.9352499999999999,,,,,,0.9543184521567688,,,offline simulation (CPU) on the paper index's candidates,121.73
+V2 EVT-JHQ logistic L1=8 eps=0.3,openai3-3072,test,0.8242499999999999,,,,,,0.16950331932038454,,,offline simulation (CPU) on the paper index's candidates,18.1975
+V2 EVT-JHQ logistic L1=8 eps=0.1,openai3-3072,test,0.9,,,,,,0.42105149475023657,,,offline simulation (CPU) on the paper index's candidates,47.2325
+V2 EVT-JHQ logistic L1=8 eps=0.03,openai3-3072,test,0.9237500000000001,,,,,,0.7334643353341351,,,offline simulation (CPU) on the paper index's candidates,87.3975
+V2 EVT-JHQ logistic L1=8 eps=0.01,openai3-3072,test,0.933,,,,,,0.8950147103836403,,,offline simulation (CPU) on the paper index's candidates,111.2025
+V2 EVT-JHQ logistic L1=8 eps=0.003,openai3-3072,test,0.9352499999999999,,,,,,0.9667523866693479,,,offline simulation (CPU) on the paper index's candidates,122.555
+V2 EVT-JHQ logistic L1=8 eps=0.001,openai3-3072,test,0.9352499999999999,,,,,,0.987132976919305,,,offline simulation (CPU) on the paper index's candidates,125.98
+V2 EVT-JHQ logistic L1=16 eps=0.3,openai3-3072,test,0.83025,,,,,,0.16697601238895782,,,offline simulation (CPU) on the paper index's candidates,19.1525
+V2 EVT-JHQ logistic L1=16 eps=0.1,openai3-3072,test,0.8952500000000001,,,,,,0.3908324938368954,,,offline simulation (CPU) on the paper index's candidates,43.13
+V2 EVT-JHQ logistic L1=16 eps=0.03,openai3-3072,test,0.924,,,,,,0.7361306735388491,,,offline simulation (CPU) on the paper index's candidates,86.64
+V2 EVT-JHQ logistic L1=16 eps=0.01,openai3-3072,test,0.9335000000000001,,,,,,0.9093822322407372,,,offline simulation (CPU) on the paper index's candidates,112.785
+V2 EVT-JHQ logistic L1=16 eps=0.003,openai3-3072,test,0.9352499999999999,,,,,,0.9757411617737548,,,offline simulation (CPU) on the paper index's candidates,123.86
+V2 EVT-JHQ logistic L1=16 eps=0.001,openai3-3072,test,0.9352499999999999,,,,,,0.9908838137385592,,,offline simulation (CPU) on the paper index's candidates,126.5525
+V2 EVT-JHQ logistic L1=32 eps=0.3,openai3-3072,test,0.8560000000000001,,,,,,0.25498636276827263,,,offline simulation (CPU) on the paper index's candidates,32.255
+V2 EVT-JHQ logistic L1=32 eps=0.1,openai3-3072,test,0.8905,,,,,,0.38442857941618075,,,offline simulation (CPU) on the paper index's candidates,43.87
+V2 EVT-JHQ logistic L1=32 eps=0.03,openai3-3072,test,0.9247500000000001,,,,,,0.7326062239256553,,,offline simulation (CPU) on the paper index's candidates,85.2875
+V2 EVT-JHQ logistic L1=32 eps=0.01,openai3-3072,test,0.9339999999999999,,,,,,0.9172968984816063,,,offline simulation (CPU) on the paper index's candidates,113.4275
+V2 EVT-JHQ logistic L1=32 eps=0.003,openai3-3072,test,0.9352499999999999,,,,,,0.9807271485970898,,,offline simulation (CPU) on the paper index's candidates,124.5075
+V2 EVT-JHQ logistic L1=32 eps=0.001,openai3-3072,test,0.9352499999999999,,,,,,0.9938059312080916,,,offline simulation (CPU) on the paper index's candidates,126.91
+B0 nprobe cut to 8,openai3-3072,calib,0.72725,,,,,,0.0668295851832072,,,offline simulation (CPU),8
+B0 nprobe cut to 12,openai3-3072,calib,0.76625,,,,,,0.09850542610026423,,,offline simulation (CPU),12
+B0 nprobe cut to 16,openai3-3072,calib,0.79375,,,,,,0.12904979275339817,,,offline simulation (CPU),16
+B0 nprobe cut to 24,openai3-3072,calib,0.82775,,,,,,0.19143628162913803,,,offline simulation (CPU),24
+B0 nprobe cut to 32,openai3-3072,calib,0.84825,,,,,,0.25219517156070304,,,offline simulation (CPU),32
+B0 nprobe cut to 48,openai3-3072,calib,0.875,,,,,,0.37391227145158007,,,offline simulation (CPU),48
+B0 nprobe cut to 64,openai3-3072,calib,0.891,,,,,,0.49469952845721676,,,offline simulation (CPU),64
+B0 nprobe cut to 80,openai3-3072,calib,0.90425,,,,,,0.618259454852926,,,offline simulation (CPU),80
+B0 nprobe cut to 96,openai3-3072,calib,0.915,,,,,,0.7451954491947389,,,offline simulation (CPU),96
+B0 nprobe cut to 112,openai3-3072,calib,0.923,,,,,,0.8780449669245681,,,offline simulation (CPU),112
+B0 nprobe cut to 128,openai3-3072,calib,0.9305,,,,,,1.0,,,offline simulation (CPU),128
+B0 nprobe cut to 8,openai3-3072,val,0.7025,,,,,,0.06775706060376704,,,offline simulation (CPU),8
+B0 nprobe cut to 12,openai3-3072,val,0.739,,,,,,0.0995397869560782,,,offline simulation (CPU),12
+B0 nprobe cut to 16,openai3-3072,val,0.7635,,,,,,0.13003609965743168,,,offline simulation (CPU),16
+B0 nprobe cut to 24,openai3-3072,val,0.796,,,,,,0.19090916071313002,,,offline simulation (CPU),24
+B0 nprobe cut to 32,openai3-3072,val,0.8160000000000001,,,,,,0.2511018567575246,,,offline simulation (CPU),32
+B0 nprobe cut to 48,openai3-3072,val,0.8404999999999999,,,,,,0.3746334913995939,,,offline simulation (CPU),48
+B0 nprobe cut to 64,openai3-3072,val,0.8574999999999999,,,,,,0.4978390663889264,,,offline simulation (CPU),64
+B0 nprobe cut to 80,openai3-3072,val,0.8720000000000001,,,,,,0.6190120474791119,,,offline simulation (CPU),80
+B0 nprobe cut to 96,openai3-3072,val,0.8815,,,,,,0.7465504588967392,,,offline simulation (CPU),96
+B0 nprobe cut to 112,openai3-3072,val,0.893,,,,,,0.8783114662208781,,,offline simulation (CPU),112
+B0 nprobe cut to 128,openai3-3072,val,0.9025000000000001,,,,,,1.0,,,offline simulation (CPU),128
+B0 nprobe cut to 8,openai3-3072,calib,0.72725,,,,,,0.0668295851832072,,,offline simulation (CPU),8
+B0 nprobe cut to 12,openai3-3072,calib,0.76625,,,,,,0.09850542610026423,,,offline simulation (CPU),12
+B0 nprobe cut to 16,openai3-3072,calib,0.79375,,,,,,0.12904979275339817,,,offline simulation (CPU),16
+B0 nprobe cut to 24,openai3-3072,calib,0.82775,,,,,,0.19143628162913803,,,offline simulation (CPU),24
+B0 nprobe cut to 32,openai3-3072,calib,0.84825,,,,,,0.25219517156070304,,,offline simulation (CPU),32
+B0 nprobe cut to 48,openai3-3072,calib,0.875,,,,,,0.37391227145158007,,,offline simulation (CPU),48
+B0 nprobe cut to 64,openai3-3072,calib,0.891,,,,,,0.49469952845721676,,,offline simulation (CPU),64
+B0 nprobe cut to 80,openai3-3072,calib,0.90425,,,,,,0.618259454852926,,,offline simulation (CPU),80
+B0 nprobe cut to 96,openai3-3072,calib,0.915,,,,,,0.7451954491947389,,,offline simulation (CPU),96
+B0 nprobe cut to 112,openai3-3072,calib,0.923,,,,,,0.8780449669245681,,,offline simulation (CPU),112
+B0 nprobe cut to 128,openai3-3072,calib,0.9305,,,,,,1.0,,,offline simulation (CPU),128
+B0 nprobe cut to 8,openai3-3072,val,0.7025,,,,,,0.06775706060376704,,,offline simulation (CPU),8
+B0 nprobe cut to 12,openai3-3072,val,0.739,,,,,,0.0995397869560782,,,offline simulation (CPU),12
+B0 nprobe cut to 16,openai3-3072,val,0.7635,,,,,,0.13003609965743168,,,offline simulation (CPU),16
+B0 nprobe cut to 24,openai3-3072,val,0.796,,,,,,0.19090916071313002,,,offline simulation (CPU),24
+B0 nprobe cut to 32,openai3-3072,val,0.8160000000000001,,,,,,0.2511018567575246,,,offline simulation (CPU),32
+B0 nprobe cut to 48,openai3-3072,val,0.8404999999999999,,,,,,0.3746334913995939,,,offline simulation (CPU),48
+B0 nprobe cut to 64,openai3-3072,val,0.8574999999999999,,,,,,0.4978390663889264,,,offline simulation (CPU),64
+B0 nprobe cut to 80,openai3-3072,val,0.8720000000000001,,,,,,0.6190120474791119,,,offline simulation (CPU),80
+B0 nprobe cut to 96,openai3-3072,val,0.8815,,,,,,0.7465504588967392,,,offline simulation (CPU),96
+B0 nprobe cut to 112,openai3-3072,val,0.893,,,,,,0.8783114662208781,,,offline simulation (CPU),112
+B0 nprobe cut to 128,openai3-3072,val,0.9025000000000001,,,,,,1.0,,,offline simulation (CPU),128
+B0 nprobe cut to 8,openai3-3072,test,0.73675,,,,,,0.0678927848784283,,,offline simulation (CPU),8
+B0 nprobe cut to 12,openai3-3072,test,0.7769999999999999,,,,,,0.09849962426012328,,,offline simulation (CPU),12
+B0 nprobe cut to 16,openai3-3072,test,0.8065,,,,,,0.1296977224982266,,,offline simulation (CPU),16
+B0 nprobe cut to 24,openai3-3072,test,0.8352499999999999,,,,,,0.19050073268250658,,,offline simulation (CPU),24
+B0 nprobe cut to 32,openai3-3072,test,0.8532500000000001,,,,,,0.25081063981590457,,,offline simulation (CPU),32
+B0 nprobe cut to 48,openai3-3072,test,0.883,,,,,,0.3723401041244441,,,offline simulation (CPU),48
+B0 nprobe cut to 64,openai3-3072,test,0.9015000000000001,,,,,,0.4949498291227728,,,offline simulation (CPU),64
+B0 nprobe cut to 80,openai3-3072,test,0.9157500000000001,,,,,,0.6171771839427492,,,offline simulation (CPU),80
+B0 nprobe cut to 96,openai3-3072,test,0.9237500000000001,,,,,,0.7436175827943536,,,offline simulation (CPU),96
+B0 nprobe cut to 112,openai3-3072,test,0.9305,,,,,,0.8753808151333833,,,offline simulation (CPU),112
+B0 nprobe cut to 128,openai3-3072,test,0.9352499999999999,,,,,,1.0,,,offline simulation (CPU),128

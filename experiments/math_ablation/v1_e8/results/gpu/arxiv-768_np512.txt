@@ -1,0 +1,28 @@
+  [mmap loader] reusing cached /root/autodl-tmp/arxiv-abstracts-768/base.fvecs.raw_f32
+built A in 2125 ms, B (build + import) in 3885 ms
+schedule: per-query candidate count CV 0.071 on 512 pseudo-queries
+
+=== b=8 ===
+  A alpha=100     recall 0.9885  QPS median 8750 [8667, 8752]
+  A alpha=200     recall 0.9899  QPS median 7094 [7092, 7094]
+  B alpha=100     recall 0.9900  QPS median 8779 [8776, 8780]
+  B alpha=200     recall 0.9910  QPS median 7113 [7112, 7114]
+
+=== b=32 ===
+  A alpha=100     recall 0.9884  QPS median 31112 [31079, 31127]
+  A alpha=200     recall 0.9898  QPS median 24845 [24828, 24876]
+  B alpha=100     recall 0.9900  QPS median 30588 [30570, 30623]
+  B alpha=200     recall 0.9910  QPS median 24614 [24433, 24622]
+
+=== b=256 ===
+  A alpha=100     recall 0.9882  QPS median 66438 [66397, 66570]
+  A alpha=200     recall 0.9898  QPS median 60814 [59561, 60864]
+  B alpha=100     recall 0.9892  QPS median 62411 [62344, 62411]
+  B alpha=200     recall 0.9902  QPS median 57467 [55798, 57540]
+
+=== b=1000 ===
+  A alpha=100     recall 0.9885  QPS median 79806 [79686, 79985]
+  A alpha=200     recall 0.9899  QPS median 74946 [74837, 75152]
+  B alpha=100     recall 0.9900  QPS median 72817 [72784, 72928]
+  B alpha=200     recall 0.9910  QPS median 68755 [68666, 68891]
+=== E8_BENCH_OK ===

@@ -1,0 +1,3 @@
+rdstats arxiv-768_np128_a100 rc=0
+rdstats vogue-768_np128_a64 rc=0
+rdstats openai3-3072_np128_a4 rc=0

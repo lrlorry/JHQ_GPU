@@ -1,0 +1,22 @@
+variant,dataset,primary_bytes_per_vector,residual_bytes_per_vector,corr_bytes_per_vector,global_metadata,lut_bytes_per_query_primary,gpu_used_mib_b1000,build,primary_mse_ratio_vs_jhq,primary_mse_ratio_grouped,encode_seconds_cpu_python,build_seconds_total_cpu,bits_histogram,hierarchical_mse_per_vector,pack_seconds_cpu
+B0 v65,arxiv-768,96,768,4,"levels +-c, residual codebooks M x 256",12288,2559.2,paper index (cached),,,,,,,
+V1 E8-JHQ,arxiv-768,96,768,4,"E8 codebook 256 x 8, scale(s) 1 or M, residual codebooks M x 256",98304,,,0.8526666085191741,0.7913782921321496,95.65949988365173,420.6196336746216,,,
+V2 EVT-JHQ,arxiv-768,96,768,4,per-list size and centre (already in the index); risk model: a few floats,12288,,,,,,,,,
+V3 RD-JHQ uniform,arxiv-768,96,768,4,residual codebooks M x 2^b_m (<= 1024),,,,,,,781.4233686923981,"{""6"": 0, ""7"": 0, ""8"": 96, ""9"": 0, ""10"": 0}",2.830837612005104e-05,552.059728384018
+V3 RD-JHQ waterfill,arxiv-768,96,768,4,residual codebooks M x 2^b_m (<= 1024),,,,,,,759.2513313293457,"{""6"": 0, ""7"": 0, ""8"": 96, ""9"": 0, ""10"": 0}",2.830837612005104e-05,534.0541436672211
+V3 RD-JHQ empirical,arxiv-768,96,768,4,residual codebooks M x 2^b_m (<= 1024),,,,,,,753.1876132488251,"{""6"": 0, ""7"": 7, ""8"": 82, ""9"": 7, ""10"": 0}",2.763220906850844e-05,528.2344877719879
+V3 RD-JHQ queryweighted,arxiv-768,96,768,4,residual codebooks M x 2^b_m (<= 1024),,,,,,,781.5000810623169,"{""6"": 0, ""7"": 7, ""8"": 82, ""9"": 7, ""10"": 0}",2.763220906850844e-05,550.1890072822571
+B0 v65,vogue-768,96,768,4,"levels +-c, residual codebooks M x 256",12288,1417.2,paper index (cached),,,,,,,
+V1 E8-JHQ,vogue-768,96,768,4,"E8 codebook 256 x 8, scale(s) 1 or M, residual codebooks M x 256",98304,,,0.8451491527219128,0.830982118339841,41.762951135635376,254.89766383171082,,,
+V2 EVT-JHQ,vogue-768,96,768,4,per-list size and centre (already in the index); risk model: a few floats,12288,,,,,,,,,
+V3 RD-JHQ uniform,vogue-768,96,768,4,residual codebooks M x 2^b_m (<= 1024),,,,,,,426.5857717990875,"{""6"": 0, ""7"": 0, ""8"": 96, ""9"": 0, ""10"": 0}",4.1312624545181976e-05,297.11447072029114
+V3 RD-JHQ waterfill,vogue-768,96,768,4,residual codebooks M x 2^b_m (<= 1024),,,,,,,388.02826619148254,"{""6"": 0, ""7"": 0, ""8"": 96, ""9"": 0, ""10"": 0}",4.1312624545181976e-05,262.90931487083435
+V3 RD-JHQ empirical,vogue-768,96,768,4,residual codebooks M x 2^b_m (<= 1024),,,,,,,425.44770884513855,"{""6"": 0, ""7"": 0, ""8"": 96, ""9"": 0, ""10"": 0}",4.1312624545181976e-05,294.8278737068176
+V3 RD-JHQ queryweighted,vogue-768,96,768,4,residual codebooks M x 2^b_m (<= 1024),,,,,,,425.49692130088806,"{""6"": 0, ""7"": 0, ""8"": 96, ""9"": 0, ""10"": 0}",4.1312624545181976e-05,295.80665850639343
+B0 v65,openai3-3072,384,3072,4,"levels +-c, residual codebooks M x 256",49152,4169.2,paper index (cached),,,,,,,
+V1 E8-JHQ,openai3-3072,384,3072,4,"E8 codebook 256 x 8, scale(s) 1 or M, residual codebooks M x 256",393216,,,0.8438100732660301,0.8428827177444714,187.86036252975464,948.6097505092621,,,
+V2 EVT-JHQ,openai3-3072,384,3072,4,per-list size and centre (already in the index); risk model: a few floats,49152,,,,,,,,,
+V3 RD-JHQ uniform,openai3-3072,384,3072,4,residual codebooks M x 2^b_m (<= 1024),,,,,,,,null,,
+V3 RD-JHQ waterfill,openai3-3072,384,3072,4,residual codebooks M x 2^b_m (<= 1024),,,,,,,,null,,
+V3 RD-JHQ empirical,openai3-3072,384,3072,4,residual codebooks M x 2^b_m (<= 1024),,,,,,,,null,,
+V3 RD-JHQ queryweighted,openai3-3072,384,3072,4,residual codebooks M x 2^b_m (<= 1024),,,,,,,,null,,

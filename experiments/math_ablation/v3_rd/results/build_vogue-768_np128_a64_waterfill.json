@@ -1,0 +1,16 @@
+{
+ "tag": "vogue-768_np128_a64",
+ "alloc": "waterfill",
+ "bits_histogram": {
+  "6": 0,
+  "7": 0,
+  "8": 96,
+  "9": 0,
+  "10": 0
+ },
+ "bytes_per_vector": 768,
+ "hierarchical_mse_per_vector": 4.1312624545181976e-05,
+ "pack_seconds_cpu": 262.90931487083435,
+ "unpack_check_seconds_cpu": 5.393602609634399,
+ "seconds": 388.02826619148254
+}

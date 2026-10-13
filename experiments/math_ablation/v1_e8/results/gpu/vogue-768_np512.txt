@@ -1,0 +1,28 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+built A in 1135 ms, B (build + import) in 1883 ms
+schedule: per-query candidate count CV 0.338 on 512 pseudo-queries
+
+=== b=8 ===
+  A alpha=32      recall 0.9872  QPS median 13957 [13955, 13958]
+  A alpha=64      recall 0.9903  QPS median 12442 [12436, 12447]
+  B alpha=32      recall 0.9891  QPS median 14055 [14049, 14060]
+  B alpha=64      recall 0.9914  QPS median 12444 [12443, 12447]
+
+=== b=32 ===
+  A alpha=32      recall 0.9872  QPS median 45422 [45385, 45429]
+  A alpha=64      recall 0.9903  QPS median 38704 [38693, 38749]
+  B alpha=32      recall 0.9891  QPS median 46444 [46442, 46444]
+  B alpha=64      recall 0.9913  QPS median 38828 [38808, 38829]
+
+=== b=256 ===
+  A alpha=32      recall 0.9871  QPS median 93586 [93224, 93690]
+  A alpha=64      recall 0.9906  QPS median 76269 [76258, 76336]
+  B alpha=32      recall 0.9887  QPS median 90334 [88210, 90372]
+  B alpha=64      recall 0.9911  QPS median 68307 [68096, 68403]
+
+=== b=1000 ===
+  A alpha=32      recall 0.9872  QPS median 109913 [109841, 110276]
+  A alpha=64      recall 0.9903  QPS median 85086 [84870, 85252]
+  B alpha=32      recall 0.9891  QPS median 105409 [105235, 105421]
+  B alpha=64      recall 0.9914  QPS median 74299 [74270, 74346]
+=== E8_BENCH_OK ===

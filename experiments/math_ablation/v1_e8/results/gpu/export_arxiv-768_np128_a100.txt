@@ -1,0 +1,1 @@
+{"tag": "arxiv-768_np128_a100", "grouped": false, "vardir": "/root/autodl-tmp/math_ablation/arxiv-768_np128_a100/v1_e8", "corr_mean": 3.639210990513675e-05, "corr_abs_max": 0.07395324110984802}

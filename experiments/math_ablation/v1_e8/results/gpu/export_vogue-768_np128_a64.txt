@@ -1,0 +1,1 @@
+{"tag": "vogue-768_np128_a64", "grouped": false, "vardir": "/root/autodl-tmp/math_ablation/vogue-768_np128_a64/v1_e8", "corr_mean": -1.0663712600944564e-05, "corr_abs_max": 0.06675124913454056}

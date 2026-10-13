@@ -1,0 +1,15 @@
+build_rc=0
+got the GPU 10:50:42
+B0 arxiv-768_np128 rc=0 1 ok  10:51:01
+B0 vogue-768_np128 rc=0 1 ok  10:51:16
+B0 openai3-3072_np128 rc=0 1 ok  10:51:37
+B0 arxiv-768_np512 rc=0 1 ok  10:52:05
+B0 vogue-768_np512 rc=0 1 ok  10:52:20
+B0 openai3-3072_np512 rc=0 1 ok  10:52:45
+B0 arxiv-768_np32 rc=0 1 ok  10:52:52
+B0 arxiv-768_np64 rc=0 1 ok  10:53:00
+B0 vogue-768_np32 rc=0 1 ok  10:53:06
+B0 vogue-768_np64 rc=0 1 ok  10:53:13
+B0 openai3-3072_np32 rc=0 1 ok  10:53:24
+B0 openai3-3072_np64 rc=0 1 ok  10:53:36
+B0_DONE

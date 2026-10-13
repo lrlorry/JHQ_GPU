@@ -1,0 +1,91 @@
+{
+ "codebook": {
+  "words": 256,
+  "unique": 256,
+  "all_in_E8": true,
+  "norm2_counts": {
+   "2.0": 240,
+   "4.0": 16
+  },
+  "integer_roots": 112,
+  "half_integer_roots": 128,
+  "min_distance2": 2.0,
+  "symmetric": true
+ },
+ "encoder_consistency": {
+  "gauss_s0.5": {
+   "n": 200000,
+   "index_agreement": 1.0,
+   "max_distance_gap": 0.0,
+   "distance_ties_where_indices_differ": 0
+  },
+  "gauss_s1.0": {
+   "n": 200000,
+   "index_agreement": 1.0,
+   "max_distance_gap": 0.0,
+   "distance_ties_where_indices_differ": 0
+  },
+  "gauss_s1.7": {
+   "n": 200000,
+   "index_agreement": 1.0,
+   "max_distance_gap": 0.0,
+   "distance_ties_where_indices_differ": 0
+  },
+  "student3_s0.5": {
+   "n": 200000,
+   "index_agreement": 1.0,
+   "max_distance_gap": 0.0,
+   "distance_ties_where_indices_differ": 0
+  },
+  "student3_s1.0": {
+   "n": 200000,
+   "index_agreement": 1.0,
+   "max_distance_gap": 0.0,
+   "distance_ties_where_indices_differ": 0
+  },
+  "student3_s1.7": {
+   "n": 200000,
+   "index_agreement": 1.0,
+   "max_distance_gap": 0.0,
+   "distance_ties_where_indices_differ": 0
+  },
+  "codewords_plus_noise_s0.5": {
+   "n": 50000,
+   "index_agreement": 1.0,
+   "max_distance_gap": 0.0,
+   "distance_ties_where_indices_differ": 0
+  },
+  "codewords_plus_noise_s1.0": {
+   "n": 50000,
+   "index_agreement": 1.0,
+   "max_distance_gap": 0.0,
+   "distance_ties_where_indices_differ": 0
+  },
+  "codewords_plus_noise_s1.7": {
+   "n": 50000,
+   "index_agreement": 1.0,
+   "max_distance_gap": 0.0,
+   "distance_ties_where_indices_differ": 0
+  }
+ },
+ "nearest_vs_max_inner_product": {
+  "scale": 1.6334930923756492,
+  "disagree": 0.6862
+ },
+ "gaussian_mse_per_dim": {
+  "cube_jhq_c06745": 0.3787498689314612,
+  "cube_lloydmax_c0798": 0.3634328687777158,
+  "e8_fitted": 0.31947890239015536,
+  "e8_scale": 1.6346166409419172,
+  "e8_scale_fit_mse_history": [
+   2.5602964144787927,
+   2.555332222006997,
+   2.5553245753378526,
+   2.5553245670695977,
+   2.555324567005945,
+   2.555324567005945
+  ],
+  "e8_vs_cube_lloydmax": 0.8790589124880619,
+  "e8_codeword_use_share_axis": 0.0188875
+ }
+}

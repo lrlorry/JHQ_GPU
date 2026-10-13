@@ -1,0 +1,36 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+train 107.3 ms
+add 712.5 ms
+schedule: per-query candidate count CV 0.081 on 512 pseudo-queries
+
+=== alpha=4 ck=40  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  scheduled G for b=8: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9267    0.987 ms    1.059 ms        8121        8121        8121      4181
+  -1     0.9267    0.439 ms    0.442 ms       18190       18190       18190      4185
+
+=== alpha=4 ck=40  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  scheduled G for b=32: 4
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9273    1.026 ms    1.086 ms       31058       31058       31058      4185
+  -1     0.9273    0.597 ms    0.602 ms       53652       53652       53652      4185
+
+=== alpha=4 ck=40  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  scheduled G for b=256: 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9272    2.181 ms    2.197 ms      117651      117651      117651      4185
+  -1     0.9272    2.187 ms    2.200 ms      117397      117397      117397      4185
+
+=== alpha=4 ck=40  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9267    6.916 ms    6.940 ms      144571      144571      144571      4185
+  -1     0.9267    6.919 ms    6.952 ms      144518      144518      144518      4185
+
+wrote /root/autodl-tmp/math_ablation/nsys/openai3-3072.json
+=== BP_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-0f46.qdstrm'
+[1/1] [0%                          ] openai3-3072.nsys-rep[1/1] [0%                          ] openai3-3072.nsys-rep[1/1] [================68%         ] openai3-3072.nsys-rep[1/1] [================69%         ] openai3-3072.nsys-rep[1/1] [========================100%] openai3-3072.nsys-rep[1/1] [========================100%] openai3-3072.nsys-rep
+Generated:
+	/root/autodl-tmp/math_ablation/nsys/openai3-3072.nsys-rep

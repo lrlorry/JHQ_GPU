@@ -1,0 +1,1 @@
+{"tag": "vogue-768_np128_a64", "alloc": "empirical", "bits_histogram": {"6": 0, "7": 0, "8": 96, "9": 0, "10": 0}, "bytes_per_vector": 768, "hierarchical_mse_per_vector": 4.1312624545181976e-05, "pack_seconds_cpu": 294.8278737068176, "unpack_check_seconds_cpu": 4.80166220664978, "seconds": 425.44770884513855}

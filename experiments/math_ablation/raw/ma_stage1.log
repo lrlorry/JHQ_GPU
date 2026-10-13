@@ -1,0 +1,14 @@
+=== 2026-10-13T09:22:30Z head=e709f7e Math ablation: offline implementations of V1 (E8 primary: codebook checks, brute-force and structured encoders, scale fit, residual retrain), V2 (EVT list-pruning simulation with four risk models against the nprobe cut and the oracle), V3 (rate-distortion residual allocation with real variable-width packing); B0 v65 frontier script stages: e8test rdtest offline1 offline2 b0 ===
+e8test rc=0 E8_TEST OK
+stage e8test took 11 s
+rdtest rc=0 RD_PACK_TEST OK
+stage rdtest took 0 s
+offline1 e8: e8build rc=0 
+offline1 rd: rdstats arxiv-768_np128_a100 rc=0 rdstats vogue-768_np128_a64 rc=0 rdstats openai3-3072_np128_a4 rc=0 
+offline1 evt rc=0 openai3-3072_np128_a4 full {'recall': np.float64(0.9025000000000001), 'candidates': np.float64(18232.86)} oracle {'recall': np.float64(0.9025000000000001), 'candidates': np.float64(2239.69), 'frac': np.float64(0.12283810658338845), 'lists': np.float64(13.61)} 11s
+stage offline1 took 950 s
+offline2: e8eval rc=0 openai3-3072_np128_a4 {"JHQ": {"calib": {"T_min": 40, "recall_at_ck": 0.9305000000000001, "coverage_at_ck": 1.0, "full_ivf_recall": 0.9305, "misrank_random": 2.516964285714286e-05}, "val": {"T_min": 25, "recall_at_ck": 0.9025000000000007, "coverage_at_ck": 1.0, "full_ivf_recall": 0.90250 rdbuild rc=1 rdeval rc=143 arxiv-768_np128_a100 {"JHQ": {"calib": {"T_min": 875, "recall_at_ck": 0.9742499999999992, "coverage_at_ck": 0.9978025791049003, "full_ivf_recall": 0.97625, "misrank_random": 0.0006190768849206349}, "val": {"T_min": 750, "recall_at_ck": 0.9790000000000006, "coverage_at_ck": 0.9984444442 
+stage offline2 took 3233 s
+b0 rc=0 B0_DONE
+stage b0 took 82 s
+=== MA_STAGE_DONE 2026-10-13T10:33:46Z ===

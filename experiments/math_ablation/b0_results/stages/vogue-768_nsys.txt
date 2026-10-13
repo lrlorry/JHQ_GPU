@@ -1,0 +1,36 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 14.3 ms
+add 327.4 ms
+schedule: per-query candidate count CV 0.495 on 512 pseudo-queries
+
+=== alpha=64 ck=640  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  scheduled G for b=8: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    1.265 ms    1.359 ms        6573        6573        6573      1419
+  -1     0.9644    0.433 ms    0.469 ms       18620       18620       18620      1479
+
+=== alpha=64 ck=640  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  scheduled G for b=32: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    1.368 ms    1.483 ms       23126       23126       23126      1479
+  -1     0.9644    0.551 ms    0.569 ms       58096       58096       58096      1479
+
+=== alpha=64 ck=640  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  scheduled G for b=256: 4
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9665    2.166 ms    2.231 ms      117727      117727      117727      1479
+  -1     0.9665    1.525 ms    1.732 ms      165472      165472      165472      1479
+
+=== alpha=64 ck=640  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 4
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9644    4.612 ms    4.808 ms      216551      216551      216551      1479
+  -1     0.9644    4.210 ms    4.262 ms      237060      237060      237060      1479
+
+wrote /root/autodl-tmp/math_ablation/nsys/vogue-768.json
+=== BP_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-76e0.qdstrm'
+[1/1] [0%                          ] vogue-768.nsys-rep[1/1] [0%                          ] vogue-768.nsys-rep[1/1] [================69%         ] vogue-768.nsys-rep[1/1] [========================100%] vogue-768.nsys-rep[1/1] [========================100%] vogue-768.nsys-rep
+Generated:
+	/root/autodl-tmp/math_ablation/nsys/vogue-768.nsys-rep

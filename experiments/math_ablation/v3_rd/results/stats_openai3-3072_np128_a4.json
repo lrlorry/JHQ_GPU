@@ -1,0 +1,91 @@
+{
+ "tag": "openai3-3072_np128_a4",
+ "d": 3072,
+ "M": 384,
+ "residual_var_dim": {
+  "mean": 0.00011784486271609899,
+  "cv": 0.11942015864150755,
+  "min": 8.75019660919385e-05,
+  "max": 0.00020740159263926643
+ },
+ "residual_var_subspace": {
+  "cv": 0.04105653133775058,
+  "min": 0.00010352796847696032,
+  "max": 0.0001353889833506494
+ },
+ "excess_kurtosis_mean": 1.2594546584253952,
+ "gaussian_waterfilling_gain_bound": {
+  "per_dimension_AM_over_GM": 1.006811201181031,
+  "per_subspace_AM_over_GM": 1.0008412175233428
+ },
+ "distortion_rate_mean_over_subspaces": {
+  "6": 1.0758084405711929e-07,
+  "7": 3.317873395483109e-08,
+  "8": 1.5247205807927957e-08,
+  "9": 8.780824363188778e-09,
+  "10": 5.751361486583013e-09
+ },
+ "distortion_rate_slope_bits": 0.7985956288090689,
+ "query_weight_cv": 0.025450063996785142,
+ "allocations": {
+  "uniform": {
+   "histogram": {
+    "6": 0,
+    "7": 0,
+    "8": 384,
+    "9": 0,
+    "10": 0
+   },
+   "total_bits_per_vector": 24576
+  },
+  "waterfill": {
+   "histogram": {
+    "6": 0,
+    "7": 0,
+    "8": 384,
+    "9": 0,
+    "10": 0
+   },
+   "total_bits_per_vector": 24576
+  },
+  "empirical": {
+   "histogram": {
+    "6": 0,
+    "7": 0,
+    "8": 384,
+    "9": 0,
+    "10": 0
+   },
+   "total_bits_per_vector": 24576
+  },
+  "queryweighted": {
+   "histogram": {
+    "6": 0,
+    "7": 0,
+    "8": 384,
+    "9": 0,
+    "10": 0
+   },
+   "total_bits_per_vector": 24576
+  }
+ },
+ "predicted_heldout_mse_per_coordinate": {
+  "uniform": 1.5247205807927957e-08,
+  "waterfill": 1.5247205807927957e-08,
+  "empirical": 1.5247205807927957e-08,
+  "queryweighted": 1.5247205807927957e-08
+ },
+ "predicted_query_weighted_mse": {
+  "uniform": 1.5259766600820723e-08,
+  "waterfill": 1.5259766600820723e-08,
+  "empirical": 1.5259766600820723e-08,
+  "queryweighted": 1.5259766600820723e-08
+ },
+ "predicted_mse_ratio_vs_uniform": {
+  "uniform": 1.0,
+  "waterfill": 1.0,
+  "empirical": 1.0,
+  "queryweighted": 1.0
+ },
+ "seconds": 63.8225212097168
+}

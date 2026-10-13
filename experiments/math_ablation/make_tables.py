@@ -44,7 +44,7 @@ def write(path, rows):
 
 def bench_rows(path, variant):
     j = jload(path)
-    if not j:
+    if not isinstance(j, dict) or "runs" not in j:          # e.g. stages_summary.json next to the runs
         return []
     out = []
     for r in j["runs"]:
@@ -83,8 +83,9 @@ def main():
     os.makedirs(O, exist_ok=True)
     # frontier: B0 and any prototype
     fr = []
-    for p in sorted(glob.glob(os.path.join(R, "b0", "*.json"))):
+    for p in sorted(glob.glob(os.path.join(R, "b0", "*.json"))) + sorted(glob.glob(os.path.join(R, "b0_stages", "*.json"))):
         for r in bench_rows(p, "B0 v65"):
+            r["run"] = "b0_stages (paper configuration)" if "b0_stages" in p else "b0 frontier"
             if r["G"] == 0:                    # the v61 reference the harness measures first
                 r["variant"] = "v61 reference (G=0)"
             fr.append(r)

@@ -1,0 +1,44 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+built A in 1212 ms, B (build + import) in 1911 ms
+schedule: per-query candidate count CV 0.495 on 512 pseudo-queries
+
+=== b=8 ===
+  A alpha=32      recall 0.9621  QPS median 24525 [24516, 24537]
+  A alpha=48      recall 0.9635  QPS median 16958 [16950, 16972]
+  A alpha=64      recall 0.9643  QPS median 20573 [20573, 20584]
+  A alpha=96      recall 0.9645  QPS median 17462 [17459, 17469]
+  B alpha=32      recall 0.9630  QPS median 24847 [24840, 24847]
+  B alpha=48      recall 0.9642  QPS median 17083 [17067, 17089]
+  B alpha=64      recall 0.9648  QPS median 20721 [20695, 20724]
+  B alpha=96      recall 0.9652  QPS median 17567 [17556, 17574]
+
+=== b=32 ===
+  A alpha=32      recall 0.9621  QPS median 77843 [77828, 77987]
+  A alpha=48      recall 0.9635  QPS median 54732 [54546, 54763]
+  A alpha=64      recall 0.9643  QPS median 63288 [63286, 63311]
+  A alpha=96      recall 0.9645  QPS median 55474 [55396, 55516]
+  B alpha=32      recall 0.9630  QPS median 78389 [78286, 78483]
+  B alpha=48      recall 0.9641  QPS median 55104 [55059, 55184]
+  B alpha=64      recall 0.9647  QPS median 62273 [58766, 62988]
+  B alpha=96      recall 0.9651  QPS median 55539 [55486, 55561]
+
+=== b=256 ===
+  A alpha=32      recall 0.9641  QPS median 208987 [208593, 209238]
+  A alpha=48      recall 0.9656  QPS median 179578 [160965, 180736]
+  A alpha=64      recall 0.9665  QPS median 168447 [168438, 169901]
+  A alpha=96      recall 0.9667  QPS median 158192 [146602, 158308]
+  B alpha=32      recall 0.9647  QPS median 204811 [189963, 205583]
+  B alpha=48      recall 0.9661  QPS median 181077 [180181, 181424]
+  B alpha=64      recall 0.9667  QPS median 158397 [148199, 158763]
+  B alpha=96      recall 0.9672  QPS median 146801 [144791, 148267]
+
+=== b=1000 ===
+  A alpha=32      recall 0.9621  QPS median 274777 [269695, 275091]
+  A alpha=48      recall 0.9635  QPS median 239542 [237401, 240981]
+  A alpha=64      recall 0.9643  QPS median 212167 [211582, 212656]
+  A alpha=96      recall 0.9645  QPS median 197485 [193785, 198044]
+  B alpha=32      recall 0.9630  QPS median 264715 [263039, 266857]
+  B alpha=48      recall 0.9642  QPS median 235700 [235596, 235911]
+  B alpha=64      recall 0.9648  QPS median 190734 [190652, 190817]
+  B alpha=96      recall 0.9652  QPS median 178760 [178557, 179387]
+=== E8_BENCH_OK ===

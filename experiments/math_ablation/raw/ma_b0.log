@@ -1,0 +1,16 @@
+=== 2026-10-13T10:50:41Z head=aeeaad1e Math ablation: rd.py skips a workload with no non-uniform allocation built (openai3 crashed the evaluation after arxiv and vogue) b0 rerun ===
+b0 rc=0 12 configs
+B0 arxiv-768_np128 rc=0 1 ok  10:51:01
+B0 vogue-768_np128 rc=0 1 ok  10:51:16
+B0 openai3-3072_np128 rc=0 1 ok  10:51:37
+B0 arxiv-768_np512 rc=0 1 ok  10:52:05
+B0 vogue-768_np512 rc=0 1 ok  10:52:20
+B0 openai3-3072_np512 rc=0 1 ok  10:52:45
+B0 arxiv-768_np32 rc=0 1 ok  10:52:52
+B0 arxiv-768_np64 rc=0 1 ok  10:53:00
+B0 vogue-768_np32 rc=0 1 ok  10:53:06
+B0 vogue-768_np64 rc=0 1 ok  10:53:13
+B0 openai3-3072_np32 rc=0 1 ok  10:53:24
+B0 openai3-3072_np64 rc=0 1 ok  10:53:36
+B0_DONE
+=== MA_B0_DONE 2026-10-13T10:53:36Z ===

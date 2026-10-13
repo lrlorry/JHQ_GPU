@@ -1,0 +1,26 @@
+{
+ "tag": "openai3-3072_np128_a4",
+ "grouped": true,
+ "N": 999000,
+ "d": 3072,
+ "M": 384,
+ "scales_min_med_max": [
+  0.027582267035155622,
+  0.02945193949764182,
+  0.03251556338032465
+ ],
+ "jhq_level": 0.012169275432825089,
+ "primary_mse_per_vector": 0.3190546259100256,
+ "jhq_primary_mse_per_vector": 0.378527900968009,
+ "primary_mse_ratio_e8_over_jhq": 0.8428827177444714,
+ "hierarchical_mse_per_vector": 2.5825467497864704e-05,
+ "encode_seconds_cpu": 188.3594307899475,
+ "codeword_use_entropy_bits": 7.966641448231801,
+ "axis_word_share": 0.018898477198433506,
+ "lloyd_iterations": [
+  2000,
+  2000,
+  2000
+ ],
+ "seconds": 835.6448199748993
+}

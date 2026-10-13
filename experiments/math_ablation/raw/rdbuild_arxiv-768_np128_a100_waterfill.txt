@@ -1,0 +1,1 @@
+{"tag": "arxiv-768_np128_a100", "alloc": "waterfill", "bits_histogram": {"6": 0, "7": 0, "8": 96, "9": 0, "10": 0}, "bytes_per_vector": 768, "hierarchical_mse_per_vector": 2.830837612005104e-05, "pack_seconds_cpu": 534.0541436672211, "unpack_check_seconds_cpu": 5.162201642990112, "seconds": 759.2513313293457}

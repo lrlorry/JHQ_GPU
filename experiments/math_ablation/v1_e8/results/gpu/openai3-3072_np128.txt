@@ -1,0 +1,44 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+built A in 6895 ms, B (build + import) in 9440 ms
+schedule: per-query candidate count CV 0.081 on 512 pseudo-queries
+
+=== b=8 ===
+  A alpha=2       recall 0.9217  QPS median 19934 [19916, 19937]
+  A alpha=3       recall 0.9262  QPS median 19930 [19920, 19937]
+  A alpha=4       recall 0.9267  QPS median 19846 [19828, 19859]
+  A alpha=6       recall 0.9267  QPS median 19750 [19741, 19767]
+  B alpha=2       recall 0.9247  QPS median 19966 [19965, 19981]
+  B alpha=3       recall 0.9270  QPS median 19964 [19957, 19973]
+  B alpha=4       recall 0.9271  QPS median 19937 [19937, 19944]
+  B alpha=6       recall 0.9271  QPS median 19846 [19821, 19867]
+
+=== b=32 ===
+  A alpha=2       recall 0.9223  QPS median 57746 [57650, 57792]
+  A alpha=3       recall 0.9268  QPS median 57678 [57665, 57754]
+  A alpha=4       recall 0.9273  QPS median 57618 [57613, 57687]
+  A alpha=6       recall 0.9273  QPS median 57471 [57412, 57489]
+  B alpha=2       recall 0.9253  QPS median 57848 [57753, 57886]
+  B alpha=3       recall 0.9276  QPS median 57749 [57687, 57774]
+  B alpha=4       recall 0.9277  QPS median 57618 [57574, 57625]
+  B alpha=6       recall 0.9277  QPS median 57526 [57506, 57594]
+
+=== b=256 ===
+  A alpha=2       recall 0.9223  QPS median 88020 [87607, 88150]
+  A alpha=3       recall 0.9270  QPS median 88032 [87945, 88042]
+  A alpha=4       recall 0.9272  QPS median 87979 [87533, 88032]
+  A alpha=6       recall 0.9272  QPS median 87434 [86186, 87724]
+  B alpha=2       recall 0.9246  QPS median 88972 [88878, 89025]
+  B alpha=3       recall 0.9273  QPS median 87544 [87439, 88884]
+  B alpha=4       recall 0.9275  QPS median 88763 [88752, 88809]
+  B alpha=6       recall 0.9275  QPS median 87691 [87495, 88364]
+
+=== b=1000 ===
+  A alpha=2       recall 0.9217  QPS median 90131 [90115, 90151]
+  A alpha=3       recall 0.9262  QPS median 90025 [89949, 90044]
+  A alpha=4       recall 0.9267  QPS median 89923 [88812, 89945]
+  A alpha=6       recall 0.9267  QPS median 89236 [88820, 89577]
+  B alpha=2       recall 0.9247  QPS median 89881 [89320, 89940]
+  B alpha=3       recall 0.9270  QPS median 90017 [89991, 90072]
+  B alpha=4       recall 0.9271  QPS median 89935 [89909, 90012]
+  B alpha=6       recall 0.9271  QPS median 89752 [89642, 89767]
+=== E8_BENCH_OK ===

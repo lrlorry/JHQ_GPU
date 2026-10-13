@@ -1,0 +1,122 @@
+{
+ "trial0": {
+  "M": 29,
+  "bytes_per_vector": 232,
+  "d": 232,
+  "roundtrip": true
+ },
+ "trial1": {
+  "M": 41,
+  "bytes_per_vector": 328,
+  "d": 328,
+  "roundtrip": true
+ },
+ "trial2": {
+  "M": 59,
+  "bytes_per_vector": 472,
+  "d": 472,
+  "roundtrip": true
+ },
+ "trial3": {
+  "M": 24,
+  "bytes_per_vector": 192,
+  "d": 192,
+  "roundtrip": true
+ },
+ "trial4": {
+  "M": 26,
+  "bytes_per_vector": 208,
+  "d": 208,
+  "roundtrip": true
+ },
+ "trial5": {
+  "M": 23,
+  "bytes_per_vector": 184,
+  "d": 184,
+  "roundtrip": true
+ },
+ "trial6": {
+  "M": 47,
+  "bytes_per_vector": 376,
+  "d": 376,
+  "roundtrip": true
+ },
+ "trial7": {
+  "M": 12,
+  "bytes_per_vector": 96,
+  "d": 96,
+  "roundtrip": true
+ },
+ "trial8": {
+  "M": 26,
+  "bytes_per_vector": 208,
+  "d": 208,
+  "roundtrip": true
+ },
+ "trial9": {
+  "M": 47,
+  "bytes_per_vector": 376,
+  "d": 376,
+  "roundtrip": true
+ },
+ "trial10": {
+  "M": 42,
+  "bytes_per_vector": 336,
+  "d": 336,
+  "roundtrip": true
+ },
+ "trial11": {
+  "M": 56,
+  "bytes_per_vector": 448,
+  "d": 448,
+  "roundtrip": true
+ },
+ "trial12": {
+  "M": 28,
+  "bytes_per_vector": 224,
+  "d": 224,
+  "roundtrip": true
+ },
+ "trial13": {
+  "M": 34,
+  "bytes_per_vector": 272,
+  "d": 272,
+  "roundtrip": true
+ },
+ "trial14": {
+  "M": 16,
+  "bytes_per_vector": 128,
+  "d": 128,
+  "roundtrip": true
+ },
+ "trial15": {
+  "M": 24,
+  "bytes_per_vector": 192,
+  "d": 192,
+  "roundtrip": true
+ },
+ "trial16": {
+  "M": 44,
+  "bytes_per_vector": 352,
+  "d": 352,
+  "roundtrip": true
+ },
+ "trial17": {
+  "M": 31,
+  "bytes_per_vector": 248,
+  "d": 248,
+  "roundtrip": true
+ },
+ "trial18": {
+  "M": 12,
+  "bytes_per_vector": 96,
+  "d": 96,
+  "roundtrip": true
+ },
+ "trial19": {
+  "M": 29,
+  "bytes_per_vector": 232,
+  "d": 232,
+  "roundtrip": true
+ }
+}

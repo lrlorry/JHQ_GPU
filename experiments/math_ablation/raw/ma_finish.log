@@ -1,0 +1,9 @@
+=== 2026-10-13T10:33:46Z head=01b9171 Math ablation: V3 evaluates only the distinct allocations with a vectorised unpack (the bit loop took 25 min without finishing arxiv); finish.sh replaces gpu_phase2.sh and confirm_test.sh finish ===
+v1_gpu rc=0 6 runs  10:38:08
+b0_stages rc=0 STAGES_DONE  10:38:50
+rdeval rc=1  10:40:11
+--- test split, read once
+e8 test rc=0  10:47:19
+rd test rc=0  10:49:24
+evt test rc=0  10:50:41
+=== MA_FINISH_DONE 2026-10-13T10:50:41Z ===

@@ -1,0 +1,8 @@
+=== 2026-10-13T09:38:31Z head=e709f7e Math ablation: offline implementations of V1 (E8 primary: codebook checks, brute-force and structured encoders, scale fit, residual retrain), V2 (EVT list-pruning simulation with four risk models against the nprobe cut and the oracle), V3 (rate-distortion residual allocation with real variable-width packing); B0 v65 frontier script stages: rdbuild rdeval ===
+rdbuild rc=1
+stage rdbuild took 1114 s
+Terminated
+rdeval rc=143 arxiv-768_np128_a100 {"JHQ": {"calib": {"T_min": 875, "recall_at_ck": 0.9742499999999992, "coverage_at_ck": 0.9978025791049003, "full_ivf_recall": 0.97625, "misrank_random": 0.0006190768849206349}, "val": {"T_min": 750, "recall_at_ck": 0.9790000000000006, "coverage_at_ck": 0.9984444442391396, "full_ivf_recall": 0.9804999999999999, "misrank_random": 0.0005557638888888888}}, "RD-uniform": {"calib": 
+  paired {"RD-waterfill - RD-uniform": {"125": [0.0, 0.0, 0.0], "250": [0.0, 0.0, 0.0], "500": [0.0, 0.0, 0.0], "1000": [0.0, 0.0, 0.0]}, "RD-empirical - RD-uniform": {"125": [-0.01666667064030965, -0.15000003576278687, 0.11666669448216756], "250": [-9.934107462565105e-09, -0.15000004569689432, 0.1500000258286794], "500": [-0.016666680574417114, -0.16666672627131143, 0.1333333651224772], "1000": [
+stage rdeval took 2119 s
+=== MA_STAGE_DONE 2026-10-13T10:32:24Z ===

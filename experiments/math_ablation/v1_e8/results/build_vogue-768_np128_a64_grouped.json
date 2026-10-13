@@ -1,0 +1,26 @@
+{
+ "tag": "vogue-768_np128_a64",
+ "grouped": true,
+ "N": 932328,
+ "d": 768,
+ "M": 96,
+ "scales_min_med_max": [
+  0.0482495922970015,
+  0.05765313568970047,
+  0.07685267372584365
+ ],
+ "jhq_level": 0.024338550865650177,
+ "primary_mse_per_vector": 0.31479803065909145,
+ "jhq_primary_mse_per_vector": 0.3788264797899667,
+ "primary_mse_ratio_e8_over_jhq": 0.830982118339841,
+ "hierarchical_mse_per_vector": 2.3983425543894506e-05,
+ "encode_seconds_cpu": 43.31565046310425,
+ "codeword_use_entropy_bits": 7.933818878781704,
+ "axis_word_share": 0.017803266749895963,
+ "lloyd_iterations": [
+  2000,
+  2000,
+  2000
+ ],
+ "seconds": 223.0236849784851
+}

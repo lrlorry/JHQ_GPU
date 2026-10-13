@@ -1,0 +1,79 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 15.8 ms
+add 329.5 ms
+schedule: per-query candidate count CV 0.599 on 512 pseudo-queries
+
+=== alpha=32 ck=320  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  scheduled G for b=8: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.8611    0.501 ms    0.599 ms       16297       16219       16312      1399
+  -1     0.8611    0.245 ms    0.270 ms       32796       32766       32814      1431
+
+=== alpha=32 ck=320  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  scheduled G for b=32: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.8608    0.592 ms    0.635 ms       54550       54549       54588      1431
+  -1     0.8608    0.296 ms    0.315 ms      107586      107353      107684      1431
+
+=== alpha=32 ck=320  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  scheduled G for b=256: 4
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.8671    0.954 ms    1.016 ms      264030      263938      264183      1431
+  -1     0.8671    0.759 ms    0.784 ms      337137      334957      337377      1431
+
+=== alpha=32 ck=320  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 4
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.8611    2.124 ms    2.243 ms      469477      469092      472087      1431
+  -1     0.8611    2.008 ms    2.043 ms      496750      495999      497770      1431
+
+=== alpha=64 ck=640  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  scheduled G for b=8: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.8620    0.566 ms    0.661 ms       14377       14375       14380      1437
+  -1     0.8620    0.306 ms    0.331 ms       26335       26330       26351      1465
+
+=== alpha=64 ck=640  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  scheduled G for b=32: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.8617    0.653 ms    0.704 ms       49270       49262       49292      1465
+  -1     0.8617    0.386 ms    0.401 ms       83652       83478       83675      1465
+
+=== alpha=64 ck=640  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  scheduled G for b=256: 4
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.8681    1.077 ms    1.139 ms      234156      233964      234218      1465
+  -1     0.8681    0.941 ms    0.967 ms      271748      271567      271827      1465
+
+=== alpha=64 ck=640  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 4
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.8620    2.447 ms    2.590 ms      407203      406627      407775      1465
+  -1     0.8620    2.576 ms    2.602 ms      388029      387881      389167      1465
+
+=== alpha=128 ck=1280  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  scheduled G for b=8: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.8621    0.784 ms    0.931 ms       10187       10179       10187      1471
+  -1     0.8621    0.433 ms    0.491 ms       18633       18618       18647      1531
+
+=== alpha=128 ck=1280  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  scheduled G for b=32: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.8618    0.904 ms    0.968 ms       35157       35128       35161      1531
+  -1     0.8618    0.527 ms    0.560 ms       60865       60692       60926      1531
+
+=== alpha=128 ck=1280  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  scheduled G for b=256: 4
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.8682    1.502 ms    1.522 ms      172435      172121      172702      1531
+  -1     0.8682    1.194 ms    1.235 ms      215394      215141      216306      1531
+
+=== alpha=128 ck=1280  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 4
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.8621    3.364 ms    3.464 ms      296361      295391      299815      1531
+  -1     0.8621    3.204 ms    3.242 ms      310584      309627      311839      1531
+
+wrote results/math_ablation/b0/vogue-768_np32.json
+=== BP_OK ===

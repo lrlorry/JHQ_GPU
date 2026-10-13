@@ -1,0 +1,9 @@
+got the GPU 10:38:08
+plain arxiv-768 rc=0 1 ok
+nsys arxiv-768 rc=0 1 trace
+plain vogue-768 rc=0 1 ok
+nsys vogue-768 rc=0 1 trace
+plain openai3-3072 rc=0 1 ok
+nsys openai3-3072 rc=0 1 trace
+stage_times rc=0
+STAGES_DONE

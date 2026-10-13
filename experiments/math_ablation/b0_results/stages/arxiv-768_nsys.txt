@@ -1,0 +1,36 @@
+  [mmap loader] reusing cached /root/autodl-tmp/arxiv-abstracts-768/base.fvecs.raw_f32
+train 22.8 ms
+add 561.0 ms
+schedule: per-query candidate count CV 0.105 on 512 pseudo-queries
+
+=== alpha=100 ck=1000  b=8: 125 batches x 1 reps = 1000 queries per measurement ===
+  scheduled G for b=8: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9766    1.094 ms    1.178 ms        7273        7273        7273      2557
+  -1     0.9766    0.494 ms    0.518 ms       16220       16220       16220      2653
+
+=== alpha=100 ck=1000  b=32: 31 batches x 1 reps = 992 queries per measurement ===
+  scheduled G for b=32: 8
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9764    1.167 ms    1.228 ms       27391       27391       27391      2653
+  -1     0.9764    0.591 ms    0.615 ms       53940       53940       53940      2653
+
+=== alpha=100 ck=1000  b=256: 3 batches x 8 reps = 6144 queries per measurement ===
+  scheduled G for b=256: 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9771    1.724 ms    1.735 ms      148587      148587      148587      2653
+  -1     0.9771    1.727 ms    1.737 ms      148360      148360      148360      2653
+
+=== alpha=100 ck=1000  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9766    4.534 ms    4.589 ms      220186      220186      220186      2653
+  -1     0.9766    4.551 ms    4.624 ms      219713      219713      219713      2653
+
+wrote /root/autodl-tmp/math_ablation/nsys/arxiv-768.json
+=== BP_OK ===
+Collecting data...
+Generating '/tmp/nsys-report-4b20.qdstrm'
+[1/1] [0%                          ] arxiv-768.nsys-rep[1/1] [0%                          ] arxiv-768.nsys-rep[1/1] [================70%         ] arxiv-768.nsys-rep[1/1] [========================100%] arxiv-768.nsys-rep[1/1] [========================100%] arxiv-768.nsys-rep
+Generated:
+	/root/autodl-tmp/math_ablation/nsys/arxiv-768.nsys-rep

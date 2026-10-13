@@ -1,0 +1,12 @@
+build_rc=0
+export arxiv-768_np128_a100 rc=0 {"tag": "arxiv-768_np128_a100", "grouped": false, "vardir": "/root/autodl-tmp/math_ablation/arxiv-768_np128_a100/v1_e8", "corr_mean": 3.639210990513675e-05, "corr_abs_max": 0.07395324110984802}
+export vogue-768_np128_a64 rc=0 {"tag": "vogue-768_np128_a64", "grouped": false, "vardir": "/root/autodl-tmp/math_ablation/vogue-768_np128_a64/v1_e8", "corr_mean": -1.0663712600944564e-05, "corr_abs_max": 0.06675124913454056}
+export openai3-3072_np128_a4 rc=0 {"tag": "openai3-3072_np128_a4", "grouped": false, "vardir": "/root/autodl-tmp/math_ablation/openai3-3072_np128_a4/v1_e8", "corr_mean": -2.001460234168917e-05, "corr_abs_max": 0.030571062117815018}
+got the GPU 10:36:07
+V1GPU arxiv-768_np128 rc=0 1 ok  10:36:28
+V1GPU vogue-768_np128 rc=0 1 ok  10:36:38
+V1GPU openai3-3072_np128 rc=0 1 ok  10:37:10
+V1GPU arxiv-768_np512 rc=0 1 ok  10:37:25
+V1GPU vogue-768_np512 rc=0 1 ok  10:37:35
+V1GPU openai3-3072_np512 rc=0 1 ok  10:38:08
+V1GPU_DONE

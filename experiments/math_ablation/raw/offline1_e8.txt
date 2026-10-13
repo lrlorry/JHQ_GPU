@@ -1,0 +1,4 @@
+=== 2026-10-13T09:22:41Z head=e709f7e Math ablation: offline implementations of V1 (E8 primary: codebook checks, brute-force and structured encoders, scale fit, residual retrain), V2 (EVT list-pruning simulation with four risk models against the nprobe cut and the oracle), V3 (rate-distortion residual allocation with real variable-width packing); B0 v65 frontier script stages: e8build ===
+e8build rc=0
+stage e8build took 950 s
+=== MA_STAGE_DONE 2026-10-13T09:38:31Z ===

@@ -1,0 +1,26 @@
+{
+ "tag": "arxiv-768_np128_a100",
+ "grouped": false,
+ "N": 2253000,
+ "d": 768,
+ "M": 96,
+ "scales_min_med_max": [
+  0.058839195487643395,
+  0.058839195487643395,
+  0.058839195487643395
+ ],
+ "jhq_level": 0.024338550865650177,
+ "primary_mse_per_vector": 0.3225878917904316,
+ "jhq_primary_mse_per_vector": 0.37832828044089817,
+ "primary_mse_ratio_e8_over_jhq": 0.8526666085191741,
+ "hierarchical_mse_per_vector": 1.8830507389077464e-05,
+ "encode_seconds_cpu": 95.65949988365173,
+ "codeword_use_entropy_bits": 7.714199783663107,
+ "axis_word_share": 0.01902464445114163,
+ "lloyd_iterations": [
+  2000,
+  2000,
+  2000
+ ],
+ "seconds": 420.6196336746216
+}

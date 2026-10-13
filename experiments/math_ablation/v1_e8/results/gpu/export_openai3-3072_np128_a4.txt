@@ -1,0 +1,1 @@
+{"tag": "openai3-3072_np128_a4", "grouped": false, "vardir": "/root/autodl-tmp/math_ablation/openai3-3072_np128_a4/v1_e8", "corr_mean": -2.001460234168917e-05, "corr_abs_max": 0.030571062117815018}

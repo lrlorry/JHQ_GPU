@@ -1,0 +1,91 @@
+{
+ "tag": "vogue-768_np128_a64",
+ "d": 768,
+ "M": 96,
+ "residual_var_dim": {
+  "mean": 0.000421226199977095,
+  "cv": 0.3391480864377419,
+  "min": 0.00025451666285654574,
+  "max": 0.001583576021985121
+ },
+ "residual_var_subspace": {
+  "cv": 0.1367533649389665,
+  "min": 0.00031364040269336185,
+  "max": 0.0006381718393852877
+ },
+ "excess_kurtosis_mean": 0.6225131744470843,
+ "gaussian_waterfilling_gain_bound": {
+  "per_dimension_AM_over_GM": 1.044945345113879,
+  "per_subspace_AM_over_GM": 1.0087789553517457
+ },
+ "distortion_rate_mean_over_subspaces": {
+  "6": 3.9629329251968096e-07,
+  "7": 1.2142463154082072e-07,
+  "8": 5.357902856274599e-08,
+  "9": 2.965986186902604e-08,
+  "10": 1.867573097593348e-08
+ },
+ "distortion_rate_slope_bits": 0.8518111319575997,
+ "query_weight_cv": 0.028044443919476136,
+ "allocations": {
+  "uniform": {
+   "histogram": {
+    "6": 0,
+    "7": 0,
+    "8": 96,
+    "9": 0,
+    "10": 0
+   },
+   "total_bits_per_vector": 6144
+  },
+  "waterfill": {
+   "histogram": {
+    "6": 0,
+    "7": 0,
+    "8": 96,
+    "9": 0,
+    "10": 0
+   },
+   "total_bits_per_vector": 6144
+  },
+  "empirical": {
+   "histogram": {
+    "6": 0,
+    "7": 0,
+    "8": 96,
+    "9": 0,
+    "10": 0
+   },
+   "total_bits_per_vector": 6144
+  },
+  "queryweighted": {
+   "histogram": {
+    "6": 0,
+    "7": 0,
+    "8": 96,
+    "9": 0,
+    "10": 0
+   },
+   "total_bits_per_vector": 6144
+  }
+ },
+ "predicted_heldout_mse_per_coordinate": {
+  "uniform": 5.357902856274599e-08,
+  "waterfill": 5.357902856274599e-08,
+  "empirical": 5.357902856274599e-08,
+  "queryweighted": 5.357902856274599e-08
+ },
+ "predicted_query_weighted_mse": {
+  "uniform": 5.366057978392483e-08,
+  "waterfill": 5.366057978392483e-08,
+  "empirical": 5.366057978392483e-08,
+  "queryweighted": 5.366057978392483e-08
+ },
+ "predicted_mse_ratio_vs_uniform": {
+  "uniform": 1.0,
+  "waterfill": 1.0,
+  "empirical": 1.0,
+  "queryweighted": 1.0
+ },
+ "seconds": 23.524637460708618
+}

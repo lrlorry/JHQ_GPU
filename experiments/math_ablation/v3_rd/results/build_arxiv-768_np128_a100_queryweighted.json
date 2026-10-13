@@ -1,0 +1,16 @@
+{
+ "tag": "arxiv-768_np128_a100",
+ "alloc": "queryweighted",
+ "bits_histogram": {
+  "6": 0,
+  "7": 7,
+  "8": 82,
+  "9": 7,
+  "10": 0
+ },
+ "bytes_per_vector": 768,
+ "hierarchical_mse_per_vector": 2.763220906850844e-05,
+ "pack_seconds_cpu": 550.1890072822571,
+ "unpack_check_seconds_cpu": 5.026020288467407,
+ "seconds": 781.5000810623169
+}

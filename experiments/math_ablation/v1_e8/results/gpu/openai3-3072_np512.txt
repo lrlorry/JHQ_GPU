@@ -1,0 +1,28 @@
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-3072/base.fvecs.raw_f32
+built A in 5099 ms, B (build + import) in 8519 ms
+schedule: per-query candidate count CV 0.042 on 512 pseudo-queries
+
+=== b=8 ===
+  A alpha=2       recall 0.9638  QPS median 12184 [12130, 12197]
+  A alpha=4       recall 0.9716  QPS median 12148 [12020, 12170]
+  B alpha=2       recall 0.9683  QPS median 12337 [12336, 12340]
+  B alpha=4       recall 0.9723  QPS median 12292 [11985, 12304]
+
+=== b=32 ===
+  A alpha=2       recall 0.9640  QPS median 31157 [31143, 31159]
+  A alpha=4       recall 0.9719  QPS median 31084 [31043, 31116]
+  B alpha=2       recall 0.9685  QPS median 31367 [31347, 31410]
+  B alpha=4       recall 0.9726  QPS median 31284 [29075, 31293]
+
+=== b=256 ===
+  A alpha=2       recall 0.9637  QPS median 31155 [31132, 31209]
+  A alpha=4       recall 0.9719  QPS median 31163 [31130, 31166]
+  B alpha=2       recall 0.9684  QPS median 31476 [31083, 31506]
+  B alpha=4       recall 0.9724  QPS median 31472 [30991, 31503]
+
+=== b=1000 ===
+  A alpha=2       recall 0.9638  QPS median 29970 [29956, 29970]
+  A alpha=4       recall 0.9716  QPS median 29946 [29943, 29946]
+  B alpha=2       recall 0.9683  QPS median 29925 [29899, 30010]
+  B alpha=4       recall 0.9723  QPS median 29986 [29861, 29988]
+=== E8_BENCH_OK ===
