@@ -30,6 +30,30 @@ import roq_common as C  # noqa: E402
 G = {}
 
 
+def distances(P, qr, pos, chunk=8192):
+    """D_P and D_H of the candidates at positions pos, a chunk at a time: the container this runs in is held to
+    90 GiB (cgroup memory.max) and throttled above memory.high, so a worker must stay at a few hundred MB."""
+    n = len(pos)
+    dp = np.empty(n); dh = np.empty(n)
+    M = P["res_cb"].shape[0]
+    off = (np.arange(M, dtype=np.int32) * P["res_cb"].shape[1]).repeat(8)[None, :]
+    cbf = P["res_cb"].reshape(-1)
+    for a in range(0, n, chunk):
+        ps = pos[a:a + chunk]
+        bits = np.unpackbits(np.asarray(P["bits"][ps]), axis=1).astype(bool)
+        if P["per_list"]:
+            l = G["lpos"][ps]
+            yh = np.where(bits, P["hi32"][l], P["lo32"][l])
+        else:
+            yh = np.where(bits, P["hi32"][None, :], P["lo32"][None, :])
+        rh = cbf[np.asarray(P["res"][ps]).astype(np.int32) + off]
+        e = qr[None, :] - yh
+        dp[a:a + chunk] = np.einsum("ij,ij->i", e, e)
+        e -= rh
+        dh[a:a + chunk] = np.einsum("ij,ij->i", e, e)
+    return dp, dh
+
+
 def per_query(path):
     q = C.load_bin(path)
     n, ck = q["n"], q["ck"]
@@ -45,16 +69,7 @@ def per_query(path):
     out = dict(qid=q["qid"], n=n, ck=ck, R={}, X={}, MR={}, RK={}, full={})
     keys = {"JHQ": (q["P"], q["DH"])}
     for v in G["variants"]:
-        P = G["var"][v]
-        bits = np.unpackbits(np.asarray(P["bits"][pos]), axis=1).astype(bool)
-        if P["per_list"]:
-            l = G["lpos"][pos]
-            yh = np.where(bits, P["hi"][l], P["lo"][l]).astype(np.float64)
-        else:
-            yh = np.where(bits, P["hi"][None, :], P["lo"][None, :]).astype(np.float64)
-        rh = C.decode_residual(np.asarray(P["res"][pos]), P["res_cb"]).astype(np.float64)
-        a = qr[None, :] - yh
-        keys[v] = ((a * a).sum(1), ((a - rh) ** 2).sum(1))
+        keys[v] = distances(G["var"][v], qr, pos)
     for v, (dp, dh) in keys.items():
         out["R"][v], order = C.recall_curve(dp, dh, pos, isgt, Ts)
         if v != "JHQ":
@@ -85,7 +100,8 @@ def main():
         info = {}
         for v in G["variants"]:
             pz = np.load(os.path.join(C.RQ, tag, "var_" + v, "params.npz"))
-            G["var"][v] = dict(per_list=bool(pz["per_list"]), lo=pz["lo"].astype(np.float64), hi=pz["hi"].astype(np.float64), res_cb=pz["res_cb"],
+            G["var"][v] = dict(per_list=bool(pz["per_list"]), lo32=pz["lo"].astype(np.float32), hi32=pz["hi"].astype(np.float32),
+                               res_cb=pz["res_cb"].astype(np.float32),
                                bits=np.memmap(os.path.join(C.RQ, tag, "var_" + v, "bits.u8"), dtype=np.uint8, mode="r", shape=(N, M)),
                                res=np.memmap(os.path.join(C.RQ, tag, "var_" + v, "res.u8"), dtype=np.uint8, mode="r", shape=(N, d)))
             info[v] = json.load(open(os.path.join(C.RQ, tag, "var_" + v, "info.json")))
@@ -94,7 +110,7 @@ def main():
         G["Ts"] = Ts = C.t_grid(ck, 4 * ck)
         # close + join before the next workload forks again: a pool torn down by "with" (terminate) can leave
         # its handler threads holding locks that the next fork's children inherit locked (seen: a deadlock)
-        pool = mp.get_context("fork").Pool(64)
+        pool = mp.get_context("fork").Pool(32)
         res = pool.map(per_query, files, chunksize=4)
         pool.close(); pool.join()
         sp = C.splits([o["qid"] for o in res])

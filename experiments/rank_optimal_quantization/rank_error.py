@@ -99,7 +99,7 @@ def main():
                                  thr=pz["thr"].astype(np.float64), lo=pz["lo"].astype(np.float64), hi=pz["hi"].astype(np.float64))
         files = C.bin_files(tag)
         G["split"] = C.splits([int(os.path.basename(f)[4:-4]) for f in files])
-        pool = mp.get_context("fork").Pool(64)            # close + join: see eval_variants.py
+        pool = mp.get_context("fork").Pool(24)            # close + join: see eval_variants.py
         res = [o for o in pool.map(per_query, files, chunksize=4) if o]
         pool.close(); pool.join()
         for v in G["codes"]:
