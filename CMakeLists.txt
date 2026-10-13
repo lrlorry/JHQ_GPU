@@ -2221,6 +2221,18 @@ target_compile_definitions(demo_jhq_v67_repr_bench PRIVATE
 target_compile_options(demo_jhq_v67_repr_bench PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-O3 -Xcompiler=-fopenmp>)
 target_link_libraries(demo_jhq_v67_repr_bench PRIVATE jhq_v67_exp)
 
+# v68 (math-ablation study, V1 E8-JHQ): v67 with the full 256-entry primary table instead of v47's factorised
+# 16+16 one (an E8 codebook is not a Cartesian product), and import_state taking any 256-word codebook per
+# subspace. demo_jhq_v68_e8_bench measures the paper index and the imported E8 representation through it side
+# by side (experiments/math_ablation/v1_e8).
+set(V68 jhq_v68_e8)
+add_jhq_variant(v68_exp ${V68} ${V61_DEFS})
+add_executable(demo_jhq_v68_e8_bench examples/demo_jhq_v68_e8_bench.cu)
+target_compile_definitions(demo_jhq_v68_e8_bench PRIVATE
+    JHQ_INDEX_HEADER="${V68}/jhq_gpu_index.cuh" ${V61_DEFS})
+target_compile_options(demo_jhq_v68_e8_bench PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-O3 -Xcompiler=-fopenmp>)
+target_link_libraries(demo_jhq_v68_e8_bench PRIVATE jhq_v68_exp)
+
 # v64: v61 with the IVF centroid scoring selectable (jhq_gpu::set_route_mode,
 # JHQ_ROUTE_MODE): 0 = v61's, rotate then score against c; 1 = score the query
 # as given against Pi^T c (precomputed once per index -- the same products,
