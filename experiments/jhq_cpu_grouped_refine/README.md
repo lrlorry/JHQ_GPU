@@ -14,12 +14,15 @@
 | 0006 | 插桩默认关闭（实测会让批量 QPS 下降 2–4%） |
 | 0007 | 结果（`jhq/benchmarks/refine_locality/results/`）与报告 |
 
+`run_logs.tar.gz` 里是每次运行的标准输出日志，共 53 个文件。`jiabhan/JHQ` 的 `.gitignore` 忽略了 `*.log`，所以它们不在 patch 里，解压到 apply 后的仓库根目录即可放回原位。
+
 **还原：** 已验证 apply 后的 tree 与原 commit 完全相同（`5e68d12f`）。
 
 ```sh
 git clone https://github.com/jiabhan/JHQ.git && cd JHQ
 git switch -c opt/list-grouped-refine 1636e19
 git am /path/to/JHQ_GPU/experiments/jhq_cpu_grouped_refine/patches/*.patch
+tar xzf /path/to/JHQ_GPU/experiments/jhq_cpu_grouped_refine/run_logs.tar.gz
 ```
 
 **结论**（详见 `REPORT_CN.md`，与 0007 中 `jhq/benchmarks/refine_locality/REPORT_CN.md` 相同）：
