@@ -103,6 +103,22 @@ def main():
         a.set_ylabel("GPU time per search (ms)"); a.legend(fontsize=7, ncol=5); a.grid(alpha=0.3, axis="y")
         a.set_title("B0 (v65) per-stage GPU time at the paper's configuration (nsys)", fontsize=11)
         fig.tight_layout(); fig.savefig(os.path.join(O, "fig4_stages.png"), dpi=110); plt.close(fig)
+    mem = rows_of(os.path.join(R, "INDEX_MEMORY.csv"))
+    if mem:
+        fig, axes = plt.subplots(1, 2, figsize=(15, 4.6))
+        names = [(r["variant"], r["dataset"]) for r in mem]
+        x = np.arange(len(mem))
+        tot = np.array([float(r["primary_bytes_per_vector"]) + float(r["residual_bytes_per_vector"]) + float(r["corr_bytes_per_vector"]) for r in mem])
+        axes[0].bar(x, tot, color=["#333333" if v.startswith("B0") else "#d95f02" if v.startswith("V1") else "#7570b3" if v.startswith("V2") else "#1b9e77" for v, _ in names])
+        axes[0].set_ylabel("index bytes per vector (primary + residual + corr)")
+        lut = np.array([float(r.get("lut_bytes_per_query_primary") or 0) / 1024 for r in mem])
+        axes[1].bar(x, lut, color=["#333333" if v.startswith("B0") else "#d95f02" if v.startswith("V1") else "#7570b3" if v.startswith("V2") else "#1b9e77" for v, _ in names])
+        axes[1].set_ylabel("primary lookup table per query (KiB)")
+        for a in axes:
+            a.set_xticks(x); a.set_xticklabels(["%s\n%s" % (v.replace("V3 RD-JHQ ", "V3 "), d) for v, d in names], rotation=90, fontsize=6)
+            a.grid(alpha=0.3, axis="y")
+        fig.suptitle("Index size per vector (equal by construction) and per-query primary table (E8 loses the 16+16 factorisation)", fontsize=11)
+        fig.tight_layout(); fig.savefig(os.path.join(O, "fig5_index_memory.png"), dpi=110); plt.close(fig)
     print("figures written")
 
 

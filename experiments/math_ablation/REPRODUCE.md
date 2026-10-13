@@ -27,19 +27,15 @@
 # 正确性测试 + 离线三变体 + B0 前沿（一次跑完；offline1 内部并行，B0 在 CPU 空闲后才测）
 /root/autodl-tmp/launch_b.sh exp/math-algorithm-ablation \
     "experiments/math_ablation/run_stage.sh e8test rdtest offline1 offline2 b0" ma_stage1.log
-# GPU 第二阶段：等上一步释放锁后，测 V1 的 E8 原型前沿（v68），再测 B0 的 nsys 分阶段时间
-/root/autodl-tmp/launch_b.sh exp/math-algorithm-ablation \
-    "experiments/math_ablation/gpu_phase2.sh v1_e8" ma_gpu2.log
-# 测试集只读一次（最终确认）：
-#   python3 experiments/math_ablation/v1_e8/implementation/eval_e8.py results/math_ablation/v1_e8 --test
-#   python3 experiments/math_ablation/v3_rd/implementation/rd.py eval results/math_ablation/v3_rd --test
-#   python3 experiments/math_ablation/v2_evt/implementation/evt_sim.py results/math_ablation/v2_evt --test
+# 收尾：等上一步释放锁后，依次运行 V1 的 E8 原型前沿（v68）、B0 的 nsys 分阶段时间、
+# V3 不同分配的评估，然后只读一次测试集（E8、RD、EVT）
+/root/autodl-tmp/launch_b.sh exp/math-algorithm-ablation experiments/math_ablation/finish.sh ma_finish.log
 ```
 
 各阶段做的事：
 - `e8test` / `rdtest`：码本与编码器的一致性、变位宽打包的往返测试；
 - `offline1`：并行运行 E8 编码（全局 scale 与按子空间 scale）、残差统计与码率分配、EVT 模拟；
-- `offline2`：E8 评估，以及 RD 重新编码与评估；
+- `offline2`：E8 评估，以及 RD 重新编码（评估移到 `finish.sh`，只评互不相同的分配）；
 - `b0`：v65 的 α × nprobe × batch 前沿（`b0_frontier.sh`）。
 
 ## 2. 本地汇总（不需要数据）

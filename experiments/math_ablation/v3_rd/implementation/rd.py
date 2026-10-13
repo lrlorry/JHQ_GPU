@@ -55,13 +55,14 @@ def pack(codes, widths):
 
 
 def unpack(packed, widths):
+    """[n, sum(widths) / 8] bytes -> codes [n, len(widths)]. A code at stream bit o with width w lies inside the 24-bit
+    window of bytes o // 8 .. o // 8 + 2 (o % 8 <= 7 and w <= 10, so o % 8 + w <= 17): one shift and one mask."""
     o = offsets(widths)
-    bits = np.unpackbits(packed, axis=1).astype(np.int64)
-    out = np.zeros((packed.shape[0], len(widths)), np.int64)
-    for k in range(int(widths.max())):
-        j = np.where(widths > k)[0]
-        out[:, j] |= bits[:, o[j] + k] << (widths[j] - 1 - k)
-    return out
+    n = packed.shape[0]
+    p = np.concatenate([packed, np.zeros((n, 2), np.uint8)], axis=1).astype(np.int32)
+    by = o // 8
+    win = (p[:, by] << 16) | (p[:, by + 1] << 8) | p[:, by + 2]
+    return (win >> (24 - (o % 8) - widths)[None, :]) & ((1 << widths) - 1)[None, :]
 
 
 def test(out):
@@ -275,15 +276,20 @@ def evaluate(out, test):
     rows, summ = [], {}
     label = "eval_rd" + ("_test" if test else "")
     for tag in C.TAGS:
-        methods = {}
-        for alloc in ("uniform", "waterfill", "empirical", "queryweighted"):
+        # only the distinct allocations: one with the same bits as an earlier one gives the same codes
+        st = np.load(os.path.join(MC.MA, tag, "v3_rd", "stats.npz"))
+        methods, same = {}, {}
+        for alloc in ("uniform", "empirical", "waterfill", "queryweighted"):
+            twin = next((a for a in same if np.array_equal(st["alloc_" + a], st["alloc_" + alloc])), None)
+            if twin is not None:
+                print(tag, alloc, "has the bits of", twin, "-- not evaluated again", flush=True)
+                continue
+            same[alloc] = True
             vd = os.path.join(MC.MA, tag, "v3_rd", alloc)
             if os.path.exists(os.path.join(vd, "params.npz")):
                 methods["RD-" + alloc] = rd_dist(tag, vd)
-        if "RD-uniform" not in methods:
-            # openai3: every allocation is the uniform one (stats_<tag>.json), so its codes are JHQ's offline
-            # re-implementation's by construction; the build was not repeated
-            print(tag, "no RD build: the optimal allocation equals the uniform one", flush=True)
+        if list(methods) == ["RD-uniform"]:
+            print(tag, "every allocation is the uniform one: its codes are JHQ's offline re-implementation's", flush=True)
             continue
         r, s = MC.evaluate(out, label, tag, methods, test=test)
         rows += r
