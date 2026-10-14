@@ -26,13 +26,15 @@ import os
 import statistics
 import sys
 
-FAMILY_ORDER = ["JHQ-GPU v69", "CAGRA fp32", "CAGRA int8", "IVF-RaBitQ", "IVF-PQ", "IVF-PQ + refine",
-                "GPU brute force"]
+FAMILY_ORDER = ["JHQ-GPU v69", "CAGRA fp32", "CAGRA int8", "IVF-RaBitQ", "IVF-RaBitQ 9-bit", "IVF-PQ",
+                "IVF-PQ + refine", "GPU brute force"]
+TABLE_ONLY = {"IVF-RaBitQ 9-bit"}   # the subset at JHQ Br=8's storage budget; not a separate curve
 STYLE = {  # colour, marker, linestyle
     "JHQ-GPU v69": ("#1f4e79", "o", "-"),
     "CAGRA fp32": ("#2e8b57", "D", "-"),
     "CAGRA int8": ("#8fae2c", "^", "--"),
     "IVF-RaBitQ": ("#c0392b", "s", "-"),
+    "IVF-RaBitQ 9-bit": ("#c0392b", "s", "--"),
     "IVF-PQ": ("#e67e22", "v", ":"),
     "IVF-PQ + refine": ("#b9770e", "P", ":"),
     "GPU brute force": ("#555555", "*", ""),
@@ -197,15 +199,21 @@ def main():
         for p in points:
             if p["dataset"] == ds and valid(p):
                 fams.setdefault(p["family"], []).append(p)
+                if p["family"] == "IVF-RaBitQ" and json.loads(p["params"]).get("bits_per_dim") == 9:
+                    fams.setdefault("IVF-RaBitQ 9-bit", []).append(p)
         fronts = {f: pareto(v) for f, v in fams.items()}
         md.append(f"\n## {DS_TITLE.get(ds, ds)}\n")
-        md.append("| method | points | recall range (frontier) | best QPS | frontier points |")
-        md.append("|---|---:|---|---:|---:|")
+        md.append("| method | points | recall range (frontier) | best QPS | frontier points | device memory, MiB |")
+        md.append("|---|---:|---|---:|---:|---|")
         for f in FAMILY_ORDER:
             if f in fronts:
                 fr = fronts[f]
+                mem = sorted({round(float(p["index_mib"])) for p in fams[f] if p["index_mib"] not in ("", None)})
+                mem_txt = (f"index {mem[0]:,}-{mem[-1]:,}" if len(mem) > 1 else f"index {mem[0]:,}") if mem else \
+                    "process {:,}-{:,} (incl. context)".format(*[round(min(float(p["mem_used_mib"]) for p in fams[f])),
+                                                                 round(max(float(p["mem_used_mib"]) for p in fams[f]))])
                 md.append(f"| {f} | {len(fams[f])} | {fr[0]['recall']:.4f}-{fr[-1]['recall']:.4f} | "
-                          f"{max(p['qps_A'] for p in fr):,.0f} | {len(fr)} |")
+                          f"{max(p['qps_A'] for p in fr):,.0f} | {len(fr)} | {mem_txt} |")
         md.append("\n### Frontier points (protocol A)\n")
         for f in FAMILY_ORDER:
             if f not in fronts:
@@ -244,6 +252,29 @@ def main():
                                      "ratio_interp": round(ri, 4) if ri else ""})
             jtxt = (f"{jm:,.0f} / {ji:,.0f}" if (jm and ji) else (f"{jm:,.0f} / -" if jm else "-"))
             md.append(f"| {r} | {jtxt} | " + " | ".join(cells) + " |")
+        # recall at matched throughput: the best recall a method reaches at QPS >= q (measured points)
+        qts = [100000, 150000, 200000, 250000, 300000, 400000]
+        md.append("\n### Matched throughput: best Recall@10 at QPS >= q (measured points, protocol A)\n")
+        md.append("| method | " + " | ".join(f">= {q // 1000}K" for q in qts) + " |")
+        md.append("|---|" + "---:|" * len(qts))
+        for f in FAMILY_ORDER:
+            if f not in fams:
+                continue
+            cells = []
+            for q in qts:
+                c = [p["recall"] for p in fams[f] if p["qps_A"] >= q]
+                cells.append(f"{max(c):.4f}" if c else "-")
+            md.append(f"| {f} | " + " | ".join(cells) + " |")
+        # run-to-run variation over the 5 rounds of each point
+        md.append("\n### Variation across the rounds of a point: (max - min) / median of the per-round QPS\n")
+        md.append("| method | points | median spread | 90th pct | max | points over 5% |")
+        md.append("|---|---:|---:|---:|---:|---:|")
+        for f in FAMILY_ORDER:
+            if f not in fams or f in TABLE_ONLY:
+                continue
+            sp = sorted((p["qps_A_max"] - p["qps_A_min"]) / p["qps_A"] * 100 for p in fams[f])
+            md.append(f"| {f} | {len(sp)} | {sp[len(sp) // 2]:.2f}% | {sp[int(0.9 * (len(sp) - 1))]:.2f}% | "
+                      f"{sp[-1]:.2f}% | {sum(1 for x in sp if x > 5)} |")
         plot(ds, fams, fronts, figdir)
     with open(os.path.join(out_dir, "E1_matched.csv"), "w", newline="") as fh:
         if matched_rows:
@@ -286,7 +317,7 @@ def plot(ds, fams, fronts, figdir):
     fig, ax = plt.subplots(figsize=(8.2, 6.0))
     lo = 0.90
     for f in FAMILY_ORDER:
-        if f not in fronts:
+        if f not in fronts or f in TABLE_ONLY:
             continue
         c, mk, ls = STYLE[f]
         allp = [p for p in fams[f] if p["recall"] >= lo - 0.02]
@@ -311,6 +342,42 @@ def plot(ds, fams, fronts, figdir):
             "openai3-1536": "openai1536"}.get(ds, ds)
     for ext in ("pdf", "svg", "png"):
         fig.savefig(os.path.join(figdir, f"fig_recall_qps_{name}.{ext}"), dpi=200)
+    plt.close(fig)
+
+    # JHQ's throughput over each baseline's, at matched recall (interpolated on both frontiers,
+    # inside the recall range both cover; no extrapolation)
+    jfr = fronts.get("JHQ-GPU v69")
+    if not jfr:
+        return
+    fig, ax = plt.subplots(figsize=(8.2, 5.2))
+    any_line = False
+    for f in FAMILY_ORDER:
+        if f in ("JHQ-GPU v69", "GPU brute force") or f in TABLE_ONLY or f not in fronts:
+            continue
+        lo_r = max(jfr[0]["recall"], fronts[f][0]["recall"], 0.90)
+        hi_r = min(jfr[-1]["recall"], fronts[f][-1]["recall"])
+        if hi_r <= lo_r:
+            continue
+        rs = [lo_r + (hi_r - lo_r) * i / 60 for i in range(61)]
+        ys = []
+        for r in rs:
+            j, _ = at_recall_interp(jfr, r)
+            o, _ = at_recall_interp(fronts[f], r)
+            ys.append(j / o if (j and o) else float("nan"))
+        c, mk, ls = STYLE[f]
+        ax.plot(rs, ys, ls or "-", color=c, lw=2.6, label=f"vs {f}")
+        any_line = True
+    if any_line:
+        ax.axhline(1.0, color="#333333", lw=1.2)
+        ax.set_yscale("log", base=2)
+        ax.set_xlabel("Recall@10")
+        ax.set_ylabel("JHQ-GPU throughput / baseline")
+        ax.set_title(DS_TITLE.get(ds, ds) + ": above 1 = JHQ-GPU faster")
+        ax.grid(True, which="both", alpha=0.25)
+        ax.legend(loc="best", frameon=True)
+        fig.tight_layout()
+        for ext in ("pdf", "svg", "png"):
+            fig.savefig(os.path.join(figdir, f"fig_speedup_{name}.{ext}"), dpi=200)
     plt.close(fig)
 
 
