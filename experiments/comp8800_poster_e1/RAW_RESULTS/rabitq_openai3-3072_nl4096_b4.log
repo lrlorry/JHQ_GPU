@@ -1,0 +1,35 @@
+index: size 999000 (base 999000), build 3389 ms, round trip 3865 ms, 1760 MiB
+  bits=4 LUT32 np=16 R=0.8042 A=62362 B=66193 calls=24 bad=0 dup=0 det=1
+  bits=4 LUT32 np=32 R=0.8567 A=57190 B=60301 calls=24 bad=0 dup=0 det=1
+  bits=4 LUT32 np=64 R=0.9017 A=48704 B=50663 calls=24 bad=0 dup=0 det=1
+  bits=4 LUT32 np=96 R=0.9218 A=41691 B=43706 calls=24 bad=0 dup=0 det=1
+  bits=4 LUT32 np=128 R=0.9342 A=36765 B=38081 calls=24 bad=0 dup=0 det=1
+  bits=4 LUT32 np=192 R=0.9471 A=29513 B=30345 calls=24 bad=0 dup=0 det=1
+  bits=4 LUT32 np=256 R=0.9557 A=24785 B=25421 calls=23 bad=0 dup=0 det=1
+  bits=4 LUT32 np=384 R=0.9653 A=18837 B=19335 calls=17 bad=0 dup=0 det=1
+  bits=4 LUT32 np=512 R=0.9697 A=15497 B=15783 calls=14 bad=0 dup=0 det=1
+  bits=4 LUT32 np=768 R=0.9765 A=11658 B=11815 calls=11 bad=0 dup=0 det=1
+  bits=4 LUT32 np=1024 R=0.9790 A=9405 B=9521 calls=9 bad=0 dup=0 det=1
+  bits=4 QUANT4 np=16 R=0.8042 A=120856 B=136969 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT4 np=32 R=0.8567 A=100523 B=110349 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT4 np=64 R=0.9017 A=85661 B=94826 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT4 np=96 R=0.9218 A=78092 B=85426 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT4 np=128 R=0.9342 A=71614 B=77120 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT4 np=192 R=0.9471 A=59255 B=63578 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT4 np=256 R=0.9557 A=51648 B=55432 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT4 np=384 R=0.9653 A=41451 B=43968 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT4 np=512 R=0.9697 A=35845 B=37738 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT4 np=768 R=0.9765 A=28340 B=29601 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT4 np=1024 R=0.9790 A=24078 B=24937 calls=23 bad=0 dup=0 det=1
+  bits=4 QUANT8 np=16 R=0.8042 A=120153 B=134989 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT8 np=32 R=0.8567 A=97857 B=108336 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT8 np=64 R=0.9017 A=84120 B=90806 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT8 np=96 R=0.9218 A=74864 B=80426 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT8 np=128 R=0.9342 A=67652 B=72369 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT8 np=192 R=0.9471 A=55820 B=59627 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT8 np=256 R=0.9557 A=46319 B=51410 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT8 np=384 R=0.9653 A=38606 B=40478 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT8 np=512 R=0.9697 A=32572 B=34015 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT8 np=768 R=0.9765 A=25458 B=26182 calls=24 bad=0 dup=0 det=1
+  bits=4 QUANT8 np=1024 R=0.9790 A=20831 B=21439 calls=19 bad=0 dup=0 det=1
+RABITQ_SWEEP_DONE

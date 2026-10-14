@@ -1,0 +1,15 @@
+[res-train] residual codebook on 100000 vectors, whole-set (primary/IVF/sigma still from 319488; rotated set would be 0.6 GB)
+[res-train] subspaces 0-191: CAP at 2000 iterations, rel 8.016e-04, 23696 boundaries moving, 0 cells empty
+  [mmap loader] reusing cached /root/autodl-tmp/openai3-1536/base.fvecs.raw_f32
+train 636.2 ms
+add 375.4 ms
+schedule: per-query candidate count CV 0.083 on 512 pseudo-queries
+
+=== alpha=8 ck=80  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9315    3.171 ms    3.213 ms      315252      315252      315252      2341
+  -1     0.9315    3.172 ms    3.203 ms      312100      312100      312100      2353
+
+wrote experiments/comp8800_poster_e1/RAW_RESULTS/jhqcold_openai3-1536.json
+=== BP_OK ===

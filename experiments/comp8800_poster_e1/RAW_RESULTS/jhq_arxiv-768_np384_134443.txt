@@ -1,0 +1,28 @@
+  [mmap loader] reusing cached /root/autodl-tmp/arxiv-abstracts-768/base.fvecs.raw_f32
+train 29.7 ms
+add 531.2 ms
+schedule: per-query candidate count CV 0.077 on 512 pseudo-queries
+
+=== alpha=50 ck=500  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 0
+  G=-1 vs G=0: probes 1000/1000  primary top-ck same 1000, tie-only 0, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9819    9.936 ms   10.158 ms      100223       99448      102277      2547
+  -1     0.9819    9.954 ms   10.189 ms      100258       99310      100629      2595
+
+=== alpha=100 ck=1000  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 0
+  G=-1 vs G=0: probes 1000/1000  primary top-ck same 999, tie-only 1, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9879    9.223 ms    9.305 ms      108127      107627      110489      2595
+  -1     0.9879    9.226 ms    9.344 ms      108057      106942      108142      2643
+
+=== alpha=200 ck=2000  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 0
+  G=-1 vs G=0: probes 1000/1000  primary top-ck same 997, tie-only 3, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9892   10.893 ms   10.976 ms       91751       91425       93816      2655
+  -1     0.9892   10.904 ms   10.984 ms       91686       91584       91913      2751
+
+wrote /root/autodl-tmp/jhq_pipeline_wt/experiments/comp8800_poster_e1/RAW_RESULTS/jhq_arxiv-768_np384_134443.json
+=== BP_OK ===

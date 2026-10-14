@@ -1,0 +1,28 @@
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 15.4 ms
+add 284.0 ms
+schedule: per-query candidate count CV 0.338 on 512 pseudo-queries
+
+=== alpha=32 ck=320  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 4
+  G=-1 vs G=0: probes 1000/1000  primary top-ck same 989, tie-only 11, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9873    9.760 ms   10.051 ms      102306      100243      102953      1411
+  -1     0.9873    8.573 ms    8.773 ms      116185      115256      116955      1443
+
+=== alpha=64 ck=640  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 4
+  G=-1 vs G=0: probes 1000/1000  primary top-ck same 994, tie-only 6, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9904   10.008 ms   10.493 ms       99468       97913      100048      1443
+  -1     0.9904    9.160 ms    9.371 ms      108381      107149      108959      1471
+
+=== alpha=128 ck=1280  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 4
+  G=-1 vs G=0: probes 1000/1000  primary top-ck same 997, tie-only 3, NON-TIE 0, max |dprimary| 0.00e+00  final order/set/bits 1000/1000/1000  max rel 0.00e+00
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9907   11.140 ms   11.512 ms       88900       88507       90374      1477
+  -1     0.9907   10.448 ms   10.602 ms       95186       95050       95745      1537
+
+wrote /root/autodl-tmp/jhq_pipeline_wt/experiments/comp8800_poster_e1/RAW_RESULTS/jhq_vogue-768_np512_134415.json
+=== BP_OK ===

@@ -1,0 +1,126 @@
+## git
+ec3d2846 COMP8800 poster E1: harnesses for JHQ v69 against CAGRA, IVF-RaBitQ and IVF-PQ on one protocol
+?? experiments/comp8800_poster_e1/RAW_RESULTS/
+ec3d28461e6527ab2920aac63317000c61734771
+## gpu
+Wed Oct 14 20:28:43 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 595.71.05              Driver Version: 595.71.05      CUDA Version: 13.2     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 5090        On  |   00000000:49:00.0 Off |                  N/A |
+| 41%   40C    P0            116W /  575W |       2MiB /  32607MiB |    100%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+==============NVSMI LOG==============
+Timestamp                                              : Wed Oct 14 20:28:43 2026
+Driver Version                                         : 595.71.05
+CUDA Version                                           : 13.2
+Attached GPUs                                          : 1
+GPU 00000000:49:00.0
+    Performance State                                  : P0
+    Clocks Event Reasons
+        Idle                                           : Not Active
+        Applications Clocks Setting                    : Not Active
+        SW Power Cap                                   : Not Active
+        HW Slowdown                                    : Not Active
+            HW Thermal Slowdown                        : Not Active
+            HW Power Brake Slowdown                    : Not Active
+        Sync Boost                                     : Not Active
+        SW Thermal Slowdown                            : Not Active
+        Display Clock Setting                          : Not Active
+    Clocks Event Reasons Counters
+        SW Power Capping                               : 260296049547 us
+        Sync Boost                                     : 0 us
+        SW Thermal Slowdown                            : 0 us
+        HW Thermal Slowdown                            : 0 us
+        HW Power Braking                               : 0 us
+    Sparse Operation Mode                              : N/A
+    GPU Power Readings
+        Average Power Draw                             : 116.77 W
+        Instantaneous Power Draw                       : 116.63 W
+        Current Power Limit                            : 575.00 W
+        Requested Power Limit                          : 575.00 W
+        Default Power Limit                            : 575.00 W
+        Min Power Limit                                : 400.00 W
+        Max Power Limit                                : 575.00 W
+    Power Samples
+        Duration                                       : 2.36 sec
+        Number of Samples                              : 119
+        Max                                            : 118.66 W
+        Min                                            : 115.88 W
+        Avg                                            : 116.82 W
+    GPU Memory Power Readings 
+        Average Power Draw                             : N/A
+        Instantaneous Power Draw                       : N/A
+    Module Power Readings
+        Average Power Draw                             : N/A
+        Instantaneous Power Draw                       : N/A
+        Current Power Limit                            : N/A
+        Requested Power Limit                          : N/A
+        Default Power Limit                            : N/A
+        Min Power Limit                                : N/A
+        Max Power Limit                                : N/A
+    EDPp Multiplier                                    : N/A
+    Clocks
+        Graphics                                       : 2925 MHz
+        SM                                             : 2925 MHz
+        Memory                                         : 14001 MHz
+        Video                                          : 2370 MHz
+    Applications Clocks
+        Graphics                                       : Requested functionality has been deprecated
+        Memory                                         : Requested functionality has been deprecated
+    Default Applications Clocks
+        Graphics                                       : Requested functionality has been deprecated
+## toolchain
+Cuda compilation tools, release 13.0, V13.0.88
+Build cuda_13.0.r13.0/compiler.36424714_0
+g++-12 (Ubuntu 12.3.0-1ubuntu1~22.04.3) 12.3.0
+cuvs 26.08.01 cupy 14.2.0 numpy 2.4.6
+## build
+CMAKE_BUILD_TYPE:STRING=Release
+CMAKE_CUDA_ARCHITECTURES:UNINITIALIZED=80
+## host
+ 20:28:43 up 34 days,  5:31,  0 users,  load average: 14.94, 21.72, 29.38
+208
+               total        used        free      shared  buff/cache   available
+Mem:             754         165         183           0         406         584
+96636764160
+2500000 100000
+## processes
+USER        PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root        797  1.8  0.0 717728 22452 ?        Sl   18:30   2:11 /bin/supervisord -c /init/supervisor/supervisor.ini
+root        817  0.2  0.0 6527424 95524 ?       Sl   18:30   0:15 autopanel serve --work-dir=/root/autodl-tmp --cache-dir=/root/autodl-tmp
+root       5430  0.1  0.0  16692 10660 ?        Ss   20:28   0:00 sshd: root@notty
+root          1  0.0  0.0   4476  3352 ?        Ss   18:30   0:00 bash /init/boot/boot.sh
+root        812  0.0  0.0  15444  9180 ?        S    18:30   0:00 sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups
+root        815  0.0  0.0 2868996 18016 ?       Sl   18:30   0:01 proxy -c /init/proxy/proxy-hot-backup.ini
+root        816  0.0  0.0 2479644 71088 ?       Sl   18:30   0:07 /root/miniconda3/bin/python /root/miniconda3/bin/tensorboard --host 0.0.0.0 --port 6007 --logdir /root/tf-logs
+root        818  0.0  0.0 185176 99760 ?        S    18:30   0:01 /root/miniconda3/bin/python /root/miniconda3/bin/jupyter-lab --allow-root --config=/init/jupyter/jupyter_config.py
+root        820  0.0  0.0 3017228 18928 ?       Sl   18:30   0:03 proxy -c /init/proxy/proxy.ini
+root        900  0.0  0.0 28341192 12176 ?      Sl   18:30   0:05 /root/miniconda3/lib/python3.12/site-packages/tensorboard_data_server/bin/server --logdir=/root/tf-logs --reload=5 --samples-per-plugin= --port=0 --port-file=/tmp/tensorboard_data_server_1ypblwj5/port --die-after-stdin --error-file=/tmp/tensorboard_data_server_1ypblwj5/startup_error
+root       5453  0.0  0.0   4784  3420 ?        Ss   20:28   0:00 bash -c cd /root/autodl-tmp/jhq_pipeline_wt && bash experiments/comp8800_poster_e1/run_e1.sh env && timeout 3000 bash experiments/comp8800_poster_e1/run_e1.sh build; tail -3 experiments/comp8800_poster_e1/RAW_RESULTS/build_jhq.log; grep -m5 -i "error\|warning: .*deprecated" experiments/comp8800_poster_e1/RAW_RESULTS/build_rabitq.log | head -5
+## data
+-rw-r--r-- 1 root root 6141852000 Aug 17 12:30 /root/autodl-tmp/openai3-1536/base.fvecs
+-rw-r--r-- 1 root root 6148000 Aug 17 12:30 /root/autodl-tmp/openai3-1536/query.fvecs
+-rw-r--r-- 1 root root 84000 Aug 17 12:31 /root/autodl-tmp/openai3-1536/groundtruth.ivecs
+-rw-r--r-- 1 root root 2867840928 Jun 30 05:17 /root/data/vogue-768_base.fvecs
+-rw-r--r-- 1 root root 3076000 Jun 30 05:17 /root/data/vogue-768_query.fvecs
+-rw-r--r-- 1 root root 404000 Jun 30 05:17 /root/data/vogue-768_groundtruth.ivecs
+-rw-r--r-- 1 root root 12279708000 Aug 17 12:36 /root/autodl-tmp/openai3-3072/base.fvecs
+-rw-r--r-- 1 root root 12292000 Aug 17 12:36 /root/autodl-tmp/openai3-3072/query.fvecs
+-rw-r--r-- 1 root root 84000 Aug 17 12:41 /root/autodl-tmp/openai3-3072/groundtruth.ivecs
+-rw-r--r-- 1 root root 6930228000 Jul  6 20:27 /root/autodl-tmp/arxiv-abstracts-768/base.fvecs
+-rw-r--r-- 1 root root 3076000 Jul  6 20:27 /root/autodl-tmp/arxiv-abstracts-768/query.fvecs
+-rw-r--r-- 1 root root 404000 Jul  6 20:27 /root/autodl-tmp/arxiv-abstracts-768/groundtruth.ivecs

@@ -14,7 +14,7 @@
 | 主机 | 容器 cgroup 内存上限 90 GiB；宿主机负载 40+（其他租户，容器内看得到但无法控制），容器内没有其他计算任务 |
 | GPU 空闲读数 | 空闲时 nvidia-smi 显示利用率 99–100%、117 W，但显存只用 2 MiB、没有任何计算进程。用 v69 的历史锚点核对性能（见 FINAL_RESULTS_CN.md 第 1 节） |
 
-查询与 GT：两个数据集都是 1 000 条查询，GT 宽度 vogue 100、arxiv 100。所有方法使用同一个 `query.fvecs`、同一个 `groundtruth.ivecs`，Recall@10 = |返回的前 10 个 ∩ GT 的前 10 个| / 10 的平均（`common/recall.cuh` 的定义；Python 和 C++ 程序各自实现了同一公式）。距离一律平方 L2。
+查询与 GT：四个数据集都是 1 000 条查询；GT 宽度 vogue 和 arxiv 为 100，两个 OpenAI3 数据集为 20，都不小于 k = 10。所有方法使用同一个 `query.fvecs`、同一个 `groundtruth.ivecs`，Recall@10 = |返回的前 10 个 ∩ GT 的前 10 个| / 10 的平均（`common/recall.cuh` 的定义；Python 和 C++ 程序各自实现了同一公式）。距离一律平方 L2。
 
 ## 1. 计时边界（逐方法）
 
@@ -73,9 +73,12 @@
 
 - 各方法独立扫自己的参数，取各自的 Pareto 前沿；不为 JHQ 挑弱的基线配置。
 - CAGRA：graph_degree ∈ {32, 64}，itopk ∈ {32, 64, 96, 128, 192, 256, 384, 512}，search_width ∈ {1, 2, 4, 8}；构建用 cuVS 默认（intermediate 128、ivf_pq 建图）。
-- IVF-RaBitQ：bits ∈ {9, 8, 4}，nlist 与 JHQ 相同（vogue 4096、arxiv 8192），四种搜索模式全扫，n_probes 16–1024 的密网格（历史上 768 维最好的模式是 LUT32）。
-- IVF-PQ：nlist 与 JHQ 相同，pq_dim ∈ {192, 384, 768}，LUT/内部距离 fp32 与 fp16 两种，n_probes 16–512。
-- JHQ：nprobe ∈ {64, 128, 256} × α ∈ {½, 1, 2}×论文 α（vogue 64、arxiv 100）；只有覆盖不到目标 recall 才扩展。
+- IVF-RaBitQ：bits ∈ {9, 8, 4}；nlist 与 JHQ 相同（vogue 4096，其余 8192；两个 OpenAI3 数据集另加 4096）；搜索模式在 768 维和 1536 维四种全扫，在 3072 维扫 LUT32/QUANT4/QUANT8；n_probes 用 16–1024 的密网格。
+- IVF-PQ：nlist 与 JHQ 相同；pq_dim 在 768 维为 {192, 384, 768}，在 1536 和 3072 维为 {384, 768, 1536}；LUT 和内部距离用 fp32 与 fp16 两种；n_probes 16–512。
+- JHQ：先跑 nprobe ∈ {64, 128, 256} × α ∈ {½, 1, 2}×论文 α（vogue 64、arxiv 100、OpenAI3-1536 8、OpenAI3-3072 4）。只有在覆盖不到其他方法已达到的 recall 时才扩展，扩展过程都保留在 `launch/` 和 PROGRESS.log 里：
+  - 768 维：补 nprobe 96/192/384/512（arxiv 到 1024），以及低 recall 端的 nprobe 16/32（α ¼–1×）；
+  - OpenAI3 两个数据集：recall 随 α 变化明显，α 扩到 16–64 倍、nprobe 扩到 1024；
+  - 扩展后 JHQ 每个数据集有 27–39 个点（基线 54–264 个）。
 
 ## 6. 冒烟测试中发现并处理的问题（正式运行前）
 

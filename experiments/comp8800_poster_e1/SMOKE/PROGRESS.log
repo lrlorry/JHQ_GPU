@@ -1,0 +1,3 @@
+2026-10-14T12:41:07Z gpu lock held; loadavg 42.41 37.69 33.64; gpu 100 %, 2 MiB, 117.08 W, 2925 MHz
+2026-10-14T12:41:13Z jhq vogue-768 np=128 alphas=64 rc=0 1 checks ok, 0 flagged
+2026-10-14T12:41:13Z === E1_STAGE_DONE jhq vogue-768 ===

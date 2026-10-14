@@ -1,0 +1,15 @@
+[res-train] residual codebook on 100000 vectors, whole-set (primary/IVF/sigma still from 319488; rotated set would be 0.3 GB)
+[res-train] subspaces 0-95: CAP at 2000 iterations, rel 6.556e-03, 18145 boundaries moving, 0 cells empty
+  [mmap loader] reusing cached /root/autodl-tmp/arxiv-abstracts-768/base.fvecs.raw_f32
+train 586.6 ms
+add 516.4 ms
+schedule: per-query candidate count CV 0.105 on 512 pseudo-queries
+
+=== alpha=100 ck=1000  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 0
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9765    4.429 ms    4.484 ms      225610      225610      225610      2545
+  -1     0.9765    4.459 ms    4.524 ms      223751      223751      223751      2641
+
+wrote experiments/comp8800_poster_e1/RAW_RESULTS/jhqcold_arxiv-768.json
+=== BP_OK ===

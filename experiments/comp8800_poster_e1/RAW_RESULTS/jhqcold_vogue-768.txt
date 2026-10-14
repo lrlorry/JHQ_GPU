@@ -1,0 +1,15 @@
+[res-train] residual codebook on 100000 vectors, whole-set (primary/IVF/sigma still from 159744; rotated set would be 0.3 GB)
+[res-train] subspaces 0-95: CAP at 2000 iterations, rel 1.279e-03, 12523 boundaries moving, 0 cells empty
+  [mmap loader] reusing cached /root/data/vogue-768_base.fvecs.raw_f32
+train 1056.0 ms
+add 271.7 ms
+schedule: per-query candidate count CV 0.495 on 512 pseudo-queries
+
+=== alpha=64 ck=640  b=1000: 1 batches x 24 reps = 24000 queries per measurement ===
+  scheduled G for b=1000: 4
+  G      recall    lat med    lat p95     QPS med     QPS min     QPS max  used MiB
+  0      0.9646    4.478 ms    4.609 ms      225683      225683      225683      1407
+  -1     0.9646    4.102 ms    4.164 ms      243926      243926      243926      1467
+
+wrote experiments/comp8800_poster_e1/RAW_RESULTS/jhqcold_vogue-768.json
+=== BP_OK ===

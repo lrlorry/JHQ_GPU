@@ -130,6 +130,8 @@ def load(raw):
                                "deterministic": r.get("deterministic", ""), "flags": "; ".join(flags),
                                "notes": "; ".join(notes), "recall_last_a": r.get("recall_last_a", ""),
                                "recall_b": r.get("recall_b", ""), "source": os.path.basename(f)})
+    for p in points:
+        p["qps_p50"] = 1000.0 * 1000.0 / p["lat_med_ms"] if p["lat_med_ms"] and p["lat_med_ms"] == p["lat_med_ms"] else ""
     return points, failures, indexes
 
 
@@ -178,7 +180,7 @@ def main():
     out_dir = os.path.dirname(os.path.abspath(a.raw))
     points, failures, indexes = load(a.raw)
     cols = ["dataset", "family", "label", "params", "recall", "qps_A", "qps_A_min", "qps_A_max", "qps_B",
-            "lat_med_ms", "lat_p95_ms", "rounds", "calls_per_round", "mem_used_mib", "index_mib",
+            "lat_med_ms", "lat_p95_ms", "qps_p50", "rounds", "calls_per_round", "mem_used_mib", "index_mib",
             "invalid_ids", "dup_rows", "deterministic", "flags", "notes", "recall_last_a", "recall_b", "source"]
     with open(os.path.join(out_dir, "E1_points.csv"), "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols)
@@ -252,6 +254,23 @@ def main():
                                      "ratio_interp": round(ri, 4) if ri else ""})
             jtxt = (f"{jm:,.0f} / {ji:,.0f}" if (jm and ji) else (f"{jm:,.0f} / -" if jm else "-"))
             md.append(f"| {r} | {jtxt} | " + " | ".join(cells) + " |")
+        # sensitivity: the same comparison on a spike-robust throughput, 1000 queries / median call
+        # latency. IVF-RaBitQ's search has rare 30-60 ms calls (FAIRNESS_AUDIT.md item 4) that the
+        # summed-time QPS charges to it; this view does not.
+        rob = {f: [dict(p, qps_A=p["qps_p50"]) for p in v if p["qps_p50"]] for f, v in fams.items()}
+        rfr = {f: pareto(v) for f, v in rob.items() if v}
+        if "JHQ-GPU v69" in rfr:
+            md.append("\n### Sensitivity: matched recall on QPS = 1000 / median call latency (interp ratio)\n")
+            oth = [f for f in FAMILY_ORDER if f in rfr and f != "JHQ-GPU v69" and f not in ("IVF-PQ", "GPU brute force")]
+            md.append("| r | " + " | ".join(oth) + " |")
+            md.append("|---:|" + "---:|" * len(oth))
+            for r in targets:
+                j, _ = at_recall_interp(rfr["JHQ-GPU v69"], r)
+                cells = []
+                for o in oth:
+                    v, _ = at_recall_interp(rfr[o], r)
+                    cells.append(f"x{j / v:.2f}" if (j and v) else "-")
+                md.append(f"| {r} | " + " | ".join(cells) + " |")
         # recall at matched throughput: the best recall a method reaches at QPS >= q (measured points)
         qts = [100000, 150000, 200000, 250000, 300000, 400000]
         md.append("\n### Matched throughput: best Recall@10 at QPS >= q (measured points, protocol A)\n")
@@ -352,7 +371,10 @@ def plot(ds, fams, fronts, figdir):
     fig, ax = plt.subplots(figsize=(8.2, 5.2))
     any_line = False
     for f in FAMILY_ORDER:
-        if f in ("JHQ-GPU v69", "GPU brute force") or f in TABLE_ONLY or f not in fronts:
+        # the far-off baselines (IVF-PQ is 6-90x behind, brute force 12-85x) would flatten the band
+        # around 1 that the comparison is about; their ratios are in the tables
+        if f in ("JHQ-GPU v69", "GPU brute force", "IVF-PQ", "IVF-PQ + refine") or f in TABLE_ONLY \
+                or f not in fronts:
             continue
         lo_r = max(jfr[0]["recall"], fronts[f][0]["recall"], 0.90)
         hi_r = min(jfr[-1]["recall"], fronts[f][-1]["recall"])
@@ -370,6 +392,9 @@ def plot(ds, fams, fronts, figdir):
     if any_line:
         ax.axhline(1.0, color="#333333", lw=1.2)
         ax.set_yscale("log", base=2)
+        ax.set_ylim(0.25, 4.0)
+        ax.set_yticks([0.25, 0.5, 1, 2, 4])
+        ax.set_yticklabels(["0.25x", "0.5x", "1x", "2x", "4x"])
         ax.set_xlabel("Recall@10")
         ax.set_ylabel("JHQ-GPU throughput / baseline")
         ax.set_title(DS_TITLE.get(ds, ds) + ": above 1 = JHQ-GPU faster")

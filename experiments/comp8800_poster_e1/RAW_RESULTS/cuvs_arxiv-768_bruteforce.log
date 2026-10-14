@@ -1,0 +1,3 @@
+  built bruteforce {'metric': 'sqeuclidean', 'dtype': 'fp32'}: 14.8 s, 6630 MiB
+  bruteforce-fp32 {} R=1.0000 A=3667 B=3674 calls=3 bad=0 dup=0 det=True
+BENCH_CUVS_DONE

@@ -1,0 +1,137 @@
+2026-10-14T12:28:43Z env -> /root/autodl-tmp/arxiv-abstracts-768/groundtruth.ivecs
+2026-10-14T12:28:43Z === E1_STAGE_DONE env  ===
+2026-10-14T12:28:44Z build demo_jhq_v69_batch rc=0
+2026-10-14T12:28:58Z build bench_rabitq_sweep rc=0
+2026-10-14T12:28:58Z === E1_STAGE_DONE build  ===
+2026-10-14T13:06:37Z env -> /root/autodl-tmp/jhq_pipeline_wt/experiments/comp8800_poster_e1/RAW_RESULTS/env_20261014T130637Z.txt
+2026-10-14T13:06:37Z === E1_STAGE_DONE env  ===
+2026-10-14T13:06:37Z gpu lock held; loadavg 28.83 33.23 37.07; gpu 0 %, 2 MiB, 16.49 W, 180 MHz
+2026-10-14T13:06:43Z jhq vogue-768 np=64 alphas=32,64,128 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:06:49Z jhq vogue-768 np=128 alphas=32,64,128 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:06:57Z jhq vogue-768 np=256 alphas=32,64,128 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:07:11Z jhq arxiv-768 np=64 alphas=50,100,200 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:07:19Z jhq arxiv-768 np=128 alphas=50,100,200 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:07:29Z jhq arxiv-768 np=256 alphas=50,100,200 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:07:29Z === E1_STAGE_DONE jhq vogue-768 arxiv-768 ===
+2026-10-14T13:07:29Z gpu lock held; loadavg 28.06 32.28 36.54; gpu 0 %, 2 MiB, 360.76 W, 2917 MHz
+2026-10-14T13:08:47Z rabitq vogue-768 nlist=4096 bits=9 rc=0 44 points, 0 failed
+2026-10-14T13:10:15Z rabitq vogue-768 nlist=4096 bits=8 rc=0 44 points, 0 failed
+2026-10-14T13:11:36Z rabitq vogue-768 nlist=4096 bits=4 rc=0 44 points, 0 failed
+2026-10-14T13:13:13Z rabitq arxiv-768 nlist=8192 bits=9 rc=0 44 points, 0 failed
+2026-10-14T13:15:02Z rabitq arxiv-768 nlist=8192 bits=8 rc=0 44 points, 0 failed
+2026-10-14T13:16:40Z rabitq arxiv-768 nlist=8192 bits=4 rc=0 44 points, 0 failed
+2026-10-14T13:16:40Z === E1_STAGE_DONE rabitq vogue-768 arxiv-768 ===
+2026-10-14T13:16:40Z gpu lock held; loadavg 24.25 26.33 31.67; gpu 0 %, 2 MiB, 365.22 W, 2910 MHz
+2026-10-14T13:20:53Z cuvs cagra vogue-768 rc=0 66 lines, 0 failed
+2026-10-14T13:25:20Z cuvs cagra arxiv-768 rc=0 66 lines, 0 failed
+2026-10-14T13:25:20Z === E1_STAGE_DONE cagra vogue-768 arxiv-768 ===
+2026-10-14T13:25:20Z gpu lock held; loadavg 48.31 40.49 35.91; gpu 0 %, 2 MiB, 257.35 W, 2910 MHz
+2026-10-14T13:27:00Z cuvs cagra-int8 vogue-768 rc=0 66 lines, 0 failed
+2026-10-14T13:28:40Z cuvs cagra-int8 arxiv-768 rc=0 66 lines, 0 failed
+2026-10-14T13:28:40Z === E1_STAGE_DONE cagra-int8 vogue-768 arxiv-768 ===
+2026-10-14T13:28:41Z gpu lock held; loadavg 42.58 42.76 37.82; gpu 0 %, 2 MiB, 307.10 W, 2910 MHz
+2026-10-14T13:35:47Z cuvs ivfpq vogue-768 rc=0 57 lines, 0 failed
+2026-10-14T13:43:06Z cuvs ivfpq arxiv-768 rc=0 57 lines, 0 failed
+2026-10-14T13:43:06Z === E1_STAGE_DONE ivfpq vogue-768 arxiv-768 ===
+2026-10-14T13:43:06Z gpu lock held; loadavg 45.75 44.10 41.23; gpu 0 %, 2 MiB, 268.87 W, 2910 MHz
+2026-10-14T13:43:21Z cuvs bruteforce vogue-768 rc=0 2 lines, 0 failed
+2026-10-14T13:43:52Z cuvs bruteforce arxiv-768 rc=0 2 lines, 0 failed
+2026-10-14T13:43:52Z === E1_STAGE_DONE bruteforce vogue-768 arxiv-768 ===
+2026-10-14T13:43:52Z gpu lock held; loadavg 42.01 43.30 41.09; gpu 0 %, 2 MiB, 107.80 W, 2850 MHz
+2026-10-14T13:43:58Z jhq vogue-768 np=96 alphas=32,64,128 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:44:06Z jhq vogue-768 np=192 alphas=32,64,128 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:44:15Z jhq vogue-768 np=384 alphas=32,64,128 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:44:26Z jhq vogue-768 np=512 alphas=32,64,128 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:44:33Z jhq arxiv-768 np=96 alphas=50,100,200 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:44:43Z jhq arxiv-768 np=192 alphas=50,100,200 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:44:55Z jhq arxiv-768 np=384 alphas=50,100,200 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:45:09Z jhq arxiv-768 np=512 alphas=50,100,200 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:45:09Z === E1_STAGE_DONE jhq vogue-768 arxiv-768 ===
+2026-10-14T13:45:09Z gpu lock held; loadavg 44.92 44.07 41.53; gpu 0 %, 2 MiB, 318.60 W, 2910 MHz
+2026-10-14T13:45:23Z jhq arxiv-768 np=1024 alphas=50,100 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:45:23Z === E1_STAGE_DONE jhq arxiv-768 ===
+2026-10-14T13:45:23Z gpu lock held; loadavg 45.47 44.25 41.64; gpu 0 %, 2 MiB, 373.28 W, 2910 MHz
+2026-10-14T13:45:45Z jhq openai3-3072 np=64 alphas=2,4,8,16,32 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:46:01Z jhq openai3-3072 np=128 alphas=2,4,8,16,32 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:46:22Z jhq openai3-3072 np=256 alphas=2,4,8,16,32 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:46:55Z jhq openai3-3072 np=512 alphas=2,4,8,16,32 rc=0 1 checks ok, 0 flagged
+2026-10-14T13:46:55Z === E1_STAGE_DONE jhq openai3-3072 ===
+2026-10-14T13:46:55Z gpu lock held; loadavg 47.58 45.72 42.42; gpu 1 %, 2 MiB, 212.67 W, 2910 MHz
+2026-10-14T13:50:11Z rabitq openai3-3072 nlist=8192 bits=9 rc=0 33 points, 0 failed
+2026-10-14T13:54:11Z rabitq openai3-3072 nlist=8192 bits=8 rc=0 33 points, 0 failed
+2026-10-14T13:57:32Z rabitq openai3-3072 nlist=8192 bits=4 rc=0 33 points, 0 failed
+2026-10-14T14:01:02Z rabitq openai3-3072 nlist=4096 bits=9 rc=0 33 points, 0 failed
+2026-10-14T14:05:06Z rabitq openai3-3072 nlist=4096 bits=8 rc=0 33 points, 0 failed
+2026-10-14T14:08:40Z rabitq openai3-3072 nlist=4096 bits=4 rc=0 33 points, 0 failed
+2026-10-14T14:08:40Z === E1_STAGE_DONE rabitq openai3-3072 ===
+2026-10-14T14:08:40Z gpu lock held; loadavg 44.49 33.54 38.85; gpu 0 %, 2 MiB, 196.45 W, 2910 MHz
+2026-10-14T14:17:18Z cuvs cagra openai3-3072 rc=0 66 lines, 0 failed
+2026-10-14T14:17:18Z === E1_STAGE_DONE cagra openai3-3072 ===
+2026-10-14T14:17:18Z gpu lock held; loadavg 67.06 51.97 45.04; gpu 3 %, 2 MiB, 235.96 W, 2910 MHz
+2026-10-14T14:21:48Z cuvs cagra-int8 openai3-3072 rc=0 66 lines, 0 failed
+2026-10-14T14:21:48Z === E1_STAGE_DONE cagra-int8 openai3-3072 ===
+2026-10-14T14:21:48Z gpu lock held; loadavg 58.96 58.02 49.29; gpu 3 %, 2 MiB, 134.76 W, 2910 MHz
+2026-10-14T14:33:19Z cuvs ivfpq openai3-3072 rc=0 57 lines, 0 failed
+2026-10-14T14:33:19Z === E1_STAGE_DONE ivfpq openai3-3072 ===
+2026-10-14T14:33:19Z gpu lock held; loadavg 48.32 47.30 47.41; gpu 3 %, 2 MiB, 171.46 W, 2910 MHz
+2026-10-14T14:33:57Z cuvs bruteforce openai3-3072 rc=0 2 lines, 0 failed
+2026-10-14T14:33:57Z === E1_STAGE_DONE bruteforce openai3-3072 ===
+2026-10-14T14:34:08Z gpu lock held; loadavg 43.16 46.04 46.98; gpu 0 %, 2 MiB, 22.37 W, 180 MHz
+2026-10-14T14:34:26Z jhq openai3-3072 np=128 alphas=64,128,256 rc=0 1 checks ok, 0 flagged
+2026-10-14T14:34:48Z jhq openai3-3072 np=256 alphas=64,128,256 rc=0 1 checks ok, 0 flagged
+2026-10-14T14:35:15Z jhq openai3-3072 np=512 alphas=64,128,256 rc=0 1 checks ok, 0 flagged
+2026-10-14T14:35:55Z jhq openai3-3072 np=1024 alphas=64,128,256 rc=0 1 checks ok, 0 flagged
+2026-10-14T14:35:55Z === E1_STAGE_DONE jhq openai3-3072 ===
+2026-10-14T14:35:55Z gpu lock held; loadavg 40.07 44.23 46.22; gpu 0 %, 2 MiB, 189.60 W, 2910 MHz
+2026-10-14T14:36:30Z jhq openai3-3072 np=1024 alphas=8,16,32 rc=0 1 checks ok, 0 flagged
+2026-10-14T14:36:30Z === E1_STAGE_DONE jhq openai3-3072 ===
+2026-10-14T14:36:30Z gpu lock held; loadavg 40.07 43.68 45.96; gpu 1 %, 2 MiB, 188.96 W, 2910 MHz
+2026-10-14T14:36:34Z jhq vogue-768 np=16 alphas=16,32,64 rc=0 1 checks ok, 0 flagged
+2026-10-14T14:36:38Z jhq vogue-768 np=32 alphas=16,32,64 rc=0 1 checks ok, 0 flagged
+2026-10-14T14:36:44Z jhq arxiv-768 np=16 alphas=25,50,100 rc=0 1 checks ok, 0 flagged
+2026-10-14T14:36:50Z jhq arxiv-768 np=32 alphas=25,50,100 rc=0 1 checks ok, 0 flagged
+2026-10-14T14:36:50Z === E1_STAGE_DONE jhq vogue-768 arxiv-768 ===
+2026-10-14T14:36:51Z gpu lock held; loadavg 42.60 44.00 46.02; gpu 0 %, 2 MiB, 335.76 W, 2910 MHz
+2026-10-14T14:37:02Z jhq openai3-3072 np=32 alphas=2,4,8,16 rc=0 1 checks ok, 0 flagged
+2026-10-14T14:37:02Z === E1_STAGE_DONE jhq openai3-3072 ===
+2026-10-14T14:37:27Z gpu lock held; loadavg 43.03 43.92 45.91; gpu 0 %, 2 MiB, 19.61 W, 180 MHz
+2026-10-14T14:37:40Z jhq openai3-1536 np=64 alphas=4,8,16,32,64 rc=0 1 checks ok, 0 flagged
+2026-10-14T14:37:49Z jhq openai3-1536 np=128 alphas=4,8,16,32,64 rc=0 1 checks ok, 0 flagged
+2026-10-14T14:38:01Z jhq openai3-1536 np=256 alphas=4,8,16,32,64 rc=0 1 checks ok, 0 flagged
+2026-10-14T14:38:17Z jhq openai3-1536 np=512 alphas=4,8,16,32,64 rc=0 1 checks ok, 0 flagged
+2026-10-14T14:38:17Z === E1_STAGE_DONE jhq openai3-1536 ===
+2026-10-14T14:38:17Z gpu lock held; loadavg 40.69 43.00 45.48; gpu 0 %, 2 MiB, 360.42 W, 2865 MHz
+2026-10-14T14:40:18Z rabitq openai3-1536 nlist=8192 bits=9 rc=0 44 points, 0 failed
+2026-10-14T14:42:39Z rabitq openai3-1536 nlist=8192 bits=8 rc=0 44 points, 0 failed
+2026-10-14T14:44:42Z rabitq openai3-1536 nlist=8192 bits=4 rc=0 44 points, 0 failed
+2026-10-14T14:47:06Z rabitq openai3-1536 nlist=4096 bits=9 rc=0 44 points, 0 failed
+2026-10-14T14:49:57Z rabitq openai3-1536 nlist=4096 bits=8 rc=0 44 points, 0 failed
+2026-10-14T14:52:26Z rabitq openai3-1536 nlist=4096 bits=4 rc=0 44 points, 0 failed
+2026-10-14T14:52:26Z === E1_STAGE_DONE rabitq openai3-1536 ===
+2026-10-14T14:52:26Z gpu lock held; loadavg 30.89 33.34 38.13; gpu 0 %, 2 MiB, 409.46 W, 2895 MHz
+2026-10-14T14:58:53Z cuvs cagra openai3-1536 rc=0 66 lines, 0 failed
+2026-10-14T14:58:53Z === E1_STAGE_DONE cagra openai3-1536 ===
+2026-10-14T14:58:53Z gpu lock held; loadavg 47.15 37.22 37.30; gpu 0 %, 2 MiB, 287.05 W, 2910 MHz
+2026-10-14T15:01:15Z cuvs cagra-int8 openai3-1536 rc=0 66 lines, 0 failed
+2026-10-14T15:01:15Z === E1_STAGE_DONE cagra-int8 openai3-1536 ===
+2026-10-14T15:01:15Z gpu lock held; loadavg 48.52 41.29 38.80; gpu 0 %, 2 MiB, 234.17 W, 2910 MHz
+2026-10-14T15:11:52Z cuvs ivfpq openai3-1536 rc=0 57 lines, 0 failed
+2026-10-14T15:11:52Z === E1_STAGE_DONE ivfpq openai3-1536 ===
+2026-10-14T15:11:52Z gpu lock held; loadavg 56.77 54.30 47.00; gpu 0 %, 2 MiB, 211.53 W, 2910 MHz
+2026-10-14T15:12:13Z cuvs bruteforce openai3-1536 rc=0 2 lines, 0 failed
+2026-10-14T15:12:13Z === E1_STAGE_DONE bruteforce openai3-1536 ===
+2026-10-14T15:12:19Z gpu lock held; loadavg 51.92 53.33 46.87; gpu 0 %, 2 MiB, 44.19 W, 180 MHz
+2026-10-14T15:12:25Z jhq openai3-1536 np=32 alphas=4,8,16,32 rc=0 1 checks ok, 0 flagged
+2026-10-14T15:12:25Z === E1_STAGE_DONE jhq openai3-1536 ===
+2026-10-14T15:12:28Z jhq cold build vogue-768 rc=0 train 1056.0 ms add 271.7 ms 
+2026-10-14T15:12:32Z jhq cold build arxiv-768 rc=0 train 586.6 ms add 516.4 ms 
+2026-10-14T15:12:40Z jhq cold build openai3-3072 rc=0 train 1339.5 ms add 652.7 ms 
+2026-10-14T15:12:46Z jhq cold build openai3-1536 rc=0 train 636.2 ms add 375.4 ms 
+2026-10-14T15:36:24Z gpu lock held; loadavg 24.83 36.01 42.34; gpu 0 %, 2 MiB, 15.99 W, 180 MHz
+2026-10-14T15:36:43Z jhq openai3-1536 np=256 alphas=128,256,512 rc=0 1 checks ok, 0 flagged
+2026-10-14T15:37:06Z jhq openai3-1536 np=512 alphas=128,256,512 rc=0 1 checks ok, 0 flagged
+2026-10-14T15:37:36Z jhq openai3-1536 np=1024 alphas=128,256,512 rc=0 1 checks ok, 0 flagged
+2026-10-14T15:37:36Z === E1_STAGE_DONE jhq openai3-1536 ===
+2026-10-14T15:37:36Z gpu lock held; loadavg 26.97 34.58 41.39; gpu 1 %, 2 MiB, 325.58 W, 2910 MHz
+2026-10-14T15:37:58Z jhq openai3-1536 np=1024 alphas=8,16,32,64 rc=0 1 checks ok, 0 flagged
+2026-10-14T15:37:58Z === E1_STAGE_DONE jhq openai3-1536 ===
