@@ -37,7 +37,9 @@ MM[openai3-3072]=384; NL[openai3-3072]=8192; NT[openai3-3072]=319488; BLK[openai
 PQ[vogue-768]="192,384,768"; PQ[arxiv-768]="192,384,768"; PQ[openai3-1536]="384,768,1536"; PQ[openai3-3072]="384,768,1536"
 
 gpu_lock(){
-  exec 8>/root/.gpu_lock; flock 8
+  # E1_LOCK_HELD=1: the caller already holds /root/.gpu_lock (taking it again here would wait
+  # on our own parent forever)
+  [ -z "${E1_LOCK_HELD:-}" ] && { exec 8>/root/.gpu_lock; flock 8; }
   local apps; apps=$(nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader 2>/dev/null)
   [ -n "$apps" ] && say "WARNING: compute apps on the GPU after taking the lock: $apps"
   say "gpu lock held; loadavg $(cut -d' ' -f1-3 /proc/loadavg); gpu $(nvidia-smi --query-gpu=utilization.gpu,memory.used,power.draw,clocks.sm --format=csv,noheader)"
@@ -52,7 +54,7 @@ stage_env(){
     echo "## build"; grep -E "CMAKE_CUDA_ARCHITECTURES|CMAKE_BUILD_TYPE" build/CMakeCache.txt
     echo "## host"; uptime; nproc; free -g | head -2; cat /sys/fs/cgroup/memory.max 2>/dev/null; cat /sys/fs/cgroup/cpu.max 2>/dev/null
     echo "## processes"; ps aux --sort=-%cpu | head -12
-    echo "## data"; for ds in "${!P[@]}"; do for f in ${P[$ds]}; do ls -l "$f"; done; done
+    echo "## data"; for ds in "${!P[@]}"; do for x in ${P[$ds]}; do ls -l "$x"; done; done
   } > "$f" 2>&1
   say "env -> $f"
 }
