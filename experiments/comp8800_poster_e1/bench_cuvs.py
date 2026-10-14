@@ -159,8 +159,16 @@ def main():
 
     base, query, gtp, d, N = DATASETS[a.dataset]
     repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    stream = cp.cuda.Stream(non_blocking=True)
-    res = Resources(stream=stream.ptr)
+    # A handle built on a cupy stream (Resources(stream=...)) segfaults cuVS 26.08's build and search,
+    # blocking or not. The default handle works; its stream, read back through the C API
+    # (cuvsStreamGet), is the per-thread default stream, so cupy's uploads and downloads go on
+    # that same stream and a call synchronises once, at its end, as JHQ's does.
+    stream = cp.cuda.Stream.ptds
+    pool_mode = os.environ.get("CUVS_POOL", "") == "1"
+    import rmm
+    plain_mr = rmm.mr.CudaMemoryResource()
+    rmm.mr.set_current_device_resource(plain_mr)
+    res = Resources()
     cp.cuda.runtime.deviceSynchronize()
     ctx_mib = mem_used_mib()          # CUDA context and the libraries, before anything of ours
 
@@ -195,13 +203,32 @@ def main():
     q_res = cp.asarray(xq)                          # protocol B's resident queries
     q8_dev = cp.empty((nq, d), cp.int8)
     q8_res = cp.empty((nq, d), cp.int8)
-    ids_dev = cp.empty((nq, K), cp.int64)
+    # CAGRA writes uint32 neighbours (its docstring says int64; 26.08 rejects int64), the others int64
+    id_t = np.uint32 if a.method in ("cagra", "cagra-int8") else np.int64
+    ids_dev = cp.empty((nq, K), id_t)
     dist_dev = cp.empty((nq, K), cp.float32)
-    idsB_dev = cp.empty((nq, K), cp.int64)
+    idsB_dev = cp.empty((nq, K), id_t)
     distB_dev = cp.empty((nq, K), cp.float32)
-    pin_ids = pinned((nq, K), np.int64)
+    pin_ids = pinned((nq, K), id_t)
     pin_dist = pinned((nq, K), np.float32)
     cp.cuda.runtime.deviceSynchronize()
+
+    def search_handle():
+        """The handle searches use. CUVS_POOL=1: search-time allocations come from an RMM pool
+        (cuVS's own benchmark harness runs behind one), switched on only after a build so index
+        memory is still measured on plain cudaMalloc; a handle's workspace follows the device
+        resource current when it is created, so a fresh handle is made."""
+        nonlocal res
+        if pool_mode:
+            rmm.mr.set_current_device_resource(rmm.mr.PoolMemoryResource(plain_mr, initial_pool_size=1 << 30))
+            res = Resources()
+        return res
+
+    def plain_handle():
+        nonlocal res
+        if pool_mode:
+            rmm.mr.set_current_device_resource(plain_mr)
+            res = Resources()
 
     def measure(label, index_rec, sparams, search_into, quantise=None):
         """Time one search configuration under protocols A and B and emit its record.
@@ -230,7 +257,7 @@ def main():
             first_ms = (time.perf_counter() - t) * 1e3
             for _ in range(a.warmup - 1):
                 call_a()
-            ref = pin_ids.copy()
+            ref = pin_ids.astype(np.int64)
             rec = recall_at_k(ref, gt)
             bad, dup = id_checks(ref, N)
             per_call = (time.perf_counter() - t) * 1e3 / max(1, a.warmup)
@@ -248,7 +275,7 @@ def main():
                 return out
 
             ta = rounds(call_a)
-            last = pin_ids.copy()
+            last = pin_ids.astype(np.int64)
             deterministic = bool(np.array_equal(ref, last))
             a_set, a_order = row_diffs(ref, last)
             extra = {"recall_last_a": round(recall_at_k(last, gt), 6), "rows_set_diff_a": a_set,
@@ -257,7 +284,7 @@ def main():
             if not a.no_b:
                 call_b()
                 tb = rounds(call_b)
-                hb = idsB_dev.get()
+                hb = idsB_dev.get().astype(np.int64)
                 b_same = bool(np.array_equal(ref, hb))
                 b_set, b_order = row_diffs(ref, hb)
                 extra.update({"recall_b": round(recall_at_k(hb, gt), 6), "rows_set_diff_b": b_set,
@@ -273,7 +300,7 @@ def main():
                         "lat_p95_ms_rounds": [round(x, 4) for x in lat_p95],
                         "call_ms": [[round(x, 4) for x in r] for r in tt]}
 
-            point = {"type": "point", "dataset": a.dataset, "method": a.method, "label": label,
+            point = {"type": "point", "dataset": a.dataset, "method": a.method, "label": label, "pool": pool_mode,
                      "index": index_rec, "search": sparams, "recall": round(rec, 6),
                      "invalid_ids": bad, "dup_rows": dup, "deterministic": deterministic,
                      "b_matches_a": b_same, "first_call_ms": round(first_ms, 3),
@@ -293,6 +320,7 @@ def main():
 
     def built(kind, params, build_fn):
         """Build once, record time and the device memory the index holds."""
+        plain_handle()
         cp.get_default_memory_pool().free_all_blocks()
         cp.cuda.runtime.deviceSynchronize()
         m0 = mem_used_mib()
@@ -316,6 +344,7 @@ def main():
                    mem_used_after_build_mib=round(m1, 1), ctx_mib=round(ctx_mib, 1))
         emit(dict(rec, type="index", dataset=a.dataset, method=a.method))
         print(f"  built {kind} {params}: {build_s:.1f} s, {m1 - m0:.0f} MiB", file=sys.stderr, flush=True)
+        search_handle()
         return idx, rec
 
     ints = lambda s: [int(x) for x in s.split(",") if x]

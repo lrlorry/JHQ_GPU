@@ -26,6 +26,7 @@
 #include <raft/core/device_mdarray.hpp>
 #include <raft/core/device_resources.hpp>
 #include <raft/core/host_mdspan.hpp>
+#include <raft/core/resource/device_memory_resource.hpp>
 
 #include <cuda_runtime.h>
 #include <algorithm>
@@ -211,6 +212,12 @@ int main(int argc, char** argv) {
                  (long long)idx.size(), nb, t_build, t_ser + t_deser, m_index);
     if ((long long)idx.size() != (long long)nb) { std::fprintf(stderr, "index size != base rows\n"); return 3; }
 
+    // RQ_POOL=<MiB>: search-time temporaries from a RAFT workspace pool instead of a cudaMalloc per
+    // allocation (cuVS's own benchmark harness runs behind a pool). Set after the index is built
+    // and measured, so index memory is unaffected.
+    const int pool_mib = env_int("RQ_POOL", 0);
+    if (pool_mib > 0) raft::resource::set_workspace_to_pool_resource(res, (size_t)pool_mib << 20);
+
     // ---- buffers, allocated once ------------------------------------------------------------
     auto st = raft::resource::get_cuda_stream(res);
     float* pin_q = nullptr; int64_t* pin_id = nullptr; float* pin_di = nullptr;
@@ -347,12 +354,12 @@ int main(int argc, char** argv) {
                              "\"serialize_ms\":%.1f,\"deserialize_ms\":%.1f},\"search\":{\"n_probes\":%d,\"mode\":%d,"
                              "\"mode_name\":\"%s\"},\"recall\":%.6f,\"invalid_ids\":%lld,\"dup_rows\":%lld,"
                              "\"deterministic\":%s,\"b_matches_a\":%s,\"first_call_ms\":%.3f,\"warmup\":%d,"
-                             "\"rounds\":%d,\"calls_per_round\":%d,\"mem_used_mib\":%.1f,\"recall_last_a\":%.6f,"
+                             "\"rounds\":%d,\"calls_per_round\":%d,\"pool_mib\":%d,\"mem_used_mib\":%.1f,\"recall_last_a\":%.6f,"
                              "\"recall_b\":%.6f,\"rows_set_diff_a\":%lld,\"rows_order_diff_a\":%lld,"
                              "\"rows_set_diff_b\":%lld,\"rows_order_diff_b\":%lld",
                              bits, mode_name[mode & 3], n_lists, bits, m_index, t_build, t_ser, t_deser, np, mode,
                              mode_name[mode & 3], recall, bad, dup_rows, det ? "true" : "false",
-                             b_same ? "true" : "false", first_ms, warmup, rounds, calls, mem_now, recall_last,
+                             b_same ? "true" : "false", first_ms, warmup, rounds, calls, pool_mib, mem_now, recall_last,
                              recall_b, a_set, a_order, b_set, b_order);
                 const double qa = emit_proto("A", ta);
                 const double qb = emit_proto("B", tb);

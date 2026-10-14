@@ -13,6 +13,9 @@
 # every record carries its UTC time).
 set -u
 export PATH=/root/miniconda3/bin:/usr/local/cuda/bin:/usr/local/bin:$PATH
+# The container's CPU quota is 25 cores (cpu.max) while nproc reports the host's 208: OpenMP's
+# default oversubscribes it and the cgroup throttles the process (smoke 2: nr_throttled 42 -> 116).
+export OMP_NUM_THREADS=${OMP_NUM_THREADS:-16}
 REPO=$(cd "$(dirname "$0")/../.." && pwd); cd "$REPO" || exit 1
 E=experiments/comp8800_poster_e1
 OUT=${OUT:-$REPO/$E/RAW_RESULTS}; mkdir -p "$OUT"
