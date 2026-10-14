@@ -69,7 +69,8 @@ def load(raw):
                        "lat_med_ms": med(v["lat_med_ms"]), "lat_p95_ms": med(v["lat_p95_ms"]),
                        "rounds": len(v["qps"]), "calls_per_round": run["reps"] * max(1, run["nbatch"]),
                        "mem_used_mib": v["used_mib"], "index_mib": "", "invalid_ids": "", "dup_rows": "",
-                       "deterministic": "", "flags": "", "source": os.path.basename(f)}
+                       "deterministic": "", "flags": "", "notes": "", "recall_last_a": "", "recall_b": "",
+                       "source": os.path.basename(f)}
                 g0 = ref.get(0)
                 if g0 is not None and abs(g0["recall"] - v["recall"]) > 1e-9:
                     pts["flags"] = f"G=0 recall {g0['recall']:.6f} != G=-1"
@@ -104,10 +105,14 @@ def load(raw):
                     flags.append(f"{r['invalid_ids']} invalid ids")
                 if r.get("dup_rows"):
                     flags.append(f"{r['dup_rows']} rows repeat an id")
+                notes = []
                 if r.get("deterministic") is False:
-                    flags.append("ids differ between calls")
+                    notes.append(f"ids vary between calls: {r.get('rows_set_diff_a', '?')} rows differ as sets, "
+                                 f"{r.get('rows_order_diff_a', '?')} only in order; last-call recall "
+                                 f"{r.get('recall_last_a', float('nan')):.4f}")
                 if r.get("b_matches_a") is False:
-                    flags.append("protocol B ids differ from A")
+                    notes.append(f"protocol B ids differ ({r.get('rows_set_diff_b', '?')} rows as sets); "
+                                 f"B recall {r.get('recall_b', float('nan')):.4f}")
                 params = dict(r.get("index", {}))
                 params.update(r.get("search") or {})
                 for drop in ("type", "dataset", "method", "utc", "ctx_mib", "mem_used_after_build_mib"):
@@ -121,7 +126,8 @@ def load(raw):
                                "index_mib": (r.get("index") or {}).get("index_mib", ""),
                                "invalid_ids": r.get("invalid_ids", ""), "dup_rows": r.get("dup_rows", ""),
                                "deterministic": r.get("deterministic", ""), "flags": "; ".join(flags),
-                               "source": os.path.basename(f)})
+                               "notes": "; ".join(notes), "recall_last_a": r.get("recall_last_a", ""),
+                               "recall_b": r.get("recall_b", ""), "source": os.path.basename(f)})
     return points, failures, indexes
 
 
@@ -171,7 +177,7 @@ def main():
     points, failures, indexes = load(a.raw)
     cols = ["dataset", "family", "label", "params", "recall", "qps_A", "qps_A_min", "qps_A_max", "qps_B",
             "lat_med_ms", "lat_p95_ms", "rounds", "calls_per_round", "mem_used_mib", "index_mib",
-            "invalid_ids", "dup_rows", "deterministic", "flags", "source"]
+            "invalid_ids", "dup_rows", "deterministic", "flags", "notes", "recall_last_a", "recall_b", "source"]
     with open(os.path.join(out_dir, "E1_points.csv"), "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols)
         w.writeheader()
@@ -253,9 +259,14 @@ def main():
             md.append(f"| {f['dataset']} | {f['method']} | {f['label']} | {f['params'][:80]} | {f['error'][:160]} |")
     flagged = [p for p in points if p["flags"]]
     if flagged:
-        md.append("\n## Points with flags\n")
+        md.append("\n## Points with defects (excluded from frontiers)\n")
         for p in flagged:
             md.append(f"- {p['dataset']} {p['family']} {p['params']}: {p['flags']}")
+    noted = [p for p in points if p.get("notes")]
+    if noted:
+        md.append(f"\n## Points whose results vary between calls (kept; {len(noted)} points)\n")
+        for p in noted[:60]:
+            md.append(f"- {p['dataset']} {p['family']} R={p['recall']:.4f} {p['params']}: {p['notes']}")
     text = "\n".join(md) + "\n"
     if a.md:
         open(a.md, "w").write(text)

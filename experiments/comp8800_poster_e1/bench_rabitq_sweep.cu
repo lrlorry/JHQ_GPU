@@ -92,6 +92,26 @@ static std::vector<int> parse_ints(const char* s, const char* dflt) {
     return v;
 }
 static int env_int(const char* n, int d) { const char* e = std::getenv(n); return e ? std::atoi(e) : d; }
+// rows of b that hold a different id set from a, and rows equal as sets but in another order
+static void row_diffs(const std::vector<int64_t>& a, const int64_t* b, int nq, int k, long long& set_diff,
+                      long long& order_diff) {
+    set_diff = order_diff = 0;
+    for (int q = 0; q < nq; ++q) {
+        std::vector<int64_t> x(a.begin() + (size_t)q * k, a.begin() + (size_t)(q + 1) * k), y(b + (size_t)q * k, b + (size_t)(q + 1) * k);
+        if (x == y) continue;
+        std::sort(x.begin(), x.end()); std::sort(y.begin(), y.end());
+        if (x == y) ++order_diff; else ++set_diff;
+    }
+}
+static double recall_of(const int64_t* ids, const std::vector<int>& gt, int nq, int k, int dgt) {
+    long long hit = 0;
+    for (int q = 0; q < nq; ++q)
+        for (int j = 0; j < k; ++j) {
+            const long long want = gt[(size_t)q * dgt + j];
+            for (int i = 0; i < k; ++i) if (ids[(size_t)q * k + i] == want) { ++hit; break; }
+        }
+    return (double)hit / ((double)nq * k);
+}
 static double used_mib() { size_t f = 0, t = 0; cudaMemGetInfo(&f, &t); return (double)(t - f) / 1048576.0; }
 static std::string utc() {
     char b[32]; std::time_t t = std::time(nullptr); std::strftime(b, sizeof b, "%Y-%m-%dT%H:%M:%SZ", std::gmtime(&t));
@@ -231,6 +251,29 @@ int main(int argc, char** argv) {
                 cuvs::neighbors::ivf_rabitq::search(res, sp, idx, qvB, ivB, dvB);
                 cudaStreamSynchronize(st);
             };
+            if (std::getenv("RQ_DIAG")) {
+                // where the time of a host-to-host call goes: each phase synchronised on its own
+                const int n = env_int("RQ_DIAG", 200);
+                std::vector<double> tm, th, ts, td, tall;
+                for (int i = 0; i < n; ++i) {
+                    auto t = clk::now();
+                    std::memcpy(pin_q, xq.data(), (size_t)nq * d * sizeof(float)); tm.push_back(ms_since(t)); t = clk::now();
+                    cudaMemcpyAsync(d_q.data_handle(), pin_q, (size_t)nq * d * sizeof(float), cudaMemcpyHostToDevice, st);
+                    cudaStreamSynchronize(st); th.push_back(ms_since(t)); t = clk::now();
+                    cuvs::neighbors::ivf_rabitq::search(res, sp, idx, qv, iv, dv);
+                    cudaStreamSynchronize(st); ts.push_back(ms_since(t)); t = clk::now();
+                    cudaMemcpyAsync(pin_id, d_id.data_handle(), (size_t)nq * k * sizeof(int64_t), cudaMemcpyDeviceToHost, st);
+                    cudaMemcpyAsync(pin_di, d_di.data_handle(), (size_t)nq * k * sizeof(float), cudaMemcpyDeviceToHost, st);
+                    cudaStreamSynchronize(st); td.push_back(ms_since(t));
+                    tall.push_back(tm.back() + th.back() + ts.back() + td.back());
+                }
+                auto q3 = [](std::vector<double> v) {
+                    char b[96]; std::snprintf(b, sizeof b, "p50 %.3f p95 %.3f p99 %.3f max %.3f", pct(v, .5), pct(v, .95), pct(v, .99), pct(v, 1.0));
+                    return std::string(b);
+                };
+                std::fprintf(stderr, "DIAG mode=%d np=%d n=%d\n  memcpy %s\n  h2d    %s\n  search %s\n  d2h    %s\n  total  %s\n",
+                             mode, np, n, q3(tm).c_str(), q3(th).c_str(), q3(ts).c_str(), q3(td).c_str(), q3(tall).c_str());
+            }
             try {
                 auto t0 = clk::now();
                 call_a();
@@ -267,10 +310,15 @@ int main(int argc, char** argv) {
                 };
                 auto ta = run_rounds(call_a);
                 const bool det = std::memcmp(ref.data(), pin_id, ref.size() * sizeof(int64_t)) == 0;
+                long long a_set = 0, a_order = 0, b_set = 0, b_order = 0;
+                row_diffs(ref, pin_id, nq, k, a_set, a_order);
+                const double recall_last = recall_of(pin_id, gt, nq, k, dgt);
                 call_b();
                 auto tb = run_rounds(call_b);
                 cudaMemcpy(hb.data(), d_idB.data_handle(), hb.size() * sizeof(int64_t), cudaMemcpyDeviceToHost);
                 const bool b_same = hb == ref;
+                row_diffs(ref, hb.data(), nq, k, b_set, b_order);
+                const double recall_b = recall_of(hb.data(), gt, nq, k, dgt);
                 const double mem_now = used_mib();
                 auto emit_proto = [&](const char* name, const std::vector<std::vector<double>>& tt) {
                     std::vector<double> q, lm, lp;
@@ -299,10 +347,13 @@ int main(int argc, char** argv) {
                              "\"serialize_ms\":%.1f,\"deserialize_ms\":%.1f},\"search\":{\"n_probes\":%d,\"mode\":%d,"
                              "\"mode_name\":\"%s\"},\"recall\":%.6f,\"invalid_ids\":%lld,\"dup_rows\":%lld,"
                              "\"deterministic\":%s,\"b_matches_a\":%s,\"first_call_ms\":%.3f,\"warmup\":%d,"
-                             "\"rounds\":%d,\"calls_per_round\":%d,\"mem_used_mib\":%.1f",
+                             "\"rounds\":%d,\"calls_per_round\":%d,\"mem_used_mib\":%.1f,\"recall_last_a\":%.6f,"
+                             "\"recall_b\":%.6f,\"rows_set_diff_a\":%lld,\"rows_order_diff_a\":%lld,"
+                             "\"rows_set_diff_b\":%lld,\"rows_order_diff_b\":%lld",
                              bits, mode_name[mode & 3], n_lists, bits, m_index, t_build, t_ser, t_deser, np, mode,
                              mode_name[mode & 3], recall, bad, dup_rows, det ? "true" : "false",
-                             b_same ? "true" : "false", first_ms, warmup, rounds, calls, mem_now);
+                             b_same ? "true" : "false", first_ms, warmup, rounds, calls, mem_now, recall_last,
+                             recall_b, a_set, a_order, b_set, b_order);
                 const double qa = emit_proto("A", ta);
                 const double qb = emit_proto("B", tb);
                 std::fprintf(js, ",\"utc\":\"%s\"}\n", utc().c_str());

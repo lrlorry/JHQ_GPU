@@ -91,6 +91,19 @@ def id_checks(ids, n):
     return bad, dup_rows
 
 
+def row_diffs(a, b):
+    """Rows of b holding a different id set from a, and rows equal as sets but in another order."""
+    set_diff = order_diff = 0
+    for x, y in zip(a, b):
+        if np.array_equal(x, y):
+            continue
+        if np.array_equal(np.sort(x), np.sort(y)):
+            order_diff += 1
+        else:
+            set_diff += 1
+    return set_diff, order_diff
+
+
 def sh(cmd):
     try:
         return subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30).stdout.strip()
@@ -235,12 +248,20 @@ def main():
                 return out
 
             ta = rounds(call_a)
-            deterministic = bool(np.array_equal(ref, pin_ids))
+            last = pin_ids.copy()
+            deterministic = bool(np.array_equal(ref, last))
+            a_set, a_order = row_diffs(ref, last)
+            extra = {"recall_last_a": round(recall_at_k(last, gt), 6), "rows_set_diff_a": a_set,
+                     "rows_order_diff_a": a_order}
             tb, b_same = None, None
             if not a.no_b:
                 call_b()
                 tb = rounds(call_b)
-                b_same = bool(np.array_equal(ref, idsB_dev.get()))
+                hb = idsB_dev.get()
+                b_same = bool(np.array_equal(ref, hb))
+                b_set, b_order = row_diffs(ref, hb)
+                extra.update({"recall_b": round(recall_at_k(hb, gt), 6), "rows_set_diff_b": b_set,
+                              "rows_order_diff_b": b_order})
 
             def summ(tt):
                 q = [calls * nq / (sum(r) / 1e3) for r in tt]
@@ -257,7 +278,7 @@ def main():
                      "invalid_ids": bad, "dup_rows": dup, "deterministic": deterministic,
                      "b_matches_a": b_same, "first_call_ms": round(first_ms, 3),
                      "warmup": a.warmup, "rounds": a.rounds, "calls_per_round": calls,
-                     "mem_used_mib": round(mem_used_mib(), 1), "A": summ(ta)}
+                     "mem_used_mib": round(mem_used_mib(), 1), **extra, "A": summ(ta)}
             if tb is not None:
                 point["B"] = summ(tb)
             emit(point)
@@ -277,8 +298,10 @@ def main():
         m0 = mem_used_mib()
         t0 = time.perf_counter()
         try:
+            # Builds run on cuVS's default resources: handing them the search handle (a cupy
+            # stream) segfaulted cagra.build on a host dataset. Only the timed search path uses
+            # the reused handle.
             idx = build_fn()
-            res.sync()
             cp.cuda.runtime.deviceSynchronize()
         except Exception as ex:
             emit({"type": "failure", "dataset": a.dataset, "method": a.method, "label": kind,
@@ -318,7 +341,7 @@ def main():
         for gd in ints(a.graph_degrees):
             p = dict(graph_degree=gd, intermediate_graph_degree=128, build_algo="ivf_pq", **extra)
             idx, irec = built(a.method, p, lambda: cagra.build(
-                cagra.IndexParams(graph_degree=gd, intermediate_graph_degree=128), data, resources=res))
+                cagra.IndexParams(graph_degree=gd, intermediate_graph_degree=128), data))
             if idx is None:
                 continue
             for it in ints(a.itopk):
@@ -345,7 +368,7 @@ def main():
         for pd in ints(a.pq_dims):
             p = dict(n_lists=a.nlist, pq_dim=pd, pq_bits=8, code_bytes_per_vec=pd, **raw)
             idx, irec = built(a.method, p, lambda pd=pd: ivf_pq.build(
-                ivf_pq.IndexParams(n_lists=a.nlist, pq_dim=pd, pq_bits=8), xb, resources=res))
+                ivf_pq.IndexParams(n_lists=a.nlist, pq_dim=pd, pq_bits=8), xb))
             if idx is None:
                 continue
             for lut in a.lut.split(","):
@@ -371,7 +394,7 @@ def main():
 
         def build_fn():
             holder["xb"] = cp.asarray(xb)              # the index reads it: keep it alive
-            return brute_force.build(holder["xb"], metric="sqeuclidean", resources=res)
+            return brute_force.build(holder["xb"], metric="sqeuclidean")
         idx, irec = built("bruteforce", {"metric": "sqeuclidean", "dtype": "fp32"}, build_fn)
         if idx is not None:
             def search_into(qin, ids_out, dist_out):
